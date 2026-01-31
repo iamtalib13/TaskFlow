@@ -15,9 +15,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                             <input type="text" class="form-control form-control-sm border-secondary-subtle shadow-none" style="background: #f6f8fa;" placeholder="Filter projects" v-model="searchProject">
                         </div>
                         <div class="list-group">
-                            <div @click="selectProject(null)" class="py-2 px-1 border-bottom" style="cursor: pointer; font-size: 14px; color: #0969da;">
-                                <strong><i class="fa fa-list-ul mr-2"></i> All Projects</strong>
-                            </div>
+                            
                             <div v-for="p in filteredProjects" 
                                 @click="selectProject(p)"
                                 class="py-2 px-1 border-bottom border-transparent"
@@ -161,6 +159,10 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 			async init() {
 				await this.fetchData();
+				// Agar list mein projects hain aur koi selected nahi hai, toh pehla select kar lo
+				if (this.projects.length > 0 && !this.selectedProject) {
+					this.selectProject(this.projects[0]);
+				}
 			},
 
 			async fetchData() {
