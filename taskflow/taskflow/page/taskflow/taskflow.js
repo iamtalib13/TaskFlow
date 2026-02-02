@@ -50,15 +50,18 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                             </select>
                         </div>
                         <div class="d-flex" style="gap: 10px;">
+                            <button class="btn btn-sm btn-light border" @click="focusMode = !focusMode" :title="focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'">
+                                <i class="fa" :class="focusMode ? 'fa-compress' : 'fa-expand'"></i> [[ focusMode ? 'Exit Focus' : 'Focus' ]]
+                            </button>
                             <button class="btn btn-sm btn-primary" @click="saveTask()">Save</button>
                             <button class="btn btn-sm btn-light border" @click="closeTask()">Cancel</button>
                         </div>
                     </div>
 
                     <div class="container-fluid py-4 px-4">
-                        <div class="row">
+                        <div class="row justify-content-center">
                             <!-- Left Column: Assignment & Schedule -->
-                            <div class="col-md-3">
+                            <div class="col-md-3" v-show="!focusMode">
                                 <div class="mb-4">
                                     <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Assignment</h6>
                                     <div class="form-group">
@@ -96,10 +99,10 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                             </div>
 
                             <!-- Center Column: Description & Attachments -->
-                            <div class="col-md-6 border-left border-right">
+                            <div :class="focusMode ? 'col-md-8' : 'col-md-6 border-left border-right'">
                                 <div class="mb-4 px-3">
                                     <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Description</h6>
-                                    <textarea class="form-control" rows="10" v-model="currentTask.doc.description" style="font-size: 14px; line-height: 1.5; border-color: #e1e4e8;"></textarea>
+                                    <textarea class="form-control" rows="15" v-model="currentTask.doc.description" style="font-size: 14px; line-height: 1.6; border-color: #e1e4e8;"></textarea>
                                 </div>
                                 <div class="px-3">
                                     <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Attachments</h6>
@@ -114,7 +117,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                             </div>
 
                             <!-- Right Column: Comments -->
-                            <div class="col-md-3">
+                            <div class="col-md-3" v-show="!focusMode">
                                 <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Comments</h6>
                                 <div class="mb-3">
                                     <textarea class="form-control form-control-sm mb-2" rows="3" placeholder="Write a comment..." v-model="newComment"></textarea>
@@ -221,7 +224,60 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                         <i class="fa fa-plus mr-1"></i> Create Task
                                     </button>
                                 </div>
-                                <div class="row no-gutters" style="gap: 15px;">
+                                <div v-if="user.is_manager && userOverviewInsights" class="mb-4">
+                                    <!-- Row 1: Health & Stuck -->
+                                    <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Project Health & Pulse</h6>
+                                    <div class="row mb-4 m-0" style="gap: 15px;">
+                                        <div class="col p-3 rounded border text-white" style="background-color: #2da44e;"> <!-- On Track -->
+                                            <div style="font-size: 11px; opacity: 0.8;">On Track</div>
+                                            <div style="font-size: 24px; font-weight: 600;">[[ userOverviewInsights.health.on_track ]]</div>
+                                        </div>
+                                        <div class="col p-3 rounded border text-dark" style="background-color: #ffd33d;"> <!-- At Risk -->
+                                            <div style="font-size: 11px; opacity: 0.8;">At Risk</div>
+                                            <div style="font-size: 24px; font-weight: 600;">[[ userOverviewInsights.health.at_risk ]]</div>
+                                        </div>
+                                        <div class="col p-3 rounded border text-white" style="background-color: #cf222e;"> <!-- Delayed -->
+                                            <div style="font-size: 11px; opacity: 0.8;">Delayed</div>
+                                            <div style="font-size: 24px; font-weight: 600;">[[ userOverviewInsights.health.delayed ]]</div>
+                                        </div>
+                                        <div class="col p-3 rounded border bg-white text-dark" style="border-color: #d0d7de !important;"> <!-- Stuck -->
+                                            <div style="font-size: 11px; color: #636c76;">Stuck (3+ Days)</div>
+                                            <div style="font-size: 24px; font-weight: 600;">[[ userOverviewInsights.stuck_count ]]</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Row 2: Priorities & Workload -->
+                                    <div class="row m-0">
+                                        <div class="col-md-6 pl-0">
+                                            <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Top 3 Priorities</h6>
+                                            <div v-if="userOverviewInsights.priorities.length > 0" class="list-group shadow-sm">
+                                                <div v-for="t in userOverviewInsights.priorities" class="list-group-item list-group-item-action p-3" @click="openTask(t.name)" style="cursor: pointer;">
+                                                    <div class="d-flex w-100 justify-content-between align-items-center">
+                                                        <h6 class="mb-1" style="font-size: 13px; font-weight: 600; color: #1f2328;">[[ t.subject ]]</h6>
+                                                        <span class="badge" :class="t.priority === 'Urgent' ? 'badge-danger' : 'badge-warning'">[[ t.priority ]]</span>
+                                                    </div>
+                                                    <small class="text-muted">Due: [[ formatDate(t.exp_end_date) ]]</small>
+                                                </div>
+                                            </div>
+                                            <div v-else class="p-3 bg-light rounded text-center text-muted small">No urgent tasks.</div>
+                                        </div>
+                                        <div class="col-md-6 pr-0">
+                                            <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Team Workload (Top 5)</h6>
+                                            <div class="bg-white border rounded shadow-sm p-0" style="border-color: #d0d7de !important;">
+                                                <table class="table table-sm table-borderless m-0">
+                                                    <tbody>
+                                                        <tr v-for="w in userOverviewInsights.workload" class="border-bottom">
+                                                            <td class="pl-3 py-2 small font-weight-bold">[[ w.full_name ]]</td>
+                                                            <td class="pr-3 py-2 text-right small">[[ w.count ]] Tasks</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-else class="row no-gutters" style="gap: 15px;">
                                     <div class="col shadow-none border rounded p-3 bg-white" v-for="stat in userOverviewStats" style="border-color: #d0d7de !important;">
                                         <div style="font-size: 11px; color: #636c76; text-transform: uppercase; letter-spacing: 0.5px;">[[ stat.label ]]</div>
                                         <div style="font-size: 22px; font-weight: 600; color: #1f2328;">[[ stat.value ]]</div>
@@ -427,7 +483,9 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			globalTeam: [],
             isUserOverview: false, // New State
             userOverviewStats: [], // New State
+            userOverviewInsights: null, // New State for PM
             currentTask: null, // Task Detail View State
+            focusMode: false, // Focus Mode State
             newComment: "",
 
             user: {
@@ -468,6 +526,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                 });
                 if (res.message) {
                     this.userOverviewStats = res.message.stats;
+                    this.userOverviewInsights = res.message.insights;
                 }
             },
 
