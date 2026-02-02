@@ -65,15 +65,27 @@ def get_dashboard_data(project=None):
         ],
         "members": members_data
     }
-
 @frappe.whitelist()
 def get_task_list(project=None, start=0, page_length=10):
     filters = {"project": ["!=", ""]}
-    if project: filters["project"] = project
+    if project: 
+        filters["project"] = project
+
+    # 1. Pehle Task list fetch karein
     tasks = frappe.get_list("Task", 
         filters=filters,
         fields=["name", "subject", "status", "owner", "priority"],
-        start=start, page_length=page_length, order_by="creation desc"
+        start=start, 
+        page_length=page_length, 
+        order_by="creation desc",
+        ignore_permissions=True # Taaki parenttype wala error na aaye
     )
+
+    # 2. Har task ke liye owner ka first_name fetch karein
+    for task in tasks:
+        # User table se first_name uthao jiska email task.owner hai
+        user_info = frappe.db.get_value("User", task.owner, ["first_name"], as_dict=True)
+        task["owner_name"] = user_info.get("first_name") if user_info else task.owner
+
     total_count = frappe.db.count("Task", filters)
     return {"tasks": tasks, "has_more": int(start) + int(page_length) < total_count}

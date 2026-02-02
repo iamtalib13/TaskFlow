@@ -24,19 +24,19 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
                   
 
-						<div class="col-md-9 p-0 border-left pl-4" style="border-color: #d0d7de !important;">
-							<div class="d-flex border-bottom mb-4" style="gap: 25px;">
-								<div @click="activeTab = 'overview'" :style="tabStyle(activeTab === 'overview')"><i class="fa fa-dashboard mr-1"></i> Overview</div>
-								<div @click="activeTab = 'projects'" :style="tabStyle(activeTab === 'projects')"><i class="fa fa-briefcase mr-1"></i> Project View</div>
-								<div @click="activeTab = 'task_view'" :style="tabStyle(activeTab === 'task_view')"><i class="fa fa-tasks mr-1"></i> Task View</div>
-							</div>
+					<div class="col-md-9 p-0 border-left pl-4" style="border-color: #d0d7de !important;">
+						<div class="d-flex border-bottom mb-4" style="gap: 25px;">
+							<div @click="activeTab = 'overview'" :style="tabStyle(activeTab === 'overview')"><i class="fa fa-dashboard mr-1"></i> Overview</div>
+							<div @click="activeTab = 'projects'" :style="tabStyle(activeTab === 'projects')"><i class="fa fa-briefcase mr-1"></i> Project View</div>
+							<div @click="activeTab = 'task_view'" :style="tabStyle(activeTab === 'task_view')"><i class="fa fa-tasks mr-1"></i> Task View</div>
+						</div>
 
-							<div v-if="activeTab === 'overview'" class="row mb-4 no-gutters" style="gap: 15px;">
-								<div class="col shadow-none border rounded p-3 bg-white" v-for="stat in stats" style="border-color: #d0d7de !important;">
-									<div style="font-size: 11px; color: #636c76; text-transform: uppercase; letter-spacing: 0.5px;">[[ stat.label ]]</div>
-									<div style="font-size: 22px; font-weight: 600; color: #1f2328;">[[ stat.value ]]</div>
-								</div>
+						<div v-if="activeTab === 'overview'" class="row mb-4 no-gutters" style="gap: 15px;">
+							<div class="col shadow-none border rounded p-3 bg-white" v-for="stat in stats" style="border-color: #d0d7de !important;">
+								<div style="font-size: 11px; color: #636c76; text-transform: uppercase; letter-spacing: 0.5px;">[[ stat.label ]]</div>
+								<div style="font-size: 22px; font-weight: 600; color: #1f2328;">[[ stat.value ]]</div>
 							</div>
+						</div>
 
                         <div v-if="activeTab === 'overview'">
                             <div class="d-flex mb-3 border-bottom pb-2 align-items-center justify-content-between">
@@ -70,11 +70,11 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                             <tr><th>Task Subject</th><th>Status</th><th>Owner</th></tr>
                                         </thead>
                                         <tbody>
-                                            <tr v-for="t in tasks">
-                                                <td><a :href="'/app/task/' + t.name" class="font-weight-bold" style="color: #0969da;">[[ t.subject ]]</a></td>
-                                                <td><span class="badge" :class="t.status === 'Completed' ? 'badge-success' : 'badge-warning'">[[ t.status ]]</span></td>
-                                                <td class="text-muted">[[ t.owner ]]</td>
-                                            </tr>
+                                           <tr v-for="t in tasks">
+												<td><a :href="'/app/task/' + t.name" class="font-weight-bold" style="color: #0969da;">[[ t.subject ]]</a></td>
+												<td><span class="badge" :class="t.status === 'Completed' ? 'badge-success' : 'badge-warning'">[[ t.status ]]</span></td>
+												<td class="text-muted">[[ t.owner_name ]]</td>
+											</tr>
                                         </tbody>
                                     </table>
                                     <div v-if="hasMoreTasks" class="p-3 text-center border-top bg-light">
