@@ -17,8 +17,21 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                         border-left: 3px solid #0969da !important;
                         padding-left: 8px !important;
                     }
+               /* Naya style button ke liye */
+                    .btn-create-project {
+                        background-color: #1f2328;
+                        color: white;
+                        border-radius: 6px;
+                        padding: 4px 12px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        transition: 0.2s;
+                    }
+                    .btn-create-project:hover {
+                        background-color: #2d3795ff;
+                        color: white;
+                    }
                 </style>
-
                 <div class="row m-0">
                     <div class="col-md-3 p-0 pr-4">
                         <div class="mb-3">
@@ -36,11 +49,18 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                         </div>
                     </div>
 
-                    <div class="col-md-9 p-0 border-left pl-4" style="border-color: #d0d7de !important;">
-                        <div class="d-flex border-bottom mb-4" style="gap: 25px;">
-                            <div @click="activeTab = 'overview'" :style="tabStyle(activeTab === 'overview')"><i class="fa fa-dashboard mr-1"></i> Overview</div>
-                            <div @click="activeTab = 'projects'" :style="tabStyle(activeTab === 'projects')"><i class="fa fa-briefcase mr-1"></i> Project View</div>
-                            <div @click="activeTab = 'task_view'" :style="tabStyle(activeTab === 'task_view')"><i class="fa fa-tasks mr-1"></i> Task View</div>
+                  <div class="col-md-9 p-0 border-left pl-4" style="border-color: #d0d7de !important;">
+                        
+                        <div class="d-flex border-bottom mb-4 align-items-center justify-content-between">
+                            <div class="d-flex" style="gap: 25px;">
+                                <div @click="activeTab = 'overview'" :style="tabStyle(activeTab === 'overview')"><i class="fa fa-dashboard mr-1"></i> Overview</div>
+                                <div @click="activeTab = 'projects'" :style="tabStyle(activeTab === 'projects')"><i class="fa fa-briefcase mr-1"></i> Project View</div>
+                                <div @click="activeTab = 'task_view'" :style="tabStyle(activeTab === 'task_view')"><i class="fa fa-tasks mr-1"></i> Task View</div>
+                            </div>
+                            
+                            <button class="btn-create-project mb-2" onclick="frappe.new_doc('Project')">
+                                <i class="fa fa-plus mr-1"></i> Create Project
+                            </button>
                         </div>
 
                         <div v-if="activeTab === 'overview'" class="row mb-4 no-gutters" style="gap: 15px;">
