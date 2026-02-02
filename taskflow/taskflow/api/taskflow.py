@@ -173,3 +173,51 @@ def update_user_profile(user_image=None, company_email=None, first_name=None, la
              frappe.throw("No Employee record found linked to this user. Cannot update Employee details.")
 
     return get_user_info()
+
+@frappe.whitelist()
+def get_task_details(task):
+    if not frappe.db.exists("Task", task):
+        frappe.throw("Task not found")
+        
+    doc = frappe.get_doc("Task", task)
+    
+    # Fetch Comments
+    comments = frappe.get_all("Comment", 
+        filters={"reference_doctype": "Task", "reference_name": task},
+        fields=["content", "owner", "creation", "comment_type", "comment_by"],
+        order_by="creation desc"
+    )
+    
+    # Fetch Attachments
+    attachments = frappe.get_all("File",
+        filters={"attached_to_doctype": "Task", "attached_to_name": task},
+        fields=["file_name", "file_url", "is_private", "creation"],
+        order_by="creation desc"
+    )
+    
+    return {
+        "doc": doc,
+        "comments": comments,
+        "attachments": attachments
+    }
+
+@frappe.whitelist()
+def update_task_details(task_name, values):
+    if isinstance(values, str):
+        values = frappe.parse_json(values)
+        
+    doc = frappe.get_doc("Task", task_name)
+    doc.update(values)
+    doc.save()
+    return doc
+
+@frappe.whitelist()
+def add_comment(task_name, content):
+    doc = frappe.get_doc("Task", task_name)
+    comment = doc.add_comment("Comment", content)
+    return {
+        "content": comment.content,
+        "owner": comment.owner,
+        "creation": comment.creation,
+        "comment_by": comment.comment_by
+    }

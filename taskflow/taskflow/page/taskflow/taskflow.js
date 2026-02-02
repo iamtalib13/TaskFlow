@@ -35,6 +35,105 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                     ::-webkit-scrollbar-thumb:hover { background: #afb8c1; }
                 </style>
 
+                <!-- Task Detail Overlay -->
+                <div v-if="currentTask" class="position-absolute w-100 h-100 bg-white" style="top: 0; left: 0; z-index: 1000; overflow-y: auto;">
+                    <!-- Header -->
+                    <div class="border-bottom sticky-top bg-white px-4 py-3 shadow-sm d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center flex-grow-1 mr-4" style="gap: 15px;">
+                            <input type="text" class="form-control font-weight-bold" style="font-size: 18px; border: none; padding: 0; height: auto;" v-model="currentTask.doc.subject">
+                            <select class="custom-select form-control-sm w-auto" v-model="currentTask.doc.status" :class="{'text-success': currentTask.doc.status === 'Completed', 'text-danger': currentTask.doc.status === 'Cancelled'}">
+                                <option>Open</option>
+                                <option>Working</option>
+                                <option>Pending Review</option>
+                                <option>Completed</option>
+                                <option>Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="d-flex" style="gap: 10px;">
+                            <button class="btn btn-sm btn-primary" @click="saveTask()">Save</button>
+                            <button class="btn btn-sm btn-light border" @click="closeTask()">Cancel</button>
+                        </div>
+                    </div>
+
+                    <div class="container-fluid py-4 px-4">
+                        <div class="row">
+                            <!-- Left Column: Assignment & Schedule -->
+                            <div class="col-md-3">
+                                <div class="mb-4">
+                                    <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Assignment</h6>
+                                    <div class="form-group">
+                                        <label class="small text-muted mb-1">Project</label>
+                                        <input type="text" class="form-control form-control-sm bg-light" :value="currentTask.doc.project" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="small text-muted mb-1">Priority</label>
+                                        <select class="form-control form-control-sm" v-model="currentTask.doc.priority">
+                                            <option>Low</option>
+                                            <option>Medium</option>
+                                            <option>High</option>
+                                            <option>Urgent</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="small text-muted mb-1">Owner</label>
+                                        <div class="d-flex align-items-center bg-light rounded p-2 border">
+                                            <div class="small">[[ currentTask.doc.owner ]]</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Schedule</h6>
+                                    <div class="form-group">
+                                        <label class="small text-muted mb-1">Start Date</label>
+                                        <input type="date" class="form-control form-control-sm" v-model="currentTask.doc.exp_start_date">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="small text-muted mb-1">End Date</label>
+                                        <input type="date" class="form-control form-control-sm" v-model="currentTask.doc.exp_end_date">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Center Column: Description & Attachments -->
+                            <div class="col-md-6 border-left border-right">
+                                <div class="mb-4 px-3">
+                                    <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Description</h6>
+                                    <textarea class="form-control" rows="10" v-model="currentTask.doc.description" style="font-size: 14px; line-height: 1.5; border-color: #e1e4e8;"></textarea>
+                                </div>
+                                <div class="px-3">
+                                    <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Attachments</h6>
+                                    <div v-if="currentTask.attachments.length > 0">
+                                        <div v-for="file in currentTask.attachments" class="d-flex align-items-center mb-2 p-2 border rounded">
+                                            <i class="fa fa-paperclip mr-2 text-muted"></i>
+                                            <a :href="file.file_url" target="_blank" class="text-truncate small" style="max-width: 200px;">[[ file.file_name ]]</a>
+                                        </div>
+                                    </div>
+                                    <div v-else class="text-muted small font-italic">No attachments</div>
+                                </div>
+                            </div>
+
+                            <!-- Right Column: Comments -->
+                            <div class="col-md-3">
+                                <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Comments</h6>
+                                <div class="mb-3">
+                                    <textarea class="form-control form-control-sm mb-2" rows="3" placeholder="Write a comment..." v-model="newComment"></textarea>
+                                    <button class="btn btn-sm btn-light border btn-block" @click="postComment()">Post Comment</button>
+                                </div>
+                                <div style="max-height: 500px; overflow-y: auto;">
+                                    <div v-for="c in currentTask.comments" class="mb-3 p-2 bg-light rounded border">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <strong class="small">[[ c.comment_by || c.owner ]]</strong>
+                                            <span class="text-muted" style="font-size: 10px;">[[ formatDate(c.creation) ]]</span>
+                                        </div>
+                                        <div class="small" style="white-space: pre-wrap;">[[ c.content ]]</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row m-0 h-100">
                     <!-- Left Sidebar -->
                     <div class="col-md-3 p-0 pr-4 d-flex flex-column h-100">
@@ -142,7 +241,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                     </thead>
                                     <tbody>
                                         <tr v-for="t in tasks">
-                                            <td><a :href="'/app/task/' + t.name" class="font-weight-bold" style="color: #0969da;">[[ t.subject ]]</a></td>
+                                            <td><a href="#" @click.prevent="openTask(t.name)" class="font-weight-bold" style="color: #0969da;">[[ t.subject ]]</a></td>
                                             <td><span class="text-muted">[[ t.project_title ]]</span></td>
                                             <td><span class="badge" :class="t.status === 'Completed' ? 'badge-success' : 'badge-warning'">[[ t.status ]]</span></td>
                                             <td class="text-muted">[[ formatDate(t.exp_start_date) ]]</td>
@@ -223,7 +322,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                         </thead>
                                         <tbody>
                                            <tr v-for="t in tasks">
-                                                <td><a :href="'/app/task/' + t.name" class="font-weight-bold" style="color: #0969da;">[[ t.subject ]]</a></td>
+                                                <td><a href="#" @click.prevent="openTask(t.name)" class="font-weight-bold" style="color: #0969da;">[[ t.subject ]]</a></td>
                                                 <td><span class="badge" :class="t.status === 'Completed' ? 'badge-success' : 'badge-warning'">[[ t.status ]]</span></td>
                                                 <td class="text-muted">[[ t.owner_name ]]</td>
                                                 <td class="text-muted">[[ formatDate(t.exp_start_date) ]]</td>
@@ -316,6 +415,8 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			globalTeam: [],
             isUserOverview: false, // New State
             userOverviewStats: [], // New State
+            currentTask: null, // Task Detail View State
+            newComment: "",
 
             user: {
                 full_name: frappe.user.full_name,
@@ -385,6 +486,73 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                     this.selectedProjectName = "All Projects"; 
                     await this.fetchUserOverviewData();
                     await this.fetchTasks(); 
+                }
+            },
+
+            async openTask(name) {
+                const res = await frappe.call({
+                    method: "taskflow.taskflow.api.taskflow.get_task_details",
+                    args: { task: name }
+                });
+                if (res.message) {
+                    this.currentTask = res.message;
+                    // Format dates for input fields (YYYY-MM-DD)
+                    if (this.currentTask.doc.exp_start_date) {
+                        this.currentTask.doc.exp_start_date = this.currentTask.doc.exp_start_date.split(" ")[0]; // Handle timestamp if present
+                    }
+                    if (this.currentTask.doc.exp_end_date) {
+                        this.currentTask.doc.exp_end_date = this.currentTask.doc.exp_end_date.split(" ")[0];
+                    }
+                }
+            },
+
+            closeTask() {
+                this.currentTask = null;
+                this.newComment = "";
+            },
+
+            async saveTask() {
+                if (!this.currentTask) return;
+                try {
+                    await frappe.call({
+                        method: "taskflow.taskflow.api.taskflow.update_task_details",
+                        args: {
+                            task_name: this.currentTask.doc.name,
+                            values: {
+                                subject: this.currentTask.doc.subject,
+                                status: this.currentTask.doc.status,
+                                priority: this.currentTask.doc.priority,
+                                project: this.currentTask.doc.project,
+                                exp_start_date: this.currentTask.doc.exp_start_date,
+                                exp_end_date: this.currentTask.doc.exp_end_date,
+                                description: this.currentTask.doc.description
+                            }
+                        }
+                    });
+                    frappe.show_alert({message: __("Task Saved"), indicator: "green"});
+                    // Refresh lists in background
+                    this.fetchTasks();
+                } catch (e) {
+                    console.error(e);
+                }
+            },
+
+            async postComment() {
+                if (!this.newComment.trim()) return;
+                try {
+                    const res = await frappe.call({
+                        method: "taskflow.taskflow.api.taskflow.add_comment",
+                        args: {
+                            task_name: this.currentTask.doc.name,
+                            content: this.newComment
+                        }
+                    });
+                    if (res.message) {
+                        this.currentTask.comments.unshift(res.message);
+                        this.newComment = "";
+                    }
+                } catch (e) {
+                    console.error(e);
                 }
             },
 
