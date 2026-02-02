@@ -100,3 +100,45 @@ def get_task_list(project=None, start=0, page_length=10):
 
     total_count = frappe.db.count("Task", filters)
     return {"tasks": tasks, "has_more": int(start) + int(page_length) < total_count}
+
+@frappe.whitelist()
+def get_user_info():
+    user = frappe.session.user
+    user_details = frappe.db.get_value("User", user, ["full_name", "user_image", "email"], as_dict=True)
+    
+    # Fetch linked Employee
+    employee_details = frappe.db.get_value("Employee", {"user_id": user}, ["name", "company_email", "first_name", "last_name"], as_dict=True)
+
+    return {
+        "full_name": user_details.full_name, # Fallback/Display
+        "user_image": user_details.user_image,
+        "email": user_details.email,
+        "employee": employee_details.name if employee_details else None,
+        "company_email": employee_details.company_email if employee_details else None,
+        "first_name": employee_details.first_name if employee_details else None,
+        "last_name": employee_details.last_name if employee_details else None
+    }
+
+@frappe.whitelist()
+def update_user_profile(user_image=None, company_email=None, first_name=None, last_name=None):
+    user = frappe.session.user
+    
+    # Update User Image
+    if user_image:
+        frappe.db.set_value("User", user, "user_image", user_image)
+    
+    # Update Employee Details
+    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+    if employee:
+        emp_updates = {}
+        if company_email: emp_updates["company_email"] = company_email
+        if first_name: emp_updates["first_name"] = first_name
+        if last_name: emp_updates["last_name"] = last_name
+        
+        if emp_updates:
+            frappe.db.set_value("Employee", employee, emp_updates)
+    else:
+        if company_email or first_name or last_name:
+             frappe.throw("No Employee record found linked to this user. Cannot update Employee details.")
+
+    return get_user_info()

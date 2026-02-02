@@ -42,19 +42,33 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                         <div class="flex-shrink-0 mb-4 border rounded p-3 bg-white shadow-sm position-relative">
                              <div class="d-flex align-items-center" style="gap: 12px;">
                                 <div class="position-relative">
-                                    <img :src="user.image" v-if="user.image" class="rounded-circle border" style="width: 48px; height: 48px; object-fit: cover;">
+                                    <img :src="user.user_image" v-if="user.user_image" class="rounded-circle border" style="width: 48px; height: 48px; object-fit: cover;">
                                     <div v-else class="rounded-circle border d-flex align-items-center justify-content-center bg-light text-muted" style="width: 48px; height: 48px; font-size: 20px;">
                                         <i class="fa fa-user"></i>
                                     </div>
                                     <button class="btn btn-sm bg-white text-muted border position-absolute d-flex align-items-center justify-content-center shadow-sm" 
                                         style="bottom: -4px; right: -4px; width: 22px; height: 22px; padding: 0; border-radius: 50%;"
-                                        @click="editProfileImage()" title="Change Profile Picture">
+                                        @click="editProfile()" title="Edit Profile">
                                         <i class="fa fa-pencil" style="font-size: 10px;"></i>
                                     </button>
                                 </div>
                                 <div style="min-width: 0;">
-                                    <div class="font-weight-bold text-truncate" style="color: #1f2328; font-size: 14px;">[[ user.full_name ]]</div>
-                                    <div class="text-muted text-truncate" style="font-size: 12px;">[[ user.email ]]</div>
+                                    <div class="font-weight-bold text-truncate" style="color: #1f2328; font-size: 14px;">[[ getDisplayName() ]]</div>
+                                    <div class="text-muted text-truncate" style="font-size: 12px;" v-if="user.company_email">
+                                        <i class="fa fa-envelope-o mr-1"></i>[[ user.company_email ]]
+                                    </div>
+                                    <div class="text-muted text-truncate" style="font-size: 12px;" v-else>
+                                         <i class="fa fa-envelope-o mr-1"></i>[[ user.email ]]
+                                    </div>
+                                </div>
+                             </div>
+                             
+                             <!-- Email Warning -->
+                             <div v-if="!user.company_email" class="mt-3 p-2 rounded border border-warning bg-warning-light d-flex align-items-start" style="background-color: #fff8c5; border-color: #d4a72c !important;">
+                                <i class="fa fa-exclamation-triangle text-warning mr-2 mt-1"></i>
+                                <div style="font-size: 11px; line-height: 1.3; color: #574600;">
+                                    <strong>Action Needed:</strong> Company email is missing. You may not receive email notifications. 
+                                    <a href="#" @click.prevent="editProfile()" style="text-decoration: underline; color: #574600;">Add now</a>
                                 </div>
                              </div>
                         </div>
@@ -251,46 +265,83 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
             user: {
                 full_name: frappe.user.full_name,
                 email: frappe.session.user,
-                image: null
+                image: null,
+                company_email: null,
+                employee: null,
+                first_name: null,
+                last_name: null
             },
 
             async fetchUserInfo() {
-                 const res = await frappe.db.get_value("User", frappe.session.user, ["full_name", "user_image", "email"]);
-                 if (res && res.message) {
-                     this.user.full_name = res.message.full_name;
-                     this.user.image = res.message.user_image;
-                     this.user.email = res.message.email;
+                 const res = await frappe.call({
+                    method: "taskflow.taskflow.api.taskflow.get_user_info"
+                 });
+                 if (res.message) {
+                     this.user = res.message;
                  }
             },
 
-            editProfileImage() {
+            getDisplayName() {
+                if (this.user.first_name) {
+                    return this.user.first_name + (this.user.last_name ? " " + this.user.last_name : "");
+                }
+                return this.user.full_name;
+            },
+
+            editProfile() {
                 const d = new frappe.ui.Dialog({
-                    title: __("Update Profile Picture"),
+                    title: __("Update Profile"),
                     fields: [
                         {
-                            label: __("New Profile Image"),
+                            label: __("Profile Picture"),
                             fieldname: "user_image",
                             fieldtype: "Attach Image",
+                            default: this.user.user_image
+                        },
+                        { fieldtype: "Section Break", label: __("Employee Details") },
+                        {
+                            label: __("First Name"),
+                            fieldname: "first_name",
+                            fieldtype: "Data",
                             reqd: 1,
-                            default: this.user.image
+                            default: this.user.first_name
+                        },
+                        {
+                            label: __("Last Name"),
+                            fieldname: "last_name",
+                            fieldtype: "Data",
+                            default: this.user.last_name
+                        },
+                        {
+                            label: __("Company Email"),
+                            fieldname: "company_email",
+                            fieldtype: "Data",
+                            options: "Email",
+                            default: this.user.company_email,
+                            description: this.user.employee ? __("Linked to Employee: ") + this.user.employee : __("No linked Employee record found.")
                         }
                     ],
-                    primary_action_label: __("Save"),
+                    primary_action_label: __("Save Changes"),
                     primary_action: async (values) => {
                         d.get_primary_btn().prop("disabled", true);
                         try {
-                            await frappe.call({
-                                method: "frappe.client.set_value",
+                            const res = await frappe.call({
+                                method: "taskflow.taskflow.api.taskflow.update_user_profile",
                                 args: {
-                                    doctype: "User",
-                                    name: frappe.session.user,
-                                    fieldname: "user_image",
-                                    value: values.user_image
+                                    user_image: values.user_image,
+                                    company_email: values.company_email,
+                                    first_name: values.first_name,
+                                    last_name: values.last_name
                                 }
                             });
-                            this.user.image = values.user_image;
-                            frappe.show_alert({message: __("Profile Image Updated"), indicator: "green"});
-                            d.hide();
+                            
+                            if (res.message) {
+                                this.user = res.message;
+                                frappe.show_alert({message: __("Profile Updated Successfully"), indicator: "green"});
+                                d.hide();
+                            }
+                        } catch (e) {
+                            console.error(e);
                         } finally {
                             d.get_primary_btn().prop("disabled", false);
                         }
