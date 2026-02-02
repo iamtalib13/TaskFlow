@@ -27,6 +27,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                         transition: 0.2s;
                     }
                     .btn-create-project:hover { background-color: #2d3795ff; color: white; }
+                    
                     /* Custom Scrollbar for a cleaner SPA look */
                     ::-webkit-scrollbar { width: 6px; }
                     ::-webkit-scrollbar-track { background: transparent; }
@@ -37,13 +38,34 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                 <div class="row m-0 h-100">
                     <!-- Left Sidebar -->
                     <div class="col-md-3 p-0 pr-4 d-flex flex-column h-100">
+                        <!-- Profile Card -->
+                        <div class="flex-shrink-0 mb-4 border rounded p-3 bg-white shadow-sm position-relative">
+                             <div class="d-flex align-items-center" style="gap: 12px;">
+                                <div class="position-relative">
+                                    <img :src="user.image" v-if="user.image" class="rounded-circle border" style="width: 48px; height: 48px; object-fit: cover;">
+                                    <div v-else class="rounded-circle border d-flex align-items-center justify-content-center bg-light text-muted" style="width: 48px; height: 48px; font-size: 20px;">
+                                        <i class="fa fa-user"></i>
+                                    </div>
+                                    <button class="btn btn-sm bg-white text-muted border position-absolute d-flex align-items-center justify-content-center shadow-sm" 
+                                        style="bottom: -4px; right: -4px; width: 22px; height: 22px; padding: 0; border-radius: 50%;"
+                                        @click="editProfileImage()" title="Change Profile Picture">
+                                        <i class="fa fa-pencil" style="font-size: 10px;"></i>
+                                    </button>
+                                </div>
+                                <div style="min-width: 0;">
+                                    <div class="font-weight-bold text-truncate" style="color: #1f2328; font-size: 14px;">[[ user.full_name ]]</div>
+                                    <div class="text-muted text-truncate" style="font-size: 12px;">[[ user.email ]]</div>
+                                </div>
+                             </div>
+                        </div>
+
                         <div class="flex-shrink-0 mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h6 class="font-weight-bold m-0" style="font-size: 14px; color: #1f2328;">Projects</h6>
                             </div>
                             <div class="d-flex" style="gap: 8px;">
                                 <input type="text" class="form-control form-control-sm border-secondary-subtle shadow-none flex-grow-1" style="background: #f6f8fa;" placeholder="Filter projects" v-model="searchProject">
-                                <button class="btn-create-project d-flex align-items-center justify-content-center" style="padding: 4px 12px; font-size: 12px; white-space: nowrap;" onclick="frappe.new_doc('Project')" title="Create Project">
+                                <button class="btn-create-project d-flex align-items-center justify-content-center" style="padding: 4px 12px; font-size: 12px; white-space: nowrap;" @click="openCreateModal()" title="Create Project">
                                     <i class="fa fa-plus mr-1"></i> Create Project
                                 </button>
                             </div>
@@ -60,7 +82,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                             <div v-else class="text-center py-5 px-2">
                                 <div class="mb-3"><i class="fa fa-search fa-2x text-muted" style="opacity: 0.3;"></i></div>
                                 <div class="text-muted small mb-3">No projects found matching "[[ searchProject ]]"</div>
-                                <button class="btn-create-project" style="font-size: 12px;" onclick="frappe.new_doc('Project')">
+                                <button class="btn-create-project" style="font-size: 12px;" @click="openCreateModal()">
                                     <i class="fa fa-plus mr-1"></i> Create Project
                                 </button>
                             </div>
@@ -71,11 +93,16 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                     <div class="col-md-9 p-0 border-left pl-4 d-flex flex-column h-100" style="border-color: #d0d7de !important;">
                         
                         <div class="flex-shrink-0">
-                            <div class="mb-3 d-flex align-items-center" style="font-size: 18px; color: #1f2328;">
-                                <i class="fa fa-book mr-2" style="color: #636c76;"></i>
-                                <span style="font-weight: 600;">Project</span>
-                                <span class="mx-2" style="color: #d0d7de;">/</span>
-                                <span style="font-weight: 400;">[[ selectedProjectName ]]</span>
+                            <div class="mb-3 d-flex align-items-center justify-content-between" style="font-size: 18px; color: #1f2328;">
+                                <div class="d-flex align-items-center">
+                                    <i class="fa fa-book mr-2" style="color: #636c76;"></i>
+                                    <span style="font-weight: 600;">Project</span>
+                                    <span class="mx-2" style="color: #d0d7de;">/</span>
+                                    <span style="font-weight: 400;">[[ selectedProjectName ]]</span>
+                                    <button v-if="selectedProject" class="btn btn-link p-0 ml-3 text-muted" @click="editProject()" title="Edit Project">
+                                        <i class="fa fa-pencil" style="font-size: 14px;"></i>
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="d-flex border-bottom mb-4 align-items-center justify-content-between">
@@ -221,7 +248,244 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			loadingTasks: false,
 			globalTeam: [],
 
+            user: {
+                full_name: frappe.user.full_name,
+                email: frappe.session.user,
+                image: null
+            },
+
+            async fetchUserInfo() {
+                 const res = await frappe.db.get_value("User", frappe.session.user, ["full_name", "user_image", "email"]);
+                 if (res && res.message) {
+                     this.user.full_name = res.message.full_name;
+                     this.user.image = res.message.user_image;
+                     this.user.email = res.message.email;
+                 }
+            },
+
+            editProfileImage() {
+                const d = new frappe.ui.Dialog({
+                    title: __("Update Profile Picture"),
+                    fields: [
+                        {
+                            label: __("New Profile Image"),
+                            fieldname: "user_image",
+                            fieldtype: "Attach Image",
+                            reqd: 1,
+                            default: this.user.image
+                        }
+                    ],
+                    primary_action_label: __("Save"),
+                    primary_action: async (values) => {
+                        d.get_primary_btn().prop("disabled", true);
+                        try {
+                            await frappe.call({
+                                method: "frappe.client.set_value",
+                                args: {
+                                    doctype: "User",
+                                    name: frappe.session.user,
+                                    fieldname: "user_image",
+                                    value: values.user_image
+                                }
+                            });
+                            this.user.image = values.user_image;
+                            frappe.show_alert({message: __("Profile Image Updated"), indicator: "green"});
+                            d.hide();
+                        } finally {
+                            d.get_primary_btn().prop("disabled", false);
+                        }
+                    }
+                });
+                d.show();
+            },
+
+			openCreateModal() {
+				const d = new frappe.ui.Dialog({
+					title: __("Create New Project"),
+					fields: [
+						{ label: __("Project Details"), fieldtype: "Section Break" },
+						{
+							label: __("Project Name"),
+							fieldname: "project_name",
+							fieldtype: "Data",
+							reqd: 1,
+						},
+						{ fieldtype: "Column Break" },
+						{
+							label: __("Company"),
+							fieldname: "company",
+							fieldtype: "Link",
+							options: "Company",
+							default: frappe.defaults.get_default("company"),
+							reqd: 1,
+						},
+						{
+							label: __("Naming Series"),
+							fieldname: "naming_series",
+							fieldtype: "Select",
+							options: "PROJ-.####",
+							default: "PROJ-.####",
+							reqd: 1,
+						},
+
+						{ fieldtype: "Section Break" },
+						{
+							label: __("Expected Start Date"),
+							fieldname: "expected_start_date",
+							fieldtype: "Date",
+							default: frappe.datetime.get_today(),
+						},
+						{ fieldtype: "Column Break" },
+						{
+							label: __("Expected End Date"),
+							fieldname: "expected_end_date",
+							fieldtype: "Date",
+						},
+
+						{ label: __("Notes"), fieldtype: "Section Break" },
+						{ label: __("Description"), fieldname: "notes", fieldtype: "Text Editor" },
+
+						{ label: __("Team"), fieldtype: "Section Break" },
+						{
+							label: __("Team Members"),
+							fieldname: "users",
+							fieldtype: "Table",
+							options: "Project User",
+							fields: [
+								{
+									label: __("User"),
+									fieldname: "user",
+									fieldtype: "Link",
+									options: "User",
+									in_list_view: 1,
+									reqd: 1,
+								},
+							],
+						},
+					],
+					size: "large", // Set width to large
+					primary_action_label: __("Create"),
+					primary_action: async (values) => {
+						d.get_primary_btn().prop("disabled", true);
+						try {
+							const res = await frappe.call({
+								method: "frappe.client.insert",
+								args: { doc: { doctype: "Project", ...values } },
+							});
+							if (res.message) {
+								frappe.show_alert({
+									message: __("Project Created Successfully"),
+									indicator: "green",
+								});
+								d.hide();
+								await this.fetchData();
+							}
+						} finally {
+							d.get_primary_btn().prop("disabled", false);
+						}
+					},
+				});
+				d.show();
+			},
+
+			async editProject() {
+				if (!this.selectedProject) return;
+				const doc_res = await frappe.call({
+					method: "frappe.client.get",
+					args: { doctype: "Project", name: this.selectedProject },
+				});
+				if (!doc_res.message) return;
+				const project_doc = doc_res.message;
+
+				const d = new frappe.ui.Dialog({
+					title: __("Edit Project: ") + project_doc.project_name,
+					fields: [
+						{ label: __("Project Details"), fieldtype: "Section Break" },
+						{
+							label: __("Project Name"),
+							fieldname: "project_name",
+							fieldtype: "Data",
+							reqd: 1,
+							default: project_doc.project_name,
+						},
+						{ fieldtype: "Column Break" },
+						{
+							label: __("Status"),
+							fieldname: "status",
+							fieldtype: "Select",
+							options: ["Open", "Completed", "Cancelled"],
+							default: project_doc.status,
+						},
+
+						{ fieldtype: "Section Break" },
+						{
+							label: __("Expected Start Date"),
+							fieldname: "expected_start_date",
+							fieldtype: "Date",
+							default: project_doc.expected_start_date,
+						},
+						{ fieldtype: "Column Break" },
+						{
+							label: __("Expected End Date"),
+							fieldname: "expected_end_date",
+							fieldtype: "Date",
+							default: project_doc.expected_end_date,
+						},
+						{ label: __("Team"), fieldtype: "Section Break" },
+						{
+							label: __("Team Members"),
+							fieldname: "users",
+							fieldtype: "Table",
+							options: "Project User",
+							fields: [
+								{
+									label: __("User"),
+									fieldname: "user",
+									fieldtype: "Link",
+									options: "User",
+									in_list_view: 1,
+									reqd: 1,
+								},
+							],
+							default: project_doc.users,
+						},
+
+						{ label: __("Notes"), fieldtype: "Section Break" },
+						{
+							label: __("Description"),
+							fieldname: "notes",
+							fieldtype: "Text Editor",
+							default: project_doc.notes,
+						},
+					],
+					size: "large", // Set width to large
+					primary_action_label: __("Update"),
+					primary_action: async (values) => {
+						d.get_primary_btn().prop("disabled", true);
+						try {
+							const res = await frappe.call({
+								method: "frappe.client.save",
+								args: { doc: { ...project_doc, ...values } },
+							});
+							if (res.message) {
+								frappe.show_alert({
+									message: __("Project Updated Successfully"),
+									indicator: "green",
+								});
+								d.hide();
+								await this.fetchData();
+								this.selectedProjectName = res.message.project_name;
+							}
+						} finally {
+							d.get_primary_btn().prop("disabled", false);
+						}
+					},
+				});
+				d.show();
+			},
+
 			async init() {
+                await this.fetchUserInfo();
 				await this.fetchData();
 				if (this.projects.length > 0 && !this.selectedProject) {
 					this.selectProject(this.projects[0]);
