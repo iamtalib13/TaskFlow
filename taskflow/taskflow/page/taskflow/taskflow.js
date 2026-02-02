@@ -47,6 +47,13 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
                     <div class="col-md-9 p-0 border-left pl-4" style="border-color: #d0d7de !important;">
                         
+                        <div class="mb-3 d-flex align-items-center" style="font-size: 18px; color: #1f2328;">
+                            <i class="fa fa-book mr-2" style="color: #636c76;"></i>
+                            <span style="font-weight: 600;">Project</span>
+                            <span class="mx-2" style="color: #d0d7de;">/</span>
+                            <span style="font-weight: 400;">[[ selectedProjectName ]]</span>
+                        </div>
+
                         <div class="d-flex border-bottom mb-4 align-items-center justify-content-between">
                             <div class="d-flex" style="gap: 25px;">
                                 <div @click="activeTab = 'overview'" :style="tabStyle(activeTab === 'overview')"><i class="fa fa-dashboard mr-1"></i> Overview</div>
