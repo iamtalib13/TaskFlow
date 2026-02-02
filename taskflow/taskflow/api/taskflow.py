@@ -2,54 +2,64 @@ import frappe
 
 @frappe.whitelist()
 def get_dashboard_data(project=None):
-    # Sirf dates fetch karne ke liye fields add kiye hain
+    # Existing Projects fetch logic (Unchanged)
     raw_projects = frappe.get_all("Project", fields=["name", "project_name", "status", "expected_start_date", "expected_end_date"])
-    
     projects_with_counts = []
     selected_project_info = None
+    all_project_ids = []
 
     for p in raw_projects:
+        all_project_ids.append(p.name)
         p_pending = frappe.db.count("Task", {"project": p.name, "status": ["not in", ["Completed", "Cancelled"]]})
-        project_data = {
-            "name": p.name,
-            "project_name": p.project_name,
-            "status": p.status,
-            "pending_count": p_pending,
-            "start": p.expected_start_date,
-            "end": p.expected_end_date
-        }
+        project_data = {"name": p.name, "project_name": p.project_name, "status": p.status, "pending_count": p_pending, "start": p.expected_start_date, "end": p.expected_end_date}
         projects_with_counts.append(project_data)
         if project and p.name == project:
             selected_project_info = project_data
 
-    task_filters = {"project": ["!=", ""]} 
-    if project:
-        task_filters['project'] = project
+    # --- NAYA LOGIC FOR TASK VIEW (GLOBAL DATA) ---
+    # Saare projects ke users fetch karein
+    all_project_users = frappe.get_all("Project User", filters={"parent": ["in", all_project_ids]}, fields=["parent", "user"])
+    
+    # User wise grouping taaki pata chale kaun kis project mein hai
+    user_map = {}
+    for pu in all_project_users:
+        if pu.user not in user_map:
+            user_map[pu.user] = {"projects": []}
+        # Project ka naam nikaalna
+        p_name = next((proj['project_name'] for proj in projects_with_counts if proj['name'] == pu.parent), pu.parent)
+        user_map[pu.user]["projects"].append(p_name)
 
-    total = frappe.db.count("Task", task_filters)
-    pending = frappe.db.count("Task", {**task_filters, "status": ["not in", ["Completed", "Cancelled"]]})
-    completed = frappe.db.count("Task", {**task_filters, "status": "Completed"})
+    global_team_data = []
+    for user_id, info in user_map.items():
+        full_name = frappe.db.get_value("User", user_id, "full_name") or user_id
+        g_total = frappe.db.count("Task", {"owner": user_id, "project": ["!=", ""]})
+        g_pending = frappe.db.count("Task", {"owner": user_id, "project": ["!=", ""], "status": ["not in", ["Completed", "Cancelled"]]})
+        
+        global_team_data.append({
+            "full_name": full_name,
+            "total_tasks": g_total,
+            "pending_tasks": g_pending,
+            "completed_tasks": g_total - g_pending,
+            "projects": ", ".join(info["projects"]) # Kaun-kaun se project mein hai
+        })
+    # ---------------------------------------------
 
+    # Aapka existing members data logic (Project specific)
     user_filters = {"parenttype": "Project"}
-    if project:
-        user_filters["parent"] = project
-    else:
-        user_filters["parent"] = ["in", [p['name'] for p in projects_with_counts]]
+    if project: user_filters["parent"] = project
+    else: user_filters["parent"] = ["in", all_project_ids]
     
     project_users = frappe.get_all("Project User", filters=user_filters, fields=["user"])
     unique_users = list(set([d.user for d in project_users]))
 
     members_data = []
     for user_id in unique_users:
-        full_name = frappe.db.get_value("User", user_id, "full_name") or user_id
         m_task_filters = {"owner": user_id, "project": ["!=", ""]}
         if project: m_task_filters["project"] = project
-            
         m_total = frappe.db.count("Task", m_task_filters)
         m_pending = frappe.db.count("Task", {**m_task_filters, "status": ["not in", ["Completed", "Cancelled"]]})
-
         members_data.append({
-            "full_name": full_name,
+            "full_name": frappe.db.get_value("User", user_id, "full_name") or user_id,
             "total_tasks": m_total,
             "pending_tasks": m_pending,
             "user_id": user_id
@@ -57,13 +67,14 @@ def get_dashboard_data(project=None):
 
     return {
         "projects": projects_with_counts,
-        "selected_project_info": selected_project_info, # Naya data
+        "selected_project_info": selected_project_info,
         "stats": [
-            {"label": "Total Tasks", "value": total},
-            {"label": "Pending", "value": pending},
-            {"label": "Completed", "value": completed}
+            {"label": "Total Tasks", "value": frappe.db.count("Task", {"project": project} if project else {"project": ["!=", ""]})},
+            {"label": "Pending", "value": frappe.db.count("Task", {"project": project, "status": ["not in", ["Completed", "Cancelled"]]} if project else {"project": ["!=", ""], "status": ["not in", ["Completed", "Cancelled"]]})},
+            {"label": "Completed", "value": frappe.db.count("Task", {"project": project, "status": "Completed"} if project else {"project": ["!=", ""], "status": "Completed"})}
         ],
-        "members": members_data
+        "members": members_data,
+        "global_team_data": global_team_data # Naya key bheja
     }
 @frappe.whitelist()
 def get_task_list(project=None, start=0, page_length=10):

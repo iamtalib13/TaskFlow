@@ -149,29 +149,36 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                 </div>
                             </div>
                         </div>
-
-                        <div v-if="activeTab === 'task_view'">
-                            <div class="border rounded bg-white overflow-hidden">
-                                <table class="table table-hover mb-0" style="font-size: 13px;">
-                                    <thead class="bg-light">
-                                        <tr>
-                                            <th>Member Name</th>
-                                            <th class="text-center">Total Tasks</th>
-                                            <th class="text-center">Pending</th>
-                                            <th class="text-right pr-4">Project</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="m in members">
-                                            <td class="font-weight-bold" style="color: #0969da;">[[ m.full_name ]]</td>
-                                            <td class="text-center">[[ m.total_tasks ]]</td>
-                                            <td class="text-center text-danger font-weight-bold">[[ m.pending_tasks ]]</td>
-                                            <td class="text-right pr-4 text-muted">[[ selectedProjectName ]]</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+						<div v-if="activeTab === 'task_view'">
+							<div class="border rounded bg-white shadow-sm overflow-hidden">
+								<table class="table table-hover mb-0" style="font-size: 13px;">
+									<thead class="bg-light text-muted" style="font-size: 11px; text-transform: uppercase;">
+										<tr>
+											<th class="pl-4">Team Member</th>
+											<th class="text-center">Overall Tasks</th>
+											<th class="text-center">Pending</th>
+											<th class="text-center">Completed</th>
+											<th class="pr-4">Active Projects</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr v-for="m in globalTeam">
+											<td class="pl-4">
+												<div class="font-weight-bold" style="color: #1f2328;">[[ m.full_name ]]</div>
+											</td>
+											<td class="text-center"><span class="badge badge-light">[[ m.total_tasks ]]</span></td>
+											<td class="text-center"><span class="text-danger font-weight-bold">[[ m.pending_tasks ]]</span></td>
+											<td class="text-center"><span class="text-success">[[ m.completed_tasks ]]</span></td>
+											<td class="pr-4">
+												<div class="text-truncate" style="max-width: 250px; color: #636c76; font-size: 12px;" :title="m.projects">
+													<i class="fa fa-folder-open-o mr-1"></i> [[ m.projects ]]
+												</div>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
 
                     </div>
                 </div>
@@ -192,6 +199,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			tasks: [],
 			tasksStart: 0,
 			hasMoreTasks: false,
+			globalTeam: [],
 
 			formatDate(dateStr) {
 				if (!dateStr) return "N/A";
@@ -241,6 +249,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 					this.members = res.message.members;
 					this.stats = res.message.stats;
 					this.selectedProjectInfo = res.message.selected_project_info;
+					this.globalTeam = res.message.global_team_data;
 				}
 			},
 			async selectProject(project) {
