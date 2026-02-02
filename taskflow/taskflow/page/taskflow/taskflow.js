@@ -116,7 +116,12 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                         <!-- User Overview Mode -->
                         <div v-if="isUserOverview" class="d-flex flex-column h-100">
                             <div class="flex-shrink-0 mb-4">
-                                <h5 class="font-weight-bold mb-3" style="color: #1f2328;">My Dashboard</h5>
+                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                    <h5 class="font-weight-bold m-0" style="color: #1f2328;">My Dashboard</h5>
+                                    <button class="btn btn-sm btn-primary shadow-sm px-3" style="border-radius: 6px; font-weight: 600;" @click="createTask()">
+                                        <i class="fa fa-plus mr-1"></i> Create Task
+                                    </button>
+                                </div>
                                 <div class="row no-gutters" style="gap: 15px;">
                                     <div class="col shadow-none border rounded p-3 bg-white" v-for="stat in userOverviewStats" style="border-color: #d0d7de !important;">
                                         <div style="font-size: 11px; color: #636c76; text-transform: uppercase; letter-spacing: 0.5px;">[[ stat.label ]]</div>
@@ -161,6 +166,9 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                         <i class="fa fa-pencil" style="font-size: 14px;"></i>
                                     </button>
                                 </div>
+                                <button class="btn btn-sm btn-primary shadow-sm px-3" style="border-radius: 6px; font-weight: 600;" @click="createTask()">
+                                    <i class="fa fa-plus mr-1"></i> Create Task
+                                </button>
                             </div>
 
                             <div class="d-flex border-bottom mb-4 align-items-center justify-content-between">
@@ -434,6 +442,90 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                             }
                         } catch (e) {
                             console.error(e);
+                        } finally {
+                            d.get_primary_btn().prop("disabled", false);
+                        }
+                    }
+                });
+                d.show();
+            },
+
+            createTask() {
+                const d = new frappe.ui.Dialog({
+                    title: __("Create New Task"),
+                    fields: [
+                        {
+                            label: __("Subject"),
+                            fieldname: "subject",
+                            fieldtype: "Data",
+                            reqd: 1
+                        },
+                        {
+                            label: __("Project"),
+                            fieldname: "project",
+                            fieldtype: "Link",
+                            options: "Project",
+                            reqd: 1,
+                            default: this.selectedProject || ""
+                        },
+                        { fieldtype: "Column Break" },
+                        {
+                            label: __("Priority"),
+                            fieldname: "priority",
+                            fieldtype: "Select",
+                            options: ["Low", "Medium", "High", "Urgent"],
+                            default: "Medium"
+                        },
+                        {
+                            label: __("Status"),
+                            fieldname: "status",
+                            fieldtype: "Select",
+                            options: ["Open", "Working", "Pending Review", "Completed", "Cancelled"],
+                            default: "Open"
+                        },
+                        { fieldtype: "Section Break" },
+                        {
+                            label: __("Expected Start Date"),
+                            fieldname: "exp_start_date",
+                            fieldtype: "Date",
+                            default: frappe.datetime.get_today()
+                        },
+                        { fieldtype: "Column Break" },
+                        {
+                            label: __("Expected End Date"),
+                            fieldname: "exp_end_date",
+                            fieldtype: "Date"
+                        },
+                        { fieldtype: "Section Break" },
+                        {
+                            label: __("Description"),
+                            fieldname: "description",
+                            fieldtype: "Text Editor"
+                        }
+                    ],
+                    primary_action_label: __("Create Task"),
+                    primary_action: async (values) => {
+                        d.get_primary_btn().prop("disabled", true);
+                        try {
+                            const res = await frappe.call({
+                                method: "frappe.client.insert",
+                                args: {
+                                    doc: {
+                                        doctype: "Task",
+                                        ...values
+                                    }
+                                }
+                            });
+                            if (res.message) {
+                                frappe.show_alert({message: __("Task Created Successfully"), indicator: "green"});
+                                d.hide();
+                                await this.fetchTasks(); // Refresh list
+                                if (this.isUserOverview) {
+                                    await this.fetchUserOverviewData(); // Refresh stats
+                                } else {
+                                    await this.fetchData(); // Refresh project stats
+                                }
+                            }
                         } finally {
                             d.get_primary_btn().prop("disabled", false);
                         }
