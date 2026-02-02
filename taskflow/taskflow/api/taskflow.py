@@ -109,6 +109,16 @@ def get_user_info():
     # Fetch linked Employee
     employee_details = frappe.db.get_value("Employee", {"user_id": user}, ["name", "company_email", "first_name", "last_name"], as_dict=True)
 
+    roles = frappe.get_roles(user)
+    role_label = "Guest"
+    is_manager = False
+
+    if "Projects Manager" in roles:
+        role_label = "Projects Manager"
+        is_manager = True
+    elif "Employee" in roles:
+        role_label = "Employee"
+
     return {
         "full_name": user_details.full_name, # Fallback/Display
         "user_image": user_details.user_image,
@@ -116,7 +126,9 @@ def get_user_info():
         "employee": employee_details.name if employee_details else None,
         "company_email": employee_details.company_email if employee_details else None,
         "first_name": employee_details.first_name if employee_details else None,
-        "last_name": employee_details.last_name if employee_details else None
+        "last_name": employee_details.last_name if employee_details else None,
+        "role_label": role_label,
+        "is_manager": is_manager
     }
 
 @frappe.whitelist()

@@ -54,6 +54,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                 </div>
                                 <div style="min-width: 0;">
                                     <div class="font-weight-bold text-truncate" style="color: #1f2328; font-size: 14px;">[[ getDisplayName() ]]</div>
+                                    <div v-if="user.role_label" class="badge badge-light border mb-1 px-2" style="font-size: 10px; color: #57606a;">[[ user.role_label ]]</div>
                                     <div class="text-muted text-truncate" style="font-size: 12px;" v-if="user.company_email">
                                         <i class="fa fa-envelope-o mr-1"></i>[[ user.company_email ]]
                                     </div>
@@ -79,7 +80,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                             </div>
                             <div class="d-flex" style="gap: 8px;">
                                 <input type="text" class="form-control form-control-sm border-secondary-subtle shadow-none flex-grow-1" style="background: #f6f8fa;" placeholder="Filter projects" v-model="searchProject">
-                                <button class="btn-create-project d-flex align-items-center justify-content-center" style="padding: 4px 12px; font-size: 12px; white-space: nowrap;" @click="openCreateModal()" title="Create Project">
+                                <button v-if="user.is_manager" class="btn-create-project d-flex align-items-center justify-content-center" style="padding: 4px 12px; font-size: 12px; white-space: nowrap;" @click="openCreateModal()" title="Create Project">
                                     <i class="fa fa-plus mr-1"></i> Create Project
                                 </button>
                             </div>
@@ -96,7 +97,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                             <div v-else class="text-center py-5 px-2">
                                 <div class="mb-3"><i class="fa fa-search fa-2x text-muted" style="opacity: 0.3;"></i></div>
                                 <div class="text-muted small mb-3">No projects found matching "[[ searchProject ]]"</div>
-                                <button class="btn-create-project" style="font-size: 12px;" @click="openCreateModal()">
+                                <button v-if="user.is_manager" class="btn-create-project" style="font-size: 12px;" @click="openCreateModal()">
                                     <i class="fa fa-plus mr-1"></i> Create Project
                                 </button>
                             </div>
@@ -269,7 +270,9 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                 company_email: null,
                 employee: null,
                 first_name: null,
-                last_name: null
+                last_name: null,
+                role_label: "",
+                is_manager: false
             },
 
             async fetchUserInfo() {
