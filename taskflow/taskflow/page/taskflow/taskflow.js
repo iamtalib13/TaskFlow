@@ -8,6 +8,17 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 	frappe.require("/assets/taskflow/js/petite-vue.iife.js", () => {
 		page.main.html(`
             <div id="taskflow-app" v-scope @vue:mounted="init()" class="container-fluid py-4" style="background-color: #ffffff; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+                
+                <style>
+                    .selected-project-active {
+                        background-color: #f0f7ff !important;
+                        color: #0969da !important;
+                        font-weight: 600 !important;
+                        border-left: 3px solid #0969da !important;
+                        padding-left: 8px !important;
+                    }
+                </style>
+
                 <div class="row m-0">
                     <div class="col-md-3 p-0 pr-4">
                         <div class="mb-3">
@@ -15,28 +26,29 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                             <input type="text" class="form-control form-control-sm border-secondary-subtle shadow-none" style="background: #f6f8fa;" placeholder="Filter projects" v-model="searchProject">
                         </div>
                         <div class="list-group">
-                            <div v-for="p in filteredProjects" @click="selectProject(p)" class="py-2 px-1 border-bottom border-transparent d-flex justify-content-between align-items-center" style="cursor: pointer; font-size: 14px;">
-                                <span><i class="fa fa-book mr-2" style="color: #636c76;"></i> [[ p.project_name ]]</span>
+                            <div v-for="p in filteredProjects" 
+                                 @click="selectProject(p)" 
+                                 :class="['py-2 px-1 border-bottom d-flex justify-content-between align-items-center', selectedProject === p.name ? 'selected-project-active' : 'border-transparent']" 
+                                 style="cursor: pointer; font-size: 14px;">
+                                <span><i class="fa fa-book mr-2" :style="{color: selectedProject === p.name ? '#0969da' : '#636c76'}"></i> [[ p.project_name ]]</span>
                                 <span v-if="p.pending_count > 0" class="badge badge-pill text-white" style="background-color: #f85149; font-size: 10px;">[[ p.pending_count ]]</span>
                             </div>
                         </div>
                     </div>
 
-                  
+                    <div class="col-md-9 p-0 border-left pl-4" style="border-color: #d0d7de !important;">
+                        <div class="d-flex border-bottom mb-4" style="gap: 25px;">
+                            <div @click="activeTab = 'overview'" :style="tabStyle(activeTab === 'overview')"><i class="fa fa-dashboard mr-1"></i> Overview</div>
+                            <div @click="activeTab = 'projects'" :style="tabStyle(activeTab === 'projects')"><i class="fa fa-briefcase mr-1"></i> Project View</div>
+                            <div @click="activeTab = 'task_view'" :style="tabStyle(activeTab === 'task_view')"><i class="fa fa-tasks mr-1"></i> Task View</div>
+                        </div>
 
-						<div class="col-md-9 p-0 border-left pl-4" style="border-color: #d0d7de !important;">
-							<div class="d-flex border-bottom mb-4" style="gap: 25px;">
-								<div @click="activeTab = 'overview'" :style="tabStyle(activeTab === 'overview')"><i class="fa fa-dashboard mr-1"></i> Overview</div>
-								<div @click="activeTab = 'projects'" :style="tabStyle(activeTab === 'projects')"><i class="fa fa-briefcase mr-1"></i> Project View</div>
-								<div @click="activeTab = 'task_view'" :style="tabStyle(activeTab === 'task_view')"><i class="fa fa-tasks mr-1"></i> Task View</div>
-							</div>
-
-							<div v-if="activeTab === 'overview'" class="row mb-4 no-gutters" style="gap: 15px;">
-								<div class="col shadow-none border rounded p-3 bg-white" v-for="stat in stats" style="border-color: #d0d7de !important;">
-									<div style="font-size: 11px; color: #636c76; text-transform: uppercase; letter-spacing: 0.5px;">[[ stat.label ]]</div>
-									<div style="font-size: 22px; font-weight: 600; color: #1f2328;">[[ stat.value ]]</div>
-								</div>
-							</div>
+                        <div v-if="activeTab === 'overview'" class="row mb-4 no-gutters" style="gap: 15px;">
+                            <div class="col shadow-none border rounded p-3 bg-white" v-for="stat in stats" style="border-color: #d0d7de !important;">
+                                <div style="font-size: 11px; color: #636c76; text-transform: uppercase; letter-spacing: 0.5px;">[[ stat.label ]]</div>
+                                <div style="font-size: 22px; font-weight: 600; color: #1f2328;">[[ stat.value ]]</div>
+                            </div>
+                        </div>
 
                         <div v-if="activeTab === 'overview'">
                             <div class="d-flex mb-3 border-bottom pb-2 align-items-center justify-content-between">
@@ -70,10 +82,10 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                             <tr><th>Task Subject</th><th>Status</th><th>Owner</th></tr>
                                         </thead>
                                         <tbody>
-                                            <tr v-for="t in tasks">
+                                           <tr v-for="t in tasks">
                                                 <td><a :href="'/app/task/' + t.name" class="font-weight-bold" style="color: #0969da;">[[ t.subject ]]</a></td>
                                                 <td><span class="badge" :class="t.status === 'Completed' ? 'badge-success' : 'badge-warning'">[[ t.status ]]</span></td>
-                                                <td class="text-muted">[[ t.owner ]]</td>
+                                                <td class="text-muted">[[ t.owner_name ]]</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -90,11 +102,11 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                 <div class="row text-center">
                                     <div class="col-md-6 border-right">
                                         <div class="small text-muted">Start Date</div>
-                                        <div class="font-weight-bold">[[ selectedProjectInfo.start || 'N/A' ]]</div>
+                                        <div class="font-weight-bold">[[ formatDate(selectedProjectInfo.start) ]]</div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="small text-muted">Expected End Date</div>
-                                        <div class="font-weight-bold">[[ selectedProjectInfo.end || 'N/A' ]]</div>
+                                        <div class="font-weight-bold">[[ formatDate(selectedProjectInfo.end) ]]</div>
                                     </div>
                                 </div>
                             </div>
@@ -152,7 +164,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			viewMode: "member",
 			selectedProject: "",
 			selectedProjectName: "All Projects",
-			selectedProjectInfo: null, // Naya variable
+			selectedProjectInfo: null,
 			searchProject: "",
 			projects: [],
 			members: [],
@@ -160,6 +172,15 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			tasks: [],
 			tasksStart: 0,
 			hasMoreTasks: false,
+
+			formatDate(dateStr) {
+				if (!dateStr) return "N/A";
+				const d = new Date(dateStr);
+				const day = String(d.getDate()).padStart(2, "0");
+				const month = String(d.getMonth() + 1).padStart(2, "0");
+				const year = d.getFullYear();
+				return `${day}/${month}/${year}`;
+			},
 
 			tabStyle(isActive) {
 				return {
