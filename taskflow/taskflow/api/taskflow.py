@@ -77,8 +77,12 @@ def get_dashboard_data(project=None):
         "global_team_data": global_team_data # Naya key bheja
     }
 @frappe.whitelist()
-def get_task_list(project=None, start=0, page_length=10):
+def get_task_list(project=None, start=0, page_length=10, only_my_tasks=False):
     filters = {"project": ["!=", ""]}
+    
+    if only_my_tasks:
+        filters["owner"] = frappe.session.user
+    
     if project: 
         filters["project"] = project
 
@@ -86,7 +90,7 @@ def get_task_list(project=None, start=0, page_length=10):
     tasks = frappe.get_list("Task", 
         filters=filters,
         # Naye fields add kiye: exp_start_date, exp_end_date
-        fields=["name", "subject", "status", "owner", "priority", "exp_start_date", "exp_end_date"],
+        fields=["name", "subject", "status", "owner", "priority", "exp_start_date", "exp_end_date", "project"],
         start=start, 
         page_length=page_length, 
         order_by="creation desc",
@@ -97,9 +101,24 @@ def get_task_list(project=None, start=0, page_length=10):
     for task in tasks:
         user_info = frappe.db.get_value("User", task.owner, ["first_name"], as_dict=True)
         task["owner_name"] = user_info.get("first_name") if user_info else task.owner
+        # Fetch Project Name for display if showing all projects
+        if not project:
+            task["project_title"] = frappe.db.get_value("Project", task.project, "project_name")
 
     total_count = frappe.db.count("Task", filters)
     return {"tasks": tasks, "has_more": int(start) + int(page_length) < total_count}
+
+@frappe.whitelist()
+def get_user_overview_data():
+    user = frappe.session.user
+    
+    stats = [
+        {"label": "My Total Tasks", "value": frappe.db.count("Task", {"owner": user, "project": ["!=", ""]})},
+        {"label": "My Pending", "value": frappe.db.count("Task", {"owner": user, "project": ["!=", ""], "status": ["not in", ["Completed", "Cancelled"]]})},
+        {"label": "My Completed", "value": frappe.db.count("Task", {"owner": user, "project": ["!=", ""], "status": "Completed"})}
+    ]
+    
+    return {"stats": stats}
 
 @frappe.whitelist()
 def get_user_info():

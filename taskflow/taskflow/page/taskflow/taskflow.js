@@ -72,6 +72,12 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                     <a href="#" @click.prevent="editProfile()" style="text-decoration: underline; color: #574600;">Add now</a>
                                 </div>
                              </div>
+
+                             <div class="mt-3">
+                                <button class="btn btn-sm btn-light border w-100 shadow-sm" style="font-size: 12px; color: #1f2328;" @click="goToUserOverview()">
+                                    <i class="fa fa-th-large mr-2"></i> My Dashboard
+                                </button>
+                             </div>
                         </div>
 
                         <div class="flex-shrink-0 mb-3">
@@ -107,7 +113,44 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                     <!-- Main Content Area -->
                     <div class="col-md-9 p-0 border-left pl-4 d-flex flex-column h-100" style="border-color: #d0d7de !important;">
                         
-                        <div class="flex-shrink-0">
+                        <!-- User Overview Mode -->
+                        <div v-if="isUserOverview" class="d-flex flex-column h-100">
+                            <div class="flex-shrink-0 mb-4">
+                                <h5 class="font-weight-bold mb-3" style="color: #1f2328;">My Dashboard</h5>
+                                <div class="row no-gutters" style="gap: 15px;">
+                                    <div class="col shadow-none border rounded p-3 bg-white" v-for="stat in userOverviewStats" style="border-color: #d0d7de !important;">
+                                        <div style="font-size: 11px; color: #636c76; text-transform: uppercase; letter-spacing: 0.5px;">[[ stat.label ]]</div>
+                                        <div style="font-size: 22px; font-weight: 600; color: #1f2328;">[[ stat.value ]]</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-grow-1 overflow-auto pr-1 border rounded bg-white shadow-sm" style="min-height: 0; border-color: #d0d7de !important;">
+                                <div class="p-3 border-bottom bg-light">
+                                     <h6 class="m-0 font-weight-bold" style="font-size: 13px;">My Tasks Across All Projects</h6>
+                                </div>
+                                <table class="table table-hover mb-0" style="font-size: 13px;">
+                                    <thead class="bg-white text-muted">
+                                        <tr>
+                                            <th>Task Subject</th><th>Project</th><th>Status</th><th>Exp. Start</th><th>Exp. End</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="t in tasks">
+                                            <td><a :href="'/app/task/' + t.name" class="font-weight-bold" style="color: #0969da;">[[ t.subject ]]</a></td>
+                                            <td><span class="text-muted">[[ t.project_title ]]</span></td>
+                                            <td><span class="badge" :class="t.status === 'Completed' ? 'badge-success' : 'badge-warning'">[[ t.status ]]</span></td>
+                                            <td class="text-muted">[[ formatDate(t.exp_start_date) ]]</td>
+                                            <td class="text-muted">[[ formatDate(t.exp_end_date) ]]</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div id="task-end-marker" style="height: 20px;"></div>
+                            </div>
+                        </div>
+
+                        <div v-else class="d-flex flex-column h-100">
+                            <div class="flex-shrink-0">
                             <div class="mb-3 d-flex align-items-center justify-content-between" style="font-size: 18px; color: #1f2328;">
                                 <div class="d-flex align-items-center">
                                     <i class="fa fa-book mr-2" style="color: #636c76;"></i>
@@ -242,6 +285,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                 </table>
                             </div>
                         </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -262,6 +306,8 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			hasMoreTasks: false,
 			loadingTasks: false,
 			globalTeam: [],
+            isUserOverview: false, // New State
+            userOverviewStats: [], // New State
 
             user: {
                 full_name: frappe.user.full_name,
@@ -289,6 +335,49 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                     return this.user.first_name + (this.user.last_name ? " " + this.user.last_name : "");
                 }
                 return this.user.full_name;
+            },
+
+            goToUserOverview() {
+                frappe.set_route("taskflow");
+            },
+
+            async fetchUserOverviewData() {
+                const res = await frappe.call({
+                    method: "taskflow.taskflow.api.taskflow.get_user_overview_data"
+                });
+                if (res.message) {
+                    this.userOverviewStats = res.message.stats;
+                }
+            },
+
+            setupRouting() {
+                frappe.router.on("change", () => {
+                    this.handleRoute();
+                });
+            },
+
+            async handleRoute() {
+                const route = frappe.get_route();
+                // Route format: taskflow / project / [project_name]  OR  taskflow (default)
+                if (route.length > 2 && route[1] === 'project') {
+                     const projectId = route[2];
+                     if (this.selectedProject !== projectId) {
+                         this.isUserOverview = false;
+                         // We need to find the project object to set name correctly, or fetch it
+                         // For now, let's just set ID and fetch data.
+                         this.selectedProject = projectId;
+                         // selectedProjectName will be updated after fetchData
+                         await this.fetchData();
+                         await this.fetchTasks();
+                     }
+                } else {
+                    // Default / User Overview
+                    this.isUserOverview = true;
+                    this.selectedProject = "";
+                    this.selectedProjectName = "All Projects"; 
+                    await this.fetchUserOverviewData();
+                    await this.fetchTasks(); 
+                }
             },
 
             editProfile() {
@@ -540,10 +629,9 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 			async init() {
                 await this.fetchUserInfo();
-				await this.fetchData();
-				if (this.projects.length > 0 && !this.selectedProject) {
-					this.selectProject(this.projects[0]);
-				}
+				await this.fetchData(); // Fetch projects for sidebar
+                this.setupRouting();
+                this.handleRoute(); // Handle initial route
 				this.setupInfiniteScroll();
 			},
 
@@ -554,8 +642,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 							entries[0].isIntersecting &&
 							this.hasMoreTasks &&
 							!this.loadingTasks &&
-							this.activeTab === "overview" &&
-							this.viewMode === "task"
+                            (this.isUserOverview || (this.activeTab === "overview" && this.viewMode === "task"))
 						) {
 							this.fetchTasks(true);
 						}
@@ -572,13 +659,16 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			async fetchData() {
 				const res = await frappe.call({
 					method: "taskflow.taskflow.api.taskflow.get_dashboard_data",
-					args: { project: this.selectedProject },
+					args: { project: this.selectedProject || undefined },
 				});
 				if (res.message) {
 					this.projects = res.message.projects;
 					this.members = res.message.members;
 					this.stats = res.message.stats;
 					this.selectedProjectInfo = res.message.selected_project_info;
+                    if (this.selectedProjectInfo) {
+                        this.selectedProjectName = this.selectedProjectInfo.project_name;
+                    }
 					this.globalTeam = res.message.global_team_data;
 				}
 			},
@@ -597,6 +687,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 						project: this.selectedProject,
 						start: this.tasksStart,
 						page_length: 20,
+                        only_my_tasks: this.isUserOverview ? 1 : 0
 					},
 				});
 				if (res.message) {
@@ -608,10 +699,11 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			},
 
 			async selectProject(project) {
-				this.selectedProject = project ? project.name : "";
-				this.selectedProjectName = project ? project.project_name : "All Projects";
-				await this.fetchData();
-				await this.fetchTasks();
+                if (project) {
+				    frappe.set_route("taskflow", "project", project.name);
+                } else {
+                    frappe.set_route("taskflow");
+                }
 			},
 
 			formatDate(dateStr) {
