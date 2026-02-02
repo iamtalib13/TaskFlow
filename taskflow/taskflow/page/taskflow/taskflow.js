@@ -7,7 +7,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	frappe.require("/assets/taskflow/js/petite-vue.iife.js", () => {
 		page.main.html(`
-            <div id="taskflow-app" v-scope @vue:mounted="init()" class="container-fluid py-4" style="background-color: #ffffff; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+            <div id="taskflow-app" v-scope @vue:mounted="init()" class="container-fluid py-3" style="background-color: #ffffff; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; height: calc(100vh - 60px); overflow: hidden;">
                 
                 <style>
                     .selected-project-active {
@@ -27,43 +27,68 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                         transition: 0.2s;
                     }
                     .btn-create-project:hover { background-color: #2d3795ff; color: white; }
+                    /* Custom Scrollbar for a cleaner SPA look */
+                    ::-webkit-scrollbar { width: 6px; }
+                    ::-webkit-scrollbar-track { background: transparent; }
+                    ::-webkit-scrollbar-thumb { background: #d0d7de; border-radius: 10px; }
+                    ::-webkit-scrollbar-thumb:hover { background: #afb8c1; }
                 </style>
 
-                <div class="row m-0">
-                    <div class="col-md-3 p-0 pr-4">
-                        <div class="mb-3">
-                            <h6 class="font-weight-bold" style="font-size: 14px; color: #1f2328;">Projects</h6>
-                            <input type="text" class="form-control form-control-sm border-secondary-subtle shadow-none" style="background: #f6f8fa;" placeholder="Filter projects" v-model="searchProject">
+                <div class="row m-0 h-100">
+                    <!-- Left Sidebar -->
+                    <div class="col-md-3 p-0 pr-4 d-flex flex-column h-100">
+                        <div class="flex-shrink-0 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="font-weight-bold m-0" style="font-size: 14px; color: #1f2328;">Projects</h6>
+                            </div>
+                            <div class="d-flex" style="gap: 8px;">
+                                <input type="text" class="form-control form-control-sm border-secondary-subtle shadow-none flex-grow-1" style="background: #f6f8fa;" placeholder="Filter projects" v-model="searchProject">
+                                <button class="btn-create-project d-flex align-items-center justify-content-center" style="padding: 4px 12px; font-size: 12px; white-space: nowrap;" onclick="frappe.new_doc('Project')" title="Create Project">
+                                    <i class="fa fa-plus mr-1"></i> Create Project
+                                </button>
+                            </div>
                         </div>
-                        <div class="list-group">
-                            <div v-for="p in filteredProjects" @click="selectProject(p)" 
-                                 :class="['py-2 px-1 border-bottom d-flex justify-content-between align-items-center', selectedProject === p.name ? 'selected-project-active' : 'border-transparent']" 
-                                 style="cursor: pointer; font-size: 14px;">
-                                <span><i class="fa fa-book mr-2" :style="{color: selectedProject === p.name ? '#0969da' : '#636c76'}"></i> [[ p.project_name ]]</span>
-                                <span v-if="p.pending_count > 0" class="badge badge-pill text-white" style="background-color: #f85149; font-size: 10px;">[[ p.pending_count ]]</span>
+                        <div class="list-group flex-grow-1 overflow-auto pr-1" style="min-height: 0;">
+                            <div v-if="filteredProjects.length > 0">
+                                <div v-for="p in filteredProjects" @click="selectProject(p)" 
+                                     :class="['py-2 px-1 border-bottom d-flex justify-content-between align-items-center', selectedProject === p.name ? 'selected-project-active' : 'border-transparent']" 
+                                     style="cursor: pointer; font-size: 14px;">
+                                    <span><i class="fa fa-book mr-2" :style="{color: selectedProject === p.name ? '#0969da' : '#636c76'}"></i> [[ p.project_name ]]</span>
+                                    <span v-if="p.pending_count > 0" class="badge badge-pill text-white" style="background-color: #f85149; font-size: 10px;">[[ p.pending_count ]]</span>
+                                </div>
+                            </div>
+                            <div v-else class="text-center py-5 px-2">
+                                <div class="mb-3"><i class="fa fa-search fa-2x text-muted" style="opacity: 0.3;"></i></div>
+                                <div class="text-muted small mb-3">No projects found matching "[[ searchProject ]]"</div>
+                                <button class="btn-create-project" style="font-size: 12px;" onclick="frappe.new_doc('Project')">
+                                    <i class="fa fa-plus mr-1"></i> Create Project
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-md-9 p-0 border-left pl-4" style="border-color: #d0d7de !important;">
+                    <!-- Main Content Area -->
+                    <div class="col-md-9 p-0 border-left pl-4 d-flex flex-column h-100" style="border-color: #d0d7de !important;">
                         
-                        <div class="mb-3 d-flex align-items-center" style="font-size: 18px; color: #1f2328;">
-                            <i class="fa fa-book mr-2" style="color: #636c76;"></i>
-                            <span style="font-weight: 600;">Project</span>
-                            <span class="mx-2" style="color: #d0d7de;">/</span>
-                            <span style="font-weight: 400;">[[ selectedProjectName ]]</span>
-                        </div>
-
-                        <div class="d-flex border-bottom mb-4 align-items-center justify-content-between">
-                            <div class="d-flex" style="gap: 25px;">
-                                <div @click="activeTab = 'overview'" :style="tabStyle(activeTab === 'overview')"><i class="fa fa-dashboard mr-1"></i> Overview</div>
-                                <div @click="activeTab = 'projects'" :style="tabStyle(activeTab === 'projects')"><i class="fa fa-briefcase mr-1"></i> Project View</div>
-                                <div @click="activeTab = 'task_view'" :style="tabStyle(activeTab === 'task_view')"><i class="fa fa-tasks mr-1"></i> Task View</div>
+                        <div class="flex-shrink-0">
+                            <div class="mb-3 d-flex align-items-center" style="font-size: 18px; color: #1f2328;">
+                                <i class="fa fa-book mr-2" style="color: #636c76;"></i>
+                                <span style="font-weight: 600;">Project</span>
+                                <span class="mx-2" style="color: #d0d7de;">/</span>
+                                <span style="font-weight: 400;">[[ selectedProjectName ]]</span>
                             </div>
-                            <button class="btn-create-project mb-2" onclick="frappe.new_doc('Project')"><i class="fa fa-plus mr-1"></i> Create Project</button>
+
+                            <div class="d-flex border-bottom mb-4 align-items-center justify-content-between">
+                                <div class="d-flex" style="gap: 25px;">
+                                    <div @click="activeTab = 'overview'" :style="tabStyle(activeTab === 'overview')"><i class="fa fa-dashboard mr-1"></i> Overview</div>
+                                    <div @click="activeTab = 'projects'" :style="tabStyle(activeTab === 'projects')"><i class="fa fa-briefcase mr-1"></i> Project View</div>
+                                    <div @click="activeTab = 'task_view'" :style="tabStyle(activeTab === 'task_view')"><i class="fa fa-tasks mr-1"></i> Task View</div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div v-if="activeTab === 'overview'">
+                        <div class="flex-grow-1 overflow-auto pr-1" style="min-height: 0;">
+                            <div v-if="activeTab === 'overview'">
                             <div class="row mb-4 no-gutters" style="gap: 15px;">
                                 <div class="col shadow-none border rounded p-3 bg-white" v-for="stat in stats" style="border-color: #d0d7de !important;">
                                     <div style="font-size: 11px; color: #636c76; text-transform: uppercase; letter-spacing: 0.5px;">[[ stat.label ]]</div>
