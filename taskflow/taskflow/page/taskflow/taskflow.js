@@ -10,7 +10,6 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
             <div id="taskflow-app" v-scope @vue:mounted="init()" class="container-fluid py-4" style="background-color: #ffffff; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
                 
                 <style>
-                    /* Sirf ye extra add kiya hai selected dikhane ke liye */
                     .selected-project-active {
                         background-color: #f0f7ff !important;
                         color: #0969da !important;
@@ -103,11 +102,11 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                 <div class="row text-center">
                                     <div class="col-md-6 border-right">
                                         <div class="small text-muted">Start Date</div>
-                                        <div class="font-weight-bold">[[ selectedProjectInfo.start || 'N/A' ]]</div>
+                                        <div class="font-weight-bold">[[ formatDate(selectedProjectInfo.start) ]]</div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="small text-muted">Expected End Date</div>
-                                        <div class="font-weight-bold">[[ selectedProjectInfo.end || 'N/A' ]]</div>
+                                        <div class="font-weight-bold">[[ formatDate(selectedProjectInfo.end) ]]</div>
                                     </div>
                                 </div>
                             </div>
@@ -173,6 +172,15 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			tasks: [],
 			tasksStart: 0,
 			hasMoreTasks: false,
+
+			formatDate(dateStr) {
+				if (!dateStr) return "N/A";
+				const d = new Date(dateStr);
+				const day = String(d.getDate()).padStart(2, "0");
+				const month = String(d.getMonth() + 1).padStart(2, "0");
+				const year = d.getFullYear();
+				return `${day}/${month}/${year}`;
+			},
 
 			tabStyle(isActive) {
 				return {
