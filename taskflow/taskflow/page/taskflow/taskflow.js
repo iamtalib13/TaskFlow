@@ -228,20 +228,24 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                     <!-- Row 1: Health & Stuck -->
                                     <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 0.5px;">Project Health & Pulse</h6>
                                     <div class="row mb-4 m-0" style="gap: 15px;">
-                                        <div class="col p-3 rounded border text-white" style="background-color: #2da44e;"> <!-- On Track -->
+                                        <div class="col p-3 rounded border text-white position-relative" style="background-color: #2da44e;" title="Projects due in more than 3 days"> <!-- On Track -->
                                             <div style="font-size: 11px; opacity: 0.8;">On Track</div>
+                                            <div style="font-size: 10px; opacity: 0.6; margin-bottom: 4px;">&gt; 3 Days Remaining</div>
                                             <div style="font-size: 24px; font-weight: 600;">[[ userOverviewInsights.health.on_track ]]</div>
                                         </div>
-                                        <div class="col p-3 rounded border text-dark" style="background-color: #ffd33d;"> <!-- At Risk -->
+                                        <div class="col p-3 rounded border text-dark position-relative" style="background-color: #ffd33d;" title="Projects due within next 3 days"> <!-- At Risk -->
                                             <div style="font-size: 11px; opacity: 0.8;">At Risk</div>
+                                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px;">Due in &le; 3 Days</div>
                                             <div style="font-size: 24px; font-weight: 600;">[[ userOverviewInsights.health.at_risk ]]</div>
                                         </div>
-                                        <div class="col p-3 rounded border text-white" style="background-color: #cf222e;"> <!-- Delayed -->
+                                        <div class="col p-3 rounded border text-white position-relative" style="background-color: #cf222e;" title="Projects past due date"> <!-- Delayed -->
                                             <div style="font-size: 11px; opacity: 0.8;">Delayed</div>
+                                            <div style="font-size: 10px; opacity: 0.6; margin-bottom: 4px;">Past Due Date</div>
                                             <div style="font-size: 24px; font-weight: 600;">[[ userOverviewInsights.health.delayed ]]</div>
                                         </div>
-                                        <div class="col p-3 rounded border bg-white text-dark" style="border-color: #d0d7de !important;"> <!-- Stuck -->
-                                            <div style="font-size: 11px; color: #636c76;">Stuck (3+ Days)</div>
+                                        <div class="col p-3 rounded border bg-white text-dark position-relative" style="border-color: #d0d7de !important;" title="Tasks not updated in 3+ days"> <!-- Stuck -->
+                                            <div style="font-size: 11px; color: #636c76;">Stuck Tasks</div>
+                                            <div style="font-size: 10px; color: #636c76; opacity: 0.7; margin-bottom: 4px;">No Activity &gt; 3 Days</div>
                                             <div style="font-size: 24px; font-weight: 600;">[[ userOverviewInsights.stuck_count ]]</div>
                                         </div>
                                     </div>
