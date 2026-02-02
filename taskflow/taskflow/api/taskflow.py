@@ -82,19 +82,19 @@ def get_task_list(project=None, start=0, page_length=10):
     if project: 
         filters["project"] = project
 
-    # 1. Pehle Task list fetch karein
+    # 1. Task list fetch karein naye date fields ke saath
     tasks = frappe.get_list("Task", 
         filters=filters,
-        fields=["name", "subject", "status", "owner", "priority"],
+        # Naye fields add kiye: exp_start_date, exp_end_date
+        fields=["name", "subject", "status", "owner", "priority", "exp_start_date", "exp_end_date"],
         start=start, 
         page_length=page_length, 
         order_by="creation desc",
-        ignore_permissions=True # Taaki parenttype wala error na aaye
+        ignore_permissions=True 
     )
 
     # 2. Har task ke liye owner ka first_name fetch karein
     for task in tasks:
-        # User table se first_name uthao jiska email task.owner hai
         user_info = frappe.db.get_value("User", task.owner, ["first_name"], as_dict=True)
         task["owner_name"] = user_info.get("first_name") if user_info else task.owner
 
