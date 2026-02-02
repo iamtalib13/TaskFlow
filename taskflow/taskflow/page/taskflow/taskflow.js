@@ -36,9 +36,9 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                 </style>
 
                 <!-- Task Detail Overlay -->
-                <div v-if="currentTask" class="position-absolute w-100 h-100 bg-white" style="top: 0; left: 0; z-index: 1000; overflow-y: auto;">
+                <div v-if="currentTask" class="position-absolute w-100 h-100 bg-white" style="top: 0; left: 0; z-index: 1000; overflow-y: auto; background-color: rgba(255,255,255,0.95) !important; backdrop-filter: blur(4px);">
                     <!-- Header -->
-                    <div class="border-bottom sticky-top bg-white px-4 py-3 shadow-sm d-flex justify-content-between align-items-center">
+                    <div class="border-bottom sticky-top bg-white px-4 py-3 shadow-sm d-flex justify-content-between align-items-center" style="background-color: rgba(255,255,255,0.95) !important; backdrop-filter: blur(4px);">
                         <div class="d-flex align-items-center flex-grow-1 mr-4" style="gap: 15px;">
                             <input type="text" class="form-control font-weight-bold" style="font-size: 18px; border: none; padding: 0; height: auto;" v-model="currentTask.doc.subject">
                             <select class="custom-select form-control-sm w-auto" v-model="currentTask.doc.status" :class="{'text-success': currentTask.doc.status === 'Completed', 'text-danger': currentTask.doc.status === 'Cancelled'}">
@@ -236,7 +236,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                 <table class="table table-hover mb-0" style="font-size: 13px;">
                                     <thead class="bg-white text-muted">
                                         <tr>
-                                            <th>Task Subject</th><th>Project</th><th>Status</th><th>Exp. Start</th><th>Exp. End</th>
+                                            <th>Task Subject</th><th>Project</th><th>Status</th><th>Exp. Start</th><th>Exp. End</th><th>Days Left</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -246,6 +246,12 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                             <td><span class="badge" :class="t.status === 'Completed' ? 'badge-success' : 'badge-warning'">[[ t.status ]]</span></td>
                                             <td class="text-muted">[[ formatDate(t.exp_start_date) ]]</td>
                                             <td class="text-muted">[[ formatDate(t.exp_end_date) ]]</td>
+                                            <td>
+                                                <span v-if="t.days_left !== null" :class="{'text-danger font-weight-bold': t.days_left < 0, 'text-warning font-weight-bold': t.days_left === 0, 'text-success': t.days_left > 0}">
+                                                    [[ t.days_left < 0 ? Math.abs(t.days_left) + ' days overdue' : (t.days_left === 0 ? 'Due Today' : t.days_left + ' days left') ]]
+                                                </span>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -317,7 +323,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                     <table class="table table-hover mb-0" style="font-size: 13px;">
                                         <thead class="bg-light text-muted">
                                             <tr>
-                                                <th>Task Subject</th><th>Status</th><th>Owner</th><th>Exp. Start</th><th>Exp. End</th>
+                                                <th>Task Subject</th><th>Status</th><th>Owner</th><th>Exp. Start</th><th>Exp. End</th><th>Days Left</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -327,6 +333,12 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
                                                 <td class="text-muted">[[ t.owner_name ]]</td>
                                                 <td class="text-muted">[[ formatDate(t.exp_start_date) ]]</td>
                                                 <td class="text-muted">[[ formatDate(t.exp_end_date) ]]</td>
+                                                <td>
+                                                    <span v-if="t.days_left !== null" :class="{'text-danger font-weight-bold': t.days_left < 0, 'text-warning font-weight-bold': t.days_left === 0, 'text-success': t.days_left > 0}">
+                                                        [[ t.days_left < 0 ? Math.abs(t.days_left) + ' days overdue' : (t.days_left === 0 ? 'Due Today' : t.days_left + ' days left') ]]
+                                                    </span>
+                                                    <span v-else class="text-muted">-</span>
+                                                </td>
                                             </tr>
                                         </tbody>
                                     </table>
