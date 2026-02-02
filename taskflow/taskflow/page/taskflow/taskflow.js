@@ -1,7 +1,7 @@
 frappe.pages["taskflow"].on_page_load = function (wrapper) {
 	let page = frappe.ui.make_app_page({
 		parent: wrapper,
-		title: "Task Insights Portal",
+		title: "TaskFlow",
 		single_column: true,
 	});
 
