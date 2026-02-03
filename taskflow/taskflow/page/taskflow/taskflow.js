@@ -344,21 +344,30 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	
 
-	                             <div class="mt-3">
-
+                             <div class="mt-3">
 	                                <button class="btn btn-sm btn-light border w-100 shadow-sm" style="font-size: 13px; font-weight: 600; color: #1f2328;" @click="goToUserOverview()">
-
 	                                    <i class="fa fa-th-large mr-2"></i> My Dashboard
-
 	                                </button>
-
+                                    <button class="btn btn-sm btn-light border w-100 shadow-sm mt-2" style="font-size: 13px; font-weight: 600; color: #1f2328;" @click="openManageTeam()">
+	                                    <i class="fa fa-users mr-2"></i> Manage Team
+	                                </button>
 	                             </div>
-
-	                        </div>
 
 	
 
-	                        <div class="flex-shrink-0 mb-3">
+	                             
+
+	
+
+	                             	                        </div>
+
+	
+
+	                             
+
+	
+
+	                             	                        <div class="flex-shrink-0 mb-3">
 
 	                            <div class="d-flex justify-content-between align-items-center mb-2">
 
@@ -528,25 +537,30 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	                                        <div class="col-md-6 pr-0">
 
-	                                            <h6 class="text-muted text-uppercase mb-3" style="font-size: 12px; letter-spacing: 0.5px; font-weight: 700;">Team Workload (Top 5)</h6>
+	                                            <h6 class="text-muted text-uppercase mb-3" style="font-size: 12px; letter-spacing: 0.5px; font-weight: 700;">Workload Fatigue Gauge</h6>
 
-	                                            <div class="bg-white border rounded shadow-sm p-0" style="border-color: #d0d7de !important;">
+	                                            <div class="bg-white border rounded shadow-sm p-3" style="border-color: #d0d7de !important;">
 
-	                                                <table class="table table-sm table-borderless m-0">
-
-	                                                    <tbody>
-
-	                                                        <tr v-for="w in userOverviewInsights.workload" class="border-bottom">
-
-	                                                            <td class="pl-3 py-2 font-weight-bold" style="font-size: 14px;">[[ w.full_name ]]</td>
-
-	                                                            <td class="pr-3 py-2 text-right" style="font-size: 14px;">[[ w.count ]] Tasks</td>
-
-	                                                        </tr>
-
-	                                                    </tbody>
-
-	                                                </table>
+	                                                <div v-for="w in userOverviewInsights.workload" class="mb-3">
+                                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                                            <span class="font-weight-bold" style="font-size: 13px;">[[ w.full_name ]]</span>
+                                                            <span class="text-muted" style="font-size: 11px;">[[ w.count ]] Tasks</span>
+                                                        </div>
+                                                        <div class="progress" style="height: 6px; border-radius: 10px; background-color: #f6f8fa;">
+                                                            <div class="progress-bar" role="progressbar" 
+                                                                :style="{
+                                                                    width: Math.min((w.count / 10) * 100, 100) + '%',
+                                                                    backgroundColor: w.count < 4 ? '#2da44e' : (w.count < 8 ? '#ffd33d' : '#cf222e')
+                                                                }" 
+                                                                :aria-valuenow="w.count" aria-valuemin="0" aria-valuemax="10">
+                                                            </div>
+                                                        </div>
+                                                        <div class="mt-1 d-flex justify-content-end">
+                                                            <span v-if="w.count >= 8" class="badge badge-danger" style="font-size: 9px; padding: 2px 5px;">Overwhelmed</span>
+                                                            <span v-else-if="w.count >= 4" class="badge badge-warning" style="font-size: 9px; padding: 2px 5px;">Busy</span>
+                                                            <span v-else class="badge badge-success" style="font-size: 9px; padding: 2px 5px;">Available</span>
+                                                        </div>
+                                                    </div>
 
 	                                            </div>
 
@@ -1020,6 +1034,127 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 				frappe.set_route("taskflow");
 			},
 
+			async openManageTeam() {
+				let config_name;
+				try {
+					// 1. Check if config exists
+					let r = await frappe.call({
+						method: "frappe.client.get_value",
+						args: {
+							doctype: "Project Manager Configuration",
+							filters: { user: frappe.session.user },
+							fieldname: "name",
+						},
+					});
+
+					if (r.message && r.message.name) {
+						config_name = r.message.name;
+					} else {
+						// Create if not exists
+						let new_doc = await frappe.call({
+							method: "frappe.client.insert",
+							args: {
+								doc: {
+									doctype: "Project Manager Configuration",
+									user: frappe.session.user,
+									team_details: [],
+								},
+							},
+						});
+						config_name = new_doc.message.name;
+					}
+
+					// 2. Fetch full doc
+					let doc_res = await frappe.call({
+						method: "frappe.client.get",
+						args: {
+							doctype: "Project Manager Configuration",
+							name: config_name,
+						},
+					});
+					let config_doc = doc_res.message;
+
+					// 3. Open Dialog
+					let d = new frappe.ui.Dialog({
+						title: "Manage Team",
+						fields: [
+							{
+								label: "Team Details",
+								fieldname: "team_details",
+								fieldtype: "Table",
+								options: "Configuration Item",
+								fields: [
+									{
+										label: "User",
+										fieldname: "user",
+										fieldtype: "Link",
+										options: "User",
+										in_list_view: 1,
+										reqd: 1,
+									},
+									{
+										label: "User Name",
+										fieldname: "user_name",
+										fieldtype: "Data",
+										in_list_view: 1,
+										read_only: 1,
+										fetch_from: "user.full_name"
+									},
+									{
+										label: "Role",
+										fieldname: "role",
+										fieldtype: "Select",
+										options: ["Team Member", "Project Manager", "Viewer"],
+										in_list_view: 1,
+										reqd: 1,
+									},
+									{
+										label: "Enabled",
+										fieldname: "enabled",
+										fieldtype: "Check",
+										in_list_view: 1,
+										default: 1,
+									},
+								],
+								data: config_doc.team_details,
+								get_data: () => {
+									return config_doc.team_details;
+								},
+							},
+						],
+						size: "large",
+						primary_action_label: "Save",
+						primary_action: async (values) => {
+							d.get_primary_btn().prop("disabled", true);
+							try {
+								// Update config_doc with new values from table
+								config_doc.team_details = values.team_details;
+								
+								await frappe.call({
+									method: "frappe.client.save",
+									args: { doc: config_doc },
+								});
+
+								frappe.show_alert({
+									message: __("Team Configuration Saved"),
+									indicator: "green",
+								});
+								d.hide();
+							} catch (e) {
+								console.error(e);
+								frappe.msgprint(__("Error saving configuration"));
+							} finally {
+								d.get_primary_btn().prop("disabled", false);
+							}
+						},
+					});
+					d.show();
+				} catch (e) {
+					console.error(e);
+					frappe.msgprint(__("Something went wrong while fetching configuration."));
+				}
+			},
+
 			async fetchUserOverviewData() {
 				const res = await frappe.call({
 					method: "taskflow.taskflow.api.taskflow.get_user_overview_data",
@@ -1404,7 +1539,32 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 				d.show();
 			},
 
-			openCreateModal() {
+			async openCreateModal() {
+				// Parallel fetching for better performance
+				let team_users = [];
+				const [config_res] = await Promise.all([
+					frappe.call({
+						method: "frappe.client.get_value",
+						args: {
+							doctype: "Project Manager Configuration",
+							filters: { user: frappe.session.user },
+							fieldname: "name",
+						},
+					}),
+				]);
+
+				if (config_res.message && config_res.message.name) {
+					const items = await frappe.call({
+						method: "frappe.client.get_list",
+						args: {
+							doctype: "Configuration Item",
+							filters: { parent: config_res.message.name, enabled: 1 },
+							fields: ["user"],
+						},
+					});
+					team_users = items.message.map((d) => d.user);
+				}
+
 				const d = new frappe.ui.Dialog({
 					title: __("Create New Project"),
 
@@ -1501,6 +1661,20 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 									in_list_view: 1,
 
 									reqd: 1,
+									get_query: () => {
+										return {
+											filters: team_users.length > 0 ? { name: ["in", team_users] } : {},
+										};
+									},
+								},
+								{
+									label: __("Role"),
+									fieldname: "role",
+									fieldtype: "Select",
+									options: ["Project Manager", "Team Member", "Viewer"],
+									in_list_view: 1,
+									default: "Team Member",
+									reqd: 1,
 								},
 							],
 						},
@@ -1514,6 +1688,17 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 						d.get_primary_btn().prop("disabled", true);
 
 						try {
+							// Duplicate User Validation
+							if (values.users && values.users.length > 0) {
+								const users = values.users.map(u => u.user);
+								const uniqueUsers = [...new Set(users)];
+								if (users.length !== uniqueUsers.length) {
+									frappe.throw(__("Duplicate users found in Team Members table."));
+									d.get_primary_btn().prop("disabled", false);
+									return;
+								}
+							}
+
 							const res = await frappe.call({
 								method: "frappe.client.insert",
 
@@ -1543,11 +1728,19 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			async editProject() {
 				if (!this.selectedProject) return;
 
-				const doc_res = await frappe.call({
-					method: "frappe.client.get",
+				// Fetch PM's team and Project details in parallel
+				let team_users = [];
+				const [team_res, doc_res] = await Promise.all([
+					frappe.call({ method: "taskflow.taskflow.api.taskflow.get_pm_team" }),
+					frappe.call({
+						method: "taskflow.taskflow.api.taskflow.get_project_data",
+						args: { project: this.selectedProject },
+					}),
+				]);
 
-					args: { doctype: "Project", name: this.selectedProject },
-				});
+				if (team_res.message) {
+					team_users = team_res.message;
+				}
 
 				if (!doc_res.message) return;
 
@@ -1633,10 +1826,24 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 									in_list_view: 1,
 
 									reqd: 1,
+									get_query: () => {
+										return {
+											filters: team_users.length > 0 ? { name: ["in", team_users] } : {},
+										};
+									},
+								},
+								{
+									label: __("Role"),
+									fieldname: "role",
+									fieldtype: "Select",
+									options: ["Project Manager", "Team Member", "Viewer"],
+									in_list_view: 1,
+									default: "Team Member",
+									reqd: 1,
 								},
 							],
 
-							default: project_doc.users,
+							data: project_doc.users,
 						},
 
 						{ label: __("Notes"), fieldtype: "Section Break" },
@@ -1660,10 +1867,23 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 						d.get_primary_btn().prop("disabled", true);
 
 						try {
-							const res = await frappe.call({
-								method: "frappe.client.save",
+							// Duplicate User Validation
+							if (values.users && values.users.length > 0) {
+								const users = values.users.map(u => u.user);
+								const uniqueUsers = [...new Set(users)];
+								if (users.length !== uniqueUsers.length) {
+									frappe.throw(__("Duplicate users found in Team Members table."));
+									d.get_primary_btn().prop("disabled", false);
+									return;
+								}
+							}
 
-								args: { doc: { ...project_doc, ...values } },
+							const res = await frappe.call({
+								method: "taskflow.taskflow.api.taskflow.update_project",
+								args: {
+									project_name: project_doc.name,
+									values: values
+								},
 							});
 
 							if (res.message) {

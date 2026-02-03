@@ -128,8 +128,74 @@ def get_user_overview_data():
         {"label": "My Pending", "value": frappe.db.count("Task", {"owner": user, "project": ["!=", ""], "status": ["not in", ["Completed", "Cancelled"]]})},
         {"label": "My Completed", "value": frappe.db.count("Task", {"owner": user, "project": ["!=", ""], "status": "Completed"})}
     ]
+
+    insights = None
+    # Manager Insights Logic
+    roles = frappe.get_roles(user)
+    if "Projects Manager" in roles:
+        # 1. Fetch Team from Configuration
+        config = frappe.get_all("Project Manager Configuration", filters={"user": user}, fields=["name"])
+        team_users = []
+        if config:
+            team_items = frappe.get_all("Configuration Item", filters={"parent": config[0].name, "enabled": 1}, fields=["user"])
+            team_users = [d.user for d in team_items]
+        
+        # Fallback to users in their projects if no config
+        if not team_users:
+            projects = frappe.get_all("Project", filters={"status": "Open"}, fields=["name"])
+            p_users = frappe.get_all("Project User", filters={"parent": ["in", [p.name for p in projects]]}, fields=["user"])
+            team_users = list(set([d.user for d in p_users]))
+
+        # 2. Workload calculation
+        workload = []
+        for u in team_users[:10]: # Limit for performance
+            count = frappe.db.count("Task", {"owner": u, "status": ["not in", ["Completed", "Cancelled"]]})
+            full_name = frappe.db.get_value("User", u, "full_name") or u
+            workload.append({"user": u, "full_name": full_name, "count": count})
+        
+        workload = sorted(workload, key=lambda x: x['count'], reverse=True)[:5]
+
+        # 3. Project Health (Based on team's tasks)
+        # On Track: Due > 3 days, At Risk: Due <= 3 days, Delayed: Past Due
+        today_date = getdate(today())
+        three_days_later = frappe.utils.add_days(today_date, 3)
+        
+        team_tasks = frappe.get_all("Task", 
+            filters={"owner": ["in", team_users], "status": ["not in", ["Completed", "Cancelled"]]},
+            fields=["exp_end_date", "priority"]
+        )
+
+        health = {"on_track": 0, "at_risk": 0, "delayed": 0}
+        priorities = []
+        stuck_count = 0
+
+        for t in team_tasks:
+            if t.exp_end_date:
+                end_date = getdate(t.exp_end_date)
+                if end_date < today_date: health["delayed"] += 1
+                elif end_date <= three_days_later: health["at_risk"] += 1
+                else: health["on_track"] += 1
+            
+            # Top Priorities (Urgent)
+            if t.priority == "Urgent":
+                priorities.append(t)
+
+        # Stuck tasks (No update in 3 days)
+        three_days_ago = frappe.utils.add_days(today_date, -3)
+        stuck_count = frappe.db.count("Task", {
+            "owner": ["in", team_users],
+            "status": ["not in", ["Completed", "Cancelled"]],
+            "modified": ["<", three_days_ago]
+        })
+
+        insights = {
+            "workload": workload,
+            "health": health,
+            "stuck_count": stuck_count,
+            "priorities": priorities[:3]
+        }
     
-    return {"stats": stats}
+    return {"stats": stats, "insights": insights}
 
 @frappe.whitelist()
 def get_user_info():
@@ -232,3 +298,61 @@ def add_comment(task_name, content):
         "creation": comment.creation,
         "comment_by": comment.comment_by
     }
+
+@frappe.whitelist()
+def get_pm_team():
+    user = frappe.session.user
+    config = frappe.get_all("Project Manager Configuration", filters={"user": user}, fields=["name"])
+    if not config:
+        return []
+    
+    team = frappe.get_all("Configuration Item", 
+        filters={"parent": config[0].name, "enabled": 1}, 
+        fields=["user"]
+    )
+    return [d.user for d in team]
+
+@frappe.whitelist()
+def get_project_data(project):
+    # Check if user is Projects Manager or a member of the project
+    roles = frappe.get_roles(frappe.session.user)
+    if "Projects Manager" in roles or "System Manager" in roles:
+        return frappe.get_doc("Project", project)
+    
+    # Check if user is in project team
+    if frappe.db.exists("Project User", {"parent": project, "user": frappe.session.user}):
+        return frappe.get_doc("Project", project)
+    
+    frappe.throw("You do not have permission to access this Project.")
+
+@frappe.whitelist()
+def update_project(project_name, values):
+    if isinstance(values, str):
+        values = frappe.parse_json(values)
+    
+    doc = frappe.get_doc("Project", project_name)
+    
+    # Check permissions
+    roles = frappe.get_roles(frappe.session.user)
+    if "Projects Manager" not in roles and "System Manager" not in roles:
+        frappe.throw("You do not have permission to update this Project.")
+
+    # Update basic fields
+    doc.project_name = values.get("project_name")
+    doc.status = values.get("status")
+    doc.expected_start_date = values.get("expected_start_date")
+    doc.expected_end_date = values.get("expected_end_date")
+    doc.notes = values.get("notes")
+    
+    # Update Team Members (Child Table)
+    # We clear and re-add to ensure the list exactly matches what was sent
+    doc.set("users", [])
+    if values.get("users"):
+        for u in values.get("users"):
+            doc.append("users", {
+                "user": u.get("user"),
+                "role": u.get("role")
+            })
+    
+    doc.save()
+    return doc
