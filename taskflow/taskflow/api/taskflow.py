@@ -1,30 +1,10 @@
 import frappe
-from frappe.utils import getdate, today, date_diff, add_days
+from frappe.utils import getdate, today, date_diff
 
 @frappe.whitelist()
 def get_dashboard_data(project=None):
-    user = frappe.session.user
-    roles = frappe.get_roles(user)
-    
-    project_filters = {}
-    
-    if "System Manager" in roles:
-        pass # No filter
-    elif "Projects Manager" in roles:
-        # Filter 1: Projects created by this user
-        project_filters["owner"] = user
-    else:
-        # Filter 2: Projects where user is a member (Employee)
-        assigned_projects = frappe.get_all("Project User", {"user": user}, "parent")
-        project_ids = [d.parent for d in assigned_projects]
-        if project_ids:
-            project_filters["name"] = ["in", project_ids]
-        else:
-            # If no projects assigned, show nothing (or dummy filter that fails)
-            project_filters["name"] = "No Project Assigned"
-
-    # Existing Projects fetch logic
-    raw_projects = frappe.get_all("Project", filters=project_filters, fields=["name", "project_name", "status", "expected_start_date", "expected_end_date"])
+    # Existing Projects fetch logic (Unchanged)
+    raw_projects = frappe.get_all("Project", fields=["name", "project_name", "status", "expected_start_date", "expected_end_date"])
     projects_with_counts = []
     selected_project_info = None
     all_project_ids = []
@@ -100,26 +80,13 @@ def get_dashboard_data(project=None):
 
 @frappe.whitelist()
 def get_task_list(project=None, start=0, page_length=10, only_my_tasks=False):
-    user = frappe.session.user
-    roles = frappe.get_roles(user)
     filters = {"project": ["!=", ""]}
     
     if only_my_tasks:
-        filters["owner"] = user
+        filters["owner"] = frappe.session.user
     
     if project: 
         filters["project"] = project
-        
-        # Enforce Role Permissions for Project View
-        if "System Manager" in roles:
-            pass # See all
-        elif "Projects Manager" in roles:
-            # See all if owner of project, else only own tasks
-            if frappe.db.get_value("Project", project, "owner") != user:
-                filters["owner"] = user
-        else:
-            # Employee: See only own tasks
-            filters["owner"] = user
 
     # 1. Task list fetch karein naye date fields ke saath
     tasks = frappe.get_list("Task", 
@@ -130,7 +97,7 @@ def get_task_list(project=None, start=0, page_length=10, only_my_tasks=False):
         page_length=page_length, 
         order_by="creation desc",
         ignore_permissions=True 
-    )
+    )       
 
     current_date = getdate(today())
 
@@ -155,84 +122,14 @@ def get_task_list(project=None, start=0, page_length=10, only_my_tasks=False):
 @frappe.whitelist()
 def get_user_overview_data():
     user = frappe.session.user
-    roles = frappe.get_roles(user)
-    is_manager = "Projects Manager" in roles or "System Manager" in roles
     
-    # 1. Basic Stats (For Everyone)
     stats = [
         {"label": "My Total Tasks", "value": frappe.db.count("Task", {"owner": user, "project": ["!=", ""]})},
         {"label": "My Pending", "value": frappe.db.count("Task", {"owner": user, "project": ["!=", ""], "status": ["not in", ["Completed", "Cancelled"]]})},
         {"label": "My Completed", "value": frappe.db.count("Task", {"owner": user, "project": ["!=", ""], "status": "Completed"})}
     ]
     
-    insights = {}
-    
-    if is_manager:
-        current_date = getdate(today())
-        
-        # 2. Project Health Pulse (Traffic Lights)
-        p_filters = {"status": ["in", ["Open", "In Progress"]]}
-        if "System Manager" not in roles:
-            p_filters["owner"] = user
-            
-        projects = frappe.get_all("Project", filters=p_filters, fields=["expected_end_date"])
-        
-        health = {"on_track": 0, "at_risk": 0, "delayed": 0}
-        risk_threshold = getdate(add_days(current_date, 3))
-        
-        for p in projects:
-            if not p.expected_end_date:
-                health["on_track"] += 1
-                continue
-                
-            end_date = getdate(p.expected_end_date)
-            if end_date < current_date:
-                health["delayed"] += 1
-            elif end_date <= risk_threshold:
-                health["at_risk"] += 1
-            else:
-                health["on_track"] += 1
-        
-        insights["health"] = health
-
-        # 3. Top 3 Priorities
-        priorities = frappe.get_list("Task",
-            filters={
-                "status": ["in", ["Open", "Working", "Pending Review"]],
-                "priority": ["in", ["Urgent", "High"]],
-                "project": ["!=", ""]
-            },
-            fields=["name", "subject", "priority", "exp_end_date", "owner"],
-            order_by="exp_end_date asc",
-            limit=3
-        )
-        insights["priorities"] = priorities
-
-        # 4. Team Workload
-        workload_data = frappe.db.sql("""
-            SELECT owner, COUNT(name) as count 
-            FROM `tabTask` 
-            WHERE status NOT IN ('Completed', 'Cancelled') AND project != ''
-            GROUP BY owner 
-            ORDER BY count DESC 
-            LIMIT 5
-        """, as_dict=True)
-        
-        for w in workload_data:
-            w["full_name"] = frappe.db.get_value("User", w.owner, "full_name") or w.owner
-            
-        insights["workload"] = workload_data
-
-        # 5. Stuck Indicators
-        three_days_ago = add_days(today(), -3)
-        stuck_count = frappe.db.count("Task", {
-            "status": ["in", ["Open", "Working"]],
-            "modified": ["<=", three_days_ago],
-            "project": ["!=", ""]
-        })
-        insights["stuck_count"] = stuck_count
-
-    return {"stats": stats, "insights": insights}
+    return {"stats": stats}
 
 @frappe.whitelist()
 def get_user_info():

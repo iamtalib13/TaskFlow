@@ -6,8 +6,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 	});
 
 	frappe.require("/assets/taskflow/js/petite-vue.iife.js", () => {
-
-			page.main.html(`
+		page.main.html(`
 
 	            <div id="taskflow-app" v-scope @vue:mounted="init()" class="container-fluid py-3" style="background-color: #ffffff; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; height: calc(100vh - 60px); overflow: hidden; font-size: 14px;">
 
@@ -935,1216 +934,907 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	        `);
 
-	
+		PetiteVue.createApp({
+			$delimiters: ["[[", "]]"],
 
-			PetiteVue.createApp({
+			activeTab: "overview",
 
-				$delimiters: ["[[", "]]"],
+			viewMode: "member",
 
-				activeTab: "overview",
+			selectedProject: "",
 
-				viewMode: "member",
+			selectedProjectName: "All Projects",
 
-				selectedProject: "",
+			searchProject: "",
 
-				selectedProjectName: "All Projects",
+			projects: [],
 
-				searchProject: "",
+			members: [],
 
-				projects: [],
+			stats: [],
 
-				members: [],
+			tasks: [],
 
-				stats: [],
+			tasksStart: 0,
 
-				tasks: [],
+			hasMoreTasks: false,
 
-				tasksStart: 0,
+			loadingTasks: false,
 
-				hasMoreTasks: false,
+			globalTeam: [],
 
-				loadingTasks: false,
+			isUserOverview: false, // New State
 
-				globalTeam: [],
+			userOverviewStats: [], // New State
 
-	            isUserOverview: false, // New State
+			userOverviewInsights: null, // New State for PM
 
-	            userOverviewStats: [], // New State
+			currentTask: null, // Task Detail View State
 
-	            userOverviewInsights: null, // New State for PM
+			focusMode: false, // Focus Mode State
 
-	            currentTask: null, // Task Detail View State
+			newComment: "",
 
-	            focusMode: false, // Focus Mode State
+			user: {
+				full_name: frappe.user.full_name,
 
-	            newComment: "",
+				email: frappe.session.user,
 
-	
+				image: null,
 
-	            user: {
+				company_email: null,
 
-	                full_name: frappe.user.full_name,
+				employee: null,
 
-	                email: frappe.session.user,
+				first_name: null,
 
-	                image: null,
+				last_name: null,
 
-	                company_email: null,
+				role_label: "",
 
-	                employee: null,
+				is_manager: false,
+			},
 
-	                first_name: null,
+			async fetchUserInfo() {
+				const res = await frappe.call({
+					method: "taskflow.taskflow.api.taskflow.get_user_info",
+				});
 
-	                last_name: null,
+				if (res.message) {
+					this.user = res.message;
+				}
+			},
 
-	                role_label: "",
-
-	                is_manager: false
-
-	            },
-
-	
-
-	            async fetchUserInfo() {
-
-	                 const res = await frappe.call({
-
-	                    method: "taskflow.taskflow.api.taskflow.get_user_info"
-
-	                 });
-
-	                 if (res.message) {
-
-	                     this.user = res.message;
-
-	                 }
-
-	            },
-
-	
-
-	            getDisplayName() {
-
-	                if (this.user.first_name) {
-
-	                    return this.user.first_name + (this.user.last_name ? " " + this.user.last_name : "");
-
-	                }
-
-	                return this.user.full_name;
-
-	            },
-
-	
-
-	            goToUserOverview() {
-
-	                frappe.set_route("taskflow");
-
-	            },
-
-	
-
-	            async fetchUserOverviewData() {
-
-	                const res = await frappe.call({
-
-	                    method: "taskflow.taskflow.api.taskflow.get_user_overview_data"
-
-	                });
-
-	                if (res.message) {
-
-	                    this.userOverviewStats = res.message.stats;
-
-	                    this.userOverviewInsights = res.message.insights;
-
-	                }
-
-	            },
-
-	
-
-	            setupRouting() {
-
-	                frappe.router.on("change", () => {
-
-	                    this.handleRoute();
-
-	                });
-
-	            },
-
-	
-
-	            async handleRoute() {
-
-	                const route = frappe.get_route();
-
-	                // Route format: taskflow / project / [project_name]  OR  taskflow (default)
-
-	                if (route.length > 2 && route[1] === 'project') {
-
-	                     const projectId = route[2];
-
-	                     if (this.selectedProject !== projectId) {
-
-	                         this.isUserOverview = false;
-
-	                         // We need to find the project object to set name correctly, or fetch it
-
-	                         // For now, let's just set ID and fetch data.
-
-	                         this.selectedProject = projectId;
-
-	                         // selectedProjectName will be updated after fetchData
-
-	                         await this.fetchData();
-
-	                         await this.fetchTasks();
-
-	                     }
-
-	                } else {
-
-	                    // Default / User Overview
-
-	                    this.isUserOverview = true;
-
-	                    this.selectedProject = "";
-
-	                    this.selectedProjectName = "All Projects"; 
-
-	                    await this.fetchUserOverviewData();
-
-	                    await this.fetchTasks(); 
-
-	                }
-
-	            },
-
-	
-
-	            async openTask(name) {
-
-	                const res = await frappe.call({
-
-	                    method: "taskflow.taskflow.api.taskflow.get_task_details",
-
-	                    args: { task: name }
-
-	                });
-
-	                if (res.message) {
-
-	                    this.currentTask = res.message;
-
-	                    // Format dates for input fields (YYYY-MM-DD)
-
-	                    if (this.currentTask.doc.exp_start_date) {
-
-	                        this.currentTask.doc.exp_start_date = this.currentTask.doc.exp_start_date.split(" ")[0]; // Handle timestamp if present
-
-	                    }
-
-	                    if (this.currentTask.doc.exp_end_date) {
-
-	                        this.currentTask.doc.exp_end_date = this.currentTask.doc.exp_end_date.split(" ")[0];
-
-	                    }
-
-	                }
-
-	            },
-
-	
-
-	            closeTask() {
-
-	                this.currentTask = null;
-
-	                this.newComment = "";
-
-	                this.focusMode = false;
-
-	            },
-
-	
-
-	            async saveTask() {
-
-	                if (!this.currentTask) return;
-
-	                try {
-
-	                    await frappe.call({
-
-	                        method: "taskflow.taskflow.api.taskflow.update_task_details",
-
-	                        args: {
-
-	                            task_name: this.currentTask.doc.name,
-
-	                            values: {
-
-	                                subject: this.currentTask.doc.subject,
-
-	                                status: this.currentTask.doc.status,
-
-	                                priority: this.currentTask.doc.priority,
-
-	                                project: this.currentTask.doc.project,
-
-	                                exp_start_date: this.currentTask.doc.exp_start_date,
-
-	                                exp_end_date: this.currentTask.doc.exp_end_date,
-
-	                                description: this.currentTask.doc.description
-
-	                            }
-
-	                        }
-
-	                    });
-
-	                    frappe.show_alert({message: __("Task Saved"), indicator: "green"});
-
-	                    // Refresh lists in background
-
-	                    this.fetchTasks();
-
-	                } catch (e) {
-
-	                    console.error(e);
-
-	                }
-
-	            },
-
-	
-
-	            async postComment() {
-
-	                if (!this.newComment.trim()) return;
-
-	                try {
-
-	                    const res = await frappe.call({
-
-	                        method: "taskflow.taskflow.api.taskflow.add_comment",
-
-	                        args: {
-
-	                            task_name: this.currentTask.doc.name,
-
-	                            content: this.newComment
-
-	                        }
-
-	                    });
-
-	                    if (res.message) {
-
-	                        this.currentTask.comments.unshift(res.message);
-
-	                        this.newComment = "";
-
-	                    }
-
-	                } catch (e) {
-
-	                    console.error(e);
-
-	                }
-
-	            },
-
-	
-
-	            editProfile() {
-
-	                const d = new frappe.ui.Dialog({
-
-	                    title: __("Update Profile"),
-
-	                    fields: [
-
-	                        {
-
-	                            label: __("Profile Picture"),
-
-	                            fieldname: "user_image",
-
-	                            fieldtype: "Attach Image",
-
-	                            default: this.user.user_image
-
-	                        },
-
-	                        { fieldtype: "Section Break", label: __("Employee Details") },
-
-	                        {
-
-	                            label: __("First Name"),
-
-	                            fieldname: "first_name",
-
-	                            fieldtype: "Data",
-
-	                            reqd: 1,
-
-	                            default: this.user.first_name
-
-	                        },
-
-	                        {
-
-	                            label: __("Last Name"),
-
-	                            fieldname: "last_name",
-
-	                            fieldtype: "Data",
-
-	                            default: this.user.last_name
-
-	                        },
-
-	                        {
-
-	                            label: __("Company Email"),
-
-	                            fieldname: "company_email",
-
-	                            fieldtype: "Data",
-
-	                            options: "Email",
-
-	                            default: this.user.company_email,
-
-	                            description: this.user.employee ? __("Linked to Employee: ") + this.user.employee : __("No linked Employee record found.")
-
-	                        }
-
-	                    ],
-
-	                    primary_action_label: __("Save Changes"),
-
-	                    primary_action: async (values) => {
-
-	                        d.get_primary_btn().prop("disabled", true);
-
-	                        try {
-
-	                            const res = await frappe.call({
-
-	                                method: "taskflow.taskflow.api.taskflow.update_user_profile",
-
-	                                args: {
-
-	                                    user_image: values.user_image,
-
-	                                    company_email: values.company_email,
-
-	                                    first_name: values.first_name,
-
-	                                    last_name: values.last_name
-
-	                                }
-
-	                            });
-
-	                            
-
-	                            if (res.message) {
-
-	                                this.user = res.message;
-
-	                                frappe.show_alert({message: __("Profile Updated Successfully"), indicator: "green"});
-
-	                                d.hide();
-
-	                            }
-
-	                        } catch (e) {
-
-	                            console.error(e);
-
-	                        } finally {
-
-	                            d.get_primary_btn().prop("disabled", false);
-
-	                        }
-
-	                    }
-
-	                });
-
-	                d.show();
-
-	            },
-
-	
-
-	            createTask() {
-
-	                const d = new frappe.ui.Dialog({
-
-	                    title: __("Create New Task"),
-
-	                    fields: [
-
-	                        {
-
-	                            label: __("Subject"),
-
-	                            fieldname: "subject",
-
-	                            fieldtype: "Data",
-
-	                            reqd: 1
-
-	                        },
-
-	                        {
-
-	                            label: __("Project"),
-
-	                            fieldname: "project",
-
-	                            fieldtype: "Link",
-
-	                            options: "Project",
-
-	                            reqd: 1,
-
-	                            default: this.selectedProject || ""
-
-	                        },
-
-	                        { fieldtype: "Column Break" },
-
-	                        {
-
-	                            label: __("Priority"),
-
-	                            fieldname: "priority",
-
-	                            fieldtype: "Select",
-
-	                            options: ["Low", "Medium", "High", "Urgent"],
-
-	                            default: "Medium"
-
-	                        },
-
-	                        {
-
-	                            label: __("Status"),
-
-	                            fieldname: "status",
-
-	                            fieldtype: "Select",
-
-	                            options: ["Open", "Working", "Pending Review", "Completed", "Cancelled"],
-
-	                            default: "Open"
-
-	                        },
-
-	                        { fieldtype: "Section Break" },
-
-	                        {
-
-	                            label: __("Expected Start Date"),
-
-	                            fieldname: "exp_start_date",
-
-	                            fieldtype: "Date",
-
-	                            default: frappe.datetime.get_today()
-
-	                        },
-
-	                        { fieldtype: "Column Break" },
-
-	                        {
-
-	                            label: __("Expected End Date"),
-
-	                            fieldname: "exp_end_date",
-
-	                            fieldtype: "Date"
-
-	                        },
-
-	                        { fieldtype: "Section Break" },
-
-	                        {
-
-	                            label: __("Description"),
-
-	                            fieldname: "description",
-
-	                            fieldtype: "Text Editor"
-
-	                        }
-
-	                    ],
-
-	                    primary_action_label: __("Create Task"),
-
-	                    primary_action: async (values) => {
-
-	                        d.get_primary_btn().prop("disabled", true);
-
-	                        try {
-
-	                            const res = await frappe.call({
-
-	                                method: "frappe.client.insert",
-
-	                                args: {
-
-	                                    doc: {
-
-	                                        doctype: "Task",
-
-	                                        ...values
-
-	                                    }
-
-	                                }
-
-	                            });
-
-	                            if (res.message) {
-
-	                                frappe.show_alert({message: __("Task Created Successfully"), indicator: "green"});
-
-	                                d.hide();
-
-	                                await this.fetchTasks(); // Refresh list
-
-	                                if (this.isUserOverview) {
-
-	                                    await this.fetchUserOverviewData(); // Refresh stats
-
-	                                } else {
-
-	                                    await this.fetchData(); // Refresh project stats
-
-	                                }
-
-	                            }
-
-	                        } finally {
-
-	                            d.get_primary_btn().prop("disabled", false);
-
-	                        }
-
-	                    }
-
-	                });
-
-	                d.show();
-
-	            },
-
-	
-
-				openCreateModal() {
-
-					const d = new frappe.ui.Dialog({
-
-						title: __("Create New Project"),
-
-						fields: [
-
-							{ label: __("Project Details"), fieldtype: "Section Break" },
-
-							{
-
-								label: __("Project Name"),
-
-								fieldname: "project_name",
-
-								fieldtype: "Data",
-
-								reqd: 1,
-
-							},
-
-							{ fieldtype: "Column Break" },
-
-							{
-
-								label: __("Company"),
-
-								fieldname: "company",
-
-								fieldtype: "Link",
-
-								options: "Company",
-
-								default: frappe.defaults.get_default("company"),
-
-								reqd: 1,
-
-							},
-
-							{
-
-								label: __("Naming Series"),
-
-								fieldname: "naming_series",
-
-								fieldtype: "Select",
-
-								options: "PROJ-.####",
-
-								default: "PROJ-.####",
-
-								reqd: 1,
-
-							},
-
-	
-
-							{ fieldtype: "Section Break" },
-
-							{
-
-								label: __("Expected Start Date"),
-
-								fieldname: "expected_start_date",
-
-								fieldtype: "Date",
-
-								default: frappe.datetime.get_today(),
-
-							},
-
-							{ fieldtype: "Column Break" },
-
-							{
-
-								label: __("Expected End Date"),
-
-								fieldname: "expected_end_date",
-
-								fieldtype: "Date",
-
-							},
-
-	
-
-							{ label: __("Notes"), fieldtype: "Section Break" },
-
-							{ label: __("Description"), fieldname: "notes", fieldtype: "Text Editor" },
-
-	
-
-							{ label: __("Team"), fieldtype: "Section Break" },
-
-							{
-
-								label: __("Team Members"),
-
-								fieldname: "users",
-
-								fieldtype: "Table",
-
-								options: "Project User",
-
-								fields: [
-
-									{
-
-										label: __("User"),
-
-										fieldname: "user",
-
-										fieldtype: "Link",
-
-										options: "User",
-
-										in_list_view: 1,
-
-										reqd: 1,
-
-									},
-
-								],
-
-							},
-
-						],
-
-						size: "large", // Set width to large
-
-						primary_action_label: __("Create"),
-
-						primary_action: async (values) => {
-
-							d.get_primary_btn().prop("disabled", true);
-
-							try {
-
-								const res = await frappe.call({
-
-									method: "frappe.client.insert",
-
-									args: { doc: { doctype: "Project", ...values } },
-
-								});
-
-								if (res.message) {
-
-									frappe.show_alert({
-
-										message: __("Project Created Successfully"),
-
-										indicator: "green",
-
-									});
-
-									d.hide();
-
-									await this.fetchData();
-
-								}
-
-							} finally {
-
-								d.get_primary_btn().prop("disabled", false);
-
-							}
-
-						},
-
-					});
-
-					d.show();
-
-				},
-
-	
-
-				async editProject() {
-
-					if (!this.selectedProject) return;
-
-					const doc_res = await frappe.call({
-
-						method: "frappe.client.get",
-
-						args: { doctype: "Project", name: this.selectedProject },
-
-					});
-
-					if (!doc_res.message) return;
-
-					const project_doc = doc_res.message;
-
-	
-
-					const d = new frappe.ui.Dialog({
-
-						title: __("Edit Project: ") + project_doc.project_name,
-
-						fields: [
-
-							{ label: __("Project Details"), fieldtype: "Section Break" },
-
-							{
-
-								label: __("Project Name"),
-
-								fieldname: "project_name",
-
-								fieldtype: "Data",
-
-								reqd: 1,
-
-								default: project_doc.project_name,
-
-							},
-
-							{ fieldtype: "Column Break" },
-
-							{
-
-								label: __("Status"),
-
-								fieldname: "status",
-
-								fieldtype: "Select",
-
-								options: ["Open", "Completed", "Cancelled"],
-
-								default: project_doc.status,
-
-							},
-
-	
-
-							{ fieldtype: "Section Break" },
-
-							{
-
-								label: __("Expected Start Date"),
-
-								fieldname: "expected_start_date",
-
-								fieldtype: "Date",
-
-								default: project_doc.expected_start_date,
-
-							},
-
-							{ fieldtype: "Column Break" },
-
-							{
-
-								label: __("Expected End Date"),
-
-								fieldname: "expected_end_date",
-
-								fieldtype: "Date",
-
-								default: project_doc.expected_end_date,
-
-							},
-
-							{ label: __("Team"), fieldtype: "Section Break" },
-
-							{
-
-								label: __("Team Members"),
-
-								fieldname: "users",
-
-								fieldtype: "Table",
-
-								options: "Project User",
-
-								fields: [
-
-									{
-
-										label: __("User"),
-
-										fieldname: "user",
-
-										fieldtype: "Link",
-
-										options: "User",
-
-										in_list_view: 1,
-
-										reqd: 1,
-
-									},
-
-								],
-
-								default: project_doc.users,
-
-							},
-
-	
-
-							{ label: __("Notes"), fieldtype: "Section Break" },
-
-							{
-
-								label: __("Description"),
-
-								fieldname: "notes",
-
-								fieldtype: "Text Editor",
-
-								default: project_doc.notes,
-
-							},
-
-						],
-
-						size: "large", // Set width to large
-
-						primary_action_label: __("Update"),
-
-						primary_action: async (values) => {
-
-							d.get_primary_btn().prop("disabled", true);
-
-							try {
-
-								const res = await frappe.call({
-
-									method: "frappe.client.save",
-
-									args: { doc: { ...project_doc, ...values } },
-
-								});
-
-								if (res.message) {
-
-									frappe.show_alert({
-
-										message: __("Project Updated Successfully"),
-
-										indicator: "green",
-
-									});
-
-									d.hide();
-
-									await this.fetchData();
-
-									this.selectedProjectName = res.message.project_name;
-
-								}
-
-							} finally {
-
-								d.get_primary_btn().prop("disabled", false);
-
-							}
-
-						},
-
-					});
-
-					d.show();
-
-				},
-
-	
-
-				async init() {
-
-	                await this.fetchUserInfo();
-
-					await this.fetchData(); // Fetch projects for sidebar
-
-	                this.setupRouting();
-
-	                this.handleRoute(); // Handle initial route
-
-					this.setupInfiniteScroll();
-
-				},
-
-	
-
-				setupInfiniteScroll() {
-
-					const observer = new IntersectionObserver(
-
-						(entries) => {
-
-							if (
-
-								entries[0].isIntersecting &&
-
-								this.hasMoreTasks &&
-
-								!this.loadingTasks &&
-
-	                            (this.isUserOverview || (this.activeTab === "overview" && this.viewMode === "task"))
-
-							) {
-
-								this.fetchTasks(true);
-
-							}
-
-						},
-
-						{ threshold: 0.1 },
-
+			getDisplayName() {
+				if (this.user.first_name) {
+					return (
+						this.user.first_name +
+						(this.user.last_name ? " " + this.user.last_name : "")
 					);
+				}
 
-	
+				return this.user.full_name;
+			},
 
-					setTimeout(() => {
+			goToUserOverview() {
+				frappe.set_route("taskflow");
+			},
 
-						const target = document.querySelector("#task-end-marker");
+			async fetchUserOverviewData() {
+				const res = await frappe.call({
+					method: "taskflow.taskflow.api.taskflow.get_user_overview_data",
+				});
 
-						if (target) observer.observe(target);
+				if (res.message) {
+					this.userOverviewStats = res.message.stats;
 
-					}, 1000);
+					this.userOverviewInsights = res.message.insights;
+				}
+			},
 
-				},
+			setupRouting() {
+				frappe.router.on("change", () => {
+					this.handleRoute();
+				});
+			},
 
-	
+			async handleRoute() {
+				const route = frappe.get_route();
 
-				async fetchData() {
+				// Route format: taskflow / project / [project_name]  OR  taskflow (default)
 
-					const res = await frappe.call({
+				if (route.length > 2 && route[1] === "project") {
+					const projectId = route[2];
 
-						method: "taskflow.taskflow.api.taskflow.get_dashboard_data",
+					if (this.selectedProject !== projectId) {
+						this.isUserOverview = false;
 
-						args: { project: this.selectedProject || undefined },
+						// We need to find the project object to set name correctly, or fetch it
 
-					});
+						// For now, let's just set ID and fetch data.
 
-					if (res.message) {
+						this.selectedProject = projectId;
 
-						this.projects = res.message.projects;
+						// selectedProjectName will be updated after fetchData
 
-						this.members = res.message.members;
+						await this.fetchData();
 
-						this.stats = res.message.stats;
+						await this.fetchTasks();
+					}
+				} else {
+					// Default / User Overview
 
-						this.selectedProjectInfo = res.message.selected_project_info;
+					this.isUserOverview = true;
 
-	                    if (this.selectedProjectInfo) {
+					this.selectedProject = "";
 
-	                        this.selectedProjectName = this.selectedProjectInfo.project_name;
+					this.selectedProjectName = "All Projects";
 
-	                    }
+					await this.fetchUserOverviewData();
 
-						this.globalTeam = res.message.global_team_data;
+					await this.fetchTasks();
+				}
+			},
 
+			async openTask(name) {
+				const res = await frappe.call({
+					method: "taskflow.taskflow.api.taskflow.get_task_details",
+
+					args: { task: name },
+				});
+
+				if (res.message) {
+					this.currentTask = res.message;
+
+					// Format dates for input fields (YYYY-MM-DD)
+
+					if (this.currentTask.doc.exp_start_date) {
+						this.currentTask.doc.exp_start_date =
+							this.currentTask.doc.exp_start_date.split(" ")[0]; // Handle timestamp if present
 					}
 
-				},
-
-	
-
-				async fetchTasks(isLoadMore = false) {
-
-					if (this.loadingTasks) return;
-
-					if (!isLoadMore) {
-
-						this.tasksStart = 0;
-
-						this.tasks = [];
-
-						this.hasMoreTasks = false;
-
+					if (this.currentTask.doc.exp_end_date) {
+						this.currentTask.doc.exp_end_date =
+							this.currentTask.doc.exp_end_date.split(" ")[0];
 					}
+				}
+			},
 
-					this.loadingTasks = true;
+			closeTask() {
+				this.currentTask = null;
 
-					const res = await frappe.call({
+				this.newComment = "";
 
-						method: "taskflow.taskflow.api.taskflow.get_task_list",
+				this.focusMode = false;
+			},
+
+			async saveTask() {
+				if (!this.currentTask) return;
+
+				try {
+					await frappe.call({
+						method: "taskflow.taskflow.api.taskflow.update_task_details",
 
 						args: {
+							task_name: this.currentTask.doc.name,
 
-							project: this.selectedProject,
+							values: {
+								subject: this.currentTask.doc.subject,
 
-							start: this.tasksStart,
+								status: this.currentTask.doc.status,
 
-							page_length: 20,
+								priority: this.currentTask.doc.priority,
 
-	                        only_my_tasks: this.isUserOverview ? 1 : 0
+								project: this.currentTask.doc.project,
 
+								exp_start_date: this.currentTask.doc.exp_start_date,
+
+								exp_end_date: this.currentTask.doc.exp_end_date,
+
+								description: this.currentTask.doc.description,
+							},
 						},
+					});
 
+					frappe.show_alert({ message: __("Task Saved"), indicator: "green" });
+
+					// Refresh lists in background
+
+					this.fetchTasks();
+				} catch (e) {
+					console.error(e);
+				}
+			},
+
+			async postComment() {
+				if (!this.newComment.trim()) return;
+
+				try {
+					const res = await frappe.call({
+						method: "taskflow.taskflow.api.taskflow.add_comment",
+
+						args: {
+							task_name: this.currentTask.doc.name,
+
+							content: this.newComment,
+						},
 					});
 
 					if (res.message) {
+						this.currentTask.comments.unshift(res.message);
 
-						this.tasks = [...this.tasks, ...res.message.tasks];
+						this.newComment = "";
+					}
+				} catch (e) {
+					console.error(e);
+				}
+			},
 
-						this.hasMoreTasks = res.message.has_more;
+			editProfile() {
+				const d = new frappe.ui.Dialog({
+					title: __("Update Profile"),
 
-						this.tasksStart += 20;
+					fields: [
+						{
+							label: __("Profile Picture"),
 
+							fieldname: "user_image",
+
+							fieldtype: "Attach Image",
+
+							default: this.user.user_image,
+						},
+
+						{ fieldtype: "Section Break", label: __("Employee Details") },
+
+						{
+							label: __("First Name"),
+
+							fieldname: "first_name",
+
+							fieldtype: "Data",
+
+							reqd: 1,
+
+							default: this.user.first_name,
+						},
+
+						{
+							label: __("Last Name"),
+
+							fieldname: "last_name",
+
+							fieldtype: "Data",
+
+							default: this.user.last_name,
+						},
+
+						{
+							label: __("Company Email"),
+
+							fieldname: "company_email",
+
+							fieldtype: "Data",
+
+							options: "Email",
+
+							default: this.user.company_email,
+
+							description: this.user.employee
+								? __("Linked to Employee: ") + this.user.employee
+								: __("No linked Employee record found."),
+						},
+					],
+
+					primary_action_label: __("Save Changes"),
+
+					primary_action: async (values) => {
+						d.get_primary_btn().prop("disabled", true);
+
+						try {
+							const res = await frappe.call({
+								method: "taskflow.taskflow.api.taskflow.update_user_profile",
+
+								args: {
+									user_image: values.user_image,
+
+									company_email: values.company_email,
+
+									first_name: values.first_name,
+
+									last_name: values.last_name,
+								},
+							});
+
+							if (res.message) {
+								this.user = res.message;
+
+								frappe.show_alert({
+									message: __("Profile Updated Successfully"),
+									indicator: "green",
+								});
+
+								d.hide();
+							}
+						} catch (e) {
+							console.error(e);
+						} finally {
+							d.get_primary_btn().prop("disabled", false);
+						}
+					},
+				});
+
+				d.show();
+			},
+
+			createTask() {
+				const d = new frappe.ui.Dialog({
+					title: __("Create New Task"),
+
+					fields: [
+						{
+							label: __("Subject"),
+
+							fieldname: "subject",
+
+							fieldtype: "Data",
+
+							reqd: 1,
+						},
+
+						{
+							label: __("Project"),
+
+							fieldname: "project",
+
+							fieldtype: "Link",
+
+							options: "Project",
+
+							reqd: 1,
+
+							default: this.selectedProject || "",
+						},
+
+						{ fieldtype: "Column Break" },
+
+						{
+							label: __("Priority"),
+
+							fieldname: "priority",
+
+							fieldtype: "Select",
+
+							options: ["Low", "Medium", "High", "Urgent"],
+
+							default: "Medium",
+						},
+
+						{
+							label: __("Status"),
+
+							fieldname: "status",
+
+							fieldtype: "Select",
+
+							options: [
+								"Open",
+								"Working",
+								"Pending Review",
+								"Completed",
+								"Cancelled",
+							],
+
+							default: "Open",
+						},
+
+						{ fieldtype: "Section Break" },
+
+						{
+							label: __("Expected Start Date"),
+
+							fieldname: "exp_start_date",
+
+							fieldtype: "Date",
+
+							default: frappe.datetime.get_today(),
+						},
+
+						{ fieldtype: "Column Break" },
+
+						{
+							label: __("Expected End Date"),
+
+							fieldname: "exp_end_date",
+
+							fieldtype: "Date",
+						},
+
+						{ fieldtype: "Section Break" },
+
+						{
+							label: __("Description"),
+
+							fieldname: "description",
+
+							fieldtype: "Text Editor",
+						},
+					],
+
+					primary_action_label: __("Create Task"),
+
+					primary_action: async (values) => {
+						d.get_primary_btn().prop("disabled", true);
+
+						try {
+							const res = await frappe.call({
+								method: "frappe.client.insert",
+
+								args: {
+									doc: {
+										doctype: "Task",
+
+										...values,
+									},
+								},
+							});
+
+							if (res.message) {
+								frappe.show_alert({
+									message: __("Task Created Successfully"),
+									indicator: "green",
+								});
+
+								d.hide();
+
+								await this.fetchTasks(); // Refresh list
+
+								if (this.isUserOverview) {
+									await this.fetchUserOverviewData(); // Refresh stats
+								} else {
+									await this.fetchData(); // Refresh project stats
+								}
+							}
+						} finally {
+							d.get_primary_btn().prop("disabled", false);
+						}
+					},
+				});
+
+				d.show();
+			},
+
+			openCreateModal() {
+				const d = new frappe.ui.Dialog({
+					title: __("Create New Project"),
+
+					fields: [
+						{ label: __("Project Details"), fieldtype: "Section Break" },
+
+						{
+							label: __("Project Name"),
+
+							fieldname: "project_name",
+
+							fieldtype: "Data",
+
+							reqd: 1,
+						},
+
+						{ fieldtype: "Column Break" },
+
+						{
+							label: __("Company"),
+
+							fieldname: "company",
+
+							fieldtype: "Link",
+
+							options: "Company",
+
+							default: frappe.defaults.get_default("company"),
+
+							reqd: 1,
+						},
+
+						{
+							label: __("Naming Series"),
+
+							fieldname: "naming_series",
+
+							fieldtype: "Select",
+
+							options: "PROJ-.####",
+
+							default: "PROJ-.####",
+
+							reqd: 1,
+						},
+
+						{ fieldtype: "Section Break" },
+
+						{
+							label: __("Expected Start Date"),
+
+							fieldname: "expected_start_date",
+
+							fieldtype: "Date",
+
+							default: frappe.datetime.get_today(),
+						},
+
+						{ fieldtype: "Column Break" },
+
+						{
+							label: __("Expected End Date"),
+
+							fieldname: "expected_end_date",
+
+							fieldtype: "Date",
+						},
+
+						{ label: __("Notes"), fieldtype: "Section Break" },
+
+						{ label: __("Description"), fieldname: "notes", fieldtype: "Text Editor" },
+
+						{ label: __("Team"), fieldtype: "Section Break" },
+
+						{
+							label: __("Team Members"),
+
+							fieldname: "users",
+
+							fieldtype: "Table",
+
+							options: "Project User",
+
+							fields: [
+								{
+									label: __("User"),
+
+									fieldname: "user",
+
+									fieldtype: "Link",
+
+									options: "User",
+
+									in_list_view: 1,
+
+									reqd: 1,
+								},
+							],
+						},
+					],
+
+					size: "large", // Set width to large
+
+					primary_action_label: __("Create"),
+
+					primary_action: async (values) => {
+						d.get_primary_btn().prop("disabled", true);
+
+						try {
+							const res = await frappe.call({
+								method: "frappe.client.insert",
+
+								args: { doc: { doctype: "Project", ...values } },
+							});
+
+							if (res.message) {
+								frappe.show_alert({
+									message: __("Project Created Successfully"),
+
+									indicator: "green",
+								});
+
+								d.hide();
+
+								await this.fetchData();
+							}
+						} finally {
+							d.get_primary_btn().prop("disabled", false);
+						}
+					},
+				});
+
+				d.show();
+			},
+
+			async editProject() {
+				if (!this.selectedProject) return;
+
+				const doc_res = await frappe.call({
+					method: "frappe.client.get",
+
+					args: { doctype: "Project", name: this.selectedProject },
+				});
+
+				if (!doc_res.message) return;
+
+				const project_doc = doc_res.message;
+
+				const d = new frappe.ui.Dialog({
+					title: __("Edit Project: ") + project_doc.project_name,
+
+					fields: [
+						{ label: __("Project Details"), fieldtype: "Section Break" },
+
+						{
+							label: __("Project Name"),
+
+							fieldname: "project_name",
+
+							fieldtype: "Data",
+
+							reqd: 1,
+
+							default: project_doc.project_name,
+						},
+
+						{ fieldtype: "Column Break" },
+
+						{
+							label: __("Status"),
+
+							fieldname: "status",
+
+							fieldtype: "Select",
+
+							options: ["Open", "Completed", "Cancelled"],
+
+							default: project_doc.status,
+						},
+
+						{ fieldtype: "Section Break" },
+
+						{
+							label: __("Expected Start Date"),
+
+							fieldname: "expected_start_date",
+
+							fieldtype: "Date",
+
+							default: project_doc.expected_start_date,
+						},
+
+						{ fieldtype: "Column Break" },
+
+						{
+							label: __("Expected End Date"),
+
+							fieldname: "expected_end_date",
+
+							fieldtype: "Date",
+
+							default: project_doc.expected_end_date,
+						},
+
+						{ label: __("Team"), fieldtype: "Section Break" },
+
+						{
+							label: __("Team Members"),
+
+							fieldname: "users",
+
+							fieldtype: "Table",
+
+							options: "Project User",
+
+							fields: [
+								{
+									label: __("User"),
+
+									fieldname: "user",
+
+									fieldtype: "Link",
+
+									options: "User",
+
+									in_list_view: 1,
+
+									reqd: 1,
+								},
+							],
+
+							default: project_doc.users,
+						},
+
+						{ label: __("Notes"), fieldtype: "Section Break" },
+
+						{
+							label: __("Description"),
+
+							fieldname: "notes",
+
+							fieldtype: "Text Editor",
+
+							default: project_doc.notes,
+						},
+					],
+
+					size: "large", // Set width to large
+
+					primary_action_label: __("Update"),
+
+					primary_action: async (values) => {
+						d.get_primary_btn().prop("disabled", true);
+
+						try {
+							const res = await frappe.call({
+								method: "frappe.client.save",
+
+								args: { doc: { ...project_doc, ...values } },
+							});
+
+							if (res.message) {
+								frappe.show_alert({
+									message: __("Project Updated Successfully"),
+
+									indicator: "green",
+								});
+
+								d.hide();
+
+								await this.fetchData();
+
+								this.selectedProjectName = res.message.project_name;
+							}
+						} finally {
+							d.get_primary_btn().prop("disabled", false);
+						}
+					},
+				});
+
+				d.show();
+			},
+
+			async init() {
+				await this.fetchUserInfo();
+
+				await this.fetchData(); // Fetch projects for sidebar
+
+				this.setupRouting();
+
+				this.handleRoute(); // Handle initial route
+
+				this.setupInfiniteScroll();
+			},
+
+			setupInfiniteScroll() {
+				const observer = new IntersectionObserver(
+					(entries) => {
+						if (
+							entries[0].isIntersecting &&
+							this.hasMoreTasks &&
+							!this.loadingTasks &&
+							(this.isUserOverview ||
+								(this.activeTab === "overview" && this.viewMode === "task"))
+						) {
+							this.fetchTasks(true);
+						}
+					},
+
+					{ threshold: 0.1 },
+				);
+
+				setTimeout(() => {
+					const target = document.querySelector("#task-end-marker");
+
+					if (target) observer.observe(target);
+				}, 1000);
+			},
+
+			async fetchData() {
+				const res = await frappe.call({
+					method: "taskflow.taskflow.api.taskflow.get_dashboard_data",
+
+					args: { project: this.selectedProject || undefined },
+				});
+
+				if (res.message) {
+					this.projects = res.message.projects;
+
+					this.members = res.message.members;
+
+					this.stats = res.message.stats;
+
+					this.selectedProjectInfo = res.message.selected_project_info;
+
+					if (this.selectedProjectInfo) {
+						this.selectedProjectName = this.selectedProjectInfo.project_name;
 					}
 
-					this.loadingTasks = false;
+					this.globalTeam = res.message.global_team_data;
+				}
+			},
 
-				},
+			async fetchTasks(isLoadMore = false) {
+				if (this.loadingTasks) return;
 
-	
+				if (!isLoadMore) {
+					this.tasksStart = 0;
 
-				async selectProject(project) {
+					this.tasks = [];
 
-	                if (project) {
+					this.hasMoreTasks = false;
+				}
 
-					    frappe.set_route("taskflow", "project", project.name);
+				this.loadingTasks = true;
 
-	                } else {
+				const res = await frappe.call({
+					method: "taskflow.taskflow.api.taskflow.get_task_list",
 
-	                    frappe.set_route("taskflow");
+					args: {
+						project: this.selectedProject,
 
-	                }
+						start: this.tasksStart,
 
-				},
+						page_length: 20,
 
-	
+						only_my_tasks: this.isUserOverview ? 1 : 0,
+					},
+				});
 
-				formatDate(dateStr) {
+				if (res.message) {
+					this.tasks = [...this.tasks, ...res.message.tasks];
 
-					if (!dateStr) return "N/A";
+					this.hasMoreTasks = res.message.has_more;
 
-					const d = new Date(dateStr);
+					this.tasksStart += 20;
+				}
 
-					return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+				this.loadingTasks = false;
+			},
 
-				},
+			async selectProject(project) {
+				if (project) {
+					frappe.set_route("taskflow", "project", project.name);
+				} else {
+					frappe.set_route("taskflow");
+				}
+			},
 
-	
+			formatDate(dateStr) {
+				if (!dateStr) return "N/A";
 
-				tabStyle(isActive) {
+				const d = new Date(dateStr);
 
-					return {
+				return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+			},
 
-						paddingBottom: "8px",
+			tabStyle(isActive) {
+				return {
+					paddingBottom: "8px",
 
-						fontSize: "15px",
+					fontSize: "15px",
 
-						cursor: "pointer",
+					cursor: "pointer",
 
-						fontWeight: isActive ? "600" : "400",
+					fontWeight: isActive ? "600" : "400",
 
-						color: isActive ? "#1f2328" : "#636c76",
+					color: isActive ? "#1f2328" : "#636c76",
 
-						borderBottom: isActive ? "2px solid #fd8c73" : "2px solid transparent",
+					borderBottom: isActive ? "2px solid #fd8c73" : "2px solid transparent",
+				};
+			},
 
-					};
+			switcherStyle(isActive) {
+				return {
+					backgroundColor: isActive ? "white" : "transparent",
 
-				},
+					fontWeight: isActive ? "600" : "400",
 
-	
+					borderRadius: "4px",
 
-				switcherStyle(isActive) {
+					color: isActive ? "#1f2328" : "#636c76",
+				};
+			},
 
-					return {
-
-						backgroundColor: isActive ? "white" : "transparent",
-
-						fontWeight: isActive ? "600" : "400",
-
-						borderRadius: "4px",
-
-						color: isActive ? "#1f2328" : "#636c76",
-
-					};
-
-				},
-
-	
-
-				get filteredProjects() {
-
-					return this.projects.filter((p) =>
-
-						p.project_name.toLowerCase().includes(this.searchProject.toLowerCase()),
-
-					);
-
-				},
-
-			}).mount("#taskflow-app");
-
-		});
-
-	};
+			get filteredProjects() {
+				return this.projects.filter((p) =>
+					p.project_name.toLowerCase().includes(this.searchProject.toLowerCase()),
+				);
+			},
+		}).mount("#taskflow-app");
+	});
+};

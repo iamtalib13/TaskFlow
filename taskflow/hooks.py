@@ -117,9 +117,10 @@ app_license = "mit"
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
+permission_query_conditions = {
 # 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
+    "Task": "taskflow.permissions.get_task_permission",
+}
 #
 # has_permission = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
@@ -198,6 +199,10 @@ app_license = "mit"
 # ----------------
 # before_request = ["taskflow.utils.before_request"]
 # after_request = ["taskflow.utils.after_request"]
+
+after_migrate = [
+    "taskflow.patches.custom_fields.add_fields_for_project_user.execute",
+]
 
 # Job Events
 # ----------
