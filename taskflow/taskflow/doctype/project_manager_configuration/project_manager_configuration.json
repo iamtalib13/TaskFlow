@@ -6,6 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
+  "team_setup",
+  "project_setup",
   "team_details"
  ],
  "fields": [
@@ -17,6 +19,20 @@
    "options": "User",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "team_setup",
+   "fieldtype": "Check",
+   "label": "Team Setup Completed",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "project_setup",
+   "fieldtype": "Check",
+   "label": "Project Setup Completed",
+   "read_only": 1
   },
   {
    "fieldname": "team_details",

@@ -451,9 +451,57 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	                                </div>
 
-	
+                                    <!-- Onboarding Setup Wizard -->
+                                    <div v-if="user.is_manager && showOnboarding" class="mb-5 p-4 rounded border shadow-sm bg-white" style="border-color: #d0d7de !important; background: linear-gradient(145deg, #ffffff, #fcfcfc);">
+                                        <div class="d-flex justify-content-between align-items-center mb-4">
+                                            <div>
+                                                <h4 class="font-weight-bold m-0" style="color: #1f2328;">🚀 Welcome, [[ user.first_name || 'Manager' ]]!</h4>
+                                                <p class="text-muted mt-1" style="font-size: 14px;">Let's get your workspace ready for efficient management.</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="font-weight-bold mb-1" style="font-size: 12px; color: #0969da;">[[ onboardingProgress ]]% Complete</div>
+                                                <div class="progress" style="width: 120px; height: 8px; border-radius: 10px; background-color: #f6f8fa;">
+                                                    <div class="progress-bar progress-bar-animated progress-bar-striped" role="progressbar" :style="{width: onboardingProgress + '%'}" style="background-color: #0969da;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
 
-	                                <div v-if="user.is_manager && userOverviewInsights" class="mb-4">
+                                        <div class="row">
+                                            <div class="col-md-6 border-right">
+                                                <div class="d-flex align-items-start mb-4" :style="{opacity: hasTeamConfig ? '0.5' : '1'}">
+                                                    <div class="rounded-circle d-flex align-items-center justify-content-center mr-3" :style="{backgroundColor: hasTeamConfig ? '#2da44e' : '#f6f8fa', color: hasTeamConfig ? 'white' : '#636c76', width: '32px', height: '32px', minWidth: '32px'}">
+                                                        <i class="fa" :class="hasTeamConfig ? 'fa-check' : 'fa-users'"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="font-weight-bold mb-1">Step 1: Define Your Team Pool</h6>
+                                                        <p class="text-muted mb-2" style="font-size: 13px;">Create a global list of members you can assign to any project.</p>
+                                                        <button v-if="!hasTeamConfig" class="btn btn-sm btn-outline-primary" style="font-weight: 600;" @click="openManageTeam()">Setup Team Pool</button>
+                                                        <span v-else class="text-success font-weight-bold" style="font-size: 13px;"><i class="fa fa-check-circle"></i> Team Pool Ready</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="d-flex align-items-start mb-4" :style="{opacity: hasProjects ? '0.5' : '1', pointerEvents: !hasTeamConfig ? 'none' : 'auto'}">
+                                                    <div class="rounded-circle d-flex align-items-center justify-content-center mr-3" :style="{backgroundColor: hasProjects ? '#2da44e' : '#f6f8fa', color: hasProjects ? 'white' : '#636c76', width: '32px', height: '32px', minWidth: '32px'}">
+                                                        <i class="fa" :class="hasProjects ? 'fa-check' : 'fa-rocket'"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="font-weight-bold mb-1">Step 2: Initialize First Project</h6>
+                                                        <p class="text-muted mb-2" style="font-size: 13px;">Kickstart your first project and assign tasks to your team.</p>
+                                                        <button v-if="!hasProjects" class="btn btn-sm" :class="hasTeamConfig ? 'btn-primary' : 'btn-light disabled'" style="font-weight: 600;" @click="openCreateModal()">Launch First Project</button>
+                                                        <span v-else class="text-success font-weight-bold" style="font-size: 13px;"><i class="fa fa-check-circle"></i> Project Launched</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div v-if="hasProjects && hasTeamConfig" class="mt-3 p-3 rounded text-center" style="background-color: #f0f7ff; color: #0969da; border: 1px dashed #0969da;">
+                                            <i class="fa fa-magic mr-2"></i> <strong>Boom! You're all set.</strong> Your dashboard will now show real-time insights. 
+                                            <button class="btn btn-sm btn-link font-weight-bold ml-2 p-0" @click="showOnboarding = false">Dismiss Wizard</button>
+                                        </div>
+                                    </div>
+
+	                                <div v-if="user.is_manager && userOverviewInsights && !showOnboarding" class="mb-4">
 
 	                                    <!-- Row 1: Health & Stuck -->
 
@@ -983,6 +1031,17 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 			userOverviewInsights: null, // New State for PM
 
+			showOnboarding: false,
+			hasTeamConfig: false,
+			hasProjects: false,
+
+			get onboardingProgress() {
+				let p = 0;
+				if (this.hasTeamConfig) p += 50;
+				if (this.hasProjects) p += 50;
+				return p;
+			},
+
 			currentTask: null, // Task Detail View State
 
 			focusMode: false, // Focus Mode State
@@ -1130,6 +1189,11 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 								// Update config_doc with new values from table
 								config_doc.team_details = values.team_details;
 								
+								// Explicitly set team_setup when saving team
+								if (values.team_details && values.team_details.length > 0) {
+									config_doc.team_setup = 1;
+								}
+								
 								await frappe.call({
 									method: "frappe.client.save",
 									args: { doc: config_doc },
@@ -1140,6 +1204,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 									indicator: "green",
 								});
 								d.hide();
+								await this.fetchUserOverviewData();
 							} catch (e) {
 								console.error(e);
 								frappe.msgprint(__("Error saving configuration"));
@@ -1162,8 +1227,18 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 				if (res.message) {
 					this.userOverviewStats = res.message.stats;
-
 					this.userOverviewInsights = res.message.insights;
+					
+					this.hasTeamConfig = res.message.has_team_config;
+					this.hasProjects = res.message.has_projects;
+					
+					// Show onboarding if setup is incomplete
+					if (this.user.is_manager && (!this.hasTeamConfig || !this.hasProjects)) {
+						this.showOnboarding = true;
+					} else if (this.hasTeamConfig && this.hasProjects) {
+						// Don't auto-hide if they just finished, let them dismiss or refresh
+						// But if they load fresh and it's done, hide it.
+					}
 				}
 			},
 
@@ -1714,7 +1789,19 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 								d.hide();
 
+								// Mark project_setup as complete in PM configuration
+								await frappe.call({
+									method: "frappe.client.set_value",
+									args: {
+										doctype: "Project Manager Configuration",
+										name: frappe.session.user,
+										fieldname: "project_setup",
+										value: 1
+									}
+								});
+
 								await this.fetchData();
+								await this.fetchUserOverviewData();
 							}
 						} finally {
 							d.get_primary_btn().prop("disabled", false);

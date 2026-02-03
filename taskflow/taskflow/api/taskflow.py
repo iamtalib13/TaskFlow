@@ -130,21 +130,47 @@ def get_user_overview_data():
     ]
 
     insights = None
+    has_team_config = False
+    has_projects = False
+
     # Manager Insights Logic
     roles = frappe.get_roles(user)
     if "Projects Manager" in roles:
-        # 1. Fetch Team from Configuration
-        config = frappe.get_all("Project Manager Configuration", filters={"user": user}, fields=["name"])
+        # Check if config exists
+        config_doc = None
+        config_list = frappe.get_all("Project Manager Configuration", filters={"user": user}, fields=["name", "team_setup", "project_setup"])
+        
         team_users = []
-        if config:
-            team_items = frappe.get_all("Configuration Item", filters={"parent": config[0].name, "enabled": 1}, fields=["user"])
+        if config_list:
+            config_doc = frappe.get_doc("Project Manager Configuration", config_list[0].name)
+            has_team_config = bool(config_doc.team_setup)
+            has_projects = bool(config_doc.project_setup)
+            
+            team_items = frappe.get_all("Configuration Item", filters={"parent": config_doc.name, "enabled": 1}, fields=["user"])
             team_users = [d.user for d in team_items]
+            
+            # Auto-update flags if criteria met but not set
+            updated = False
+            if not config_doc.team_setup and team_users:
+                config_doc.team_setup = 1
+                has_team_config = True
+                updated = True
+            
+            project_count = frappe.db.count("Project", {"status": "Open"})
+            if not config_doc.project_setup and project_count > 0:
+                config_doc.project_setup = 1
+                has_projects = True
+                updated = True
+            
+            if updated:
+                config_doc.save(ignore_permissions=True)
         
         # Fallback to users in their projects if no config
         if not team_users:
             projects = frappe.get_all("Project", filters={"status": "Open"}, fields=["name"])
-            p_users = frappe.get_all("Project User", filters={"parent": ["in", [p.name for p in projects]]}, fields=["user"])
-            team_users = list(set([d.user for d in p_users]))
+            if projects:
+                p_users = frappe.get_all("Project User", filters={"parent": ["in", [p.name for p in projects]]}, fields=["user"])
+                team_users = list(set([d.user for d in p_users]))
 
         # 2. Workload calculation
         workload = []
@@ -156,7 +182,6 @@ def get_user_overview_data():
         workload = sorted(workload, key=lambda x: x['count'], reverse=True)[:5]
 
         # 3. Project Health (Based on team's tasks)
-        # On Track: Due > 3 days, At Risk: Due <= 3 days, Delayed: Past Due
         today_date = getdate(today())
         three_days_later = frappe.utils.add_days(today_date, 3)
         
@@ -167,7 +192,6 @@ def get_user_overview_data():
 
         health = {"on_track": 0, "at_risk": 0, "delayed": 0}
         priorities = []
-        stuck_count = 0
 
         for t in team_tasks:
             if t.exp_end_date:
@@ -176,11 +200,9 @@ def get_user_overview_data():
                 elif end_date <= three_days_later: health["at_risk"] += 1
                 else: health["on_track"] += 1
             
-            # Top Priorities (Urgent)
             if t.priority == "Urgent":
                 priorities.append(t)
 
-        # Stuck tasks (No update in 3 days)
         three_days_ago = frappe.utils.add_days(today_date, -3)
         stuck_count = frappe.db.count("Task", {
             "owner": ["in", team_users],
@@ -195,7 +217,12 @@ def get_user_overview_data():
             "priorities": priorities[:3]
         }
     
-    return {"stats": stats, "insights": insights}
+    return {
+        "stats": stats, 
+        "insights": insights,
+        "has_team_config": has_team_config,
+        "has_projects": has_projects
+    }
 
 @frappe.whitelist()
 def get_user_info():
