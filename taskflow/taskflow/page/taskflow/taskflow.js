@@ -1615,29 +1615,13 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 			},
 
 			async openCreateModal() {
-				// Parallel fetching for better performance
+				// Fetch PM's team via server-side method for better performance and security
 				let team_users = [];
-				const [config_res] = await Promise.all([
-					frappe.call({
-						method: "frappe.client.get_value",
-						args: {
-							doctype: "Project Manager Configuration",
-							filters: { user: frappe.session.user },
-							fieldname: "name",
-						},
-					}),
-				]);
-
-				if (config_res.message && config_res.message.name) {
-					const items = await frappe.call({
-						method: "frappe.client.get_list",
-						args: {
-							doctype: "Configuration Item",
-							filters: { parent: config_res.message.name, enabled: 1 },
-							fields: ["user"],
-						},
-					});
-					team_users = items.message.map((d) => d.user);
+				const team_res = await frappe.call({
+					method: "taskflow.taskflow.api.taskflow.get_pm_team",
+				});
+				if (team_res.message) {
+					team_users = team_res.message;
 				}
 
 				const d = new frappe.ui.Dialog({
