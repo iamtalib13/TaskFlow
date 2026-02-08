@@ -5,13 +5,13 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 		single_column: true,
 	});
 
-	// Load Quill assets
+	// Load Assets
 	frappe.require([
 		"https://cdn.quilljs.com/1.3.6/quill.snow.css",
-		"https://cdn.quilljs.com/1.3.6/quill.js"
+		"https://cdn.quilljs.com/1.3.6/quill.js",
+		"/assets/taskflow/js/petite-vue.iife.js"
 	], () => {
-		frappe.require("/assets/taskflow/js/petite-vue.iife.js", () => {
-			page.main.html(`
+		page.main.html(`
 
 	            <div id="taskflow-app" v-scope @vue:mounted="init()" class="container-fluid py-3" style="background-color: #ffffff; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; height: calc(100vh - 60px); overflow: hidden; font-size: 14px;">
 
@@ -2301,7 +2301,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 				const d = new Date(dateStr);
 
-				return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+				return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
 			},
 
 			tabStyle(isActive) {
