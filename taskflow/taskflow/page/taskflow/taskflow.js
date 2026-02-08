@@ -5,8 +5,13 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 		single_column: true,
 	});
 
-	frappe.require("/assets/taskflow/js/petite-vue.iife.js", () => {
-		page.main.html(`
+	// Load Quill assets
+	frappe.require([
+		"https://cdn.quilljs.com/1.3.6/quill.snow.css",
+		"https://cdn.quilljs.com/1.3.6/quill.js"
+	], () => {
+		frappe.require("/assets/taskflow/js/petite-vue.iife.js", () => {
+			page.main.html(`
 
 	            <div id="taskflow-app" v-scope @vue:mounted="init()" class="container-fluid py-3" style="background-color: #ffffff; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; height: calc(100vh - 60px); overflow: hidden; font-size: 14px;">
 
@@ -145,6 +150,48 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 	                        transform: translateY(-3px);
 
 	                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+
+	                    }
+
+	
+
+	                    /* Quill Editor Customizations */
+
+	                    .ql-toolbar.ql-snow {
+
+	                        border: 1px solid #e1e4e8 !important;
+
+	                        border-top-left-radius: 12px;
+
+	                        border-top-right-radius: 12px;
+
+	                        background: #fff;
+
+	                    }
+
+	                    .ql-container.ql-snow {
+
+	                        border: 1px solid #e1e4e8 !important;
+
+	                        border-top: none !important;
+
+	                        border-bottom-left-radius: 12px;
+
+	                        border-bottom-right-radius: 12px;
+
+	                        font-family: inherit;
+
+	                        font-size: 14px;
+
+	                        background: #f8f9fa;
+
+	                    }
+
+	                    .ql-editor {
+
+	                        min-height: 250px;
+
+	                        max-height: 400px;
 
 	                    }
 
@@ -314,7 +361,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	                                            <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 1px; font-weight: 800;">Description</h6>
 
-	                                            <textarea class="form-control border bg-light p-3" rows="12" v-model="currentTask.doc.description" style="font-size: 14px; line-height: 1.6; border-radius: 12px; resize: none; border-color: #e1e4e8 !important;" placeholder="Add a more detailed description..."></textarea>
+	                                            <div id="task-description-editor"></div>
 
 	                                        </div>
 
@@ -1180,6 +1227,8 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 			currentTask: null, // Task Detail View State
 
+			quill: null, // Quill Editor Instance
+
 			focusMode: false, // Focus Mode State
 
 			newComment: "",
@@ -1443,6 +1492,23 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 						this.currentTask.doc.exp_end_date =
 							this.currentTask.doc.exp_end_date.split(" ")[0];
 					}
+
+					// Initialize Quill Editor after DOM update
+					setTimeout(() => {
+						if (!this.quill) {
+							this.quill = new Quill("#task-description-editor", {
+								theme: "snow",
+								modules: {
+									toolbar: [
+										["bold", "italic", "underline", "strike"],
+										[{ list: "ordered" }, { list: "bullet" }],
+										["clean"]
+									]
+								}
+							});
+						}
+						this.quill.root.innerHTML = this.currentTask.doc.description || "";
+					}, 100);
 				}
 			},
 
@@ -1452,10 +1518,19 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 				this.newComment = "";
 
 				this.focusMode = false;
+				
+				if (this.quill) {
+					this.quill.root.innerHTML = "";
+				}
 			},
 
 			async saveTask() {
 				if (!this.currentTask) return;
+
+				// Capture description from Quill
+				if (this.quill) {
+					this.currentTask.doc.description = this.quill.root.innerHTML;
+				}
 
 				try {
 					await frappe.call({
