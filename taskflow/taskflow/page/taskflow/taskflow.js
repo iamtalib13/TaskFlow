@@ -60,199 +60,335 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	                    ::-webkit-scrollbar-thumb:hover { background: #afb8c1; }
 
+	
+
+	                    /* Global Modal Enhancements */
+
+	                    .modal-backdrop.show {
+
+	                        backdrop-filter: blur(4px);
+
+	                        background-color: rgba(0,0,0,0.5) !important;
+
+	                    }
+
+	                    .modal-content {
+
+	                        border-radius: 16px !important;
+
+	                        border: none !important;
+
+	                        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+
+	                    }
+
+	                    .modal-header {
+
+	                        border-bottom: 1px solid #f1f1f1 !important;
+
+	                        padding: 1.5rem !important;
+
+	                    }
+
+	                    .modal-title {
+
+	                        font-weight: 700 !important;
+
+	                        color: #1f2328 !important;
+
+	                    }
+
+	                    .modal-body {
+
+	                        padding: 1.5rem !important;
+
+	                    }
+
+	                    .modal-footer {
+
+	                        border-top: 1px solid #f1f1f1 !important;
+
+	                        padding: 1rem 1.5rem !important;
+
+	                    }
+
+	
+
+	                    .project-item {
+
+	                        transition: all 0.2s;
+
+	                        border-radius: 8px;
+
+	                        margin-bottom: 2px;
+
+	                    }
+
+	                    .project-item:hover {
+
+	                        background-color: #f6f8fa;
+
+	                    }
+
+	
+
+	                    .card-insight {
+
+	                        transition: all 0.2s;
+
+	                        cursor: default;
+
+	                    }
+
+	                    .card-insight:hover {
+
+	                        transform: translateY(-3px);
+
+	                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+
+	                    }
+
 	                </style>
 
 	
 
-	                <!-- Task Detail Overlay -->
+	                <!-- Task Detail Modal -->
 
-	                <div v-if="currentTask" class="position-absolute w-100 h-100 bg-white" style="top: 0; left: 0; z-index: 1000; overflow-y: auto; background-color: rgba(255,255,255,0.95) !important; backdrop-filter: blur(4px);">
+	                <div v-if="currentTask" class="fixed-top w-100 h-100 d-flex align-items-center justify-content-center" style="z-index: 2000; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);" @click.self="closeTask()">
 
-	                    <!-- Header -->
+	                    <div class="bg-white shadow-lg d-flex flex-column" :style="{ width: focusMode ? '95%' : '85%', maxWidth: focusMode ? '1400px' : '1150px', height: '85vh', borderRadius: '16px', overflow: 'hidden', border: '1px solid #d0d7de' }">
 
-	                    <div class="border-bottom sticky-top bg-white px-4 py-3 shadow-sm d-flex justify-content-between align-items-center" style="background-color: rgba(255,255,255,0.95) !important; backdrop-filter: blur(4px);">
+	                        <!-- Header -->
 
-	                        <div class="d-flex align-items-center flex-grow-1 mr-4" style="gap: 15px;">
+	                        <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center bg-white sticky-top">
 
-	                            <input type="text" class="form-control font-weight-bold" style="font-size: 20px; border: none; padding: 0; height: auto;" v-model="currentTask.doc.subject">
+	                            <div class="d-flex align-items-center flex-grow-1 mr-4" style="gap: 15px;">
 
-	                            <select class="custom-select form-control-sm w-auto" style="font-size: 14px;" v-model="currentTask.doc.status" :class="{'text-success': currentTask.doc.status === 'Completed', 'text-danger': currentTask.doc.status === 'Cancelled'}">
+	                                <input type="text" class="form-control font-weight-bold" style="font-size: 20px; border: none; padding: 0; height: auto; box-shadow: none; background: transparent;" v-model="currentTask.doc.subject" placeholder="Task Subject">
 
-	                                <option>Open</option>
+	                                <div class="d-flex align-items-center" style="gap: 8px;">
 
-	                                <option>Working</option>
+	                                    <span class="badge" :style="{ 
 
-	                                <option>Pending Review</option>
+	                                        backgroundColor: currentTask.doc.status === 'Completed' ? '#dafbe1' : (currentTask.doc.status === 'Cancelled' ? '#ffebe9' : '#fff8c5'),
 
-	                                <option>Completed</option>
+	                                        color: currentTask.doc.status === 'Completed' ? '#1a7f37' : (currentTask.doc.status === 'Cancelled' ? '#cf222e' : '#9a6700'),
 
-	                                <option>Cancelled</option>
+	                                        fontSize: '12px', padding: '5px 12px', borderRadius: '20px', border: '1px solid transparent'
 
-	                            </select>
+	                                    }">[[ currentTask.doc.status ]]</span>
 
-	                        </div>
+	                                    <select class="custom-select form-control-sm border-0 bg-light" style="font-size: 13px; width: 130px; border-radius: 6px; cursor: pointer;" v-model="currentTask.doc.status">
 
-	                        <div class="d-flex" style="gap: 10px;">
+	                                        <option>Open</option>
 
-	                            <button class="btn btn-sm btn-light border" style="font-size: 14px;" @click="focusMode = !focusMode" :title="focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'">
+	                                        <option>Working</option>
 
-	                                <i class="fa" :class="focusMode ? 'fa-compress' : 'fa-expand'"></i> [[ focusMode ? 'Exit Focus' : 'Focus' ]]
+	                                        <option>Pending Review</option>
 
-	                            </button>
+	                                        <option>Completed</option>
 
-	                            <button class="btn btn-sm btn-primary" style="font-size: 14px; font-weight: 600;" @click="saveTask()">Save</button>
+	                                        <option>Cancelled</option>
 
-	                            <button class="btn btn-sm btn-light border" style="font-size: 14px;" @click="closeTask()">Cancel</button>
-
-	                        </div>
-
-	                    </div>
-
-	
-
-	                    <div class="container-fluid py-4 px-4">
-
-	                        <div class="row justify-content-center">
-
-	                            <!-- Left Column: Assignment & Schedule -->
-
-	                            <div class="col-md-3" v-show="!focusMode">
-
-	                                <div class="mb-4">
-
-	                                    <h6 class="text-muted text-uppercase mb-3" style="font-size: 12px; letter-spacing: 0.5px; font-weight: 700;">Assignment</h6>
-
-	                                    <div class="form-group">
-
-	                                        <label class="text-muted mb-1" style="font-size: 13px;">Project</label>
-
-	                                        <input type="text" class="form-control bg-light" style="font-size: 14px;" :value="currentTask.doc.project" readonly>
-
-	                                    </div>
-
-	                                    <div class="form-group">
-
-	                                        <label class="text-muted mb-1" style="font-size: 13px;">Priority</label>
-
-	                                        <select class="form-control" style="font-size: 14px;" v-model="currentTask.doc.priority">
-
-	                                            <option>Low</option>
-
-	                                            <option>Medium</option>
-
-	                                            <option>High</option>
-
-	                                            <option>Urgent</option>
-
-	                                        </select>
-
-	                                    </div>
-
-	                                    <div class="form-group">
-
-	                                        <label class="text-muted mb-1" style="font-size: 13px;">Owner</label>
-
-	                                        <div class="d-flex align-items-center bg-light rounded p-2 border">
-
-	                                            <div style="font-size: 14px;">[[ currentTask.doc.owner ]]</div>
-
-	                                        </div>
-
-	                                    </div>
-
-	                                </div>
-
-	
-
-	                                <div class="mb-4">
-
-	                                    <h6 class="text-muted text-uppercase mb-3" style="font-size: 12px; letter-spacing: 0.5px; font-weight: 700;">Schedule</h6>
-
-	                                    <div class="form-group">
-
-	                                        <label class="text-muted mb-1" style="font-size: 13px;">Start Date</label>
-
-	                                        <input type="date" class="form-control" style="font-size: 14px;" v-model="currentTask.doc.exp_start_date">
-
-	                                    </div>
-
-	                                    <div class="form-group">
-
-	                                        <label class="text-muted mb-1" style="font-size: 13px;">End Date</label>
-
-	                                        <input type="date" class="form-control" style="font-size: 14px;" v-model="currentTask.doc.exp_end_date">
-
-	                                    </div>
+	                                    </select>
 
 	                                </div>
 
 	                            </div>
 
+	                            <div class="d-flex align-items-center" style="gap: 12px;">
+
+	                                <button class="btn btn-sm btn-light border" style="font-size: 13px; border-radius: 6px; font-weight: 500;" @click="focusMode = !focusMode" :title="focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'">
+
+	                                    <i class="fa" :class="focusMode ? 'fa-compress' : 'fa-expand'"></i> [[ focusMode ? 'Exit Focus' : 'Focus' ]]
+
+	                                </button>
+
+	                                <button class="btn btn-sm btn-primary px-3" style="font-size: 13px; font-weight: 600; border-radius: 6px;" @click="saveTask()">Save Changes</button>
+
+	                                <button class="btn btn-sm btn-link text-muted p-0 ml-2" style="font-size: 24px; line-height: 1; text-decoration: none;" @click="closeTask()">&times;</button>
+
+	                            </div>
+
+	                        </div>
+
 	
 
-	                            <!-- Center Column: Description & Attachments -->
+	                        <div class="flex-grow-1 overflow-auto bg-white">
 
-	                            <div :class="focusMode ? 'col-md-8' : 'col-md-6 border-left border-right'">
+	                            <div class="container-fluid py-4 px-4">
 
-	                                <div class="mb-4 px-3">
+	                                <div class="row">
 
-	                                    <h6 class="text-muted text-uppercase mb-3" style="font-size: 12px; letter-spacing: 0.5px; font-weight: 700;">Description</h6>
+	                                    <!-- Left Column: Assignment & Schedule -->
 
-	                                    <textarea class="form-control" rows="15" v-model="currentTask.doc.description" style="font-size: 15px; line-height: 1.6; border-color: #e1e4e8;"></textarea>
+	                                    <div class="col-md-3 pr-4" v-show="!focusMode">
 
-	                                </div>
+	                                        <div class="mb-5">
 
-	                                <div class="px-3">
+	                                            <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 1px; font-weight: 800;">Properties</h6>
 
-	                                    <h6 class="text-muted text-uppercase mb-3" style="font-size: 12px; letter-spacing: 0.5px; font-weight: 700;">Attachments</h6>
+	                                            
 
-	                                    <div v-if="currentTask.attachments.length > 0">
+	                                            <div class="form-group mb-3">
 
-	                                        <div v-for="file in currentTask.attachments" class="d-flex align-items-center mb-2 p-2 border rounded">
+	                                                <label class="text-muted mb-1" style="font-size: 12px; font-weight: 500;">Project</label>
 
-	                                            <i class="fa fa-paperclip mr-2 text-muted"></i>
+	                                                <div class="p-2 bg-light rounded border text-truncate" style="font-size: 13px; color: #24292f;">
 
-	                                            <a :href="file.file_url" target="_blank" class="text-truncate" style="max-width: 250px; font-size: 14px;">[[ file.file_name ]]</a>
+	                                                    <i class="fa fa-book mr-2 text-muted"></i>[[ currentTask.doc.project ]]
+
+	                                                </div>
+
+	                                            </div>
+
+	
+
+	                                            <div class="form-group mb-3">
+
+	                                                <label class="text-muted mb-1" style="font-size: 12px; font-weight: 500;">Priority</label>
+
+	                                                <select class="form-control form-control-sm" style="font-size: 13px; border-radius: 6px;" v-model="currentTask.doc.priority">
+
+	                                                    <option>Low</option>
+
+	                                                    <option>Medium</option>
+
+	                                                    <option>High</option>
+
+	                                                    <option>Urgent</option>
+
+	                                                </select>
+
+	                                            </div>
+
+	
+
+	                                            <div class="form-group mb-3">
+
+	                                                <label class="text-muted mb-1" style="font-size: 12px; font-weight: 500;">Owner</label>
+
+	                                                <div class="d-flex align-items-center bg-light rounded p-2 border">
+
+	                                                    <div style="font-size: 13px; color: #57606a;">[[ currentTask.doc.owner ]]</div>
+
+	                                                </div>
+
+	                                            </div>
+
+	                                        </div>
+
+	
+
+	                                        <div class="mb-4">
+
+	                                            <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 1px; font-weight: 800;">Timeline</h6>
+
+	                                            <div class="form-group mb-3">
+
+	                                                <label class="text-muted mb-1" style="font-size: 12px; font-weight: 500;">Start Date</label>
+
+	                                                <input type="date" class="form-control form-control-sm" style="font-size: 13px; border-radius: 6px;" v-model="currentTask.doc.exp_start_date">
+
+	                                            </div>
+
+	                                            <div class="form-group mb-3">
+
+	                                                <label class="text-muted mb-1" style="font-size: 12px; font-weight: 500;">End Date</label>
+
+	                                                <input type="date" class="form-control form-control-sm" style="font-size: 13px; border-radius: 6px;" v-model="currentTask.doc.exp_end_date">
+
+	                                            </div>
 
 	                                        </div>
 
 	                                    </div>
 
-	                                    <div v-else class="text-muted font-italic" style="font-size: 14px;">No attachments</div>
-
-	                                </div>
-
-	                            </div>
-
 	
 
-	                            <!-- Right Column: Comments -->
+	                                    <!-- Center Column: Description & Attachments -->
 
-	                            <div class="col-md-3" v-show="!focusMode">
+	                                    <div :class="focusMode ? 'col-md-12' : 'col-md-6 border-left px-4'">
 
-	                                <h6 class="text-muted text-uppercase mb-3" style="font-size: 12px; letter-spacing: 0.5px; font-weight: 700;">Comments</h6>
+	                                        <div class="mb-5">
 
-	                                <div class="mb-3">
+	                                            <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 1px; font-weight: 800;">Description</h6>
 
-	                                    <textarea class="form-control mb-2" style="font-size: 14px;" rows="3" placeholder="Write a comment..." v-model="newComment"></textarea>
-
-	                                    <button class="btn btn-sm btn-light border btn-block" style="font-size: 14px;" @click="postComment()">Post Comment</button>
-
-	                                </div>
-
-	                                <div style="max-height: 500px; overflow-y: auto;">
-
-	                                    <div v-for="c in currentTask.comments" class="mb-3 p-2 bg-light rounded border">
-
-	                                        <div class="d-flex justify-content-between mb-1">
-
-	                                            <strong style="font-size: 13px;">[[ c.comment_by || c.owner ]]</strong>
-
-	                                            <span class="text-muted" style="font-size: 11px;">[[ formatDate(c.creation) ]]</span>
+	                                            <textarea class="form-control border bg-light p-3" rows="12" v-model="currentTask.doc.description" style="font-size: 14px; line-height: 1.6; border-radius: 12px; resize: none; border-color: #e1e4e8 !important;" placeholder="Add a more detailed description..."></textarea>
 
 	                                        </div>
 
-	                                        <div style="white-space: pre-wrap; font-size: 14px;">[[ c.content ]]</div>
+	                                        
+
+	                                        <div class="mb-4">
+
+	                                            <div class="d-flex justify-content-between align-items-center mb-3">
+
+	                                                <h6 class="text-muted text-uppercase m-0" style="font-size: 11px; letter-spacing: 1px; font-weight: 800;">Attachments</h6>
+
+	                                            </div>
+
+	                                            <div v-if="currentTask.attachments.length > 0" class="row no-gutters">
+
+	                                                <div v-for="file in currentTask.attachments" class="col-6 p-1">
+
+	                                                    <div class="d-flex align-items-center p-2 border rounded bg-white shadow-sm" style="transition: 0.2s;">
+
+	                                                        <i class="fa fa-paperclip mr-2 text-muted" style="font-size: 14px;"></i>
+
+	                                                        <a :href="file.file_url" target="_blank" class="text-truncate text-dark" style="font-size: 12px; font-weight: 500;">[[ file.file_name ]]</a>
+
+	                                                    </div>
+
+	                                                </div>
+
+	                                            </div>
+
+	                                            <div v-else class="text-center py-4 rounded border-dashed" style="border: 2px dashed #e1e4e8; background: #fafbfc;">
+
+	                                                <i class="fa fa-cloud-upload text-muted mb-2" style="font-size: 24px; opacity: 0.3;"></i>
+
+	                                                <div class="text-muted small">No files attached</div>
+
+	                                            </div>
+
+	                                        </div>
+
+	                                    </div>
+
+	
+
+	                                    <!-- Right Column: Comments -->
+
+	                                    <div class="col-md-3 border-left pl-4" v-show="!focusMode">
+
+	                                        <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 1px; font-weight: 800;">Activity</h6>
+
+	                                        <div class="mb-4">
+
+	                                            <textarea class="form-control mb-2" style="font-size: 13px; border-radius: 8px; border-color: #d0d7de;" rows="3" placeholder="Write a comment..." v-model="newComment"></textarea>
+
+	                                            <button class="btn btn-sm btn-light border btn-block font-weight-bold" style="font-size: 12px; border-radius: 6px;" @click="postComment()" :disabled="!newComment.trim()">Post Comment</button>
+
+	                                        </div>
+
+	                                        <div class="comment-timeline" style="max-height: 450px; overflow-y: auto;">
+
+	                                            <div v-for="c in currentTask.comments" class="mb-3 position-relative pl-3">
+
+	                                                <div class="d-flex justify-content-between mb-1">
+
+	                                                    <strong style="font-size: 12px; color: #1f2328;">[[ c.comment_by || c.owner ]]</strong>
+
+	                                                    <span class="text-muted" style="font-size: 10px;">[[ formatDate(c.creation) ]]</span>
+
+	                                                </div>
+
+	                                                <div class="p-2 rounded bg-light border-0" style="white-space: pre-wrap; font-size: 13px; color: #24292f;">[[ c.content ]]</div>
+
+	                                            </div>
+
+	                                        </div>
 
 	                                    </div>
 
@@ -395,9 +531,9 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	                                <div v-for="p in filteredProjects" @click="selectProject(p)" 
 
-	                                     :class="['py-2 px-1 border-bottom d-flex justify-content-between align-items-center', selectedProject === p.name ? 'selected-project-active' : 'border-transparent']" 
+	                                     :class="['py-2 px-2 d-flex justify-content-between align-items-center project-item', selectedProject === p.name ? 'selected-project-active' : '']" 
 
-	                                     style="cursor: pointer; font-size: 15px;">
+	                                     style="cursor: pointer; font-size: 14px;">
 
 	                                    <span><i class="fa fa-book mr-2" :style="{color: selectedProject === p.name ? '#0969da' : '#636c76'}"></i> [[ p.project_name ]]</span>
 
@@ -509,7 +645,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	                                    <div class="row mb-4 m-0" style="gap: 15px;">
 
-	                                        <div class="col p-3 rounded border text-white position-relative" style="background-color: #2da44e;" title="Projects due in more than 3 days"> <!-- On Track -->
+	                                        <div class="col p-3 rounded border text-white position-relative card-insight" style="background-color: #2da44e;" title="Projects due in more than 3 days"> <!-- On Track -->
 
 	                                            <div style="font-size: 13px; opacity: 0.9; font-weight: 600;">On Track</div>
 
@@ -519,7 +655,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	                                        </div>
 
-	                                        <div class="col p-3 rounded border text-dark position-relative" style="background-color: #ffd33d;" title="Projects due within next 3 days"> <!-- At Risk -->
+	                                        <div class="col p-3 rounded border text-dark position-relative card-insight" style="background-color: #ffd33d;" title="Projects due within next 3 days"> <!-- At Risk -->
 
 	                                            <div style="font-size: 13px; opacity: 0.9; font-weight: 600;">At Risk</div>
 
@@ -529,7 +665,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	                                        </div>
 
-	                                        <div class="col p-3 rounded border text-white position-relative" style="background-color: #cf222e;" title="Projects past due date"> <!-- Delayed -->
+	                                        <div class="col p-3 rounded border text-white position-relative card-insight" style="background-color: #cf222e;" title="Projects past due date"> <!-- Delayed -->
 
 	                                            <div style="font-size: 13px; opacity: 0.9; font-weight: 600;">Delayed</div>
 
@@ -539,7 +675,7 @@ frappe.pages["taskflow"].on_page_load = function (wrapper) {
 
 	                                        </div>
 
-	                                        <div class="col p-3 rounded border bg-white text-dark position-relative" style="border-color: #d0d7de !important;" title="Tasks not updated in 3+ days"> <!-- Stuck -->
+	                                        <div class="col p-3 rounded border bg-white text-dark position-relative card-insight" style="border-color: #d0d7de !important;" title="Tasks not updated in 3+ days"> <!-- Stuck -->
 
 	                                            <div style="font-size: 13px; color: #636c76; font-weight: 600;">Stuck Tasks</div>
 
