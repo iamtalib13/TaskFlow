@@ -316,6 +316,26 @@ def update_task_details(task_name, values):
     return doc
 
 @frappe.whitelist()
+def get_manager_dashboard_stats():
+    """Project Manager dashboard ke liye single-call stats"""
+    return {
+        "active_projects": frappe.db.count("Project", {"status": ["!=", "Completed"]}),
+        "pending_tasks": frappe.db.count("Task", {"status": ["not in", ["Completed", "Cancelled"]]}),
+        "overdue_tasks": frappe.db.count("Task", {
+            "status": ["not in", ["Completed", "Cancelled"]],
+            "exp_end_date": ["<", frappe.utils.today()]
+        })
+    }
+
+@frappe.whitelist()
+def update_task_status(task_name, status):
+    """Kanban Drag-n-Drop support ke liye status update API"""
+    doc = frappe.get_doc("Task", task_name)
+    doc.status = status
+    doc.save()
+    return frappe._("Task updated successfully")
+
+@frappe.whitelist()
 def add_comment(task_name, content):
     doc = frappe.get_doc("Task", task_name)
     comment = doc.add_comment("Comment", content)
