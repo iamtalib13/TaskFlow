@@ -1,2 +1,93 @@
 @import './assets/Inter/inter.css';
 @import 'frappe-ui/src/style.css';
+
+.theme-dark {
+  color-scheme: dark;
+  background-color: #020617 !important;
+  color: #e2e8f0 !important;
+}
+
+.theme-dark .bg-white {
+  background-color: #111827 !important;
+}
+
+.theme-dark .bg-gray-50 {
+  background-color: #0f172a !important;
+}
+
+.theme-dark .bg-gray-100 {
+  background-color: #1e293b !important;
+}
+
+.theme-dark .bg-blue-50 {
+  background-color: #0b2942 !important;
+}
+
+.theme-dark .bg-red-50 {
+  background-color: #3a1212 !important;
+}
+
+.theme-dark .bg-amber-50 {
+  background-color: #3a2a12 !important;
+}
+
+.theme-dark .text-gray-900 {
+  color: #f8fafc !important;
+}
+
+.theme-dark .text-gray-800,
+.theme-dark .text-gray-700 {
+  color: #e2e8f0 !important;
+}
+
+.theme-dark .text-gray-600,
+.theme-dark .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+.theme-dark .text-blue-800,
+.theme-dark .text-blue-700 {
+  color: #93c5fd !important;
+}
+
+.theme-dark .text-red-700 {
+  color: #fca5a5 !important;
+}
+
+.theme-dark .text-amber-800 {
+  color: #fcd34d !important;
+}
+
+.theme-dark .border-gray-100,
+.theme-dark .border-gray-200,
+.theme-dark .border-gray-300 {
+  border-color: #334155 !important;
+}
+
+.theme-dark .border-blue-200 {
+  border-color: #1d4ed8 !important;
+}
+
+.theme-dark .border-red-200 {
+  border-color: #b91c1c !important;
+}
+
+.theme-dark .border-amber-200 {
+  border-color: #a16207 !important;
+}
+
+.theme-dark .hover\:bg-gray-50:hover {
+  background-color: #1e293b !important;
+}
+
+.theme-dark .hover\:bg-red-50:hover {
+  background-color: #4c1d1d !important;
+}
+
+.theme-dark select,
+.theme-dark input,
+.theme-dark textarea {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}

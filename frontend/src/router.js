@@ -9,31 +9,27 @@ const routes = [
   {
     path: '/projects',
     name: 'Projects',
-    component: () => import('@/pages/Placeholder.vue'),
-    props: { title: 'Projects' },
+    component: () => import('@/pages/Projects.vue'),
   },
   {
     path: '/tasks',
     name: 'Tasks',
-    component: () => import('@/pages/Placeholder.vue'),
-    props: { title: 'Tasks' },
+    component: () => import('@/pages/Tasks.vue'),
   },
   {
     path: '/team',
     name: 'Team',
-    component: () => import('@/pages/Placeholder.vue'),
-    props: { title: 'Team' },
+    component: () => import('@/pages/Team.vue'),
   },
   {
     path: '/settings',
     name: 'Settings',
-    component: () => import('@/pages/Placeholder.vue'),
-    props: { title: 'Settings' },
+    component: () => import('@/pages/Settings.vue'),
   },
 ]
 
 let router = createRouter({
-  history: createWebHistory('/frontend'),
+  history: createWebHistory('/taskf'),
   routes,
 })
 

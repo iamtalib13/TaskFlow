@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --base=/assets/taskflow/frontend/ && npm run copy-html-entry",
+    "copy-html-entry": "cp ../taskflow/public/frontend/index.html ../taskflow/www/taskf.html",
     "preview": "vite preview"
   },
   "dependencies": {

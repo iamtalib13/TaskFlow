@@ -11,7 +11,12 @@
     <div id="modals"></div>
     <div id="popovers"></div>
 
-    <script> window.csrf_token = '{{ csrf_token }}'; </script>
+    <script>
+      window.csrf_token = window.csrf_token || '{{ csrf_token }}'
+      if (!window.csrf_token || window.csrf_token === '{{ csrf_token }}') {
+        window.csrf_token = window.parent?.frappe?.csrf_token || window.parent?.csrf_token || ''
+      }
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
