@@ -79,25 +79,41 @@ def get_dashboard_data(project=None):
     }
 
 @frappe.whitelist()
-def get_task_list(project=None, start=0, page_length=10, only_my_tasks=False):
+def get_task_list(project=None, start=0, page_length=10, only_my_tasks=False, focus_filter=None, long_pending_days=7):
     filters = {"project": ["!=", ""]}
-    
+    only_my_tasks = frappe.utils.cint(only_my_tasks) == 1
+    long_pending_days = frappe.utils.cint(long_pending_days) or 7
+
     if only_my_tasks:
         filters["owner"] = frappe.session.user
-    
-    if project: 
+
+    if project:
         filters["project"] = project
 
-    # 1. Task list fetch karein naye date fields ke saath
-    tasks = frappe.get_list("Task", 
+    focus_filter = (focus_filter or "").strip().lower()
+    open_status_filter = ["not in", ["Completed", "Cancelled"]]
+    today_date = frappe.utils.today()
+    if focus_filter == "overdue":
+        filters["status"] = open_status_filter
+        filters["exp_end_date"] = ["<", today_date]
+    elif focus_filter == "due_today":
+        filters["status"] = open_status_filter
+        filters["exp_end_date"] = today_date
+    elif focus_filter == "blocked":
+        filters["status"] = ["in", ["Blocked", "On Hold"]]
+    elif focus_filter == "long_pending":
+        filters["status"] = open_status_filter
+        filters["creation"] = ["<", frappe.utils.add_days(today_date, -long_pending_days)]
+
+    tasks = frappe.get_list(
+        "Task",
         filters=filters,
-        # Naye fields add kiye: exp_start_date, exp_end_date
         fields=["name", "subject", "status", "owner", "priority", "exp_start_date", "exp_end_date", "project"],
-        start=start, 
-        page_length=page_length, 
+        start=start,
+        page_length=page_length,
         order_by="creation desc",
-        ignore_permissions=True 
-    )       
+        ignore_permissions=True,
+    )
 
     current_date = getdate(today())
 
@@ -379,9 +395,7 @@ def update_project(project_name, values):
     
     doc = frappe.get_doc("Project", project_name)
     
-    # Check permissions
-    roles = frappe.get_roles(frappe.session.user)
-    if "Projects Manager" not in roles and "System Manager" not in roles:
+    if not _can_manage_project_team(project_name):
         frappe.throw("You do not have permission to update this Project.")
 
     # Update basic fields
@@ -393,13 +407,478 @@ def update_project(project_name, values):
     
     # Update Team Members (Child Table)
     # We clear and re-add to ensure the list exactly matches what was sent
+    has_role_field = frappe.get_meta("Project User").has_field("role")
     doc.set("users", [])
     if values.get("users"):
         for u in values.get("users"):
-            doc.append("users", {
-                "user": u.get("user"),
-                "role": u.get("role")
-            })
+            payload = {"user": u.get("user")}
+            if has_role_field:
+                payload["role"] = u.get("role")
+            doc.append("users", payload)
     
     doc.save()
     return doc
+
+
+def _is_system_project_manager():
+    roles = frappe.get_roles(frappe.session.user)
+    return "Projects Manager" in roles or "System Manager" in roles
+
+
+def _get_or_create_pm_configuration():
+    config_name = frappe.session.user
+    if frappe.db.exists("Project Manager Configuration", config_name):
+        return frappe.get_doc("Project Manager Configuration", config_name)
+    doc = frappe.get_doc({"doctype": "Project Manager Configuration", "user": frappe.session.user})
+    doc.insert(ignore_permissions=True)
+    return doc
+
+
+def _get_configured_team_users(pm_user=None):
+    pm_user = pm_user or frappe.session.user
+    if not frappe.db.exists("Project Manager Configuration", pm_user):
+        return []
+    rows = frappe.get_all(
+        "Configuration Item",
+        filters={
+            "parent": pm_user,
+            "parenttype": "Project Manager Configuration",
+            "parentfield": "team_details",
+            "enabled": 1,
+        },
+        fields=["user"],
+    )
+    return [d.user for d in rows]
+
+
+def _get_user_project_role(project_name):
+    has_role_field = frappe.get_meta("Project User").has_field("role")
+    fields = ["role"] if has_role_field else ["user"]
+    member = frappe.db.get_value(
+        "Project User",
+        {"parent": project_name, "parenttype": "Project", "parentfield": "users", "user": frappe.session.user},
+        fields,
+        as_dict=True,
+    )
+    if not member:
+        return None
+    return (member.get("role") or "Team Member").strip() if has_role_field else "Team Member"
+
+
+def _can_manage_project_team(project_name):
+    if _is_system_project_manager():
+        return True
+    return _get_user_project_role(project_name) == "Project Manager"
+
+
+@frappe.whitelist()
+def get_team_configuration():
+    if not _is_system_project_manager():
+        frappe.throw("You do not have permission to manage team configuration.")
+
+    config_doc = _get_or_create_pm_configuration()
+    team_rows = []
+    for row in config_doc.team_details:
+        team_rows.append(
+            {
+                "user": row.user,
+                "user_name": row.user_name,
+                "role": row.role or "Team Member",
+                "enabled": int(row.enabled or 0),
+            }
+        )
+
+    available_users = frappe.get_all(
+        "User",
+        filters={"enabled": 1, "user_type": "System User"},
+        fields=["name", "full_name", "user_image"],
+        order_by="full_name asc",
+        limit_page_length=500,
+    )
+    available_users = [u for u in available_users if u["name"] not in ["Administrator", "Guest"]]
+
+    return {
+        "name": config_doc.name,
+        "user": config_doc.user,
+        "team_setup": int(config_doc.team_setup or 0),
+        "project_setup": int(config_doc.project_setup or 0),
+        "team_details": team_rows,
+        "available_users": available_users,
+        "available_roles": ["Project Manager", "Team Member", "Viewer"],
+    }
+
+
+@frappe.whitelist()
+def save_team_configuration(team_details):
+    if not _is_system_project_manager():
+        frappe.throw("You do not have permission to manage team configuration.")
+
+    if isinstance(team_details, str):
+        team_details = frappe.parse_json(team_details)
+    if not isinstance(team_details, list):
+        frappe.throw("Invalid team configuration payload.")
+
+    allowed_roles = {"Project Manager", "Team Member", "Viewer"}
+    unique_users = set()
+    cleaned_rows = []
+    for row in team_details:
+        user = (row.get("user") or "").strip()
+        role = (row.get("role") or "Team Member").strip()
+        enabled = int(row.get("enabled", 1))
+        if not user:
+            continue
+        if user in unique_users:
+            frappe.throw(f"Duplicate team member found: {user}")
+        if role not in allowed_roles:
+            frappe.throw(f"Invalid role for {user}: {role}")
+        unique_users.add(user)
+        cleaned_rows.append({"user": user, "role": role, "enabled": enabled})
+
+    config_doc = _get_or_create_pm_configuration()
+    config_doc.set("team_details", [])
+    for row in cleaned_rows:
+        config_doc.append("team_details", row)
+    config_doc.team_setup = 1 if any(row["enabled"] for row in cleaned_rows) else 0
+    config_doc.save(ignore_permissions=True)
+    return get_team_configuration()
+
+
+@frappe.whitelist()
+def get_project_manager_overview():
+    if _is_system_project_manager():
+        projects = frappe.get_all(
+            "Project",
+            fields=["name", "project_name", "status", "expected_start_date", "expected_end_date", "notes"],
+            order_by="modified desc",
+        )
+    else:
+        project_names = frappe.get_all(
+            "Project User",
+            filters={"user": frappe.session.user, "parenttype": "Project", "parentfield": "users"},
+            fields=["parent"],
+        )
+        project_names = [d.parent for d in project_names]
+        if not project_names:
+            return {
+                "stats": {"active_projects": 0, "average_progress": 0, "total_team_members": 0},
+                "critical": {"overdue": 0, "due_today": 0, "blocked": 0, "long_pending": 0, "long_pending_days": 7},
+                "projects": [],
+                "assignable_users": [],
+                "available_roles": ["Project Manager", "Team Member", "Viewer"],
+                "permissions": {"can_manage_any_team": False},
+            }
+        projects = frappe.get_all(
+            "Project",
+            filters={"name": ["in", project_names]},
+            fields=["name", "project_name", "status", "expected_start_date", "expected_end_date", "notes"],
+            order_by="modified desc",
+        )
+
+    project_rows = []
+    overall_progress_sum = 0
+    has_role_field = frappe.get_meta("Project User").has_field("role")
+    user_image_cache = {}
+
+    for project in projects:
+        total_tasks = frappe.db.count("Task", {"project": project.name})
+        pending_tasks = frappe.db.count("Task", {"project": project.name, "status": ["not in", ["Completed", "Cancelled"]]})
+        completed_tasks = max(total_tasks - pending_tasks, 0)
+        delayed_tasks = frappe.db.count(
+            "Task",
+            {"project": project.name, "status": ["not in", ["Completed", "Cancelled"]], "exp_end_date": ["<", frappe.utils.today()]},
+        )
+        at_risk_tasks = frappe.db.count(
+            "Task",
+            {
+                "project": project.name,
+                "status": ["not in", ["Completed", "Cancelled"]],
+                "exp_end_date": ["between", [frappe.utils.today(), frappe.utils.add_days(frappe.utils.today(), 3)]],
+            },
+        )
+        progress = round((completed_tasks / total_tasks) * 100) if total_tasks else 0
+        overall_progress_sum += progress
+
+        team = frappe.get_all(
+            "Project User",
+            filters={"parent": project.name, "parenttype": "Project", "parentfield": "users"},
+            fields=["user", "full_name", "role"] if has_role_field else ["user", "full_name"],
+            order_by="idx asc",
+        )
+        role_count = {"project_manager": 0, "team_member": 0, "viewer": 0}
+        current_user_role = _get_user_project_role(project.name)
+        if _is_system_project_manager():
+            current_user_role = "Project Manager"
+
+        for member in team:
+            role = (member.get("role") or "Team Member").strip()
+            member["role"] = role
+            if member.get("user"):
+                if member.user not in user_image_cache:
+                    user_image_cache[member.user] = frappe.db.get_value("User", member.user, "user_image")
+                member["user_image"] = user_image_cache.get(member.user)
+            if role == "Project Manager":
+                role_count["project_manager"] += 1
+            elif role == "Viewer":
+                role_count["viewer"] += 1
+            else:
+                role_count["team_member"] += 1
+
+        if project.status in ["Completed", "Cancelled"]:
+            health_state = "Completed"
+        elif delayed_tasks > 0:
+            health_state = "Delayed"
+        elif at_risk_tasks > 0:
+            health_state = "At Risk"
+        else:
+            health_state = "On Track"
+
+        project_rows.append(
+            {
+                "name": project.name,
+                "project_name": project.project_name,
+                "status": project.status,
+                "expected_start_date": project.expected_start_date,
+                "expected_end_date": project.expected_end_date,
+                "notes": project.notes,
+                "progress": progress,
+                "total_tasks": total_tasks,
+                "completed_tasks": completed_tasks,
+                "pending_tasks": pending_tasks,
+                "delayed_tasks": delayed_tasks,
+                "at_risk_tasks": at_risk_tasks,
+                "health_state": health_state,
+                "team_count": len(team),
+                "role_count": role_count,
+                "team": team,
+                "current_user_role": current_user_role or "Viewer",
+                "permissions": {
+                    "can_manage_team": _can_manage_project_team(project.name),
+                    "can_edit_tasks": (current_user_role or "") in ["Project Manager", "Team Member"] or _is_system_project_manager(),
+                    "read_only": (current_user_role == "Viewer") and not _is_system_project_manager(),
+                },
+            }
+        )
+
+    active_projects = len([p for p in project_rows if p["status"] not in ["Completed", "Cancelled"]])
+    average_progress = round(overall_progress_sum / len(project_rows)) if project_rows else 0
+    total_team_members = sum(p["team_count"] for p in project_rows)
+
+    configured_users = _get_configured_team_users(frappe.session.user)
+    assignable_users = []
+    if configured_users:
+        assignable_users = frappe.get_all(
+            "User",
+            filters={"name": ["in", configured_users]},
+            fields=["name", "full_name", "user_image"],
+            order_by="full_name asc",
+            limit_page_length=500,
+        )
+
+    today_date = frappe.utils.today()
+    long_pending_days = 7
+    critical_open = {"project": ["!=", ""], "status": ["not in", ["Completed", "Cancelled"]]}
+    critical = {
+        "overdue": frappe.db.count("Task", {**critical_open, "exp_end_date": ["<", today_date]}),
+        "due_today": frappe.db.count("Task", {**critical_open, "exp_end_date": today_date}),
+        "blocked": frappe.db.count("Task", {"project": ["!=", ""], "status": ["in", ["Blocked", "On Hold"]]}),
+        "long_pending": frappe.db.count(
+            "Task", {**critical_open, "creation": ["<", frappe.utils.add_days(today_date, -long_pending_days)]}
+        ),
+        "long_pending_days": long_pending_days,
+    }
+
+    return {
+        "stats": {"active_projects": active_projects, "average_progress": average_progress, "total_team_members": total_team_members},
+        "critical": critical,
+        "projects": project_rows,
+        "assignable_users": assignable_users,
+        "available_roles": ["Project Manager", "Team Member", "Viewer"],
+        "permissions": {"can_manage_any_team": any(p["permissions"]["can_manage_team"] for p in project_rows)},
+    }
+
+
+@frappe.whitelist()
+def save_project_team_roles(project_name, team):
+    if not _can_manage_project_team(project_name):
+        frappe.throw("You do not have permission to manage this project team.")
+    if isinstance(team, str):
+        team = frappe.parse_json(team)
+    if not isinstance(team, list):
+        frappe.throw("Invalid team payload.")
+
+    role_options = {"Project Manager", "Team Member", "Viewer"}
+    allowed_team_users = set(_get_configured_team_users(frappe.session.user))
+    allowed_team_users.add(frappe.session.user)
+    seen_users = set()
+    cleaned_team = []
+    for row in team:
+        user = (row.get("user") or "").strip()
+        role = (row.get("role") or "Team Member").strip()
+        if not user:
+            continue
+        if user in seen_users:
+            frappe.throw(f"Duplicate team member found: {user}")
+        seen_users.add(user)
+        if role not in role_options:
+            frappe.throw(f"Invalid role for {user}: {role}")
+        if user not in allowed_team_users and "System Manager" not in frappe.get_roles(frappe.session.user):
+            frappe.throw(f"User {user} is not part of your global team configuration.")
+        cleaned_team.append({"user": user, "role": role})
+
+    doc = frappe.get_doc("Project", project_name)
+    has_role_field = frappe.get_meta("Project User").has_field("role")
+    doc.set("users", [])
+    for row in cleaned_team:
+        payload = {"user": row["user"]}
+        if has_role_field:
+            payload["role"] = row["role"]
+        doc.append("users", payload)
+    doc.save()
+    return {"ok": True, "project_name": doc.name}
+
+
+@frappe.whitelist()
+def get_user_member_overview(user):
+    if not _is_system_project_manager():
+        frappe.throw("You do not have permission to access team member overview.")
+    user = (user or "").strip()
+    if not user:
+        frappe.throw("User is required.")
+
+    user_info = frappe.db.get_value("User", user, ["name", "full_name", "user_image", "email", "enabled"], as_dict=True)
+    if not user_info:
+        frappe.throw("User not found.")
+
+    links = frappe.get_all(
+        "Project User", filters={"user": user, "parenttype": "Project", "parentfield": "users"}, fields=["parent"]
+    )
+    project_names = [d.parent for d in links]
+    projects = []
+    for project_name in project_names:
+        project = frappe.db.get_value(
+            "Project", project_name, ["name", "project_name", "status", "expected_end_date"], as_dict=True
+        )
+        if not project:
+            continue
+        project["pending_tasks"] = frappe.db.count("Task", {"project": project_name, "status": ["not in", ["Completed", "Cancelled"]]})
+        project["total_tasks"] = frappe.db.count("Task", {"project": project_name})
+        projects.append(project)
+
+    current_day = getdate(today())
+    fiscal_start_year = current_day.year if current_day.month >= 4 else current_day.year - 1
+    start_date = getdate(f"{fiscal_start_year}-04-01")
+    end_date = getdate(f"{fiscal_start_year + 1}-03-31")
+    activities = frappe.get_all(
+        "Task",
+        filters={"owner": user, "modified": ["between", [start_date, end_date]]},
+        fields=["modified"],
+        order_by="modified asc",
+        limit_page_length=5000,
+    )
+    activity_map = {}
+    for item in activities:
+        day = getdate(item.modified).isoformat()
+        activity_map[day] = activity_map.get(day, 0) + 1
+
+    config_row = frappe.get_all(
+        "Configuration Item",
+        filters={"parent": frappe.session.user, "parenttype": "Project Manager Configuration", "parentfield": "team_details", "user": user},
+        fields=["name", "role", "enabled"],
+        limit_page_length=1,
+    )
+    member_profile = {"role": "Team Member", "enabled": 1}
+    if config_row:
+        member_profile["role"] = config_row[0].role or "Team Member"
+        member_profile["enabled"] = int(config_row[0].enabled or 0)
+
+    all_projects = frappe.get_all("Project", fields=["name", "project_name", "status"], order_by="project_name asc")
+    return {
+        "user": user_info,
+        "member_profile": member_profile,
+        "projects": projects,
+        "all_projects": all_projects,
+        "activity": activity_map,
+        "activity_start_date": start_date.isoformat() if hasattr(start_date, "isoformat") else str(start_date),
+        "activity_end_date": end_date.isoformat(),
+    }
+
+
+@frappe.whitelist()
+def save_user_member_profile(user, role="Team Member", active=1, project_names=None):
+    if not _is_system_project_manager():
+        frappe.throw("You do not have permission to manage team members.")
+    user = (user or "").strip()
+    if not user:
+        frappe.throw("User is required.")
+    role = (role or "Team Member").strip()
+    if role not in {"Project Manager", "Team Member", "Viewer"}:
+        frappe.throw("Invalid role.")
+    active = int(frappe.utils.cint(active))
+    if isinstance(project_names, str):
+        project_names = frappe.parse_json(project_names)
+    if project_names is None:
+        project_names = []
+    if not isinstance(project_names, list):
+        frappe.throw("Invalid project list.")
+    target_projects = {(p or "").strip() for p in project_names if (p or "").strip()}
+
+    config_doc = _get_or_create_pm_configuration()
+    existing_row = None
+    for row in config_doc.team_details:
+        if row.user == user:
+            existing_row = row
+            break
+    if existing_row:
+        existing_row.role = role
+        existing_row.enabled = active
+    else:
+        config_doc.append("team_details", {"user": user, "role": role, "enabled": active})
+    config_doc.team_setup = 1 if any(int(r.enabled or 0) for r in config_doc.team_details) else 0
+    config_doc.save(ignore_permissions=True)
+
+    user_links = frappe.get_all(
+        "Project User", filters={"user": user, "parenttype": "Project", "parentfield": "users"}, fields=["parent"]
+    )
+    current_projects = {d.parent for d in user_links}
+    has_role_field = frappe.get_meta("Project User").has_field("role")
+
+    for project_name in sorted(current_projects - target_projects):
+        if not frappe.db.exists("Project", project_name):
+            continue
+        doc = frappe.get_doc("Project", project_name)
+        kept = []
+        for child in doc.users:
+            if child.user != user:
+                kept.append({"user": child.user, "role": getattr(child, "role", None)})
+        doc.set("users", [])
+        for child in kept:
+            payload = {"user": child["user"]}
+            if has_role_field and child.get("role"):
+                payload["role"] = child.get("role")
+            doc.append("users", payload)
+        doc.save(ignore_permissions=True)
+
+    for project_name in sorted(target_projects):
+        if not frappe.db.exists("Project", project_name):
+            continue
+        doc = frappe.get_doc("Project", project_name)
+        rows = []
+        found = False
+        for child in doc.users:
+            child_role = getattr(child, "role", None)
+            if child.user == user:
+                found = True
+                rows.append({"user": user, "role": role if has_role_field else child_role})
+            else:
+                rows.append({"user": child.user, "role": child_role})
+        if not found:
+            rows.append({"user": user, "role": role})
+        doc.set("users", [])
+        for child in rows:
+            payload = {"user": child["user"]}
+            if has_role_field and child.get("role"):
+                payload["role"] = child.get("role")
+            doc.append("users", payload)
+        doc.save(ignore_permissions=True)
+
+    return {"ok": True}

@@ -1,0 +1,1 @@
+import{J as a,K as e}from"./vendor.951215d7.js";a({doctype:"Project",fields:["*"],auto:!0});e({url:"taskflow.taskflow.api.taskflow.get_manager_dashboard_stats",auto:!0});const o=e({url:"taskflow.taskflow.api.taskflow.get_project_manager_overview",auto:!0});export{o as m};
