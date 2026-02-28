@@ -29,7 +29,7 @@ const routes = [
 ]
 
 let router = createRouter({
-  history: createWebHistory('/taskf'),
+  history: createWebHistory('/taskflow'),
   routes,
 })
 

@@ -64,6 +64,10 @@ app_license = "mit"
 # 	"Role": "home_page"
 # }
 
+website_route_rules = [
+    {"from_route": "/taskflow/<path:app_path>", "to_route": "taskflow"},
+]
+
 # Generators
 # ----------
 
@@ -251,4 +255,3 @@ after_migrate = [
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-
