@@ -1,0 +1,161 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:team_code",
+ "creation": "2026-05-07 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "field_order": [
+  "team_name",
+  "team_code",
+  "company",
+  "is_active",
+  "parent_team",
+  "team_lead",
+  "visibility_scope",
+  "allow_cross_team_collaboration",
+  "description",
+  "team_members"
+ ],
+ "fields": [
+  {
+   "fieldname": "team_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Team Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "team_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Team Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "parent_team",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Parent Team",
+   "options": "Taskflow Team"
+  },
+  {
+   "fieldname": "team_lead",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Team Lead",
+   "options": "Employee"
+  },
+  {
+   "default": "Team",
+   "fieldname": "visibility_scope",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Visibility Scope",
+   "options": "Team\nParent Team\nGlobal",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_cross_team_collaboration",
+   "fieldtype": "Check",
+   "label": "Allow Cross Team Collaboration"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "team_members",
+   "fieldtype": "Table",
+   "label": "Team Members",
+   "options": "Taskflow Team Member"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Taskflow",
+ "name": "Taskflow Team",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Viewer",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "team_name"
+}

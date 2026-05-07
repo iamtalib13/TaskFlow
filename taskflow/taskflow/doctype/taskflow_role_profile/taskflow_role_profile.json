@@ -1,0 +1,98 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:role_name",
+ "creation": "2026-05-07 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "field_order": [
+  "role_name",
+  "is_system_role",
+  "allows_manage_team",
+  "allows_manage_projects",
+  "allows_assign_tasks",
+  "can_monitor_child_teams",
+  "read_only_access",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "role_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Role Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_system_role",
+   "fieldtype": "Check",
+   "label": "Is System Role"
+  },
+  {
+   "default": "0",
+   "fieldname": "allows_manage_team",
+   "fieldtype": "Check",
+   "label": "Allows Manage Team"
+  },
+  {
+   "default": "0",
+   "fieldname": "allows_manage_projects",
+   "fieldtype": "Check",
+   "label": "Allows Manage Projects"
+  },
+  {
+   "default": "0",
+   "fieldname": "allows_assign_tasks",
+   "fieldtype": "Check",
+   "label": "Allows Assign Tasks"
+  },
+  {
+   "default": "0",
+   "fieldname": "can_monitor_child_teams",
+   "fieldtype": "Check",
+   "label": "Can Monitor Child Teams"
+  },
+  {
+   "default": "0",
+   "fieldname": "read_only_access",
+   "fieldtype": "Check",
+   "label": "Read Only Access"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Taskflow",
+ "name": "Taskflow Role Profile",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "role_name"
+}
+

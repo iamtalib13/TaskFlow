@@ -1,0 +1,107 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"taskflow-header-overview\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Taskflow Control Center</b></span>\",\"col\":12}},{\"id\":\"taskflow-shortcut-team\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Taskflow Team\",\"col\":3}},{\"id\":\"taskflow-shortcut-project\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Taskflow Project\",\"col\":3}},{\"id\":\"taskflow-shortcut-task\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Taskflow Task\",\"col\":3}},{\"id\":\"taskflow-shortcut-role-profile\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Taskflow Role Profile\",\"col\":3}},{\"id\":\"taskflow-header-monitor\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Monitoring</b></span>\",\"col\":12}},{\"id\":\"taskflow-quick-projects\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Active Projects\",\"col\":4}},{\"id\":\"taskflow-quick-open-tasks\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Open Tasks\",\"col\":4}},{\"id\":\"taskflow-quick-blocked-tasks\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Blocked Tasks\",\"col\":4}},{\"id\":\"taskflow-header-admin\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Team Structure</b></span>\",\"col\":12}},{\"id\":\"taskflow-quick-teams\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Active Teams\",\"col\":6}},{\"id\":\"taskflow-quick-completed\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Completed Tasks\",\"col\":6}}]",
+ "creation": "2026-05-07 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "project",
+ "idx": 0,
+ "indicator_color": "blue",
+ "is_hidden": 0,
+ "label": "Taskflow",
+ "links": [],
+ "modified": "2026-05-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Taskflow",
+ "name": "Taskflow",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [
+  {
+   "document_type": "Taskflow Project",
+   "label": "Active Projects",
+   "quick_list_filter": "[[\"Taskflow Project\",\"status\",\"=\",\"Active\",false],[\"Taskflow Project\",\"is_archived\",\"=\",0,false]]"
+  },
+  {
+   "document_type": "Taskflow Task",
+   "label": "Open Tasks",
+   "quick_list_filter": "[[\"Taskflow Task\",\"status\",\"in\",[\"Open\",\"In Progress\",\"Review\"],false]]"
+  },
+  {
+   "document_type": "Taskflow Task",
+   "label": "Blocked Tasks",
+   "quick_list_filter": "[[\"Taskflow Task\",\"status\",\"=\",\"Blocked\",false]]"
+  },
+  {
+   "document_type": "Taskflow Team",
+   "label": "Active Teams",
+   "quick_list_filter": "[[\"Taskflow Team\",\"is_active\",\"=\",1,false]]"
+  },
+  {
+   "document_type": "Taskflow Task",
+   "label": "Completed Tasks",
+   "quick_list_filter": "[[\"Taskflow Task\",\"status\",\"=\",\"Completed\",false]]"
+  }
+ ],
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Project Manager"
+  },
+  {
+   "role": "Projects Manager"
+  },
+  {
+   "role": "Employee"
+  },
+  {
+   "role": "Viewer"
+  }
+ ],
+ "sequence_id": 15.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "format": "{} Teams",
+   "label": "Taskflow Team",
+   "link_to": "Taskflow Team",
+   "stats_filter": "{\"is_active\": 1}",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "format": "{} Active",
+   "label": "Taskflow Project",
+   "link_to": "Taskflow Project",
+   "stats_filter": "{\"status\": \"Active\", \"is_archived\": 0}",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "format": "{} Open",
+   "label": "Taskflow Task",
+   "link_to": "Taskflow Task",
+   "stats_filter": "{\"status\": [\"in\", [\"Open\", \"In Progress\", \"Review\"]]}",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Taskflow Role Profile",
+   "link_to": "Taskflow Role Profile",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Taskflow"
+}

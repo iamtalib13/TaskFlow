@@ -124,11 +124,16 @@ website_route_rules = [
 permission_query_conditions = {
 # 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
     "Task": "taskflow.permissions.get_task_permission",
+    "Taskflow Team": "taskflow.permissions.get_taskflow_team_permission",
+    "Taskflow Project": "taskflow.permissions.get_taskflow_project_permission",
+    "Taskflow Task": "taskflow.permissions.get_taskflow_task_permission",
 }
 #
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+has_permission = {
+	"Taskflow Team": "taskflow.permissions.has_taskflow_team_permission",
+	"Taskflow Project": "taskflow.permissions.has_taskflow_project_permission",
+	"Taskflow Task": "taskflow.permissions.has_taskflow_task_permission",
+}
 
 # DocType Class
 # ---------------
@@ -203,10 +208,6 @@ permission_query_conditions = {
 # ----------------
 # before_request = ["taskflow.utils.before_request"]
 # after_request = ["taskflow.utils.after_request"]
-
-after_migrate = [
-    "taskflow.patches.custom_fields.add_fields_for_project_user.execute",
-]
 
 # Job Events
 # ----------

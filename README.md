@@ -1,6 +1,18 @@
 ### Taskflow
 
-TaskFlow is a high-performance Frappe app designed to simplify project management. It acts as a streamlined interface for the ERPNext Project Module, bringing Managers and Team Members onto a single, intuitive dashboard to manage tasks, timelines, and collaboration without the complexity of a full ERP.
+Taskflow is a metadata-driven project and task management app for the Frappe Framework. It is being structured as an ERPNext-style application with custom DocTypes for team hierarchy, projects, tasks, checklist execution, and permission-aware reporting.
+
+### Current Scope
+
+The app now includes the first backend foundation for:
+
+- `Taskflow Team` with parent-child hierarchy and embedded team membership
+- `Taskflow Project` scoped to teams
+- `Taskflow Task` with checklist and dependency child tables
+- Service-layer permission helpers for team, project, and task visibility
+- A metadata registry DocType for configurable Taskflow role behavior
+
+Dashboards, reports, workspaces, workflow definitions, and notification automation still need to be layered on top of this data model.
 
 ### Installation
 

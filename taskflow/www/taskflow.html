@@ -1,26 +1,275 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" href="/assets/taskflow/frontend/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Frappe UI App</title>
-    <script type="module" crossorigin src="/assets/taskflow/frontend/assets/index.1fab9efa.js"></script>
-    <link rel="modulepreload" href="/assets/taskflow/frontend/assets/vendor.d0ed9504.js">
-    <link rel="stylesheet" href="/assets/taskflow/frontend/assets/vendor.1f7d581e.css">
-    <link rel="stylesheet" href="/assets/taskflow/frontend/assets/index.b41a271d.css">
-  </head>
-  <body>
-    <div id="app"></div>
-    <div id="modals"></div>
-    <div id="popovers"></div>
+{% extends "templates/base.html" %}
 
-    <script>
-      window.csrf_token = window.csrf_token || '{{ csrf_token }}'
-      if (!window.csrf_token || window.csrf_token === '{{ csrf_token }}') {
-        window.csrf_token = window.parent?.frappe?.csrf_token || window.parent?.csrf_token || ''
-      }
-    </script>
-    
-  </body>
-</html>
+{% block banner %}{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="taskflow-container">
+  <aside class="taskflow-sidebar-nav"> <!-- Navigation Sidebar -->
+
+
+    <nav class="taskflow-nav">
+      <ul class="taskflow-nav-list">
+        <li class="taskflow-nav-item active" data-nav="dashboard">
+          <span class="taskflow-nav-icon">▤</span> Dashboard
+        </li>
+        <li class="taskflow-nav-item" data-nav="my-tasks">
+          <span class="taskflow-nav-icon">✓</span> My Tasks
+          <span class="taskflow-badge" data-my-tasks-count>0</span>
+        </li>
+        <li class="taskflow-nav-item" data-nav="calendar">
+          <span class="taskflow-nav-icon">📅</span> Calendar
+        </li>
+        <li class="taskflow-nav-item" data-nav="reports">
+          <span class="taskflow-nav-icon">📊</span> Reports
+        </li>
+        <li class="taskflow-nav-item" data-nav="team">
+          <span class="taskflow-nav-icon">👥</span> Team
+        </li>
+        <li class="taskflow-nav-item" data-nav="settings">
+          <span class="taskflow-nav-icon">⚙</span> Settings
+        </li>
+      </ul>
+    </nav>
+  </aside>
+
+  <aside class="taskflow-sidebar-projects"> <!-- Projects Sidebar -->
+    <div class="taskflow-brand-section"> <!-- Moved from nav sidebar -->
+      <div class="taskflow-logo">
+        <div class="taskflow-logo-icon"></div>
+        <span class="taskflow-logo-text">Taskflow</span>
+      </div>
+      <button class="taskflow-btn-primary full-width" data-new-project>
+        <span class="taskflow-btn-icon">+</span> New Project
+      </button>
+    </div>
+    <div class="taskflow-section-header">
+      <span>PROJECTS</span>
+      <button class="taskflow-btn-ghost" data-new-project>+</button>
+    </div>
+    <div class="taskflow-project-list" data-project-list>
+      <!-- Dynamic Project List -->
+    </div>
+  </aside>
+
+	<!-- Main Content -->
+	<main class="taskflow-main">
+		<!-- Top Header -->
+		<header class="taskflow-header">
+			<div class="taskflow-header-left">
+				<button class="taskflow-sidebar-toggle">☰</button>
+				<div class="taskflow-breadcrumbs">
+					<span>Projects</span> / <span data-project-breadcrumb>Website Redesign</span>
+				</div>
+			</div>
+			<div class="taskflow-header-right">
+				<div class="taskflow-search-bar">
+					<span class="taskflow-search-icon">⌕</span>
+					<input type="text" placeholder="Search" />
+				</div>
+				<button class="taskflow-header-btn">🔔</button>
+				<div class="taskflow-user-avatar">
+					<img src="/assets/taskflow/favicon.png" alt="User" />
+				</div>
+			</div>
+		</header>
+
+		<!-- Project Toolbar -->
+		<div class="taskflow-toolbar">
+			<div class="taskflow-project-info">
+				<h1 class="taskflow-project-title" data-project-title>Website Redesign</h1>
+				<button class="taskflow-btn-star">★</button>
+				<button class="taskflow-btn-more">⋯</button>
+			</div>
+			<div class="taskflow-toolbar-actions">
+				<button class="taskflow-btn-toolbar"><span class="taskflow-icon">⏳</span> Filter</button>
+				<button class="taskflow-btn-toolbar"><span class="taskflow-icon">▤</span> View</button>
+				<div class="taskflow-btn-group">
+					<button class="taskflow-btn-primary" data-new-task>+ Add Task</button>
+					<button class="taskflow-btn-primary-dropdown">⌵</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- View Navigation Tabs -->
+		<div class="taskflow-tabs" data-task-view-toggle>
+			<button class="taskflow-tab active" data-view="dashboard">Dashboard</button>
+			<button class="taskflow-tab" data-view="kanban">Board</button>
+			<button class="taskflow-tab" data-view="list">List</button>
+			<button class="taskflow-tab">Timeline</button>
+			<button class="taskflow-tab">Files</button>
+			<button class="taskflow-tab">Settings</button>
+		</div>
+
+		<!-- Content Area -->
+		<div class="taskflow-content" data-taskflow-root>
+			<!-- Dashboard View -->
+			<div class="taskflow-dashboard-view taskflow-view-content" data-dashboard-view></div>
+
+			<!-- Kanban Board -->
+			<div class="taskflow-board-wrapper taskflow-view-content taskflow-hidden">
+				<div class="taskflow-board" data-task-board></div>
+			</div>
+
+			<!-- List View -->
+			<div class="taskflow-list-wrapper taskflow-view-content taskflow-hidden" data-list-view></div>
+
+			<!-- Stats Area (Hidden by default in new design but kept for state) -->
+			<div class="taskflow-hidden" data-stats></div>
+			<div class="taskflow-hidden" data-taskflow-loading>Loading...</div>
+		</div>
+	</main>
+</div>
+
+<!-- Modals preserved from original -->
+<div class="taskflow-modal-backdrop" data-modal-name="project" data-project-modal>
+	<div class="taskflow-modal">
+		<div class="taskflow-modal-header">
+			<h3 data-project-form-title>Create Project</h3>
+			<button class="taskflow-button secondary" type="button" data-close-modal="project">Close</button>
+		</div>
+		<form class="taskflow-form" data-project-form>
+			<input type="hidden" name="name" />
+			<div class="taskflow-form-grid">
+				<label>Project Name
+					<input type="text" name="project_name" required />
+				</label>
+				<label>Project Code
+					<input type="text" name="project_code" required />
+				</label>
+				<label>Team
+					<select name="team" required></select>
+				</label>
+				<label>Project Lead
+					<select name="project_lead"></select>
+				</label>
+				<label>Status
+					<select name="status">
+						<option>Draft</option>
+						<option>Planning</option>
+						<option>Active</option>
+						<option>On Hold</option>
+						<option>Completed</option>
+						<option>Archived</option>
+					</select>
+				</label>
+				<label>Priority
+					<select name="priority">
+						<option>Low</option>
+						<option selected>Medium</option>
+						<option>High</option>
+						<option>Critical</option>
+					</select>
+				</label>
+				<label>Start Date
+					<input type="date" name="start_date" />
+				</label>
+				<label>End Date
+					<input type="date" name="end_date" />
+				</label>
+				<label>Expected Hours
+					<input type="number" step="0.01" name="expected_hours" />
+				</label>
+				<label>Completion %
+					<input type="number" min="0" max="100" name="completion_percent" value="0" />
+				</label>
+			</div>
+			<label>Description
+				<textarea name="description" rows="5"></textarea>
+			</label>
+			<div class="taskflow-rail-row">
+				<span class="taskflow-muted">Only users with project management access can save projects.</span>
+				<button class="taskflow-button primary" type="submit">Save Project</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<div class="taskflow-modal-backdrop" data-modal-name="task" data-task-modal>
+	<div class="taskflow-modal">
+		<div class="taskflow-modal-header">
+			<h3 data-task-form-title>Create Task</h3>
+			<button class="taskflow-button secondary" type="button" data-close-modal="task">Close</button>
+		</div>
+		<form class="taskflow-form" data-task-form>
+			<input type="hidden" name="name" />
+			<input type="hidden" name="project" />
+			<input type="hidden" name="team" />
+			<div class="taskflow-form-grid">
+				<label>Task Title
+					<input type="text" name="task_title" required />
+				</label>
+				<label>Assigned To
+					<select name="assigned_to"></select>
+				</label>
+				<label>Status
+					<select name="status">
+						<option>Open</option>
+						<option>In Progress</option>
+						<option>Review</option>
+						<option>Blocked</option>
+						<option>Completed</option>
+						<option>Cancelled</option>
+					</select>
+				</label>
+				<label>Priority
+					<select name="priority">
+						<option>Low</option>
+						<option selected>Medium</option>
+						<option>High</option>
+						<option>Critical</option>
+					</select>
+				</label>
+				<label>Task Type
+					<select name="task_type">
+						<option>Task</option>
+						<option>Bug</option>
+						<option>Story</option>
+						<option>Approval</option>
+						<option>Research</option>
+						<option>Meeting</option>
+					</select>
+				</label>
+				<label>Sequence
+					<input type="number" name="sequence" />
+				</label>
+				<label>Start Date
+					<input type="datetime-local" name="start_date" />
+				</label>
+				<label>Due Date
+					<input type="datetime-local" name="due_date" />
+				</label>
+				<label>Progress %
+					<input type="number" min="0" max="100" name="progress_percent" value="0" />
+				</label>
+				<label>Estimated Hours
+					<input type="number" step="0.01" name="estimated_hours" />
+				</label>
+				<label>Actual Hours
+					<input type="number" step="0.01" name="actual_hours" />
+				</label>
+				<label style="align-content:end;">
+					<span>Flags</span>
+					<div class="taskflow-rail-row">
+						<label><input type="checkbox" name="is_milestone" /> Milestone</label>
+						<label><input type="checkbox" name="is_blocked" /> Blocked</label>
+					</div>
+				</label>
+			</div>
+			<label>Description
+				<textarea name="description" rows="5"></textarea>
+			</label>
+			<div class="taskflow-rail-row">
+				<span class="taskflow-muted">Team members can manage execution here without leaving the portal.</span>
+				<button class="taskflow-button primary" type="submit">Save Task</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<script>
+	window.csrf_token = window.csrf_token || "{{ csrf_token }}";
+</script>
+{% endblock %}
+
+{% block footer %}{% endblock %}

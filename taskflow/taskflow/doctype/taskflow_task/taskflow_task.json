@@ -1,0 +1,308 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:TFT-{#####}",
+ "creation": "2026-05-07 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "task_identity_section",
+  "task_title",
+  "project",
+  "task_identity_column",
+  "team",
+  "parent_task",
+  "assignment_section",
+  "assigned_by",
+  "assigned_to",
+  "assigned_to_user",
+  "assignment_column",
+  "status",
+  "priority",
+  "task_type",
+  "timeline_section",
+  "start_date",
+  "due_date",
+  "timeline_column",
+  "completed_on",
+  "sequence",
+  "effort_section",
+  "progress_percent",
+  "estimated_hours",
+  "effort_column",
+  "actual_hours",
+  "is_milestone",
+  "is_blocked",
+  "description_section",
+  "description",
+  "checklist_section",
+  "checklist",
+  "dependency_section",
+  "dependencies"
+ ],
+ "fields": [
+  {
+   "fieldname": "task_identity_section",
+   "fieldtype": "Section Break",
+   "label": "Task Details"
+  },
+  {
+   "fieldname": "task_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Task Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project",
+   "options": "Taskflow Project"
+  },
+  {
+   "fieldname": "task_identity_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Team",
+   "options": "Taskflow Team"
+  },
+  {
+   "fieldname": "parent_task",
+   "fieldtype": "Link",
+   "label": "Parent Task",
+   "options": "Taskflow Task"
+  },
+  {
+   "fieldname": "assignment_section",
+   "fieldtype": "Section Break",
+   "label": "Assignment & Status"
+  },
+  {
+   "default": ":User",
+   "fieldname": "assigned_by",
+   "fieldtype": "Link",
+   "label": "Assigned By",
+   "options": "User"
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Assigned To",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "assigned_to.user_id",
+   "fieldname": "assigned_to_user",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Assigned To User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assignment_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\nOpen\nIn Progress\nReview\nBlocked\nCompleted\nCancelled",
+   "reqd": 1
+  },
+  {
+   "default": "Medium",
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Priority",
+   "options": "\nLow\nMedium\nHigh\nCritical",
+   "reqd": 1
+  },
+  {
+   "fieldname": "task_type",
+   "fieldtype": "Select",
+   "label": "Task Type",
+   "options": "\nTask\nBug\nStory\nApproval\nResearch\nMeeting"
+  },
+  {
+   "fieldname": "timeline_section",
+   "fieldtype": "Section Break",
+   "label": "Timeline"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Datetime",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Datetime",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "timeline_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.status=='Completed'",
+   "fieldname": "completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sequence",
+   "fieldtype": "Int",
+   "label": "Sequence"
+  },
+  {
+   "fieldname": "effort_section",
+   "fieldtype": "Section Break",
+   "label": "Progress & Effort"
+  },
+  {
+   "default": "0",
+   "fieldname": "progress_percent",
+   "fieldtype": "Percent",
+   "label": "Progress %",
+   "reqd": 1
+  },
+  {
+   "fieldname": "estimated_hours",
+   "fieldtype": "Float",
+   "label": "Estimated Hours"
+  },
+  {
+   "fieldname": "effort_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "actual_hours",
+   "fieldtype": "Float",
+   "label": "Actual Hours"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_milestone",
+   "fieldtype": "Check",
+   "label": "Is Milestone"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_blocked",
+   "fieldtype": "Check",
+   "label": "Is Blocked"
+  },
+  {
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "checklist_section",
+   "fieldtype": "Section Break",
+   "label": "Checklist"
+  },
+  {
+   "fieldname": "checklist",
+   "fieldtype": "Table",
+   "label": "Checklist",
+   "options": "Taskflow Task Checklist"
+  },
+  {
+   "fieldname": "dependency_section",
+   "fieldtype": "Section Break",
+   "label": "Dependencies"
+  },
+  {
+   "fieldname": "dependencies",
+   "fieldtype": "Table",
+   "label": "Dependencies",
+   "options": "Taskflow Task Dependency"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Taskflow",
+ "name": "Taskflow Task",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Viewer",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "task_title,project,team,assigned_to",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "task_title"
+}

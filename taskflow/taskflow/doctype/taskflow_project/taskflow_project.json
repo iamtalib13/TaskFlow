@@ -1,0 +1,238 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:project_code",
+ "creation": "2026-05-07 00:00:00.000000",
+ "description": "Metadata-driven project master for Taskflow.",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "field_order": [
+  "project_identity_section",
+  "project_name",
+  "project_code",
+  "project_identity_column",
+  "team",
+  "parent_project",
+  "project_status_section",
+  "status",
+  "priority",
+  "project_status_column",
+  "project_lead",
+  "project_lead_user",
+  "completion_percent",
+  "project_schedule_section",
+  "start_date",
+  "end_date",
+  "project_schedule_column",
+  "expected_hours",
+  "is_template",
+  "is_archived",
+  "project_description_section",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "project_identity_section",
+   "fieldtype": "Section Break",
+   "label": "Project Details"
+  },
+  {
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "project_identity_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Team",
+   "options": "Taskflow Team",
+   "reqd": 1
+  },
+  {
+   "fieldname": "parent_project",
+   "fieldtype": "Link",
+   "label": "Parent Project",
+   "options": "Taskflow Project"
+  },
+  {
+   "fieldname": "project_status_section",
+   "fieldtype": "Section Break",
+   "label": "Ownership & Status"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\nDraft\nPlanning\nActive\nOn Hold\nCompleted\nArchived",
+   "reqd": 1
+  },
+  {
+   "default": "Medium",
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Priority",
+   "options": "\nLow\nMedium\nHigh\nCritical",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project_status_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "project_lead",
+   "fieldtype": "Link",
+   "label": "Project Lead",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "project_lead.user_id",
+   "fieldname": "project_lead_user",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Project Lead User",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "completion_percent",
+   "fieldtype": "Percent",
+   "label": "Completion %",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project_schedule_section",
+   "fieldtype": "Section Break",
+   "label": "Timeline & Flags"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fieldname": "project_schedule_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "expected_hours",
+   "fieldtype": "Float",
+   "label": "Expected Hours"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_template",
+   "fieldtype": "Check",
+   "label": "Is Template"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_archived",
+   "fieldtype": "Check",
+   "label": "Is Archived"
+  },
+  {
+   "fieldname": "project_description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Taskflow",
+ "name": "Taskflow Project",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Viewer",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1
+  }
+ ],
+ "search_fields": "project_name,project_code,team",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "project_name"
+}
