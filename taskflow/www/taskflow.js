@@ -152,8 +152,6 @@
 		setLoading(true);
 		try {
 			state.bootstrap = await apiCall("get_portal_bootstrap");
-			renderBootstrap();
-			
 			if (state.navMode === "dashboard") {
 				const projectToSelect =
 					preferredProject ||
@@ -229,6 +227,8 @@
 			document.querySelector('[data-team-view]').classList.remove('taskflow-hidden');
 
 			const teamName = getSelectedTeamName();
+                state.selectedTeam = state.selectedTeam || "all";
+                updateUrlState();
 			refs.projectTitle.textContent = teamName;
 			if (breadcrumb) breadcrumb.textContent = `Team / ${teamName}`;
 		}
