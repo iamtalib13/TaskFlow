@@ -447,17 +447,26 @@
 		refreshView();
 	}
 
-	// Add logic to globally filter tasks based on selected team
-	function getFilteredTasks(tasks) {
-		let filtered = tasks;
-		if (state.selectedTeam && state.selectedTeam !== "all") {
-			// Find team name from id
-			const team = state.bootstrap.teams.find(t => t.name === state.selectedTeam);
-			if (team) {
-				filtered = filtered.filter(t => t.team === team.team_name);
-			}
+	function renderTaskArea(tasks) {
+		const visibleTasks = getFilteredTasks(tasks);
+		
+		const views = [
+			{ el: refs.dashboardView, key: "dashboard" },
+			{ el: document.querySelector(".taskflow-board-wrapper"), key: "kanban" },
+			{ el: refs.listView, key: "list" }
+		];
+
+		views.forEach(v => {
+			if (v.el) v.el.classList.toggle("taskflow-hidden", v.key !== state.taskView);
+		});
+
+		if (state.taskView === "list") {
+			renderList(visibleTasks);
+		} else if (state.taskView === "kanban") {
+			renderBoard(visibleTasks);
+		} else if (state.taskView === "dashboard") {
+			renderDashboard(visibleTasks);
 		}
-		return filterTasks(filtered);
 	}
 
 	function refreshView() {
