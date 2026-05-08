@@ -177,51 +177,57 @@
 		teamGrid.innerHTML = '<div class="taskflow-empty">Loading team data...</div>';
 		
 		try {
-			// Ensure we have access to team members/data
-			const teams = state.bootstrap.teams || [];
-			const teamData = await apiCall("get_dashboard_data");
-			const allGlobalData = teamData.global_team_data || [];
+			const data = await apiCall("get_dashboard_data");
+			const allGlobalData = data.global_team_data || [];
 			
-			let activeTeams = teams;
+			// Filter global data if a specific team is selected
+			let filteredMembers = allGlobalData;
 			if (state.selectedTeam && state.selectedTeam !== "all") {
-				activeTeams = teams.filter(t => t.name === state.selectedTeam);
+				const team = state.bootstrap.teams.find(t => t.name === state.selectedTeam);
+				if (team) {
+					filteredMembers = allGlobalData.filter(m => m.projects && m.projects.includes(team.team_name));
+				}
 			}
 			
-			if (activeTeams.length === 0) {
-				teamGrid.innerHTML = '<div class="taskflow-empty">No teams found.</div>';
+			if (filteredMembers.length === 0) {
+				teamGrid.innerHTML = '<div class="taskflow-empty">No team members found.</div>';
 				return;
 			}
 			
-			teamGrid.innerHTML = activeTeams.map(t => {
-				const members = allGlobalData.filter(m => m.projects && m.projects.includes(t.team_name));
-				const totalPending = members.reduce((sum, m) => sum + (m.pending_tasks || 0), 0);
-				const totalDone = members.reduce((sum, m) => sum + (m.completed_tasks || 0), 0);
-
+			teamGrid.innerHTML = filteredMembers.map(m => {
 				return `
-					<div class="taskflow-team-card">
+					<div class="taskflow-team-card" data-member-detail='${escapeHtml(JSON.stringify(m))}'>
 						<div class="taskflow-team-card-header">
-							<div class="taskflow-avatar" style="background: #3b82f6; color: white;">${initials(t.team_name)}</div>
+							<div class="taskflow-avatar" style="background: #3b82f6; color: white;">${initials(m.full_name)}</div>
 							<div>
-								<div class="taskflow-team-member-name">${escapeHtml(t.team_name)}</div>
-								<div class="taskflow-team-member-role">${t.team_code}</div>
+								<div class="taskflow-team-member-name">${escapeHtml(m.full_name)}</div>
+								<div class="taskflow-team-member-role">Team Member</div>
 							</div>
 						</div>
 						<div class="taskflow-team-stats">
 							<div class="taskflow-stat-box">
-								<span class="taskflow-stat-value">${totalPending}</span>
+								<span class="taskflow-stat-value">${m.pending_tasks || 0}</span>
 								<span class="taskflow-stat-label">Pending</span>
 							</div>
 							<div class="taskflow-stat-box">
-								<span class="taskflow-stat-value">${totalDone}</span>
+								<span class="taskflow-stat-value">${m.completed_tasks || 0}</span>
 								<span class="taskflow-stat-label">Done</span>
 							</div>
 						</div>
-						<div style="margin-top: 15px; font-size: 12px; color: #64748b;">
-							<strong>Members:</strong> ${members.length}
+						<div style="margin-top: 15px; font-size: 12px; color: #64748b; height: 3em; overflow: hidden;">
+							<strong>Projects:</strong> ${escapeHtml(m.projects || 'None')}
 						</div>
 					</div>
 				`;
 			}).join('');
+
+			// Add detail modal trigger
+			teamGrid.querySelectorAll('[data-member-detail]').forEach(card => {
+				card.addEventListener('click', () => {
+					const member = JSON.parse(card.dataset.memberDetail);
+					showMemberDetail(member);
+				});
+			});
 		} catch (err) {
 			console.error(err);
 			teamGrid.innerHTML = '<div class="taskflow-empty">Error loading team data.</div>';
