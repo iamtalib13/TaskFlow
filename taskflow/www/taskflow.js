@@ -469,6 +469,17 @@
 		}
 	}
 
+	function getFilteredTasks(tasks) {
+		let filtered = tasks;
+		if (state.selectedTeam && state.selectedTeam !== "all") {
+			const team = state.bootstrap.teams.find(t => t.name === state.selectedTeam);
+			if (team) {
+				filtered = filtered.filter(t => t.team === team.team_name);
+			}
+		}
+		return filterTasks(filtered);
+	}
+
 	function refreshView() {
 		let tasks = [];
 		if (state.navMode === "my-tasks") {
