@@ -45,7 +45,7 @@
 		refs.sidebarToggle = document.querySelector(".taskflow-sidebar-toggle");
 		refs.sidebar = document.querySelector(".taskflow-sidebar");
 		refs.navItems = document.querySelectorAll("[data-nav]");
-		refs.myTasksCount = document.querySelector("[data-my-tasks-count]");
+		refs.teamSwitcher = document.querySelector("[data-team-switcher]");
 	}
 
 	function bindEvents() {
@@ -62,7 +62,10 @@
 		refs.navItems.forEach((item) => {
 			item.addEventListener("click", () => {
 				const mode = item.dataset.nav;
-				if (mode === "my-tasks" || mode === "dashboard") {
+				if (mode === "team") {
+					setNavMode("team");
+					renderTeamView();
+				} else if (mode === "my-tasks" || mode === "dashboard") {
 					setNavMode(mode);
 				}
 			});
@@ -79,9 +82,10 @@
 			refreshView();
 		});
 
-		if (refs.sidebarToggle) {
-			refs.sidebarToggle.addEventListener("click", () => {
-				refs.sidebar.style.display = refs.sidebar.style.display === "none" ? "flex" : "none";
+		if (refs.teamSwitcher) {
+			refs.teamSwitcher.addEventListener("change", (e) => {
+				state.selectedTeam = e.target.value;
+				renderProjectList();
 			});
 		}
 
@@ -142,14 +146,96 @@
 
 	function setNavMode(mode) {
 		state.navMode = mode;
+		
+		// Hide all main view content areas
+		document.querySelectorAll('.taskflow-view-content').forEach(el => el.classList.add('taskflow-hidden'));
+		
 		if (mode === "my-tasks") {
 			state.selectedProject = null;
 			state.projectWorkspace = null;
+			refs.dashboardView.classList.remove('taskflow-hidden');
+		} else if (mode === "dashboard") {
+			refs.dashboardView.classList.remove('taskflow-hidden');
+		} else if (mode === "team") {
+			document.querySelector('[data-team-view]').classList.remove('taskflow-hidden');
 		}
+		
 		updateNavActive();
 		renderProjectList();
 		renderProjectWorkspace();
 	}
+
+	async function renderTeamView() {
+		const teamGrid = document.querySelector('[data-team-grid]');
+		teamGrid.innerHTML = '<div class="taskflow-empty">Loading team data...</div>';
+		
+		try {
+			const data = await apiCall("get_dashboard_data");
+			const members = data.global_team_data || [];
+			
+			teamGrid.innerHTML = members.map(m => `
+				<div class="taskflow-team-card" data-member-detail='${escapeHtml(JSON.stringify(m))}'>
+					<div class="taskflow-team-card-header">
+						<div class="taskflow-avatar">${initials(m.full_name)}</div>
+						<div>
+							<div class="taskflow-team-member-name">${escapeHtml(m.full_name)}</div>
+							<div class="taskflow-team-member-role">Team Member</div>
+						</div>
+					</div>
+					<div class="taskflow-team-stats">
+						<div class="taskflow-stat-box">
+							<span class="taskflow-stat-value">${m.pending_tasks}</span>
+							<span class="taskflow-stat-label">Pending</span>
+						</div>
+						<div class="taskflow-stat-box">
+							<span class="taskflow-stat-value">${m.completed_tasks}</span>
+							<span class="taskflow-stat-label">Done</span>
+						</div>
+					</div>
+					<div style="margin-top: 15px; font-size: 12px; color: #64748b;">
+						<strong>Projects:</strong> ${escapeHtml(m.projects || 'None')}
+					</div>
+				</div>
+			`).join('');
+
+			// Add detail modal trigger
+			teamGrid.querySelectorAll('[data-member-detail]').forEach(card => {
+				card.addEventListener('click', () => {
+					const member = JSON.parse(card.dataset.memberDetail);
+					showMemberDetail(member);
+				});
+			});
+		} catch (err) {
+			teamGrid.innerHTML = '<div class="taskflow-empty">Error loading team data.</div>';
+		}
+	}
+
+	function showMemberDetail(member) {
+		const backdrop = document.createElement('div');
+		backdrop.className = 'taskflow-modal-backdrop open';
+		backdrop.innerHTML = `
+			<div class="taskflow-modal">
+				<div style="margin-bottom: 20px;">
+					<h2>${escapeHtml(member.full_name)}</h2>
+					<p>Team member performance overview.</p>
+				</div>
+				<div style="display: grid; gap: 10px;">
+					<div class="taskflow-stat-box">
+						<span class="taskflow-stat-value">${member.total_tasks}</span>
+						<span class="taskflow-stat-label">Total Tasks Assigned</span>
+					</div>
+					<div class="taskflow-stat-box">
+						<span class="taskflow-stat-value">${member.pending_tasks}</span>
+						<span class="taskflow-stat-label">Pending</span>
+					</div>
+				</div>
+				<button class="taskflow-button secondary" style="margin-top: 20px;" onclick="this.parentElement.parentElement.remove()">Close</button>
+			</div>
+		`;
+		document.body.appendChild(backdrop);
+		backdrop.addEventListener('click', (e) => { if(e.target === backdrop) backdrop.remove(); });
+	}
+
 
 	function updateNavActive() {
 		refs.navItems.forEach(item => {
@@ -159,6 +245,7 @@
 	}
 
 	function renderBootstrap() {
+		renderTeamSwitcher();
 		renderProjectList();
 		
 		if (refs.myTasksCount && state.bootstrap) {
@@ -174,10 +261,22 @@
 		});
 	}
 
+	function renderTeamSwitcher() {
+		if (!refs.teamSwitcher) return;
+		const teams = (state.bootstrap && state.bootstrap.teams) || [];
+		refs.teamSwitcher.innerHTML = `<option value="all">All Teams</option>` +
+			teams.map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.team_name)}</option>`).join("");
+	}
+
 	function renderProjectList() {
-		const projects = (state.bootstrap && state.bootstrap.projects) || [];
+		let projects = (state.bootstrap && state.bootstrap.projects) || [];
+		
+		if (state.selectedTeam && state.selectedTeam !== "all") {
+			projects = projects.filter(p => p.team === state.selectedTeam);
+		}
+
 		if (!projects.length) {
-			refs.projectList.innerHTML = '<div class="taskflow-nav-item">No projects</div>';
+			refs.projectList.innerHTML = '<div class="taskflow-nav-item">No projects in this team</div>';
 			return;
 		}
 

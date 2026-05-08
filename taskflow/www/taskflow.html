@@ -44,6 +44,14 @@
       </button>
     </div>
     <div class="taskflow-section-header">
+      <span>TEAM</span>
+    </div>
+    <div style="padding: 0 12px 20px;">
+        <select class="taskflow-team-switcher" data-team-switcher style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--taskflow-border);">
+            <option value="all">All Teams</option>
+        </select>
+    </div>
+    <div class="taskflow-section-header">
       <span>PROJECTS</span>
       <button class="taskflow-btn-ghost" data-new-project>+</button>
     </div>
@@ -103,6 +111,14 @@
 
 		<!-- Content Area -->
 		<div class="taskflow-content" data-taskflow-root>
+			<!-- Team View -->
+			<div class="taskflow-team-view taskflow-view-content taskflow-hidden" data-team-view>
+				<div class="taskflow-section-header">
+					<h2>Team</h2>
+				</div>
+				<div class="taskflow-team-grid" data-team-grid></div>
+			</div>
+
 			<!-- Dashboard View -->
 			<div class="taskflow-dashboard-view taskflow-view-content" data-dashboard-view></div>
 

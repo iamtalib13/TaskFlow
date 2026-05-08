@@ -145,7 +145,30 @@
 
                 <h2 class="text-2xl font-semibold text-[#1d2128]">{{ profileCard.full_name || profileCard.user || 'Select member' }}</h2>
                 <p class="text-sm text-[#666d78]">{{ profileRoleLabel }}</p>
-                <p class="mt-3 text-sm leading-[1.6] text-[#4f5661]">{{ profileAbout }}</p>
+                
+                <div v-if="memberOverview" class="mt-6 space-y-4">
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-3 text-center">
+                      <p class="text-xs text-gray-500 uppercase">Pending Tasks</p>
+                      <p class="text-xl font-bold text-gray-900">{{ memberOverview.projects.reduce((sum, p) => sum + p.pending_tasks, 0) }}</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-3 text-center">
+                      <p class="text-xs text-gray-500 uppercase">Total Tasks</p>
+                      <p class="text-xl font-bold text-gray-900">{{ memberOverview.projects.reduce((sum, p) => sum + p.total_tasks, 0) }}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p class="mb-2 text-sm font-medium text-gray-900">Allocated Projects</p>
+                    <div class="space-y-2">
+                      <div v-for="p in memberOverview.projects" :key="p.name" class="flex items-center justify-between rounded-lg border border-gray-100 p-3">
+                        <span class="text-sm text-gray-700">{{ p.project_name }}</span>
+                        <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ p.pending_tasks }} pending</span>
+                      </div>
+                      <div v-if="memberOverview.projects.length === 0" class="text-sm text-gray-500 italic p-2">No projects allocated.</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </aside>
