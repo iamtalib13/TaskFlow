@@ -885,8 +885,28 @@ body.taskflow-portal-page {
 	color: var(--taskflow-text-muted);
 }
 
-/* Detail Modal Overrides */
+/* Detail Modal Styles */
 .taskflow-modal-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(15, 23, 42, 0.5);
 	backdrop-filter: blur(10px);
+	display: none;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+.taskflow-modal-backdrop.open { display: flex; }
+.taskflow-modal {
+	background: white;
+	width: 600px;
+	padding: 32px;
+	border-radius: 16px;
+	box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+.taskflow-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.taskflow-form label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px; }
+.taskflow-form input, .taskflow-form select, .taskflow-form textarea {
+	width: 100%; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 8px; outline: none;
 }
 
