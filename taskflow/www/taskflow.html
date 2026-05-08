@@ -52,8 +52,19 @@
         </select>
     </div>
     <div class="taskflow-section-header">
+      <span>TEAM</span>
+    </div>
+    <div style="padding: 0 12px 20px;">
+        <select class="taskflow-team-switcher" data-team-switcher style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--taskflow-border);">
+            <option value="all">All Teams</option>
+        </select>
+    </div>
+    <div class="taskflow-section-header">
       <span>PROJECTS</span>
       <button class="taskflow-btn-ghost" data-new-project>+</button>
+    </div>
+    <div style="padding: 0 12px 12px;">
+        <input type="text" data-project-search placeholder="Search projects..." style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--taskflow-border); font-size: 13px;">
     </div>
     <div class="taskflow-project-list" data-project-list>
       <!-- Dynamic Project List -->

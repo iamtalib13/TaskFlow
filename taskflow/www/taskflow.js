@@ -46,8 +46,8 @@
 		refs.sidebar = document.querySelector(".taskflow-sidebar");
 		refs.navItems = document.querySelectorAll("[data-nav]");
 		refs.teamSwitcher = document.querySelector("[data-team-switcher]");
-	}
-
+		refs.projectSearch = document.querySelector("[data-project-search]");
+		}
 	function bindEvents() {
 		refs.newProjectButtons.forEach((button) => {
 			button.addEventListener("click", () => openProjectModal());
@@ -85,6 +85,12 @@
 		if (refs.teamSwitcher) {
 			refs.teamSwitcher.addEventListener("change", (e) => {
 				state.selectedTeam = e.target.value;
+				renderProjectList();
+			});
+		}
+		if (refs.projectSearch) {
+			refs.projectSearch.addEventListener("input", (e) => {
+				state.projectQuery = e.target.value;
 				renderProjectList();
 			});
 		}
@@ -299,9 +305,14 @@
 		if (state.selectedTeam && state.selectedTeam !== "all") {
 			projects = projects.filter(p => p.team === state.selectedTeam);
 		}
+		
+		if (state.projectQuery) {
+			const q = state.projectQuery.toLowerCase();
+			projects = projects.filter(p => p.project_name.toLowerCase().includes(q));
+		}
 
 		if (!projects.length) {
-			refs.projectList.innerHTML = '<div class="taskflow-nav-item">No projects in this team</div>';
+			refs.projectList.innerHTML = '<div class="taskflow-nav-item">No projects found</div>';
 			return;
 		}
 
