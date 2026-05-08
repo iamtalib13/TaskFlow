@@ -150,10 +150,21 @@
 		// Hide all main view content areas
 		document.querySelectorAll('.taskflow-view-content').forEach(el => el.classList.add('taskflow-hidden'));
 		
+		// Reset/Toggle toolbar visibility
+		const toolbar = document.querySelector('.taskflow-toolbar');
+		const tabs = document.querySelector('.taskflow-tabs');
+		
 		if (mode === "my-tasks" || mode === "dashboard") {
+			toolbar.classList.remove('taskflow-hidden');
+			tabs.classList.remove('taskflow-hidden');
 			refs.dashboardView.classList.remove('taskflow-hidden');
 		} else if (mode === "team") {
+			toolbar.classList.add('taskflow-hidden');
+			tabs.classList.add('taskflow-hidden');
 			document.querySelector('[data-team-view]').classList.remove('taskflow-hidden');
+			refs.projectTitle.textContent = state.selectedTeam && state.selectedTeam !== "all" 
+				? (state.bootstrap.teams.find(t => t.name === state.selectedTeam)?.team_name || "Team") 
+				: "All Teams";
 		}
 		
 		updateNavActive();
@@ -166,20 +177,28 @@
 		teamGrid.innerHTML = '<div class="taskflow-empty">Loading team data...</div>';
 		
 		try {
-			const data = await apiCall("get_dashboard_data");
-			// Filter teams based on state.selectedTeam
-			let teams = state.bootstrap.teams || [];
+			// Ensure we have access to team members/data
+			const teams = state.bootstrap.teams || [];
+			const teamData = await apiCall("get_dashboard_data");
+			const allGlobalData = teamData.global_team_data || [];
+			
+			let activeTeams = teams;
 			if (state.selectedTeam && state.selectedTeam !== "all") {
-				teams = teams.filter(t => t.name === state.selectedTeam);
+				activeTeams = teams.filter(t => t.name === state.selectedTeam);
 			}
 			
-			teamGrid.innerHTML = teams.map(t => {
-				const members = (data.global_team_data || []).filter(m => m.projects.includes(t.team_name));
-				const totalPending = members.reduce((sum, m) => sum + m.pending_tasks, 0);
-				const totalDone = members.reduce((sum, m) => sum + m.completed_tasks, 0);
+			if (activeTeams.length === 0) {
+				teamGrid.innerHTML = '<div class="taskflow-empty">No teams found.</div>';
+				return;
+			}
+			
+			teamGrid.innerHTML = activeTeams.map(t => {
+				const members = allGlobalData.filter(m => m.projects && m.projects.includes(t.team_name));
+				const totalPending = members.reduce((sum, m) => sum + (m.pending_tasks || 0), 0);
+				const totalDone = members.reduce((sum, m) => sum + (m.completed_tasks || 0), 0);
 
 				return `
-					<div class="taskflow-team-card" data-team-detail='${escapeHtml(JSON.stringify(t))}'>
+					<div class="taskflow-team-card">
 						<div class="taskflow-team-card-header">
 							<div class="taskflow-avatar" style="background: #3b82f6; color: white;">${initials(t.team_name)}</div>
 							<div>
@@ -204,6 +223,7 @@
 				`;
 			}).join('');
 		} catch (err) {
+			console.error(err);
 			teamGrid.innerHTML = '<div class="taskflow-empty">Error loading team data.</div>';
 		}
 	}
