@@ -212,6 +212,8 @@
 			tabs.classList.remove('taskflow-hidden');
 			refs.dashboardView.classList.remove('taskflow-hidden');
 
+                state.selectedTeam = state.selectedTeam || "all";
+                updateUrlState();
 			// Show currently selected project context
 			const currentProject = state.selectedProject 
 				? state.bootstrap.projects.find(p => p.name === state.selectedProject)
@@ -221,9 +223,6 @@
 				refs.projectTitle.textContent = currentProject.project_name;
 				if (breadcrumb) breadcrumb.textContent = `Projects / ${currentProject.project_name}`;
 			}
-		} else if (mode === "team") {
-			toolbar.classList.add('taskflow-hidden');
-			tabs.classList.add('taskflow-hidden');
 			document.querySelector('[data-team-view]').classList.remove('taskflow-hidden');
 
 			const teamName = getSelectedTeamName();
