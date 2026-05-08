@@ -152,8 +152,6 @@
 		setLoading(true);
 		try {
 			state.bootstrap = await apiCall("get_portal_bootstrap");
-			if (state.navMode === "dashboard") {
-				const projectToSelect =
 					preferredProject ||
 		state.selectedTeam = state.selectedTeam || "all";
 		updateUrlState();
