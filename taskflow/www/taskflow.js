@@ -450,16 +450,41 @@
 
 	function renderTimeline(tasks) {
 		const grid = document.querySelector('[data-timeline-grid]');
-		if (!grid) return;
+		if (!grid || !tasks.length) {
+			grid.innerHTML = '<div class="taskflow-empty">No tasks with schedule data.</div>';
+			return;
+		}
 
-		const headers = ["09.00 AM", "10.00 AM", "11.00 AM", "12.00 PM"];
-		grid.innerHTML = headers.map(h => `<div class="taskflow-timeline-column-header">${h}</div>`).join("") + 
-			tasks.map(t => `
-				<div class="taskflow-timeline-task">
-					<span>${escapeHtml(t.task_title)}</span>
-					<div class="taskflow-assignee-avatar">${initials(t.assigned_to || "UA")}</div>
-				</div>
-			`).join("");
+		// Filter tasks with dates
+		const scheduledTasks = tasks.filter(t => t.start_date && t.due_date);
+		if (!scheduledTasks.length) {
+			grid.innerHTML = '<div class="taskflow-empty">No tasks with schedule data.</div>';
+			return;
+		}
+
+		const startDates = scheduledTasks.map(t => new Date(t.start_date).getTime());
+		const endDates = scheduledTasks.map(t => new Date(t.due_date).getTime());
+		const minDate = Math.min(...startDates);
+		const maxDate = Math.max(...endDates);
+		const duration = maxDate - minDate || 1;
+
+		grid.innerHTML = `
+			<div class="taskflow-timeline-header-row">
+				<span>${new Date(minDate).toLocaleDateString()}</span>
+				<span>${new Date(maxDate).toLocaleDateString()}</span>
+			</div>
+			${scheduledTasks.map((t, index) => {
+				const start = new Date(t.start_date).getTime();
+				const end = new Date(t.due_date).getTime();
+				const left = ((start - minDate) / duration) * 100;
+				const width = Math.max(((end - start) / duration) * 100, 5);
+				return `
+					<div class="taskflow-timeline-task" style="left: ${left}%; width: ${width}%; top: ${50 + (index * 50)}px;">
+						${escapeHtml(t.task_title)}
+					</div>
+				`;
+			}).join("")}
+		`;
 	}
 
 	function renderTaskArea(tasks) {
