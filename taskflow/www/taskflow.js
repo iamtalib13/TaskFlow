@@ -9,6 +9,8 @@
 		navMode: "dashboard",
 		taskView: window.localStorage.getItem("taskflow_task_view") || "dashboard",
 		taskQuery: "",
+		projectQuery: "",
+		selectedTeam: "all",
 		projectModalMode: "create",
 		taskModalMode: "create",
 	};
@@ -20,7 +22,8 @@
 	async function init() {
 		cacheDom();
 		bindEvents();
-		await loadBootstrap();
+		const initialParams = new URLSearchParams(window.location.search);
+		await loadBootstrap(initialParams.get("project"), { updateUrl: false });
 		loadStateFromUrl();
 	}
 
@@ -51,7 +54,11 @@
 				renderTeamView();
 			} else {
 				if (project) {
-					selectProject(project);
+					if (project === state.selectedProject && state.projectWorkspace) {
+						setNavMode("dashboard");
+					} else {
+						selectProject(project);
+					}
 				} else {
 					setNavMode(mode);
 				}
@@ -83,7 +90,9 @@
 		refs.navItems = document.querySelectorAll("[data-nav]");
 		refs.teamSwitcher = document.querySelector("[data-team-switcher]");
 		refs.projectSearch = document.querySelector("[data-project-search]");
-		}
+		refs.myTasksCount = document.querySelector("[data-my-tasks-count]");
+	}
+
 	function bindEvents() {
 		refs.newProjectButtons.forEach((button) => {
 			button.addEventListener("click", () => openProjectModal());
@@ -122,6 +131,11 @@
 			refs.teamSwitcher.addEventListener("change", (e) => {
 				state.selectedTeam = e.target.value;
 				renderProjectList();
+				if (state.navMode === 'team') {
+					renderTeamView();
+				} else {
+					refreshView();
+				}
 			});
 		}
 		if (refs.projectSearch) {
@@ -145,25 +159,30 @@
 				if (event.target === backdrop) closeModal(backdrop.dataset.modalName);
 			});
 		});
-		updateUrlState();
 	}
 
-	async function loadBootstrap(preferredProject) {
+	async function loadBootstrap(preferredProject, options = {}) {
 		setLoading(true);
 		try {
+			const shouldUpdateUrl = options.updateUrl !== false;
 			state.bootstrap = await apiCall("get_portal_bootstrap");
-					preferredProject ||
-		state.selectedTeam = state.selectedTeam || "all";
-		updateUrlState();
-					state.selectedProject ||
-					(state.bootstrap.projects[0] && state.bootstrap.projects[0].name);
-				if (projectToSelect) {
-					await selectProject(projectToSelect);
-				} else {
-					renderProjectWorkspace();
-				}
+			state.selectedTeam = state.selectedTeam || "all";
+			renderBootstrap();
+
+			if (refs.teamSwitcher) {
+				refs.teamSwitcher.value = state.selectedTeam;
+			}
+
+			const projectToSelect =
+				preferredProject ||
+				state.selectedProject ||
+				(state.bootstrap.projects[0] && state.bootstrap.projects[0].name);
+
+			if (projectToSelect) {
+				await selectProject(projectToSelect, { updateUrl: shouldUpdateUrl });
 			} else {
 				renderProjectWorkspace();
+				if (shouldUpdateUrl) updateUrlState();
 			}
 		} catch (error) {
 			showMessage(error.message || "Unable to load Taskflow portal.");
@@ -172,9 +191,10 @@
 		}
 	}
 
-	async function selectProject(projectName) {
+	async function selectProject(projectName, options = {}) {
 		state.navMode = "dashboard";
 		state.selectedProject = projectName;
+		if (options.updateUrl !== false) updateUrlState();
 		updateNavActive();
 		renderProjectList();
 		try {
@@ -196,43 +216,34 @@
 		const toolbar = document.querySelector('.taskflow-toolbar');
 		const tabs = document.querySelector('.taskflow-tabs');
 		const breadcrumb = document.querySelector("[data-project-breadcrumb]");
+		const teamView = document.querySelector("[data-team-view]");
 
-		// Reset states when switching
 		if (mode === "team") {
 			state.selectedProject = null;
 			state.projectWorkspace = null;
 		}
 
 		document.querySelectorAll('.taskflow-view-content').forEach(el => el.classList.add('taskflow-hidden'));
+		if (toolbar) toolbar.classList.toggle('taskflow-hidden', mode === "team");
+		if (tabs) tabs.classList.toggle('taskflow-hidden', mode === "team");
 
-		if (mode === "my-tasks" || mode === "dashboard") {
-			toolbar.classList.remove('taskflow-hidden');
-			tabs.classList.remove('taskflow-hidden');
-			refs.dashboardView.classList.remove('taskflow-hidden');
-
-                state.selectedTeam = state.selectedTeam || "all";
-                updateUrlState();
-			// Show currently selected project context
-			const currentProject = state.selectedProject 
-				? state.bootstrap.projects.find(p => p.name === state.selectedProject)
-				: (state.bootstrap.projects[0] || null);
-
-			if (currentProject) {
-				refs.projectTitle.textContent = currentProject.project_name;
-				if (breadcrumb) breadcrumb.textContent = `Projects / ${currentProject.project_name}`;
-			}
-			document.querySelector('[data-team-view]').classList.remove('taskflow-hidden');
-
+		if (mode === "team") {
+			state.selectedTeam = state.selectedTeam || "all";
 			const teamName = getSelectedTeamName();
-                state.selectedTeam = state.selectedTeam || "all";
-                updateUrlState();
 			refs.projectTitle.textContent = teamName;
 			if (breadcrumb) breadcrumb.textContent = `Team / ${teamName}`;
+			if (refs.newTaskButton) refs.newTaskButton.disabled = true;
+			if (teamView) teamView.classList.remove('taskflow-hidden');
+			updateNavActive();
+			renderProjectList();
+			updateUrlState();
+			return;
 		}
 
 		updateNavActive();
 		renderProjectList();
 		renderProjectWorkspace();
+		updateUrlState();
 	}
 	async function renderTeamView() {
 		const teamGrid = document.querySelector('[data-team-grid]');
@@ -436,20 +447,34 @@
 		refreshView();
 	}
 
+	// Add logic to globally filter tasks based on selected team
+	function getFilteredTasks(tasks) {
+		let filtered = tasks;
+		if (state.selectedTeam && state.selectedTeam !== "all") {
+			// Find team name from id
+			const team = state.bootstrap.teams.find(t => t.name === state.selectedTeam);
+			if (team) {
+				filtered = filtered.filter(t => t.team === team.team_name);
+			}
+		}
+		return filterTasks(filtered);
+	}
+
 	function refreshView() {
+		let tasks = [];
 		if (state.navMode === "my-tasks") {
-			const myTasks = (state.bootstrap.tasks || []).filter(t => 
+			tasks = (state.bootstrap.tasks || []).filter(t => 
 				t.assigned_to_user === state.bootstrap.user.user || 
 				t.assigned_to === state.bootstrap.user.full_name
 			);
-			renderTaskArea(myTasks);
 		} else if (state.projectWorkspace) {
-			renderTaskArea(state.projectWorkspace.tasks || []);
+			tasks = state.projectWorkspace.tasks || [];
+		} else if (state.navMode === "dashboard") {
+			// Global dashboard view
+			tasks = state.bootstrap.tasks || [];
 		}
-	}
 
-	function renderTaskArea(tasks) {
-		const visibleTasks = filterTasks(tasks);
+		const visibleTasks = getFilteredTasks(tasks);
 		
 		const views = [
 			{ el: refs.dashboardView, key: "dashboard" },
