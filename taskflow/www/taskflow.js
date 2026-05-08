@@ -150,11 +150,7 @@
 		// Hide all main view content areas
 		document.querySelectorAll('.taskflow-view-content').forEach(el => el.classList.add('taskflow-hidden'));
 		
-		if (mode === "my-tasks") {
-			state.selectedProject = null;
-			state.projectWorkspace = null;
-			refs.dashboardView.classList.remove('taskflow-hidden');
-		} else if (mode === "dashboard") {
+		if (mode === "my-tasks" || mode === "dashboard") {
 			refs.dashboardView.classList.remove('taskflow-hidden');
 		} else if (mode === "team") {
 			document.querySelector('[data-team-view]').classList.remove('taskflow-hidden');
@@ -171,40 +167,39 @@
 		
 		try {
 			const data = await apiCall("get_dashboard_data");
-			const members = data.global_team_data || [];
+			// Using the teams list from bootstrap if available or calculating from global_team_data
+			const teams = state.bootstrap.teams || [];
 			
-			teamGrid.innerHTML = members.map(m => `
-				<div class="taskflow-team-card" data-member-detail='${escapeHtml(JSON.stringify(m))}'>
-					<div class="taskflow-team-card-header">
-						<div class="taskflow-avatar">${initials(m.full_name)}</div>
-						<div>
-							<div class="taskflow-team-member-name">${escapeHtml(m.full_name)}</div>
-							<div class="taskflow-team-member-role">Team Member</div>
-						</div>
-					</div>
-					<div class="taskflow-team-stats">
-						<div class="taskflow-stat-box">
-							<span class="taskflow-stat-value">${m.pending_tasks}</span>
-							<span class="taskflow-stat-label">Pending</span>
-						</div>
-						<div class="taskflow-stat-box">
-							<span class="taskflow-stat-value">${m.completed_tasks}</span>
-							<span class="taskflow-stat-label">Done</span>
-						</div>
-					</div>
-					<div style="margin-top: 15px; font-size: 12px; color: #64748b;">
-						<strong>Projects:</strong> ${escapeHtml(m.projects || 'None')}
-					</div>
-				</div>
-			`).join('');
+			teamGrid.innerHTML = teams.map(t => {
+				const members = (data.global_team_data || []).filter(m => m.projects.includes(t.team_name));
+				const totalPending = members.reduce((sum, m) => sum + m.pending_tasks, 0);
+				const totalDone = members.reduce((sum, m) => sum + m.completed_tasks, 0);
 
-			// Add detail modal trigger
-			teamGrid.querySelectorAll('[data-member-detail]').forEach(card => {
-				card.addEventListener('click', () => {
-					const member = JSON.parse(card.dataset.memberDetail);
-					showMemberDetail(member);
-				});
-			});
+				return `
+					<div class="taskflow-team-card" data-team-detail='${escapeHtml(JSON.stringify(t))}'>
+						<div class="taskflow-team-card-header">
+							<div class="taskflow-avatar" style="background: #3b82f6; color: white;">${initials(t.team_name)}</div>
+							<div>
+								<div class="taskflow-team-member-name">${escapeHtml(t.team_name)}</div>
+								<div class="taskflow-team-member-role">${t.team_code}</div>
+							</div>
+						</div>
+						<div class="taskflow-team-stats">
+							<div class="taskflow-stat-box">
+								<span class="taskflow-stat-value">${totalPending}</span>
+								<span class="taskflow-stat-label">Pending</span>
+							</div>
+							<div class="taskflow-stat-box">
+								<span class="taskflow-stat-value">${totalDone}</span>
+								<span class="taskflow-stat-label">Done</span>
+							</div>
+						</div>
+						<div style="margin-top: 15px; font-size: 12px; color: #64748b;">
+							<strong>Members:</strong> ${members.length}
+						</div>
+					</div>
+				`;
+			}).join('');
 		} catch (err) {
 			teamGrid.innerHTML = '<div class="taskflow-empty">Error loading team data.</div>';
 		}
