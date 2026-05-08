@@ -167,8 +167,11 @@
 		
 		try {
 			const data = await apiCall("get_dashboard_data");
-			// Using the teams list from bootstrap if available or calculating from global_team_data
-			const teams = state.bootstrap.teams || [];
+			// Filter teams based on state.selectedTeam
+			let teams = state.bootstrap.teams || [];
+			if (state.selectedTeam && state.selectedTeam !== "all") {
+				teams = teams.filter(t => t.name === state.selectedTeam);
+			}
 			
 			teamGrid.innerHTML = teams.map(t => {
 				const members = (data.global_team_data || []).filter(m => m.projects.includes(t.team_name));
