@@ -21,6 +21,42 @@
 		cacheDom();
 		bindEvents();
 		await loadBootstrap();
+		loadStateFromUrl();
+	}
+
+	function updateUrlState() {
+		const params = new URLSearchParams();
+		params.set("mode", state.navMode);
+		if (state.selectedProject) params.set("project", state.selectedProject);
+		if (state.selectedTeam && state.selectedTeam !== "all") params.set("team", state.selectedTeam);
+		
+		const newUrl = `${window.location.pathname}?${params.toString()}`;
+		window.history.pushState(state, "", newUrl);
+	}
+
+	function loadStateFromUrl() {
+		const params = new URLSearchParams(window.location.search);
+		const mode = params.get("mode");
+		const project = params.get("project");
+		const team = params.get("team");
+
+		if (mode) {
+			state.navMode = mode;
+			if (mode === "team") {
+				if (team) {
+					state.selectedTeam = team;
+					refs.teamSwitcher.value = team;
+				}
+				setNavMode("team");
+				renderTeamView();
+			} else {
+				if (project) {
+					selectProject(project);
+				} else {
+					setNavMode(mode);
+				}
+			}
+		}
 	}
 
 	function cacheDom() {
@@ -109,6 +145,7 @@
 				if (event.target === backdrop) closeModal(backdrop.dataset.modalName);
 			});
 		});
+		updateUrlState();
 	}
 
 	async function loadBootstrap(preferredProject) {
@@ -120,6 +157,8 @@
 			if (state.navMode === "dashboard") {
 				const projectToSelect =
 					preferredProject ||
+		state.selectedTeam = state.selectedTeam || "all";
+		updateUrlState();
 					state.selectedProject ||
 					(state.bootstrap.projects[0] && state.bootstrap.projects[0].name);
 				if (projectToSelect) {
