@@ -79,8 +79,6 @@
 
 		refreshView();
 	}
-		}
-	}
 
 	function cacheDom() {
 		refs.root = document.querySelector("[data-taskflow-root]");
@@ -274,10 +272,10 @@
 			const allGlobalData = data.global_team_data || [];
 			let filteredMembers = allGlobalData;
 			if (state.selectedTeam && state.selectedTeam !== "all") {
-				const team = state.bootstrap.teams.find(t => t.name === state.selectedTeam);
-				if (team) {
-					filteredMembers = allGlobalData.filter(m => m.projects && m.projects.includes(team.team_name));
-				}
+				filteredMembers = allGlobalData.filter((member) => {
+					const teamIds = Array.isArray(member.team_ids) ? member.team_ids : [];
+					return teamIds.includes(state.selectedTeam);
+				});
 			}
 
 			if (filteredMembers.length === 0) {
@@ -450,17 +448,18 @@
 		renderTaskArea(tasks);
 	}
 
-	function setTaskView(view) {
-		state.taskView = view;
-		window.localStorage.setItem("taskflow_task_view", state.taskView);
-		
-		if (refs.viewToggle) {
-			refs.viewToggle.querySelectorAll(".taskflow-tab").forEach(tab => {
-				tab.classList.toggle("active", tab.dataset.view === state.taskView);
-			});
-		}
+	function renderTimeline(tasks) {
+		const grid = document.querySelector('[data-timeline-grid]');
+		if (!grid) return;
 
-		refreshView();
+		const headers = ["09.00 AM", "10.00 AM", "11.00 AM", "12.00 PM"];
+		grid.innerHTML = headers.map(h => `<div class="taskflow-timeline-column-header">${h}</div>`).join("") + 
+			tasks.map(t => `
+				<div class="taskflow-timeline-task">
+					<span>${escapeHtml(t.task_title)}</span>
+					<div class="taskflow-assignee-avatar">${initials(t.assigned_to || "UA")}</div>
+				</div>
+			`).join("");
 	}
 
 	function renderTaskArea(tasks) {
@@ -469,7 +468,8 @@
 		const views = [
 			{ el: refs.dashboardView, key: "dashboard" },
 			{ el: document.querySelector(".taskflow-board-wrapper"), key: "kanban" },
-			{ el: refs.listView, key: "list" }
+			{ el: document.querySelector(".taskflow-list-wrapper"), key: "list" },
+			{ el: document.querySelector(".taskflow-timeline-wrapper"), key: "timeline" }
 		];
 
 		views.forEach(v => {
@@ -482,6 +482,8 @@
 			renderBoard(visibleTasks);
 		} else if (state.taskView === "dashboard") {
 			renderDashboard(visibleTasks);
+		} else if (state.taskView === "timeline") {
+			renderTimeline(visibleTasks);
 		}
 	}
 

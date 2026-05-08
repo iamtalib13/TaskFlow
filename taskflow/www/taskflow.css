@@ -807,7 +807,42 @@ body.taskflow-portal-page {
 	display: none !important;
 }
 
-/* Team View */
+/* Timeline View */
+.taskflow-timeline-wrapper { background: white; padding: 24px; border-radius: 16px; border: 1px solid var(--taskflow-border); }
+.taskflow-timeline-header { margin-bottom: 24px; }
+.taskflow-timeline-header h3 { margin: 0; font-size: 18px; }
+.taskflow-timeline-header p { margin: 4px 0 0; color: var(--taskflow-text-muted); font-size: 13px; }
+
+.taskflow-timeline-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-left: 1px solid #f1f5f9;
+    position: relative;
+    padding-top: 20px;
+}
+.taskflow-timeline-column-header {
+    font-size: 11px;
+    color: var(--taskflow-text-muted);
+    font-weight: 700;
+    margin-bottom: 15px;
+    border-bottom: 1px dashed #e2e8f0;
+    padding-bottom: 8px;
+}
+.taskflow-timeline-task {
+    height: 36px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 500;
+    position: relative;
+    border-left: 4px solid var(--taskflow-primary);
+    background: #f1f5f9;
+}
+.taskflow-timeline-task .taskflow-assignee-avatar { width: 24px; height: 24px; font-size: 10px; margin-left: 8px; }
+
 .taskflow-team-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
