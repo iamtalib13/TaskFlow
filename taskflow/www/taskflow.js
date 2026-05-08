@@ -162,16 +162,33 @@
 		const tabs = document.querySelector('.taskflow-tabs');
 		const breadcrumb = document.querySelector("[data-project-breadcrumb]");
 
+		// Reset states when switching
+		if (mode === "team") {
+			state.selectedProject = null;
+			state.projectWorkspace = null;
+		}
+
 		document.querySelectorAll('.taskflow-view-content').forEach(el => el.classList.add('taskflow-hidden'));
 
 		if (mode === "my-tasks" || mode === "dashboard") {
 			toolbar.classList.remove('taskflow-hidden');
 			tabs.classList.remove('taskflow-hidden');
 			refs.dashboardView.classList.remove('taskflow-hidden');
+
+			// Show currently selected project context
+			const currentProject = state.selectedProject 
+				? state.bootstrap.projects.find(p => p.name === state.selectedProject)
+				: (state.bootstrap.projects[0] || null);
+
+			if (currentProject) {
+				refs.projectTitle.textContent = currentProject.project_name;
+				if (breadcrumb) breadcrumb.textContent = `Projects / ${currentProject.project_name}`;
+			}
 		} else if (mode === "team") {
 			toolbar.classList.add('taskflow-hidden');
 			tabs.classList.add('taskflow-hidden');
 			document.querySelector('[data-team-view]').classList.remove('taskflow-hidden');
+
 			const teamName = getSelectedTeamName();
 			refs.projectTitle.textContent = teamName;
 			if (breadcrumb) breadcrumb.textContent = `Team / ${teamName}`;
@@ -181,7 +198,6 @@
 		renderProjectList();
 		renderProjectWorkspace();
 	}
-
 	async function renderTeamView() {
 		const teamGrid = document.querySelector('[data-team-grid]');
 		const header = document.querySelector('[data-team-view] h2');
