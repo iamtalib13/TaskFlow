@@ -32,6 +32,7 @@
 		params.set("mode", state.navMode);
 		if (state.selectedProject) params.set("project", state.selectedProject);
 		if (state.selectedTeam && state.selectedTeam !== "all") params.set("team", state.selectedTeam);
+		if (state.taskView) params.set("view", state.taskView);
 		
 		const newUrl = `${window.location.pathname}?${params.toString()}`;
 		window.history.pushState(state, "", newUrl);
@@ -42,27 +43,42 @@
 		const mode = params.get("mode");
 		const project = params.get("project");
 		const team = params.get("team");
+		const view = params.get("view");
+
+		if (view) state.taskView = view;
 
 		if (mode) {
 			state.navMode = mode;
 			if (mode === "team") {
 				if (team) {
 					state.selectedTeam = team;
-					refs.teamSwitcher.value = team;
+					if (refs.teamSwitcher) refs.teamSwitcher.value = team;
 				}
 				setNavMode("team");
 				renderTeamView();
 			} else {
 				if (project) {
-					if (project === state.selectedProject && state.projectWorkspace) {
-						setNavMode("dashboard");
-					} else {
-						selectProject(project);
-					}
+					selectProject(project);
 				} else {
 					setNavMode(mode);
 				}
 			}
+		}
+	}
+
+	function setTaskView(view) {
+		state.taskView = view;
+		updateUrlState();
+		window.localStorage.setItem("taskflow_task_view", state.taskView);
+		
+		if (refs.viewToggle) {
+			refs.viewToggle.querySelectorAll(".taskflow-tab").forEach(tab => {
+				tab.classList.toggle("active", tab.dataset.view === state.taskView);
+			});
+		}
+
+		refreshView();
+	}
 		}
 	}
 
