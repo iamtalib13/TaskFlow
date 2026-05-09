@@ -1252,11 +1252,14 @@ return `
 		const sortedTasks = [...tasks].sort((a, b) => (Number(a.sequence || 0) - Number(b.sequence || 0)));
 		
 		const statusFilter = `
-			<div style="padding: 16px 0; display: flex; align-items: center; gap: 8px;">
-				<span style="font-size: 13px; color: var(--taskflow-text-muted);">Status Filter:</span>
-				<select multiple data-status-filter style="padding: 6px; border-radius: 6px; border: 1px solid var(--taskflow-border);">
-					${allStatuses.map(s => `<option value="${escapeHtml(s)}" ${selectedStatuses.includes(s) ? 'selected' : ''}>${escapeHtml(s)}</option>`).join("")}
-				</select>
+			<div style="padding: 16px 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+				<span style="font-size: 13px; color: var(--taskflow-text-muted);">Status:</span>
+				${allStatuses.map(s => `
+					<label style="display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer;">
+						<input type="checkbox" data-status-filter="${escapeHtml(s)}" ${selectedStatuses.includes(s) ? 'checked' : ''}>
+						${escapeHtml(s)}
+					</label>
+				`).join("")}
 			</div>
 		`;
 		
@@ -1290,14 +1293,13 @@ return `
 			</div>
 		`;
 
-		refs.listView.querySelector("[data-status-filter]").addEventListener("change", (e) => {
-			const options = e.target.options;
-			const selected = [];
-			for (let i = 0; i < options.length; i++) {
-				if (options[i].selected) selected.push(options[i].value);
-			}
-			state.selectedStatuses = selected;
-			refreshView();
+		refs.listView.querySelectorAll("[data-status-filter]").forEach(checkbox => {
+			checkbox.addEventListener("change", () => {
+				const checked = Array.from(refs.listView.querySelectorAll("[data-status-filter]:checked"))
+					.map(c => c.dataset.statusFilter);
+				state.selectedStatuses = checked;
+				refreshView();
+			});
 		});
 
 		refs.listView.querySelectorAll("[data-task-edit]").forEach((row) => {
