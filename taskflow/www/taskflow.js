@@ -907,8 +907,9 @@
 			const rate = totalM ? Math.round((done / totalM) * 100) : 0;
 			const highPriority = memberTasks.filter(t => ["High", "Critical"].includes(t.priority)).length;
 			
-			const loadClass = totalM > 8 ? 'load-high' : totalM > 4 ? 'load-medium' : 'load-low';
-			const loadLabel = totalM > 8 ? 'high load' : totalM > 4 ? 'medium load' : 'low load';
+			const loadCount = pending; // Use pending tasks for load calculation
+			const loadClass = loadCount > 8 ? 'load-high' : loadCount > 4 ? 'load-medium' : 'load-low';
+			const loadLabel = loadCount > 8 ? 'high load' : loadCount > 4 ? 'medium load' : 'low load';
 			const score = rate; // Placeholder for performance score
 return `
 	<div class="taskflow-perf-card">
