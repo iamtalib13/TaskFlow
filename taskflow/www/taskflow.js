@@ -332,11 +332,9 @@
 
 	async function selectProject(projectName, options = {}) {
 		const requestId = ++state.projectRequestId;
-		state.navMode = "dashboard";
 		state.selectedProject = projectName;
+		setNavMode("dashboard", { updateUrl: false, replace: options.replace });
 		if (options.updateUrl !== false) updateUrlState();
-		updateNavActive();
-		renderProjectList();
 		try {
 			const workspace = await apiCall("get_project_workspace", { project: projectName });
 			if (requestId !== state.projectRequestId) return;
@@ -523,6 +521,7 @@
                             <th style="padding: 12px; text-align: left; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0; width: 50px;">Sr No</th>
                             <th style="padding: 12px; text-align: left; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Project Name</th>
                             <th style="padding: 12px; text-align: center; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Assigned</th>
+                            <th style="padding: 12px; text-align: center; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Pending</th>
                             <th style="padding: 12px; text-align: center; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Overdue</th>
                             <th style="padding: 12px; text-align: center; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Status</th>
                         </tr>
@@ -533,6 +532,7 @@
                                 <td style="padding: 12px; color: #64748b;">${i + 1}</td>
                                 <td style="padding: 12px; font-weight: 500;">${escapeHtml(p.name)}</td>
                                 <td style="padding: 12px; text-align: center; font-weight: 600;">${p.assigned}</td>
+                                <td style="padding: 12px; text-align: center; font-weight: 600;">${p.pending ?? p.assigned ?? 0}</td>
                                 <td style="padding: 12px; text-align: center; font-weight: 600; color: ${p.overdue > 0 ? '#ef4444' : '#64748b'};">${p.overdue}</td>
                                 <td style="padding: 12px; text-align: center;">
                                     <span style="background: ${p.status === 'Active' ? '#dcfce7' : '#f1f5f9'}; color: ${p.status === 'Active' ? '#166534' : '#475569'}; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">

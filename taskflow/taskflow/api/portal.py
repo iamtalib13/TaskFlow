@@ -371,12 +371,13 @@ def get_dashboard_data(team: str = None):
 		filters={"status": ["!=", "Completed"], "assigned_to": ["!=", ""]}
 	)
 	
-	stats_by_emp_project = defaultdict(lambda: {"assigned": 0, "overdue": 0})
+	stats_by_emp_project = defaultdict(lambda: {"assigned": 0, "pending": 0, "overdue": 0})
 	today = frappe.utils.nowdate()
 	for t in tasks:
 		if t.assigned_to and t.project:
 			key = (t.assigned_to, t.project)
 			stats_by_emp_project[key]["assigned"] += 1
+			stats_by_emp_project[key]["pending"] += 1
 			if t.due_date and frappe.utils.getdate(t.due_date) < frappe.utils.getdate(today):
 				stats_by_emp_project[key]["overdue"] += 1
 
@@ -389,6 +390,7 @@ def get_dashboard_data(team: str = None):
 			project_stats.append({
 				"name": p_name,
 				"assigned": stats["assigned"],
+				"pending": stats["pending"],
 				"overdue": stats["overdue"],
 				"status": "Active"
 			})
@@ -639,4 +641,3 @@ def toggle_team_member_assignment(employee: str, project: str):
 	
 	doc.save()
 	return "ok"
-
