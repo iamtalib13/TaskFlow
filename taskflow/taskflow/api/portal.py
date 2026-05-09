@@ -321,10 +321,42 @@ def get_project_workspace(project: str):
 	user_image_map = {u.name: u.user_image for u in user_images}
 	project_map = {project_doc.name: project_doc.project_name}
 
+	# Get project-specific members
+	project_members = project_doc.project_team_members
+	employees = {row.employee for row in project_members if row.employee}
+	employee_data = {
+		row.name: {"name": row.employee_name, "user": row.user_id}
+		for row in frappe.get_all(
+			"Employee",
+			filters={"name": ["in", list(employees)]} if employees else {"name": "__missing__"},
+			fields=["name", "employee_name", "user_id"],
+		)
+	}
+
+	user_ids = [data["user"] for data in employee_data.values() if data["user"]]
+	user_images = {}
+	if user_ids:
+		user_images = {
+			u.name: u.user_image
+			for u in frappe.get_all("User", filters={"name": ["in", user_ids]}, fields=["name", "user_image"])
+		}
+
+	team_member_data = []
+	for member in project_members:
+		emp_info = employee_data.get(member.employee, {})
+		user_id = emp_info.get("user")
+		team_member_data.append({
+			"employee": member.employee,
+			"user": user_id,
+			"user_image": user_images.get(user_id) if user_id else None,
+			"label": emp_info.get("name") or member.employee,
+			"team_role": member.team_role,
+		})
+
 	return {
 		"project": _serialize_project(project_doc, _get_project_task_counts([project])),
 		"tasks": [_serialize_task(frappe.get_doc("Taskflow Task", task.name), project_map, user_image_map) for task in tasks],
-		"team_members": _get_team_member_options([project_doc.team]),
+		"team_members": team_member_data,
 	}
 
 
