@@ -28,6 +28,8 @@
   "expected_hours",
   "is_template",
   "is_archived",
+  "project_team_members_section",
+  "project_team_members",
   "project_description_section",
   "description"
  ],
@@ -156,6 +158,17 @@
    "fieldname": "is_archived",
    "fieldtype": "Check",
    "label": "Is Archived"
+  },
+  {
+   "fieldname": "project_team_members_section",
+   "fieldtype": "Section Break",
+   "label": "Project Team Members"
+  },
+  {
+   "fieldname": "project_team_members",
+   "fieldtype": "Table",
+   "label": "Project Team Members",
+   "options": "Taskflow Team Member"
   },
   {
    "fieldname": "project_description_section",

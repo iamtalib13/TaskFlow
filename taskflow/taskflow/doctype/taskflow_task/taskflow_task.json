@@ -116,7 +116,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "\nOpen\nIn Progress\nReview\nBlocked\nCompleted\nCancelled",
+   "options": "\nOpen\nIn Progress\nReview\nOn Hold\nCompleted\nCancelled",
    "reqd": 1
   },
   {

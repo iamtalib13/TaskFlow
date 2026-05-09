@@ -16,18 +16,29 @@
 	box-sizing: border-box;
 }
 
+/* DEBUG: Visualize all elements to find overlaying barriers */
+/* 
+* { outline: 1px solid red !important; }
+*/
+
+/* Remove overflow: hidden from body to check if it's clipping the clickable area */
 body.taskflow-portal-page {
 	margin: 0;
 	font-family: 'Inter', system-ui, -apple-system, sans-serif;
 	background-color: var(--taskflow-bg);
 	color: var(--taskflow-text);
-	overflow: hidden; /* Main SPA scroll handled internally */
+	overflow: auto; 
 }
+
 
 .taskflow-container {
 	display: flex;
 	height: 100vh;
 	width: 100vw;
+}
+
+.taskflow-container.taskflow-sidebars-collapsed .taskflow-sidebar-projects {
+	display: none;
 }
 
 /* Sidebar Nav */
@@ -49,7 +60,7 @@ body.taskflow-portal-page {
 
 /* Sidebar Projects */
 .taskflow-sidebar-projects {
-	width: 220px; /* Adjusted width for the second sidebar */
+	width: 280px; /* Standard sidebar width */
 	background: var(--taskflow-sidebar-bg);
 	border-right: 1px solid var(--taskflow-border);
 	display: flex;
@@ -99,6 +110,11 @@ body.taskflow-portal-page {
 
 .taskflow-btn-primary:hover {
 	background: var(--taskflow-primary-hover);
+}
+
+button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
 }
 
 .taskflow-btn-primary.full-width {
@@ -219,6 +235,15 @@ body.taskflow-portal-page {
 	padding: 0 4px;
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.taskflow-nav-item:focus-visible {
+	outline: 2px solid var(--taskflow-primary);
+	outline-offset: 2px;
+}
+
 .taskflow-project-item {
 	display: flex;
 	align-items: center;
@@ -228,6 +253,14 @@ body.taskflow-portal-page {
 	color: var(--taskflow-text);
 	cursor: pointer;
 	margin-bottom: 4px;
+	gap: 4px;
+}
+
+.taskflow-project-name {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .taskflow-project-item:hover, .taskflow-project-item.active {
@@ -329,6 +362,19 @@ body.taskflow-portal-page {
 	height: 36px;
 	border-radius: 50%;
 	object-fit: cover;
+}
+
+.taskflow-user-profile {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	cursor: default;
+}
+
+.taskflow-user-name {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--taskflow-text);
 }
 
 /* Toolbar */
@@ -434,7 +480,21 @@ body.taskflow-portal-page {
 .taskflow-content {
 	flex: 1;
 	padding: 24px 32px;
-	overflow-y: auto;
+	overflow-y: auto; /* Default scroll for Dashboard, List, etc. */
+}
+
+/* Special layout for Kanban to fix headers */
+.taskflow-content.is-kanban {
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.taskflow-board-wrapper {
+	overflow-x: auto;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
 }
 
 /* Kanban Board Redesign */
@@ -442,24 +502,45 @@ body.taskflow-portal-page {
 	display: flex;
 	gap: 24px;
 	align-items: flex-start;
+	height: 100%;
 }
 
 .taskflow-column {
-	width: 280px;
+	width: 300px;
+	height: 100%; /* Fix column height to board height */
 	flex-shrink: 0;
 	background: #f1f5f9;
 	border-radius: 12px;
-	padding: 16px;
+	padding: 12px;
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	transition: background 0.2s, outline-color 0.2s;
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+}
+
+.taskflow-column-dragging {
+	opacity: 0.5;
+	border: 2px dashed var(--taskflow-primary);
+	cursor: grabbing;
+}
+
+.taskflow-card-drop-target {
+	border-top: 4px solid var(--taskflow-primary) !important;
+}
+
+.taskflow-column-drop-target {
+	background: #e0f2fe;
+	outline: 2px dashed var(--taskflow-primary);
+	outline-offset: -4px;
 }
 
 .taskflow-column-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 4px;
+	padding: 4px 4px 12px;
+	flex-shrink: 0;
 }
 
 .taskflow-column-title-box {
@@ -495,6 +576,39 @@ body.taskflow-portal-page {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+	overflow-y: auto; /* Enable vertical scroll */
+	flex-grow: 1;    /* Take up remaining space */
+	padding-right: 4px; /* Space for scrollbar */
+	min-height: 50px;
+	scrollbar-width: thin;
+}
+
+.taskflow-task-list::-webkit-scrollbar {
+	width: 5px;
+}
+
+.taskflow-task-list::-webkit-scrollbar-thumb {
+	background: #cbd5e1;
+	border-radius: 10px;
+}
+
+.taskflow-add-task-inline {
+	width: 100%;
+	background: transparent;
+	border: none;
+	color: var(--taskflow-text-muted);
+	padding: 8px;
+	text-align: left;
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	border-radius: 8px;
+	flex-shrink: 0;
+	margin-bottom: 8px;
+}
+
+.taskflow-add-task-inline:hover {
+	background: #e2e8f0;
 }
 
 /* Taskflow Task Card */
@@ -510,6 +624,67 @@ body.taskflow-portal-page {
 
 .taskflow-card:hover {
 	border-color: var(--taskflow-primary);
+}
+
+.taskflow-card-draggable {
+	cursor: grab;
+}
+
+.taskflow-card-dragging {
+	opacity: 0.4;
+	transform: scale(0.95);
+	border: 1px dashed var(--taskflow-primary) !important;
+	cursor: grabbing;
+}
+
+.taskflow-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 6px;
+	gap: 8px;
+}
+
+.taskflow-card-project {
+	font-size: 10px;
+	font-weight: 700;
+	color: var(--taskflow-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.taskflow-card-status-select {
+	font-size: 10px;
+	padding: 2px 4px;
+	border: 1px solid var(--taskflow-border);
+	border-radius: 4px;
+	background: #f8fafc;
+	color: var(--taskflow-text-muted);
+	cursor: pointer;
+	max-width: 100px;
+	outline: none;
+}
+
+.taskflow-card-status-select:hover {
+	border-color: var(--taskflow-primary);
+	color: var(--taskflow-text);
+}
+
+body.taskflow-dragging * {
+	pointer-events: none;
+}
+
+body.taskflow-dragging .taskflow-column,
+body.taskflow-dragging .taskflow-column * {
+	pointer-events: auto;
+}
+
+body.taskflow-dragging .taskflow-card-dragging {
+	pointer-events: none;
 }
 
 .taskflow-card-title {
@@ -676,6 +851,12 @@ body.taskflow-portal-page {
 	overflow: hidden;
 }
 
+.taskflow-progress-fill {
+	height: 100%;
+	border-radius: inherit;
+	transition: width 0.2s ease;
+}
+
 .taskflow-member-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -798,7 +979,166 @@ body.taskflow-portal-page {
 	font-weight: 600;
 }
 
-/* Visibility Helpers */
+/* Performance Cards (Light Theme) */
+.taskflow-perf-list {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.taskflow-perf-card {
+	background: white;
+	border-radius: 16px;
+	padding: 24px;
+	color: var(--taskflow-text);
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	border: 1px solid var(--taskflow-border);
+	box-shadow: var(--taskflow-shadow);
+}
+
+.taskflow-perf-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+}
+
+.taskflow-perf-user {
+	display: flex;
+	gap: 16px;
+	align-items: center;
+}
+
+.taskflow-perf-user-info {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.taskflow-perf-name-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.taskflow-perf-name {
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--taskflow-text);
+}
+
+.taskflow-perf-subtext {
+	font-size: 13px;
+	color: var(--taskflow-text-muted);
+}
+
+.taskflow-perf-badge {
+	padding: 6px 16px;
+	border-radius: 8px;
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: capitalize;
+}
+
+.taskflow-perf-badge.excellent {
+	background: #ecfdf5;
+	color: #10b981;
+	border: 1px solid #d1fae5;
+}
+
+.taskflow-perf-badge.good {
+	background: #eff6ff;
+	color: #3b82f6;
+	border: 1px solid #dbeafe;
+}
+
+.taskflow-perf-badge.average {
+	background: #fffbeb;
+	color: #f59e0b;
+	border: 1px solid #fef3c7;
+}
+
+.taskflow-perf-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+}
+
+.taskflow-perf-stat-box {
+	background: #f8fafc;
+	padding: 16px;
+	border-radius: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	border: 1px solid var(--taskflow-border);
+}
+
+.taskflow-perf-stat-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--taskflow-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.taskflow-perf-stat-value {
+	font-size: 24px;
+	font-weight: 800;
+	color: var(--taskflow-text);
+}
+
+.taskflow-perf-stat-subvalue {
+	font-size: 12px;
+	color: var(--taskflow-text-muted);
+}
+
+.taskflow-perf-progress-section {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.taskflow-perf-progress-header {
+	display: flex;
+	justify-content: space-between;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--taskflow-text-muted);
+}
+
+.taskflow-progress-bg.perf-bg {
+	background: #f1f5f9;
+}
+
+.taskflow-progress-fill.perf-fill {
+	background: #10b981;
+}
+
+/* Role-based labels */
+.taskflow-role-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.taskflow-role-golden {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.taskflow-role-blue {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+.taskflow-hidden {
+	display: none !important;
+}
+
 .taskflow-view-content {
 	display: block;
 }
@@ -920,6 +1260,25 @@ body.taskflow-portal-page {
 	color: var(--taskflow-text-muted);
 }
 
+.taskflow-empty {
+	width: 100%;
+	padding: 32px;
+	border: 1px dashed var(--taskflow-border);
+	border-radius: 12px;
+	background: white;
+	color: var(--taskflow-text-muted);
+	text-align: center;
+	font-size: 14px;
+}
+
+.taskflow-trend-neutral {
+	color: var(--taskflow-text-muted);
+}
+
+.taskflow-table-row:hover {
+	background: #f8fafc;
+}
+
 /* Detail Modal Styles */
 .taskflow-modal-backdrop {
 	position: fixed;
@@ -932,16 +1291,299 @@ body.taskflow-portal-page {
 	z-index: 1000;
 }
 .taskflow-modal-backdrop.open { display: flex; }
+.taskflow-comment-form textarea {
+	width: 100%;
+	padding: 12px;
+	border: 1px solid var(--taskflow-border);
+	border-radius: 8px;
+	outline: none;
+	resize: vertical;
+	font-size: 14px;
+	transition: border-color 0.2s;
+}
+
+.taskflow-comment-form textarea:focus {
+	border-color: var(--taskflow-primary);
+}
+
 .taskflow-modal {
 	background: white;
-	width: 600px;
+	width: 1200px;
+	max-width: calc(100vw - 32px);
+	max-height: calc(100vh - 32px);
+	overflow: auto;
 	padding: 32px;
 	border-radius: 16px;
 	box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+	transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.taskflow-modal-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(15, 23, 42, 0.4);
+	backdrop-filter: blur(8px);
+	display: none;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	opacity: 0;
+	transition: opacity 0.3s ease;
+}
+
+.taskflow-modal-backdrop.open {
+	display: flex;
+	opacity: 1;
+}
+
+.taskflow-modal-backdrop.open .taskflow-modal {
+	transform: scale(1);
+}
+
+.taskflow-modal {
+	transform: scale(0.95);
+}
+.taskflow-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 24px;
+	padding-bottom: 16px;
+	border-bottom: 1px solid var(--taskflow-border);
+}
+.taskflow-modal-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.taskflow-modal-header h3 {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 700;
 }
 .taskflow-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.taskflow-form-grid.three-columns { grid-template-columns: 1fr 1fr 1fr; }
+
+/* Comment Section Styles */
+.taskflow-comments-section {
+	margin-top: 32px;
+	padding-top: 32px;
+	border-top: 1px solid var(--taskflow-border);
+}
+
+.taskflow-comments-title {
+	font-size: 16px;
+	font-weight: 700;
+	margin-bottom: 16px;
+}
+
+.taskflow-comment-form {
+	margin-bottom: 24px;
+}
+
+.taskflow-comment-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.taskflow-comment-item {
+	display: flex;
+	gap: 12px;
+}
+
+.taskflow-comment-content {
+	flex: 1;
+	background: #f8fafc;
+	padding: 12px;
+	border-radius: 8px;
+	border: 1px solid var(--taskflow-border);
+}
+
+.taskflow-comment-header {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 4px;
+	font-size: 12px;
+}
+
+.taskflow-comment-author {
+	font-weight: 700;
+}
+
+.taskflow-comment-date {
+	color: var(--taskflow-text-muted);
+}
+
+.taskflow-comment-text {
+	font-size: 13px;
+	line-height: 1.5;
+}
+
 .taskflow-form label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px; }
 .taskflow-form input, .taskflow-form select, .taskflow-form textarea {
 	width: 100%; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 8px; outline: none;
 }
 
+.taskflow-rail-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.taskflow-muted {
+	color: var(--taskflow-text-muted);
+	font-size: 12px;
+}
+
+.taskflow-button {
+	border: 1px solid var(--taskflow-border);
+	border-radius: 8px;
+	padding: 10px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.taskflow-button.primary {
+	background: var(--taskflow-primary);
+	border-color: var(--taskflow-primary);
+	color: white;
+}
+
+.taskflow-button.primary:hover {
+	background: var(--taskflow-primary-hover);
+}
+
+.taskflow-button.secondary {
+	background: white;
+	color: var(--taskflow-text);
+}
+
+@media (max-width: 1100px) {
+	.taskflow-dashboard-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.taskflow-dashboard-charts {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 900px) {
+	.taskflow-sidebar-nav,
+	.taskflow-sidebar-projects {
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		z-index: 1001;
+		transform: translateX(-280px);
+		transition: transform 0.2s ease;
+	}
+
+	.taskflow-sidebar-nav,
+	.taskflow-sidebar-nav:hover {
+		left: 0;
+		width: 60px;
+	}
+
+	.taskflow-sidebar-nav:hover .taskflow-nav-item {
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		padding: 12px;
+		text-align: center;
+		font-size: 0;
+		line-height: 0;
+		width: 100%;
+		max-width: 60px;
+	}
+
+	.taskflow-sidebar-nav:hover .taskflow-nav-item .taskflow-nav-icon {
+		margin-right: 0;
+		font-size: 22px;
+		width: auto;
+	}
+
+	.taskflow-sidebar-nav:hover .taskflow-nav-item span:not(.taskflow-nav-icon),
+	.taskflow-sidebar-nav:hover .taskflow-nav-item .taskflow-badge {
+		display: none;
+	}
+
+	.taskflow-sidebar-projects {
+		left: 60px;
+		width: 280px;
+		box-shadow: 12px 0 24px rgba(15, 23, 42, 0.12);
+	}
+
+	.taskflow-container.taskflow-sidebars-collapsed .taskflow-sidebar-projects {
+		display: flex;
+	}
+
+	.taskflow-container.taskflow-sidebars-open .taskflow-sidebar-nav,
+	.taskflow-container.taskflow-sidebars-open .taskflow-sidebar-projects {
+		transform: translateX(0);
+	}
+
+	.taskflow-main {
+		width: 100%;
+	}
+
+	.taskflow-header,
+	.taskflow-toolbar,
+	.taskflow-tabs,
+	.taskflow-content {
+		padding-left: 16px;
+		padding-right: 16px;
+	}
+
+	.taskflow-toolbar {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.taskflow-tabs {
+		overflow-x: auto;
+		gap: 16px;
+	}
+}
+
+@media (max-width: 700px) {
+	.taskflow-header-right {
+		gap: 8px;
+	}
+
+	.taskflow-search-bar input {
+		width: 150px;
+	}
+
+	.taskflow-project-title {
+		font-size: 24px;
+	}
+
+	.taskflow-toolbar-actions {
+		flex-wrap: wrap;
+	}
+
+	.taskflow-dashboard-grid,
+	.taskflow-team-grid,
+	.taskflow-member-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.taskflow-form-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.taskflow-modal {
+		padding: 20px;
+	}
+
+	.taskflow-rail-row {
+		align-items: stretch;
+		flex-direction: column;
+	}
+}

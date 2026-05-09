@@ -10,23 +10,23 @@
 
     <nav class="taskflow-nav">
       <ul class="taskflow-nav-list">
-        <li class="taskflow-nav-item active" data-nav="dashboard">
+        <li class="taskflow-nav-item active" data-nav="dashboard" role="button" tabindex="0" aria-current="page">
           <span class="taskflow-nav-icon">▤</span> Dashboard
         </li>
-        <li class="taskflow-nav-item" data-nav="my-tasks">
+        <li class="taskflow-nav-item" data-nav="my-tasks" role="button" tabindex="0" aria-current="false">
           <span class="taskflow-nav-icon">✓</span> My Tasks
           <span class="taskflow-badge" data-my-tasks-count>0</span>
         </li>
-        <li class="taskflow-nav-item" data-nav="calendar">
+        <li class="taskflow-nav-item" data-nav="calendar" role="button" tabindex="0" aria-current="false">
           <span class="taskflow-nav-icon">📅</span> Calendar
         </li>
-        <li class="taskflow-nav-item" data-nav="reports">
+        <li class="taskflow-nav-item" data-nav="reports" role="button" tabindex="0" aria-current="false">
           <span class="taskflow-nav-icon">📊</span> Reports
         </li>
-        <li class="taskflow-nav-item" data-nav="team">
+        <li class="taskflow-nav-item" data-nav="team" role="button" tabindex="0" aria-current="false">
           <span class="taskflow-nav-icon">👥</span> Team
         </li>
-        <li class="taskflow-nav-item" data-nav="settings">
+        <li class="taskflow-nav-item" data-nav="settings" role="button" tabindex="0" aria-current="false">
           <span class="taskflow-nav-icon">⚙</span> Settings
         </li>
       </ul>
@@ -39,7 +39,7 @@
         <div class="taskflow-logo-icon"></div>
         <span class="taskflow-logo-text">Taskflow</span>
       </div>
-      <button class="taskflow-btn-primary full-width" data-new-project>
+      <button class="taskflow-btn-primary full-width" type="button" data-new-project>
         <span class="taskflow-btn-icon">+</span> New Project
       </button>
     </div>
@@ -47,16 +47,16 @@
       <span>TEAM</span>
     </div>
     <div style="padding: 0 12px 20px;">
-        <select class="taskflow-team-switcher" data-team-switcher style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--taskflow-border);">
+        <select class="taskflow-team-switcher" data-team-switcher aria-label="Select team" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--taskflow-border);">
             <option value="all">All Teams</option>
         </select>
     </div>
     <div class="taskflow-section-header">
       <span>PROJECTS</span>
-      <button class="taskflow-btn-ghost" data-new-project>+</button>
+      <span class="taskflow-badge" data-project-count>0</span>
     </div>
     <div style="padding: 0 12px 12px;">
-        <input type="text" data-project-search placeholder="Search projects..." style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--taskflow-border); font-size: 13px;">
+        <input type="text" data-project-search aria-label="Search projects" placeholder="Search projects..." style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--taskflow-border); font-size: 13px;">
     </div>
     <div class="taskflow-project-list" data-project-list>
       <!-- Dynamic Project List -->
@@ -68,7 +68,7 @@
 		<!-- Top Header -->
 		<header class="taskflow-header">
 			<div class="taskflow-header-left">
-				<button class="taskflow-sidebar-toggle">☰</button>
+				<button class="taskflow-sidebar-toggle" type="button" aria-label="Toggle sidebars" aria-expanded="true">☰</button>
 				<div class="taskflow-breadcrumbs">
 					<span>Projects</span> / <span data-project-breadcrumb>Website Redesign</span>
 				</div>
@@ -76,11 +76,14 @@
 			<div class="taskflow-header-right">
 				<div class="taskflow-search-bar">
 					<span class="taskflow-search-icon">⌕</span>
-					<input type="text" placeholder="Search" />
+					<input type="text" aria-label="Search tasks" placeholder="Search" />
 				</div>
-				<button class="taskflow-header-btn">🔔</button>
-				<div class="taskflow-user-avatar">
-					<img src="/assets/taskflow/favicon.png" alt="User" />
+				<button class="taskflow-header-btn" type="button" aria-label="Notifications" disabled>🔔</button>
+				<div class="taskflow-user-profile">
+					<span class="taskflow-user-name" data-user-name>User</span>
+					<div class="taskflow-user-avatar" data-user-avatar-container>
+						<img src="/assets/taskflow/favicon.png" alt="User" data-user-image />
+					</div>
 				</div>
 			</div>
 		</header>
@@ -89,37 +92,49 @@
 		<div class="taskflow-toolbar">
 			<div class="taskflow-project-info">
 				<h1 class="taskflow-project-title" data-project-title>Website Redesign</h1>
-				<button class="taskflow-btn-star">★</button>
-				<button class="taskflow-btn-more">⋯</button>
+				<button class="taskflow-btn-star" type="button" aria-label="Star project" disabled>★</button>
+				<button class="taskflow-btn-more" type="button" aria-label="More project actions" disabled>⋯</button>
 			</div>
 			<div class="taskflow-toolbar-actions">
-				<button class="taskflow-btn-toolbar"><span class="taskflow-icon">⏳</span> Filter</button>
-				<button class="taskflow-btn-toolbar"><span class="taskflow-icon">▤</span> View</button>
+				<button class="taskflow-btn-toolbar" type="button" disabled><span class="taskflow-icon">⏳</span> Filter</button>
+				<button class="taskflow-btn-toolbar" type="button" disabled><span class="taskflow-icon">▤</span> View</button>
 				<div class="taskflow-btn-group">
-					<button class="taskflow-btn-primary" data-new-task>+ Add Task</button>
-					<button class="taskflow-btn-primary-dropdown">⌵</button>
+					<button class="taskflow-btn-primary" type="button" data-new-task>+ Add Task</button>
+					<button class="taskflow-btn-primary-dropdown" type="button" aria-label="More task actions" disabled>⌵</button>
 				</div>
 			</div>
 		</div>
 
 		<!-- View Navigation Tabs -->
-		<div class="taskflow-tabs" data-task-view-toggle>
-			<button class="taskflow-tab active" data-view="dashboard">Dashboard</button>
-			<button class="taskflow-tab" data-view="kanban">Board</button>
-			<button class="taskflow-tab" data-view="list">List</button>
-			<button class="taskflow-tab" data-view="timeline">Timeline</button>
-			<button class="taskflow-tab" data-view="files">Files</button>
-			<button class="taskflow-tab" data-view="settings">Settings</button>
+		<div class="taskflow-tabs" data-task-view-toggle role="tablist" aria-label="Task views">
+			<button class="taskflow-tab active" type="button" data-view="dashboard" role="tab" aria-selected="true">Dashboard</button>
+			<button class="taskflow-tab" type="button" data-view="kanban" role="tab" aria-selected="false">Board</button>
+			<button class="taskflow-tab" type="button" data-view="list" role="tab" aria-selected="false">List</button>
+			<button class="taskflow-tab" type="button" data-view="timeline" role="tab" aria-selected="false">Timeline</button>
+			<button class="taskflow-tab" type="button" data-view="files" role="tab" aria-selected="false">Files</button>
+			<button class="taskflow-tab" type="button" data-view="settings" role="tab" aria-selected="false">Settings</button>
 		</div>
 
 		<!-- Content Area -->
 		<div class="taskflow-content" data-taskflow-root>
 			<!-- Team View -->
 			<div class="taskflow-team-view taskflow-view-content taskflow-hidden" data-team-view>
-				<div class="taskflow-section-header">
+				<div class="taskflow-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
 					<h2>Team</h2>
+					<div class="taskflow-btn-group" data-team-view-toggle>
+						<button class="taskflow-tab active" data-view="cards" role="tab" aria-selected="true">Cards</button>
+						<button class="taskflow-tab" data-view="timeline" role="tab" aria-selected="false">Timeline</button>
+					</div>
 				</div>
-				<div class="taskflow-team-grid" data-team-grid></div>
+
+				<div class="taskflow-team-split-view" data-team-cards-wrapper style="display: flex; gap: 24px;">
+					<div class="taskflow-team-list" data-team-grid style="width: 350px; flex-shrink: 0;"></div>
+					<div class="taskflow-team-detail" data-team-detail style="flex: 1; background: white; border-radius: 12px; border: 1px solid var(--taskflow-border); padding: 24px;">
+						<div class="taskflow-empty">Select a team member to view details.</div>
+					</div>
+				</div>
+				
+				<div class="taskflow-team-timeline-wrapper taskflow-hidden" data-team-timeline></div>
 			</div>
 
 			<!-- Timeline View -->
@@ -142,6 +157,12 @@
 			<!-- List View -->
 			<div class="taskflow-list-wrapper taskflow-view-content taskflow-hidden" data-list-view></div>
 
+			<!-- Files View -->
+			<div class="taskflow-files-wrapper taskflow-view-content taskflow-hidden" data-files-view></div>
+
+			<!-- Settings View -->
+			<div class="taskflow-settings-wrapper taskflow-view-content taskflow-hidden" data-settings-view></div>
+
 			<!-- Stats Area (Hidden by default in new design but kept for state) -->
 			<div class="taskflow-hidden" data-stats></div>
 			<div class="taskflow-hidden" data-taskflow-loading>Loading...</div>
@@ -150,15 +171,18 @@
 </div>
 
 <!-- Modals preserved from original -->
-<div class="taskflow-modal-backdrop" data-modal-name="project" data-project-modal>
-	<div class="taskflow-modal">
-		<div class="taskflow-modal-header">
-			<h3 data-project-form-title>Create Project</h3>
-			<button class="taskflow-button secondary" type="button" data-close-modal="project">Close</button>
-		</div>
+<div class="taskflow-modal-backdrop" data-modal-name="project" data-project-modal aria-hidden="true">
+	<div class="taskflow-modal" role="dialog" aria-modal="true" aria-labelledby="taskflow-project-modal-title">
 		<form class="taskflow-form" data-project-form>
+			<div class="taskflow-modal-header">
+				<h3 id="taskflow-project-modal-title" data-project-form-title>Create Project</h3>
+				<div class="taskflow-modal-header-actions">
+					<button class="taskflow-button secondary" type="button" data-close-modal="project">Close</button>
+					<button class="taskflow-button primary" type="submit">Save Project</button>
+				</div>
+			</div>
 			<input type="hidden" name="name" />
-			<div class="taskflow-form-grid">
+			<div class="taskflow-form-grid three-columns">
 				<label>Project Name
 					<input type="text" name="project_name" required />
 				</label>
@@ -205,25 +229,27 @@
 			<label>Description
 				<textarea name="description" rows="5"></textarea>
 			</label>
-			<div class="taskflow-rail-row">
+			<div class="taskflow-rail-row" style="margin-top: 16px;">
 				<span class="taskflow-muted">Only users with project management access can save projects.</span>
-				<button class="taskflow-button primary" type="submit">Save Project</button>
 			</div>
 		</form>
 	</div>
 </div>
 
-<div class="taskflow-modal-backdrop" data-modal-name="task" data-task-modal>
-	<div class="taskflow-modal">
-		<div class="taskflow-modal-header">
-			<h3 data-task-form-title>Create Task</h3>
-			<button class="taskflow-button secondary" type="button" data-close-modal="task">Close</button>
-		</div>
+<div class="taskflow-modal-backdrop" data-modal-name="task" data-task-modal aria-hidden="true">
+	<div class="taskflow-modal" role="dialog" aria-modal="true" aria-labelledby="taskflow-task-modal-title">
 		<form class="taskflow-form" data-task-form>
+			<div class="taskflow-modal-header">
+				<h3 id="taskflow-task-modal-title" data-task-form-title>Create Task</h3>
+				<div class="taskflow-modal-header-actions">
+					<button class="taskflow-button secondary" type="button" data-close-modal="task">Close</button>
+					<button class="taskflow-button primary" type="submit">Save Task</button>
+				</div>
+			</div>
 			<input type="hidden" name="name" />
 			<input type="hidden" name="project" />
 			<input type="hidden" name="team" />
-			<div class="taskflow-form-grid">
+			<div class="taskflow-form-grid three-columns">
 				<label>Task Title
 					<input type="text" name="task_title" required />
 				</label>
@@ -235,7 +261,7 @@
 						<option>Open</option>
 						<option>In Progress</option>
 						<option>Review</option>
-						<option>Blocked</option>
+						<option>On Hold</option>
 						<option>Completed</option>
 						<option>Cancelled</option>
 					</select>
@@ -287,9 +313,17 @@
 			<label>Description
 				<textarea name="description" rows="5"></textarea>
 			</label>
-			<div class="taskflow-rail-row">
-				<span class="taskflow-muted">Team members can manage execution here without leaving the portal.</span>
-				<button class="taskflow-button primary" type="submit">Save Task</button>
+
+			<!-- Comment Section -->
+			<div class="taskflow-comments-section" data-comments-wrapper>
+				<h4 class="taskflow-comments-title">Comments</h4>
+				<div class="taskflow-comment-form">
+					<textarea name="new_comment" placeholder="Write a comment..." rows="3"></textarea>
+					<button class="taskflow-button secondary" type="button" data-post-comment style="margin-top: 8px;">Post Comment</button>
+				</div>
+				<div class="taskflow-comment-list" data-comment-list>
+					<!-- Comments will be rendered here -->
+				</div>
 			</div>
 		</form>
 	</div>
