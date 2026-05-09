@@ -846,6 +846,9 @@
 		if (state.selectedTeam && state.selectedTeam !== "all") {
 			filtered = filtered.filter(t => t.team === state.selectedTeam);
 		}
+		if (state.selectedStatuses && state.selectedStatuses.length > 0) {
+			filtered = filtered.filter(t => state.selectedStatuses.includes(t.status));
+		}
 		return filterTasks(filtered);
 	}
 
@@ -1243,7 +1246,20 @@ return `
 
 	function renderList(tasks) {
 		if (!refs.listView) return;
+		
+		const allStatuses = getStatusColumns();
+		const selectedStatuses = state.selectedStatuses || [];
 		const sortedTasks = [...tasks].sort((a, b) => (Number(a.sequence || 0) - Number(b.sequence || 0)));
+		
+		const statusFilter = `
+			<div style="padding: 16px 0; display: flex; align-items: center; gap: 8px;">
+				<span style="font-size: 13px; color: var(--taskflow-text-muted);">Status Filter:</span>
+				<select multiple data-status-filter style="padding: 6px; border-radius: 6px; border: 1px solid var(--taskflow-border);">
+					${allStatuses.map(s => `<option value="${escapeHtml(s)}" ${selectedStatuses.includes(s) ? 'selected' : ''}>${escapeHtml(s)}</option>`).join("")}
+				</select>
+			</div>
+		`;
+		
 		const addTaskButton = canCreateTask() ? `
 				<div style="padding: 16px 0;">
 					<button class="taskflow-add-task-inline" type="button" data-new-task>+ Add Task</button>
@@ -1251,7 +1267,10 @@ return `
 
 		refs.listView.innerHTML = `
 			<div class="taskflow-list-view" style="width: 100%; overflow-x: auto;">
-				${addTaskButton}
+				<div style="display: flex; justify-content: space-between; align-items: center;">
+					${statusFilter}
+					${addTaskButton}
+				</div>
 				<table class="taskflow-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; border: 1px solid var(--taskflow-border);">
 					<thead style="background: #f8fafc; border-bottom: 1px solid var(--taskflow-border);">
 						<tr>
@@ -1270,6 +1289,16 @@ return `
 				</table>
 			</div>
 		`;
+
+		refs.listView.querySelector("[data-status-filter]").addEventListener("change", (e) => {
+			const options = e.target.options;
+			const selected = [];
+			for (let i = 0; i < options.length; i++) {
+				if (options[i].selected) selected.push(options[i].value);
+			}
+			state.selectedStatuses = selected;
+			refreshView();
+		});
 
 		refs.listView.querySelectorAll("[data-task-edit]").forEach((row) => {
 			row.addEventListener("click", () => {
