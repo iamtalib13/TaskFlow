@@ -1351,6 +1351,16 @@ return `
 			{ headerName: "Task Name", field: "task_title", sortable: true, filter: true },
 			{ headerName: "Assignee", field: "assigned_to", sortable: true, filter: true },
 			{ headerName: "Status", field: "status", sortable: true, filter: true },
+			{ headerName: "Age", field: "creation", width: 100, sortable: true, filter: true, 
+				valueGetter: params => {
+					if (!params.data.creation) return 0;
+					const created = new Date(params.data.creation);
+					const now = new Date();
+					const diffTime = Math.abs(now - created);
+					return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+				},
+				cellStyle: { color: '#ef4444', fontWeight: 'bold' } 
+			},
 			{ headerName: "Priority", field: "priority", sortable: true, filter: true },
 			{ headerName: "Due Date", field: "due_date", sortable: true, filter: true, valueFormatter: (params) => formatDate(params.value) },
 			{ headerName: "Last Modified", field: "modified", sortable: true, filter: true, valueFormatter: (params) => prettyDate(params.value) },
