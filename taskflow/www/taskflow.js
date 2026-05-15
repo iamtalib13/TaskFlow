@@ -848,10 +848,20 @@
 
 		const project = workspace.project;
 		const tasks = workspace.tasks || [];
-		refs.projectTitle.textContent = project.project_name;
+
+		const totalTasks = tasks.length;
+		const completedTasks = tasks.filter(t => t.status === "Completed").length;
+		const pendingTasks = totalTasks - completedTasks;
+
+		refs.projectTitle.innerHTML = `
+			${escapeHtml(project.project_name)}
+			<span style="font-size: 20px; font-weight: 800; margin-left: 12px;">
+				<span style="color: #ef4444;">${pendingTasks}</span> / ${totalTasks}
+			</span>
+		`;
+
 		if (breadcrumb) breadcrumb.textContent = project.project_name;
 		refs.newTaskButton.disabled = !(project.permissions.can_manage_team || project.permissions.can_operate_team);
-
 		renderTaskArea(tasks);
 	}
 
@@ -1368,7 +1378,7 @@ return `
 					`;
 				}
 			},
-			{ headerName: "Status", field: "status", sortable: true, filter: true, rowGroup: true, hide: true },
+			{ headerName: "Status", field: "status", sortable: true, filter: true },
 			{ headerName: "Age", field: "start_date", width: 100, sortable: true, filter: true, 
 				valueGetter: params => {
 					if (!params.data.start_date) return 0;
@@ -1389,12 +1399,6 @@ return `
 			rowData: tasks,
 			columnDefs: columnDefs,
 			pagination: true,
-			autoGroupColumnDef: {
-				headerName: "Task Status",
-				field: "status",
-				cellRenderer: "agGroupCellRenderer",
-				cellRendererParams: { suppressCount: false }
-			},
 			onRowClicked: (event) => openTaskModal(event.data)
 		};
 
@@ -2311,7 +2315,11 @@ return `
 	function formatDate(value) {
 		if (!value) return "Not set";
 		const date = parseDateValue(value);
-		return date ? date.toLocaleDateString() : "Not set";
+		if (!date) return "Not set";
+		const d = String(date.getDate()).padStart(2, '0');
+		const m = String(date.getMonth() + 1).padStart(2, '0');
+		const y = date.getFullYear();
+		return `${d}/${m}/${y}`;
 	}
 
 	function dateInputValue(value) {
