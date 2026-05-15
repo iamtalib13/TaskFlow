@@ -929,7 +929,13 @@
 			if (v.el) v.el.classList.toggle("taskflow-hidden", v.key !== state.taskView);
 		});
 
+		const contentArea = document.querySelector(".taskflow-content");
+		if (contentArea) {
+			contentArea.classList.toggle("full-width", state.taskView === "list");
+		}
+
 		if (emptyMessage) {
+
 			renderActiveEmptyState(emptyMessage);
 		} else if (state.taskView === "list") {
 			renderList(visibleTasks);
@@ -1353,66 +1359,45 @@ return `
 		if (!refs.listView) return;
 
 		// Clean up existing content
-		refs.listView.innerHTML = `
-			<div class="clusterize">
-				<table class="taskflow-table" style="width: 100%; border-collapse: collapse;">
-					<thead style="background: #f8fafc; position: sticky; top: 0; z-index: 1;">
-						<tr style="border-bottom: 1px solid var(--taskflow-border);">
-							<th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--taskflow-text-muted);">Sr No.</th>
-							<th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--taskflow-text-muted);">Task Name</th>
-							<th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--taskflow-text-muted);">Assignee</th>
-							<th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--taskflow-text-muted);">Status</th>
-							<th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--taskflow-text-muted);">Age</th>
-							<th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--taskflow-text-muted);">Priority</th>
-							<th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--taskflow-text-muted);">Due Date</th>
-							<th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--taskflow-text-muted);">Last Modified</th>
-							<th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--taskflow-text-muted);">Tags</th>
-						</tr>
-					</thead>
-				</table>
-				<div id="scrollArea" class="clusterize-scroll" style="height: 600px; overflow-y: auto;">
-					<table class="taskflow-table" style="width: 100%; border-collapse: collapse;">
-						<tbody id="contentArea" class="clusterize-content">
-							<tr class="clusterize-no-data"><td>Loading data...</td></tr>
-						</tbody>
-					</table>
-				</div>
-			</div>
-		`;
+		refs.listView.innerHTML = '<div id="taskGrid" style="width: 100%; height: 100%;"></div>';
 
-		const rows = tasks.map((task, index) => {
-			const age = task.start_date ? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24)) : 0;
-			return `
-				<tr data-task-edit="${escapeHtml(task.name)}" style="border-bottom: 1px solid var(--taskflow-border); cursor: pointer;">
-					<td style="padding: 12px;">${index + 1}</td>
-					<td style="padding: 12px;">${escapeHtml(task.task_title)}</td>
-					<td style="padding: 12px;">${escapeHtml(task.assigned_to_name || "Unassigned")}</td>
-					<td style="padding: 12px;">${escapeHtml(task.status)}</td>
-					<td style="padding: 12px; color: #ef4444; font-weight: bold;">${age}</td>
-					<td style="padding: 12px;">${escapeHtml(task.priority)}</td>
-					<td style="padding: 12px;">${formatDate(task.due_date)}</td>
-					<td style="padding: 12px;">${prettyDate(task.modified)}</td>
-					<td style="padding: 12px;">${escapeHtml(task.task_type || "Task")}</td>
-				</tr>
-			`;
-		});
-
-		if (state.clusterize) {
-			state.clusterize.destroy();
+		// Clean up previous Handsontable instance
+		if (state.hotInstance) {
+			state.hotInstance.destroy();
 		}
 
-		state.clusterize = new Clusterize({
-			rows: rows,
-			scrollId: 'scrollArea',
-			contentId: 'contentArea'
+		const data = tasks.map((task, index) => [
+			index + 1,
+			task.task_title,
+			task.assigned_to_name || "Unassigned",
+			task.status,
+			task.start_date ? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24)) : 0,
+			task.priority,
+			formatDate(task.due_date),
+			prettyDate(task.modified),
+			task.task_type || "Task"
+		]);
+
+		state.hotInstance = new Handsontable(document.querySelector("#taskGrid"), {
+			data: data,
+			colHeaders: ["Sr No.", "Task Name", "Assignee", "Status", "Age", "Priority", "Due Date", "Last Modified", "Tags"],
+			rowHeaders: false,
+			height: '100%',
+			width: '100%',
+			licenseKey: 'non-commercial-and-evaluation',
+			readOnly: true,
+			contextMenu: true,
+			filters: true,
+			dropdownMenu: true,
 		});
-		
-		// Event Delegation for row click
-		document.querySelector("#contentArea").addEventListener("click", (e) => {
-			const row = e.target.closest("tr");
-			if (row && row.dataset.taskEdit) {
-				const task = findTask(row.dataset.taskEdit);
-				if (task) openTaskModal(task);
+
+		// Add click handler manually for row selection if needed
+		document.querySelector("#taskGrid").addEventListener("mousedown", (e) => {
+			if (e.target.tagName === 'TD') {
+				const row = e.target.closest('tr').rowIndex - 1; // header offset
+				if (row >= 0 && tasks[row]) {
+					openTaskModal(tasks[row]);
+				}
 			}
 		});
 	}
