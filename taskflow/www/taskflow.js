@@ -1353,63 +1353,61 @@ return `
 		if (!refs.listView) return;
 
 		// Clean up existing content
-		refs.listView.innerHTML = `
-			<div id="taskGrid" class="ag-theme-alpine" style="flex: 1; width: 100%; border: none;"></div>
-		`;
+		refs.listView.innerHTML = '<div id="taskGrid"></div>';
 
+		// Clean up previous Grid.js instance if it exists
+		if (state.gridInstance) {
+			state.gridInstance.destroy();
+		}
 
-		const columnDefs = [
-			{ headerName: "Sr No.", valueGetter: "node.rowIndex + 1", width: 80, sortable: false, filter: false },
-			{ headerName: "Task Name", field: "task_title", sortable: true, filter: true },
-			{ headerName: "Assignee", field: "assigned_to_name", sortable: true, filter: true,
-				cellRenderer: params => {
-					const name = params.value || "Unassigned";
-					const formattedName = capitalizeName(name);
-					const image = params.data.assigned_to_image;
-					const avatarHtml = image 
-						? `<img src="${image}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">`
-						: `<div style="width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;">${initials(name)}</div>`;
-					
-					return `
-						<div style="display: flex; align-items: center; gap: 8px;">
-							${avatarHtml}
-							<span>${escapeHtml(formattedName)}</span>
-						</div>
-					`;
-				}
-			},
-			{ headerName: "Status", field: "status", sortable: true, filter: "agSetColumnFilter", 
-				filterParams: { 
-					newRowsAction: "keep",
-					buttons: ["clear", "apply"],
-					closeOnApply: true
-				} 
-			},
-			{ headerName: "Age", field: "start_date", width: 100, sortable: true, filter: true, 
-				valueGetter: params => {
-					if (!params.data.start_date) return 0;
-					const start = new Date(params.data.start_date);
-					const now = new Date();
-					const diffTime = Math.abs(now - start);
-					return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+		state.gridInstance = new gridjs.Grid({
+			columns: [
+				{ 
+					name: "Sr No.", 
+					formatter: (cell, row) => {
+						const page = state.gridInstance.config.pagination.page || 0;
+						const limit = state.gridInstance.config.pagination.limit || 10;
+						return (page * limit) + row.index + 1;
+					}
 				},
-				cellStyle: { color: '#ef4444', fontWeight: 'bold' } 
-			},
-			{ headerName: "Priority", field: "priority", sortable: true, filter: true },
-			{ headerName: "Due Date", field: "due_date", sortable: true, filter: true, valueFormatter: (params) => formatDate(params.value) },
-			{ headerName: "Last Modified", field: "modified", sortable: true, filter: true, valueFormatter: (params) => prettyDate(params.value) },
-			{ headerName: "Tags", field: "task_type", sortable: true, filter: true }
-		];
-
-		const gridOptions = {
-			rowData: tasks,
-			columnDefs: columnDefs,
-			pagination: true,
-			onRowClicked: (event) => openTaskModal(event.data)
-		};
-
-		const gridDiv = document.querySelector('#taskGrid');
-		agGrid.createGrid(gridDiv, gridOptions);
+				{ name: "Task Name", id: "task_title" },
+				{ name: "Assignee", id: "assigned_to_name" },
+				{ name: "Status", id: "status" },
+				{ 
+					name: "Age", 
+					formatter: (cell, row) => {
+						const start = new Date(row.cells[0].data); // simplified mapping
+						return Math.floor(Math.abs(new Date() - start) / (1000 * 60 * 60 * 24));
+					}
+				},
+				{ name: "Priority", id: "priority" },
+				{ name: "Due Date", id: "due_date", formatter: (cell) => formatDate(cell) },
+				{ name: "Last Modified", id: "modified", formatter: (cell) => prettyDate(cell) },
+				{ name: "Tags", id: "task_type" }
+			],
+			data: tasks,
+			pagination: { limit: 10 },
+			search: false,
+			sort: true,
+			fixedHeader: true,
+			style: {
+				table: {
+					border: 'none'
+				},
+				th: {
+					'background-color': '#f8fafc',
+					'color': '#64748b',
+					'border-bottom': '1px solid var(--taskflow-border)',
+					'text-align': 'left',
+					'font-weight': '700',
+					'font-size': '12px',
+					'text-transform': 'uppercase'
+				},
+				td: {
+					'text-align': 'left'
+				}
+			}
+		}).render(document.querySelector("#taskGrid"));
 	}
 
 	function renderColumn(status, tasks, canAddTask) {
