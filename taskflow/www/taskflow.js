@@ -1351,8 +1351,21 @@ return `
 		const columnDefs = [
 			{ headerName: "Sr No.", valueGetter: "node.rowIndex + 1", width: 80, sortable: false, filter: false },
 			{ headerName: "Task Name", field: "task_title", sortable: true, filter: true },
-			{ headerName: "Assignee", field: "assigned_to_name", sortable: true, filter: true, 
-				valueGetter: params => params.data.assigned_to_name || "Unassigned" 
+			{ headerName: "Assignee", field: "assigned_to_name", sortable: true, filter: true,
+				cellRenderer: params => {
+					const name = params.value || "Unassigned";
+					const image = params.data.assigned_to_image;
+					const avatarHtml = image 
+						? `<img src="${image}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">`
+						: `<div style="width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;">${initials(name)}</div>`;
+					
+					return `
+						<div style="display: flex; align-items: center; gap: 8px;">
+							${avatarHtml}
+							<span>${escapeHtml(name)}</span>
+						</div>
+					`;
+				}
 			},
 			{ headerName: "Status", field: "status", sortable: true, filter: true },
 			{ headerName: "Age", field: "start_date", width: 100, sortable: true, filter: true, 
