@@ -1378,7 +1378,13 @@ return `
 					`;
 				}
 			},
-			{ headerName: "Status", field: "status", sortable: true, filter: true },
+			{ headerName: "Status", field: "status", sortable: true, filter: "agSetColumnFilter", 
+				filterParams: { 
+					newRowsAction: "keep",
+					buttons: ["clear", "apply"],
+					closeOnApply: true
+				} 
+			},
 			{ headerName: "Age", field: "start_date", width: 100, sortable: true, filter: true, 
 				valueGetter: params => {
 					if (!params.data.start_date) return 0;
