@@ -361,11 +361,19 @@
 			projectLead.innerHTML = buildMemberOptions(event.target.value, "");
 		});
 		document.querySelectorAll("[data-close-modal]").forEach((button) => {
-			button.addEventListener("click", () => closeModal(button.dataset.closeModal));
+				button.addEventListener("click", () => closeModal(button.dataset.closeModal));
 		});
+
+		// Filter Button Handler
+		document.querySelector("[data-filter-button]")?.addEventListener("click", () => {
+			if (state.hotInstance) {
+				const filters = state.hotInstance.getPlugin('filters');
+				filters.showFilterMenu(2); 
+			}
+		});
+
 		document.querySelectorAll(".taskflow-modal-backdrop").forEach((backdrop) => {
-			backdrop.addEventListener("click", (event) => {
-				if (event.target === backdrop) closeModal(backdrop.dataset.modalName);
+
 			});
 		});
 		if (refs.sidebarToggle && refs.container) {
