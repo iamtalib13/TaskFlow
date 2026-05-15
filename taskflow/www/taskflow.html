@@ -242,6 +242,26 @@
 </div>
 
 <!-- Quick Create Modal -->
+<!-- Status Filter Sidebar -->
+<div class="taskflow-filter-sidebar" data-filter-sidebar aria-hidden="true">
+    <div style="padding: 24px;">
+        <h3 style="margin-top: 0; font-size: 18px;">Filter by Status</h3>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;" data-status-checkboxes>
+            <label><input type="checkbox" value="Open" checked /> Open</label>
+            <label><input type="checkbox" value="In Progress" checked /> In Progress</label>
+            <label><input type="checkbox" value="Review" checked /> Review</label>
+            <label><input type="checkbox" value="On Hold" checked /> On Hold</label>
+            <label><input type="checkbox" value="Completed" checked /> Completed</label>
+            <label><input type="checkbox" value="Cancelled" checked /> Cancelled</label>
+        </div>
+        <h3 style="margin-top: 20px; font-size: 18px;">Filter by Assignee</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px; max-height: 200px; overflow-y: auto;" data-assignee-checkboxes>
+            <!-- Checkboxes will be populated via JS -->
+        </div>
+        <button class="taskflow-btn-primary" type="button" data-apply-filter style="margin-top: 24px; width: 100%; padding: 8px;">Apply</button>
+    </div>
+</div>
+
 <div class="taskflow-modal-backdrop" data-modal-name="task-quick" data-task-modal-quick aria-hidden="true">
 		<div class="taskflow-modal advanced-task-view" role="dialog" aria-modal="true" aria-labelledby="taskflow-task-quick-title" style="max-width: 900px; height: auto;">
 			<form class="taskflow-form" data-task-form-quick>

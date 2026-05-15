@@ -365,17 +365,56 @@
 		});
 
 		// Filter Button Handler
-		document.querySelector("[data-filter-button]")?.addEventListener("click", () => {
-			if (state.hotInstance) {
-				const filters = state.hotInstance.getPlugin('filters');
-				filters.showFilterMenu(2); 
+		// Filter Button Handler
+		document.querySelector("[data-filter-button]")?.addEventListener("click", (e) => {
+			e.stopPropagation();
+			const sidebar = document.querySelector("[data-filter-sidebar]");
+			sidebar.classList.toggle("open");
+			
+			if (sidebar.classList.contains("open")) {
+				const assigneeContainer = document.querySelector("[data-assignee-checkboxes]");
+				const assignees = [...new Set(state.currentTasks.map(t => t.assigned_to_name || "Unassigned"))];
+				const savedAssignees = JSON.parse(localStorage.getItem("taskflow_filter_assignees") || "[]");
+				const savedStatuses = JSON.parse(localStorage.getItem("taskflow_filter_statuses") || "[]");
+
+				assigneeContainer.innerHTML = assignees.map(name => 
+					`<label><input type="checkbox" value="${escapeHtml(name)}" ${savedAssignees.includes(name) ? "checked" : ""} /> ${escapeHtml(name)}</label>`
+				).join("");
+				
+				document.querySelectorAll("[data-status-checkboxes] input").forEach(input => {
+					input.checked = savedStatuses.includes(input.value);
+				});
 			}
 		});
+		document.querySelector("[data-apply-filter]")?.addEventListener("click", () => {
+			const statusInputs = document.querySelectorAll("[data-status-checkboxes] input:checked");
+			const assigneeInputs = document.querySelectorAll("[data-assignee-checkboxes] input:checked");
+			const selectedStatuses = Array.from(statusInputs).map((input) => input.value);
+			const selectedAssignees = Array.from(assigneeInputs).map((input) => input.value);
 
-		document.querySelectorAll(".taskflow-modal-backdrop").forEach((backdrop) => {
+			localStorage.setItem("taskflow_filter_statuses", JSON.stringify(selectedStatuses));
+			localStorage.setItem("taskflow_filter_assignees", JSON.stringify(selectedAssignees));
 
-			});
+			const filteredTasks = (state.currentTasks || []).filter((task) =>
+				selectedStatuses.includes(task.status) &&
+				selectedAssignees.includes(task.assigned_to_name || "Unassigned")
+			);
+
+			const data = filteredTasks.map((task) => [
+				task.task_title,
+				{ name: task.assigned_to_name || "Unassigned", image: task.assigned_to_image },
+				task.status,
+				task.start_date ? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24)) : 0,
+				task.priority,
+				formatDate(task.due_date),
+				prettyDate(task.modified),
+				task.task_type || "Task"
+			]);
+
+			state.hotInstance?.loadData(data);
+			document.querySelector("[data-filter-sidebar]")?.classList.remove("open");
 		});
+
 		if (refs.sidebarToggle && refs.container) {
 			refs.sidebarToggle.addEventListener("click", toggleSidebars);
 		}
