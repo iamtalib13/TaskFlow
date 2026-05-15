@@ -1354,6 +1354,7 @@ return `
 			{ headerName: "Assignee", field: "assigned_to_name", sortable: true, filter: true,
 				cellRenderer: params => {
 					const name = params.value || "Unassigned";
+					const formattedName = capitalizeName(name);
 					const image = params.data.assigned_to_image;
 					const avatarHtml = image 
 						? `<img src="${image}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">`
@@ -1362,7 +1363,7 @@ return `
 					return `
 						<div style="display: flex; align-items: center; gap: 8px;">
 							${avatarHtml}
-							<span>${escapeHtml(name)}</span>
+							<span>${escapeHtml(formattedName)}</span>
 						</div>
 					`;
 				}
@@ -2321,6 +2322,14 @@ return `
 		}
 		const date = parseDateValue(value);
 		return date ? `${formatLocalDate(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}` : "";
+	}
+
+	function capitalizeName(name) {
+		return name
+			.toLowerCase()
+			.split(' ')
+			.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
 	}
 
 	function initials(value) {
