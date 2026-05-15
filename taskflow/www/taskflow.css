@@ -2070,38 +2070,6 @@ body.taskflow-dragging .taskflow-card-dragging {
 	height: 100% !important;
 }
 
-/* Excel-Style Table */
-.handsontable {
-    font-family: Inter, sans-serif !important;
-}
-
-.handsontable th {
-    background-color: #f8fafc !important;
-    color: #475569 !important;
-    font-weight: 700 !important;
-    text-transform: uppercase;
-    font-size: 11px !important;
-}
-
-.handsontable td {
-    padding: 8px !important;
-    border: 1px solid #e2e8f0 !important;
-    color: #1e293b !important;
-}
-
-.handsontable .htCore {
-    border-collapse: collapse !important;
-}
-
-/* Row Headers */
-.handsontable th.ht__highlight {
-    background-color: #e2e8f0 !important;
-}
-
-.taskflow-main {
-	overflow: hidden; /* Prevent double scrollbars */
-}
-
 .gridjs-tr {
     height: 48px !important;
 }
@@ -2154,4 +2122,58 @@ body.taskflow-dragging .taskflow-card-dragging {
     background-color: #ffffff !important;
     color: #000000 !important;
     border-color: #e5e7eb !important;
+}
+
+.handsontable tbody tr:hover td {
+    background-color: #f1f5f9 !important;
+}
+
+/* Clean Handsontable Styles */
+.handsontable {
+    font-family: inherit !important;
+}
+
+.handsontable thead th {
+    vertical-align: middle !important;
+}
+
+.handsontable td {
+    vertical-align: middle !important;
+}
+
+/* Modern UI/UX for Handsontable */
+.handsontable {
+    --ag-font-family: 'Inter', sans-serif;
+    font-size: 13px !important;
+}
+
+.handsontable th {
+    background-color: #ffffff !important;
+    color: #64748b !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    border-right: none !important;
+}
+
+.handsontable td {
+    border-bottom: 1px solid #f1f5f9 !important;
+    border-right: none !important;
+    color: #1e293b !important;
+}
+
+.handsontable .htCore {
+    border: none !important;
+}
+
+.handsontable tr:hover td {
+    background-color: #f8fafc !important;
+}
+
+/* Scaling Fixes */
+.handsontable {
+    font-size: 14px !important;
+}
+
+.handsontable td, .handsontable th {
+    padding: 12px 16px !important;
+    height: 48px !important;
 }

@@ -1358,18 +1358,17 @@ return `
 	function renderList(tasks) {
 		if (!refs.listView) return;
 
-		// Clean up existing content
 		refs.listView.innerHTML = '<div id="taskGrid" style="width: 100%; height: 100%;"></div>';
 
-		// Clean up previous Handsontable instance
 		if (state.hotInstance) {
 			state.hotInstance.destroy();
 		}
 
-		const data = tasks.map((task, index) => [
-			index + 1,
+		state.currentTasks = tasks;
+
+		const data = tasks.map((task) => [
 			task.task_title,
-			task.assigned_to_name || "Unassigned",
+			{ name: task.assigned_to_name || "Unassigned", image: task.assigned_to_image },
 			task.status,
 			task.start_date ? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24)) : 0,
 			task.priority,
@@ -1380,8 +1379,9 @@ return `
 
 		state.hotInstance = new Handsontable(document.querySelector("#taskGrid"), {
 			data: data,
-			colHeaders: ["Sr No.", "Task Name", "Assignee", "Status", "Age", "Priority", "Due Date", "Last Modified", "Tags"],
-			rowHeaders: true, // Excel-style row numbers
+			theme: 'ht-theme-main',
+			colHeaders: ["Task Name", "Assignee", "Status", "Age", "Priority", "Due Date", "Last Modified", "Tags"],
+			rowHeaders: true,
 			height: '100%',
 			width: '100%',
 			licenseKey: 'non-commercial-and-evaluation',
@@ -1389,19 +1389,96 @@ return `
 			contextMenu: true,
 			filters: true,
 			dropdownMenu: true,
-			stretchH: 'all', // Excel-like stretch
+			stretchH: 'all',
 			manualColumnResize: true,
 			manualRowResize: true,
-			selectionMode: 'single', // Excel-like selection
-		});
-
-		// Add click handler manually for row selection if needed
-		document.querySelector("#taskGrid").addEventListener("mousedown", (e) => {
-			if (e.target.tagName === 'TD') {
-				const row = e.target.closest('tr').rowIndex - 1; // header offset
-				if (row >= 0 && tasks[row]) {
-					openTaskModal(tasks[row]);
+			selectionMode: 'single',
+			columns: [
+				{ // Task Name
+					renderer: function(instance, td, row, col, prop, value, cellProperties) {
+						const span = document.createElement('span');
+						span.textContent = value || "";
+						span.style.color = "var(--taskflow-primary)";
+						span.style.cursor = "pointer";
+						
+						span.onmouseover = () => span.style.textDecoration = "underline";
+						span.onmouseout = () => span.style.textDecoration = "none";
+						
+						span.onclick = () => {
+							const taskData = state.currentTasks[row];
+							if (taskData) openTaskModal(taskData);
+						};
+						
+						td.innerHTML = '';
+						td.appendChild(span);
+						return td;
+					}
+				}, 
+				{ // Assignee
+					renderer: function(instance, td, row, col, prop, value, cellProperties) {
+						const name = value?.name || "Unassigned";
+						const image = value?.image;
+						const formattedName = capitalizeName(name);
+						const avatarHtml = image 
+							? `<img src="${image}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 8px;">`
+							: `<div style="width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-right: 8px;">${initials(name)}</div>`;
+						
+						td.innerHTML = `<div style="display: flex; align-items: center;">${avatarHtml} <span>${escapeHtml(formattedName)}</span></div>`;
+						return td;
+					}
+				},
+				{}, // Status
+				{}, // Age
+				{}, // Priority
+				{}, // Due Date
+				{}, // Last Modified
+				{}  // Tags
+			],
+			cells: function(row, col) {
+				const cellProperties = {};
+				
+				// Status column renderer (Index 2)
+				if (col === 2) {
+					cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+						const colors = {
+							"Open": { bg: "#eff6ff", text: "#3b82f6" },
+							"In Progress": { bg: "#fef3c7", text: "#d97706" },
+							"Review": { bg: "#f3e8ff", text: "#9333ea" },
+							"On Hold": { bg: "#f1f5f9", text: "#475569" },
+							"Completed": { bg: "#dcfce7", text: "#16a34a" },
+							"Cancelled": { bg: "#fee2e2", text: "#dc2626" }
+						};
+						const style = colors[value] || { bg: "#f1f5f9", text: "#475569" };
+						td.innerHTML = `<span style="background: ${style.bg}; color: ${style.text}; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 11px; text-transform: uppercase;">${escapeHtml(value || "")}</span>`;
+						td.style.textAlign = 'center';
+					};
 				}
+
+				// Age column renderer (Index 3)
+				if (col === 3) {
+					cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+						const age = parseInt(value) || 0;
+						const maxAge = 30;
+						const intensity = Math.min(age / maxAge, 1);
+						const r = Math.floor(156 + (153 * intensity));
+						const g = Math.floor(165 - (138 * intensity));
+						const b = Math.floor(165 - (138 * intensity));
+						
+						td.innerHTML = `<span style="color: rgb(${r}, ${g}, ${b}); font-weight: 700;">${escapeHtml(value || "0")}</span>`;
+						td.style.textAlign = 'center';
+					};
+				}
+				
+				// 'Just now' highlighting (Last Modified is col 6)
+				const modifiedDate = this.instance.getDataAtCell(row, 6);
+				if (modifiedDate === 'Just now') {
+					cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+						Handsontable.renderers.TextRenderer.apply(this, arguments);
+						td.style.backgroundColor = '#dcfce7';
+					};
+				}
+				
+				return cellProperties;
 			}
 		});
 	}
