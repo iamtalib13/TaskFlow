@@ -1381,7 +1381,7 @@ return `
 		state.hotInstance = new Handsontable(document.querySelector("#taskGrid"), {
 			data: data,
 			colHeaders: ["Sr No.", "Task Name", "Assignee", "Status", "Age", "Priority", "Due Date", "Last Modified", "Tags"],
-			rowHeaders: false,
+			rowHeaders: true, // Excel-style row numbers
 			height: '100%',
 			width: '100%',
 			licenseKey: 'non-commercial-and-evaluation',
@@ -1389,6 +1389,10 @@ return `
 			contextMenu: true,
 			filters: true,
 			dropdownMenu: true,
+			stretchH: 'all', // Excel-like stretch
+			manualColumnResize: true,
+			manualRowResize: true,
+			selectionMode: 'single', // Excel-like selection
 		});
 
 		// Add click handler manually for row selection if needed
