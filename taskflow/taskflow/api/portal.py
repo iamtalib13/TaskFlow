@@ -154,6 +154,10 @@ def _serialize_task(task, project_map=None, user_image_map=None) -> dict:
 	assigned_to_image = (user_image_map or {}).get(task.assigned_to_user)
 	if not assigned_to_image and task.assigned_to_user:
 		assigned_to_image = frappe.db.get_value("User", task.assigned_to_user, "user_image")
+		
+	assigned_to_name = None
+	if task.assigned_to:
+		assigned_to_name = frappe.db.get_value("Employee", task.assigned_to, "employee_name")
 
 	return {
 		"name": task.name,
@@ -163,6 +167,7 @@ def _serialize_task(task, project_map=None, user_image_map=None) -> dict:
 		"team": task.team,
 		"assigned_by": task.assigned_by,
 		"assigned_to": task.assigned_to,
+		"assigned_to_name": assigned_to_name,
 		"assigned_to_user": task.assigned_to_user,
 		"assigned_to_image": assigned_to_image,
 		"status": task.status,

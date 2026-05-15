@@ -375,8 +375,10 @@
 			if (event.key !== "Escape") return;
 			closeModal("project");
 			closeModal("task");
+			closeModal("task-quick");
 			closeMemberDetail();
 			closeSidebars();
+
 		});
 		window.addEventListener("popstate", () => {
 			loadStateFromUrl({ updateUrl: false });
@@ -1349,7 +1351,9 @@ return `
 		const columnDefs = [
 			{ headerName: "Sr No.", valueGetter: "node.rowIndex + 1", width: 80, sortable: false, filter: false },
 			{ headerName: "Task Name", field: "task_title", sortable: true, filter: true },
-			{ headerName: "Assignee", field: "assigned_to", sortable: true, filter: true },
+			{ headerName: "Assignee", field: "assigned_to_name", sortable: true, filter: true, 
+				valueGetter: params => params.data.assigned_to_name || "Unassigned" 
+			},
 			{ headerName: "Status", field: "status", sortable: true, filter: true },
 			{ headerName: "Age", field: "start_date", width: 100, sortable: true, filter: true, 
 				valueGetter: params => {
@@ -1465,22 +1469,30 @@ return `
 			// Quick Create for new tasks
 			state.taskModalMode = "create";
 			const form = refs.taskFormQuick;
+			if (!form) return;
 			form.reset();
-			form.elements.project.value = currentProject.name;
-			form.elements.team.value = currentProject.team;
-			form.elements.status.value = "Open";
-			form.elements.assigned_to.innerHTML = buildMemberOptions(currentProject.team, "");
+
+			// Populate Projects
+			const projectField = getFormElement(form, "project");
+			if (projectField) {
+				projectField.innerHTML = (state.bootstrap.projects || []).map(p => 
+					`<option value="${escapeHtml(p.name)}" ${p.name === currentProject.name ? 'selected' : ''}>${escapeHtml(p.project_name)}</option>`
+				).join("");
+			}
+
+			getFormElement(form, "team").value = currentProject.team;
+			getFormElement(form, "status").value = "Open";
+			getFormElement(form, "assigned_to").innerHTML = buildMemberOptions(currentProject.team, "");
+			getFormElement(form, "priority").value = "Medium";
+			getFormElement(form, "task_type").value = "Task";
+			
 			toggleModal(refs.taskModalQuick, true);
 		} else {
 			// Advanced View for existing tasks
 			state.taskModalMode = "edit";
 			const form = refs.taskForm;
+			if (!form) return; // Safety check
 			form.reset();
-			// Populate advanced form fields as before...
-			// (Simplified for brevity, this uses your existing openTaskModal logic)
-			
-			// Re-calling your existing logic here would be redundant, 
-			// I'll leave the existing full logic for task-edit.
 			_populateAdvancedTaskForm(task, currentProject);
 			toggleModal(refs.taskModal, true);
 		}
@@ -1704,35 +1716,45 @@ return `
 		event.preventDefault();
 		const form = event.currentTarget;
 		if (form.dataset.saving === "1") return;
+		
+		const submitBtn = form.querySelector('button[type="submit"]');
+		const originalText = submitBtn.textContent;
+		submitBtn.textContent = "Creating...";
+		submitBtn.disabled = true;
+
 		setFormSaving(form, true);
 		try {
 			const payload = getTaskFormPayload(form);
 			await saveTask(payload);
+			// Refresh list view after creation
+			await loadBootstrap(payload.project || state.selectedProject);
 		} finally {
+			submitBtn.textContent = originalText;
+			submitBtn.disabled = false;
 			setFormSaving(form, false);
 		}
 	}
 
-	function getTaskFormPayload(form) {
-		return {
-			name: form.elements.name.value || undefined,
-			project: form.elements.project.value,
-			team: form.elements.team.value,
-			task_title: form.elements.task_title.value,
-			status: form.elements.status.value,
-			priority: form.elements.priority.value,
-			task_type: form.elements.task_type.value,
-			assigned_to: form.elements.assigned_to.value || null,
-			start_date: form.elements.start_date.value || null,
-			due_date: form.elements.due_date.value || null,
-			estimated_hours: form.elements.estimated_hours.value || 0,
-			sequence: form.elements.sequence.value || null,
-			description: form.elements.description.value || "",
-			is_milestone: form.elements.is_milestone.checked ? 1 : 0,
-			is_blocked: form.elements.is_blocked.checked ? 1 : 0,
-			checklist: state.currentChecklist,
-		};
-	}
+		function getTaskFormPayload(form) {
+			return {
+				name: getFormValue(form, "name") || undefined,
+				project: getFormValue(form, "project") || (state.projectWorkspace && state.projectWorkspace.project ? state.projectWorkspace.project.name : ""),
+				team: getFormValue(form, "team") || (state.projectWorkspace && state.projectWorkspace.project ? state.projectWorkspace.project.team : ""),
+				task_title: getFormValue(form, "task_title"),
+				status: getFormValue(form, "status", "Open"),
+				priority: getFormValue(form, "priority", "Medium"),
+				task_type: getFormValue(form, "task_type", "Task"),
+				assigned_to: getFormValue(form, "assigned_to") || null,
+				start_date: getFormValue(form, "start_date") || null,
+				due_date: getFormValue(form, "due_date") || null,
+				estimated_hours: getFormValue(form, "estimated_hours", 0) || 0,
+				sequence: getFormValue(form, "sequence") || null,
+				description: getFormValue(form, "description", ""),
+				is_milestone: getFormChecked(form, "is_milestone") ? 1 : 0,
+				is_blocked: getFormChecked(form, "is_blocked") ? 1 : 0,
+				checklist: state.currentChecklist,
+			};
+		}
 
 	function triggerAutoSave() {
 		const form = refs.taskForm;
@@ -1777,6 +1799,7 @@ return `
 			
 			if (!options.isAutoSave) {
 				closeModal("task");
+				closeModal("task-quick");
 			}
 
 			await loadBootstrap(payload.project || state.selectedProject, { updateUrl: false });
@@ -1798,6 +1821,7 @@ return `
 	function closeModal(name) {
 		if (name === "project") toggleModal(refs.projectModal, false);
 		if (name === "task") toggleModal(refs.taskModal, false);
+		if (name === "task-quick") toggleModal(refs.taskModalQuick, false);
 	}
 
 	function toggleModal(element, open) {
@@ -2324,17 +2348,32 @@ return `
 		return String(value).padStart(2, "0");
 	}
 
-	function escapeHtml(value) {
-		return String(value ?? "")
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;")
-			.replace(/'/g, "&#39;");
-	}
-	async function searchEmployees(query) {
-		try {
-			const results = await apiCall("search_employees", { q: query });
+		function escapeHtml(value) {
+			return String(value ?? "")
+				.replace(/&/g, "&amp;")
+				.replace(/</g, "&lt;")
+				.replace(/>/g, "&gt;")
+				.replace(/"/g, "&quot;")
+				.replace(/'/g, "&#39;");
+		}
+
+		function getFormElement(form, name) {
+			return form && form.elements ? form.elements[name] : null;
+		}
+
+		function getFormValue(form, name, fallback = "") {
+			const field = getFormElement(form, name);
+			return field ? field.value : fallback;
+		}
+
+		function getFormChecked(form, name) {
+			const field = getFormElement(form, name);
+			return Boolean(field && field.checked);
+		}
+
+		async function searchEmployees(query) {
+			try {
+				const results = await apiCall("search_employees", { q: query });
 			return results;
 		} catch (e) {
 			console.error(e);
