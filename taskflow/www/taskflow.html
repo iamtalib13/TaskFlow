@@ -142,7 +142,7 @@
 			</div>
 
 			<!-- List View -->
-			<div class="taskflow-list-wrapper taskflow-view-content" data-list-view></div>
+			<div class="taskflow-list-wrapper taskflow-view-content" data-list-view style="display: flex; flex-direction: column; height: 100%;"></div>
 
 			<!-- Kanban Board -->
 			<div class="taskflow-board-wrapper taskflow-view-content taskflow-hidden">
@@ -241,9 +241,11 @@
 
 <!-- Quick Create Modal -->
 <div class="taskflow-modal-backdrop" data-modal-name="task-quick" data-task-modal-quick aria-hidden="true">
-	<div class="taskflow-modal advanced-task-view" role="dialog" aria-modal="true" aria-labelledby="taskflow-task-quick-title" style="max-width: 900px; height: auto;">
-		<form class="taskflow-form" data-task-form-quick>
-			<div class="taskflow-modal-body-layout" style="display: flex; height: 500px;">
+		<div class="taskflow-modal advanced-task-view" role="dialog" aria-modal="true" aria-labelledby="taskflow-task-quick-title" style="max-width: 900px; height: auto;">
+			<form class="taskflow-form" data-task-form-quick>
+				<input type="hidden" name="project" />
+				<input type="hidden" name="team" />
+				<div class="taskflow-modal-body-layout" style="display: flex; height: 500px;">
 				<!-- Main Content Area -->
 				<div style="flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
 					<h2 id="taskflow-task-quick-title" style="margin: 0; font-size: 20px;">Create task</h2>
@@ -261,21 +263,41 @@
 				</div>
 				<!-- Metadata Sidebar -->
 				<aside style="width: 260px; background: #f8fafc; border-left: 1px solid var(--taskflow-border); padding: 24px; font-size: 13px; display: flex; flex-direction: column; gap: 12px;">
-					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Create in</div>
-					<div style="font-weight: 600; margin-bottom: 8px;">Personal Workspace</div>
+					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Project</div>
+					<select name="project" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border); margin-bottom: 8px;"></select>
 					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Type</div>
-					<select name="task_type" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
-					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Status</div>
-					<select name="status" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
-					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Assignee</div>
-					<select name="assigned_to" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
+
+						<select name="task_type" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);">
+							<option selected>Task</option>
+							<option>Bug</option>
+							<option>Story</option>
+							<option>Approval</option>
+							<option>Research</option>
+							<option>Meeting</option>
+						</select>
+						<div style="font-weight: 700; color: var(--taskflow-text-muted);">Status</div>
+						<select name="status" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);">
+							<option selected>Open</option>
+							<option>In Progress</option>
+							<option>Review</option>
+							<option>On Hold</option>
+							<option>Completed</option>
+							<option>Cancelled</option>
+						</select>
+						<div style="font-weight: 700; color: var(--taskflow-text-muted);">Assignee</div>
+						<select name="assigned_to" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
 					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Schedule</div>
-					<input type="date" name="due_date" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);" />
-					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Priority</div>
-					<select name="priority" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
-				</aside>
-			</div>
-		</form>
+						<input type="date" name="due_date" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);" />
+						<div style="font-weight: 700; color: var(--taskflow-text-muted);">Priority</div>
+						<select name="priority" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);">
+							<option>Low</option>
+							<option selected>Medium</option>
+							<option>High</option>
+							<option>Critical</option>
+						</select>
+					</aside>
+				</div>
+			</form>
 	</div>
 </div>
 

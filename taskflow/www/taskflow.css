@@ -2038,10 +2038,21 @@ body.taskflow-dragging .taskflow-card-dragging {
 	}
 }
 
-[data-list-view] {
+/* Full-Screen Table Grid */
+.taskflow-list-wrapper {
 	width: 100% !important;
+	height: 100% !important;
 	padding: 0 !important;
+	margin: 0 !important;
 	background: transparent !important;
+}
+
+#taskGrid {
+	width: 100% !important;
+	height: 100% !important;
 	border: none !important;
-	box-shadow: none !important;
+}
+
+.taskflow-main {
+	overflow: hidden; /* Prevent double scrollbars */
 }

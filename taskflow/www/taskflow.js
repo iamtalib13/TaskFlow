@@ -1354,7 +1354,10 @@ return `
 
 		// Clean up existing content
 		refs.listView.innerHTML = `
-			<div id="taskGrid" class="ag-theme-alpine" style="height: 600px; width: 100%; border: none;"></div>
+			<div style="padding: 16px 24px; display: flex; justify-content: flex-end;">
+				<button class="taskflow-btn-primary" type="button" data-new-task style="padding: 8px 16px;">+ Add Task</button>
+			</div>
+			<div id="taskGrid" class="ag-theme-alpine" style="flex: 1; width: 100%; border: none;"></div>
 		`;
 
 
