@@ -178,6 +178,18 @@ def _serialize_task(task, project_map=None, user_image_map=None) -> dict:
 		"is_blocked": task.is_blocked,
 		"sequence": task.sequence,
 		"description": task.description,
+		"modified": task.modified,
+		"checklist": [
+			{
+				"name": item.name,
+				"checklist_item": item.checklist_item,
+				"is_completed": item.is_completed,
+				"completed_by": item.completed_by,
+				"completed_on": item.completed_on,
+				"sequence": item.sequence,
+			}
+			for item in task.get("checklist", [])
+		],
 		"permissions": {
 			"can_read": has_taskflow_task_permission(task, frappe.session.user, "read"),
 			"can_write": has_taskflow_task_permission(task, frappe.session.user, "write"),
@@ -515,6 +527,9 @@ def save_task(payload: str):
 	]:
 		if fieldname in data:
 			doc.set(fieldname, data.get(fieldname))
+
+	if "checklist" in data:
+		doc.set("checklist", data.get("checklist"))
 
 	doc.save(ignore_permissions=False)
 	return {"name": doc.name}

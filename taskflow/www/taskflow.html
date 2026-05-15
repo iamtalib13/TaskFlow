@@ -1,5 +1,9 @@
 {% extends "templates/base.html" %}
 
+{% block head %}
+<script src="/assets/taskflow/js/ag-grid-community.min.js"></script>
+{% endblock %}
+
 {% block banner %}{% endblock %}
 {% block navbar %}{% endblock %}
 
@@ -91,7 +95,7 @@
 		<!-- Project Toolbar -->
 		<div class="taskflow-toolbar">
 			<div class="taskflow-project-info">
-				<h1 class="taskflow-project-title" data-project-title>Website Redesign</h1>
+				<h1 class="taskflow-project-title" data-project-title>&nbsp;</h1>
 				<button class="taskflow-btn-star" type="button" aria-label="Star project" disabled>★</button>
 				<button class="taskflow-btn-more" type="button" aria-label="More project actions" disabled>⋯</button>
 			</div>
@@ -107,9 +111,9 @@
 
 		<!-- View Navigation Tabs -->
 		<div class="taskflow-tabs" data-task-view-toggle role="tablist" aria-label="Task views">
-			<button class="taskflow-tab active" type="button" data-view="dashboard" role="tab" aria-selected="true">Dashboard</button>
-			<button class="taskflow-tab" type="button" data-view="kanban" role="tab" aria-selected="false">Board</button>
-			<button class="taskflow-tab" type="button" data-view="list" role="tab" aria-selected="false">List</button>
+			<button class="taskflow-tab active" type="button" data-view="list" role="tab" aria-selected="true">Table</button>
+			<button class="taskflow-tab" type="button" data-view="kanban" role="tab" aria-selected="false">Kanban</button>
+			<button class="taskflow-tab" type="button" data-view="dashboard" role="tab" aria-selected="false">Dashboard</button>
 			<button class="taskflow-tab" type="button" data-view="timeline" role="tab" aria-selected="false">Timeline</button>
 			<button class="taskflow-tab" type="button" data-view="files" role="tab" aria-selected="false">Files</button>
 			<button class="taskflow-tab" type="button" data-view="settings" role="tab" aria-selected="false">Settings</button>
@@ -137,6 +141,17 @@
 				<div class="taskflow-team-timeline-wrapper taskflow-hidden" data-team-timeline></div>
 			</div>
 
+			<!-- List View -->
+			<div class="taskflow-list-wrapper taskflow-view-content" data-list-view></div>
+
+			<!-- Kanban Board -->
+			<div class="taskflow-board-wrapper taskflow-view-content taskflow-hidden">
+				<div class="taskflow-board" data-task-board></div>
+			</div>
+
+			<!-- Dashboard View -->
+			<div class="taskflow-dashboard-view taskflow-view-content taskflow-hidden" data-dashboard-view></div>
+
 			<!-- Timeline View -->
 			<div class="taskflow-timeline-wrapper taskflow-view-content taskflow-hidden" data-timeline-view>
 				<div class="taskflow-timeline-header">
@@ -145,17 +160,6 @@
 				</div>
 				<div class="taskflow-timeline-grid" data-timeline-grid></div>
 			</div>
-
-			<!-- Dashboard View -->
-			<div class="taskflow-dashboard-view taskflow-view-content" data-dashboard-view></div>
-
-			<!-- Kanban Board -->
-			<div class="taskflow-board-wrapper taskflow-view-content taskflow-hidden">
-				<div class="taskflow-board" data-task-board></div>
-			</div>
-
-			<!-- List View -->
-			<div class="taskflow-list-wrapper taskflow-view-content taskflow-hidden" data-list-view></div>
 
 			<!-- Files View -->
 			<div class="taskflow-files-wrapper taskflow-view-content taskflow-hidden" data-files-view></div>
@@ -181,153 +185,320 @@
 					<button class="taskflow-button primary" type="submit">Save Project</button>
 				</div>
 			</div>
-			<input type="hidden" name="name" />
-			<div class="taskflow-form-grid three-columns">
-				<label>Project Name
-					<input type="text" name="project_name" required />
-				</label>
-				<label>Project Code
-					<input type="text" name="project_code" required />
-				</label>
-				<label>Team
-					<select name="team" required></select>
-				</label>
-				<label>Project Lead
-					<select name="project_lead"></select>
-				</label>
-				<label>Status
-					<select name="status">
-						<option>Draft</option>
-						<option>Planning</option>
-						<option>Active</option>
-						<option>On Hold</option>
-						<option>Completed</option>
-						<option>Archived</option>
-					</select>
-				</label>
-				<label>Priority
-					<select name="priority">
-						<option>Low</option>
-						<option selected>Medium</option>
-						<option>High</option>
-						<option>Critical</option>
-					</select>
-				</label>
-				<label>Start Date
-					<input type="date" name="start_date" />
-				</label>
-				<label>End Date
-					<input type="date" name="end_date" />
-				</label>
-				<label>Expected Hours
-					<input type="number" step="0.01" name="expected_hours" />
-				</label>
-				<label>Completion %
-					<input type="number" min="0" max="100" name="completion_percent" value="0" />
-				</label>
-			</div>
-			<label>Description
-				<textarea name="description" rows="5"></textarea>
-			</label>
-			<div class="taskflow-rail-row" style="margin-top: 16px;">
-				<span class="taskflow-muted">Only users with project management access can save projects.</span>
+			<div class="taskflow-modal-main-content">
+				<input type="hidden" name="name" />
+				<div class="taskflow-form-grid three-columns">
+					<label>Project Name
+						<input type="text" name="project_name" required />
+					</label>
+					<label>Project Code
+						<input type="text" name="project_code" required />
+					</label>
+					<label>Team
+						<select name="team" required></select>
+					</label>
+					<label>Project Lead
+						<select name="project_lead"></select>
+					</label>
+					<label>Status
+						<select name="status">
+							<option>Draft</option>
+							<option>Planning</option>
+							<option>Active</option>
+							<option>On Hold</option>
+							<option>Completed</option>
+							<option>Archived</option>
+						</select>
+					</label>
+					<label>Priority
+						<select name="priority">
+							<option>Low</option>
+							<option selected>Medium</option>
+							<option>High</option>
+							<option>Critical</option>
+						</select>
+					</label>
+					<label>Start Date
+						<input type="date" name="start_date" />
+					</label>
+					<label>End Date
+						<input type="date" name="end_date" />
+					</label>
+					<label>Expected Hours
+						<input type="number" step="0.01" name="expected_hours" />
+					</label>
+					<label>Completion %
+						<input type="number" min="0" max="100" name="completion_percent" value="0" />
+					</label>
+				</div>
+				<div class="taskflow-rail-row" style="margin-top: 16px;">
+					<span class="taskflow-muted">Only users with project management access can save projects.</span>
+				</div>
 			</div>
 		</form>
 	</div>
 </div>
 
-<div class="taskflow-modal-backdrop" data-modal-name="task" data-task-modal aria-hidden="true">
-	<div class="taskflow-modal" role="dialog" aria-modal="true" aria-labelledby="taskflow-task-modal-title">
-		<form class="taskflow-form" data-task-form>
-			<div class="taskflow-modal-header">
-				<h3 id="taskflow-task-modal-title" data-task-form-title>Create Task</h3>
-				<div class="taskflow-modal-header-actions">
-					<button class="taskflow-button secondary" type="button" data-close-modal="task">Close</button>
-					<button class="taskflow-button primary" type="submit">Save Task</button>
-				</div>
-			</div>
-			<input type="hidden" name="name" />
-			<input type="hidden" name="project" />
-			<input type="hidden" name="team" />
-			<div class="taskflow-form-grid three-columns">
-				<label>Task Title
-					<input type="text" name="task_title" required />
-				</label>
-				<label>Assigned To
-					<select name="assigned_to"></select>
-				</label>
-				<label>Status
-					<select name="status">
-						<option>Open</option>
-						<option>In Progress</option>
-						<option>Review</option>
-						<option>On Hold</option>
-						<option>Completed</option>
-						<option>Cancelled</option>
-					</select>
-				</label>
-				<label>Priority
-					<select name="priority">
-						<option>Low</option>
-						<option selected>Medium</option>
-						<option>High</option>
-						<option>Critical</option>
-					</select>
-				</label>
-				<label>Task Type
-					<select name="task_type">
-						<option>Task</option>
-						<option>Bug</option>
-						<option>Story</option>
-						<option>Approval</option>
-						<option>Research</option>
-						<option>Meeting</option>
-					</select>
-				</label>
-				<label>Sequence
-					<input type="number" name="sequence" />
-				</label>
-				<label>Start Date
-					<input type="datetime-local" name="start_date" />
-				</label>
-				<label>Due Date
-					<input type="datetime-local" name="due_date" />
-				</label>
-				<label>Progress %
-					<input type="number" min="0" max="100" name="progress_percent" value="0" />
-				</label>
-				<label>Estimated Hours
-					<input type="number" step="0.01" name="estimated_hours" />
-				</label>
-				<label>Actual Hours
-					<input type="number" step="0.01" name="actual_hours" />
-				</label>
-				<label style="align-content:end;">
-					<span>Flags</span>
-					<div class="taskflow-rail-row">
-						<label><input type="checkbox" name="is_milestone" /> Milestone</label>
-						<label><input type="checkbox" name="is_blocked" /> Blocked</label>
+<!-- Quick Create Modal -->
+<div class="taskflow-modal-backdrop" data-modal-name="task-quick" data-task-modal-quick aria-hidden="true">
+	<div class="taskflow-modal advanced-task-view" role="dialog" aria-modal="true" aria-labelledby="taskflow-task-quick-title" style="max-width: 900px; height: auto;">
+		<form class="taskflow-form" data-task-form-quick>
+			<div class="taskflow-modal-body-layout" style="display: flex; height: 500px;">
+				<!-- Main Content Area -->
+				<div style="flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+					<h2 id="taskflow-task-quick-title" style="margin: 0; font-size: 20px;">Create task</h2>
+					<input type="text" name="task_title" placeholder="Task name" style="width: 100%; padding: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; font-size: 16px;" required />
+					<textarea name="description" placeholder="Task description" rows="10" style="width: 100%; padding: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; resize: none;"></textarea>
+					<div style="display: flex; gap: 8px;">
+						<button class="taskflow-button secondary" type="button" style="padding: 6px 12px;">✓ Add subtask</button>
+						<button class="taskflow-button secondary" type="button" style="padding: 6px 12px;">📎 Attach file</button>
+						<button class="taskflow-button secondary" type="button" style="padding: 6px 12px;">🔖 Add tag</button>
 					</div>
-				</label>
-			</div>
-			<label>Description
-				<textarea name="description" rows="5"></textarea>
-			</label>
-
-			<!-- Comment Section -->
-			<div class="taskflow-comments-section" data-comments-wrapper>
-				<h4 class="taskflow-comments-title">Comments</h4>
-				<div class="taskflow-comment-form">
-					<textarea name="new_comment" placeholder="Write a comment..." rows="3"></textarea>
-					<button class="taskflow-button secondary" type="button" data-post-comment style="margin-top: 8px;">Post Comment</button>
+					<div style="margin-top: auto; display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px;">
+						<button class="taskflow-button secondary" type="button" data-close-modal="task-quick">Cancel</button>
+						<button class="taskflow-button primary" type="submit">Create task</button>
+					</div>
 				</div>
-				<div class="taskflow-comment-list" data-comment-list>
-					<!-- Comments will be rendered here -->
-				</div>
+				<!-- Metadata Sidebar -->
+				<aside style="width: 260px; background: #f8fafc; border-left: 1px solid var(--taskflow-border); padding: 24px; font-size: 13px; display: flex; flex-direction: column; gap: 12px;">
+					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Create in</div>
+					<div style="font-weight: 600; margin-bottom: 8px;">Personal Workspace</div>
+					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Type</div>
+					<select name="task_type" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
+					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Status</div>
+					<select name="status" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
+					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Assignee</div>
+					<select name="assigned_to" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
+					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Schedule</div>
+					<input type="date" name="due_date" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);" />
+					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Priority</div>
+					<select name="priority" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
+				</aside>
 			</div>
 		</form>
 	</div>
 </div>
+
+<!-- Advanced Task Modal -->
+<div class="taskflow-modal-backdrop" data-modal-name="task" data-task-modal aria-hidden="true">
+	<div class="taskflow-modal advanced-task-view" role="dialog" aria-modal="true" aria-labelledby="taskflow-task-modal-title">
+		<form class="taskflow-form" data-task-form>
+			<!-- Header -->
+			<div class="taskflow-modal-header">
+				<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; overflow: hidden;">
+					<div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+						<span style="color: var(--taskflow-text-muted); font-size: 13px; font-weight: 700; flex-shrink: 0;" data-task-id-label>FEA-39</span>
+						<input type="text" name="task_title" data-task-form-title style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; background: transparent; border: none; outline: none; padding: 4px 8px; flex: 1; min-width: 0; border-radius: 4px;" placeholder="Task Title..." />
+						<span data-task-save-status style="font-size: 11px; color: var(--taskflow-text-muted); font-weight: 500; margin-left: 8px; opacity: 0; transition: opacity 0.3s; flex-shrink: 0;">Saving...</span>
+					</div>
+					<div class="taskflow-breadcrumbs" style="font-size: 11px; font-weight: 500;">
+						<span data-task-project-breadcrumb>AXE-1 Axessio (AG)</span> / <span data-task-type-breadcrumb>Feature Request</span>
+					</div>
+				</div>
+				<div class="taskflow-modal-header-actions" style="display: flex; align-items: center; gap: 16px;">
+					<div style="display: flex; gap: 10px;">
+						<select name="status" style="background: #eff6ff; color: #3b82f6; border-color: #dbeafe; border-radius: 20px; padding: 6px 16px; font-size: 12px; font-weight: 700; width: auto !important; height: 32px !important; display: inline-block !important; appearance: none; background-image: url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%233b82f6\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 8px center; background-size: 16px; padding-right: 32px !important;">
+							<option>Open</option>
+							<option>In Progress</option>
+							<option>Review</option>
+							<option>On Hold</option>
+							<option>Completed</option>
+							<option>Cancelled</option>
+						</select>
+						<select name="priority" style="background: #f8fafc; color: var(--taskflow-text); border-color: var(--taskflow-border); border-radius: 20px; padding: 6px 16px; font-size: 12px; font-weight: 700; width: auto !important; height: 32px !important; display: inline-block !important; appearance: none; background-image: url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 8px center; background-size: 16px; padding-right: 32px !important;">
+							<option>Low</option>
+							<option selected>Medium</option>
+							<option>High</option>
+							<option>Critical</option>
+						</select>
+					</div>
+					<div style="width: 1px; height: 24px; background: var(--taskflow-border);"></div>
+					<div style="display: flex; gap: 4px;">
+						<button class="taskflow-btn-ghost" type="button" style="color: var(--taskflow-text-muted); font-size: 18px;">🔔</button>
+						<button class="taskflow-btn-ghost" type="button" style="color: var(--taskflow-text-muted); font-size: 18px;">🔗</button>
+						<button class="taskflow-btn-ghost" type="button" style="color: var(--taskflow-text-muted); font-size: 18px;">⋯</button>
+					</div>
+					<button class="taskflow-btn-ghost" type="button" data-close-modal="task" style="font-size: 24px; color: var(--taskflow-text-muted); padding: 0 4px;">&times;</button>
+				</div>
+			</div>
+
+			<!-- Body -->
+			<div class="taskflow-modal-body-layout">
+				<input type="hidden" name="name" />
+				<input type="hidden" name="project" />
+				<input type="hidden" name="team" />
+
+				<!-- Left Sidebar: Metadata -->
+				<aside class="taskflow-modal-left-sidebar">
+					<div class="taskflow-adv-section">
+						<div class="taskflow-adv-section-header">
+							<span>👤 Assignment</span>
+						</div>
+						<div class="taskflow-adv-section-body">
+							<label style="margin-bottom: 8px; display: block;">Assigned to</label>
+							<div style="display: flex; align-items: center; gap: 12px;">
+								<div class="taskflow-assignee-avatar" data-assigned-avatar-large style="width: 40px; height: 40px; font-size: 14px; background: var(--taskflow-primary); color: white;">TS</div>
+								<select name="assigned_to" style="flex: 1;"></select>
+							</div>
+						</div>
+					</div>
+
+					<div class="taskflow-adv-section">
+						<div class="taskflow-adv-section-header">
+							<span>📅 Schedule</span>
+						</div>
+						<div class="taskflow-adv-section-body" style="display: flex; flex-direction: column; gap: 20px;">
+							<div>
+								<div class="taskflow-adv-label-row">
+									<span class="taskflow-adv-icon">🕒</span>
+									<label>Start Date</label>
+								</div>
+								<input type="datetime-local" name="start_date" style="width: 100%;" />
+							</div>
+							<div>
+								<div class="taskflow-adv-label-row">
+									<span class="taskflow-adv-icon">⌛</span>
+									<label>Due Date • <span style="color: #ef4444;">Due Today</span></label>
+								</div>
+								<input type="datetime-local" name="due_date" style="width: 100%; border-color: #fca5a5;" />
+							</div>
+							<div>
+								<div class="taskflow-adv-label-row">
+									<span class="taskflow-adv-icon">⏱</span>
+									<label>Time Estimate</label>
+								</div>
+								<input type="number" step="0.01" name="estimated_hours" placeholder="0.00 hours" style="width: 100%;" />
+							</div>
+						</div>
+					</div>
+
+					<div class="taskflow-adv-section">
+						<div class="taskflow-adv-section-header">
+							<span>📁 Organization</span>
+						</div>
+						<div class="taskflow-adv-section-body" style="display: flex; flex-direction: column; gap: 16px;">
+							<div>
+								<label style="display: block; margin-bottom: 4px;">Task Type</label>
+								<select name="task_type" style="width: 100%;">
+									<option>Task</option>
+									<option>Bug</option>
+									<option>Story</option>
+									<option>Approval</option>
+									<option>Research</option>
+									<option>Meeting</option>
+								</select>
+							</div>
+							<div>
+								<label style="display: block; margin-bottom: 4px;">Sequence</label>
+								<input type="number" name="sequence" style="width: 100%;" />
+							</div>
+							<div class="taskflow-rail-row" style="margin-top: 8px;">
+								<label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" name="is_milestone" /> Milestone</label>
+								<label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" name="is_blocked" /> Blocked</label>
+							</div>
+						</div>
+					</div>
+				</aside>
+
+				<!-- Middle Content: Description & Activity -->
+				<div class="taskflow-modal-middle-content">
+					<div class="taskflow-adv-section" style="flex: 1; display: flex; flex-direction: column;">
+						<div class="taskflow-adv-section-header" data-toggle-section>
+							<span>📝 Description</span>
+							<div style="display: flex; align-items: center; gap: 16px;">
+								<div class="taskflow-content-toolbar">
+									<span class="taskflow-toolbar-item">🕒 History</span>
+									<span class="taskflow-toolbar-item">⛶ Focus</span>
+									<span class="taskflow-toolbar-item">✏ Edit</span>
+								</div>
+								<span class="taskflow-adv-chevron">⌵</span>
+							</div>
+						</div>
+						<div class="taskflow-adv-section-body" style="flex: 1;">
+							<textarea name="description" placeholder="Add a more detailed description..." style="width: 100%; height: 100%; border: none; background: transparent; resize: none; font-size: 14px; line-height: 1.6;"></textarea>
+						</div>
+					</div>
+
+					<div class="taskflow-adv-section">
+						<div class="taskflow-adv-section-header" data-toggle-section>
+							<span>☑ Quick Checklist • <span data-checklist-count style="font-weight: 400; color: var(--taskflow-text-muted);">0 items</span></span>
+							<span class="taskflow-adv-chevron">⌵</span>
+						</div>
+						<div class="taskflow-adv-section-body">
+							<div class="taskflow-checklist-container" data-checklist-wrapper>
+								<div class="taskflow-checklist-add-row" style="margin-bottom: 12px; display: flex; gap: 8px;">
+									<input type="text" data-new-checklist-item placeholder="Add a checklist item..." style="flex: 1; padding: 6px 12px; font-size: 13px;" />
+									<button class="taskflow-button primary" type="button" data-add-checklist-item style="padding: 4px 12px; font-size: 12px;">Add</button>
+								</div>
+								<div class="taskflow-checklist-list" data-checklist-list>
+									<!-- Checklist items will be rendered here -->
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="taskflow-adv-section">
+						<div class="taskflow-adv-section-header" data-toggle-section>
+							<span>📎 Attachments • <span style="font-weight: 400; color: var(--taskflow-text-muted);">No files</span></span>
+							<span class="taskflow-adv-chevron">⌵</span>
+						</div>
+						<div class="taskflow-adv-section-body">
+							<div class="taskflow-empty" style="padding: 12px; border: none; font-size: 12px;">No files attached.</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Right Sidebar: Interactive Tabs -->
+				<aside class="taskflow-modal-right-sidebar">
+					<div class="taskflow-sidebar-tabs">
+						<div class="taskflow-sidebar-tab active">💬 Comments</div>
+						<div class="taskflow-sidebar-tab">🌿 Subtasks</div>
+						<div class="taskflow-sidebar-tab">📅 Events</div>
+						<div class="taskflow-sidebar-tab">🕒 Activities</div>
+						<div class="taskflow-sidebar-tab">🔗 Relations</div>
+						<div class="taskflow-sidebar-tab">📄 Pages</div>
+					</div>
+
+					<div class="taskflow-comments-section" style="padding: 24px; flex: 1; display: flex; flex-direction: column;">
+						<div class="taskflow-comment-list" data-comment-list style="flex: 1; justify-content: flex-start; margin-bottom: 24px;">
+							<div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--taskflow-text-muted); text-align: center; gap: 16px;">
+								<span style="font-size: 56px; opacity: 0.1; filter: grayscale(1);">💬</span>
+								<div>
+									<div style="font-weight: 700; color: var(--taskflow-text); font-size: 15px;">No comments yet</div>
+									<div style="font-size: 12px; margin-top: 4px;">Start the conversation by adding a comment.</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="taskflow-comment-form">
+							<!-- Rich Text Editor Toolbar Placeholder -->
+							<div style="display: flex; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--taskflow-border); margin-bottom: 12px; color: var(--taskflow-text-muted); font-size: 13px;">
+								<span style="cursor: pointer;"><b>B</b></span>
+								<span style="cursor: pointer;"><i>I</i></span>
+								<span style="cursor: pointer;"><u>U</u></span>
+								<span style="width: 1px; height: 16px; background: var(--taskflow-border);"></span>
+								<span style="cursor: pointer;">List</span>
+								<span style="cursor: pointer;">Link</span>
+							</div>
+							<textarea name="new_comment" placeholder="Add a comment..." rows="3" style="border: none; padding: 0; font-size: 14px; line-height: 1.5; outline: none; background: transparent;"></textarea>
+							<div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+								<button class="taskflow-button primary" type="button" data-post-comment style="padding: 6px 20px; font-size: 13px;">Submit</button>
+							</div>
+						</div>
+					</div>
+				</aside>
+			</div>
+			
+			<!-- Footer Actions -->
+			<div style="padding: 20px 32px; border-top: 1px solid var(--taskflow-border); display: flex; justify-content: flex-end; gap: 12px; background: white; flex-shrink: 0;">
+				<button class="taskflow-button secondary" type="button" data-close-modal="task" style="padding: 10px 24px;">Cancel</button>
+				<button class="taskflow-button primary" type="submit" style="padding: 10px 32px;">Save Changes</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+
 
 <script>
 	window.csrf_token = window.csrf_token || "{{ csrf_token }}";
