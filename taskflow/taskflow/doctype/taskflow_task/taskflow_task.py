@@ -15,6 +15,10 @@ class TaskflowTask(Document):
 		self._validate_progress_rules()
 		self._validate_user_access_rules()
 
+	def before_save(self):
+		if not self.start_date:
+			self.start_date = frappe.utils.today()
+
 	def _sync_project_and_team_context(self):
 		if self.project and not self.team:
 			self.team = frappe.db.get_value("Taskflow Project", self.project, "team")
