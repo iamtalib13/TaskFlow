@@ -2045,12 +2045,18 @@ body.taskflow-dragging .taskflow-card-dragging {
 	padding: 0 !important;
 	margin: 0 !important;
 	background: transparent !important;
+	border: none !important;
 }
 
 #taskGrid {
 	width: 100% !important;
 	height: 100% !important;
 	border: none !important;
+	border-radius: 0 !important;
+}
+
+.ag-theme-alpine {
+	--ag-borders: none !important;
 }
 
 .taskflow-main {
