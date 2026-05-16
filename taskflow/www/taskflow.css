@@ -41,6 +41,17 @@ body.taskflow-portal-page {
 	display: none;
 }
 
+.taskflow-oldest-task-alert {
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 13px;
+    margin-left: 16px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
 /* Sidebar Nav */
 .taskflow-sidebar-nav {
     width: 60px; /* Collapsed width */

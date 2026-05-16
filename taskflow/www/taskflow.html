@@ -101,6 +101,7 @@
 				<button class="taskflow-btn-more" type="button" aria-label="More project actions" disabled>⋯</button>
 			</div>
 			<div class="taskflow-toolbar-actions">
+				<div data-oldest-task-alert></div>
 				<button class="taskflow-btn-toolbar" type="button" data-filter-button><span class="taskflow-icon">⏳</span> Filter</button>
 				<button class="taskflow-btn-toolbar" type="button"><span class="taskflow-icon">▤</span> View</button>
 
@@ -258,7 +259,10 @@
         <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px; max-height: 200px; overflow-y: auto;" data-assignee-checkboxes>
             <!-- Checkboxes will be populated via JS -->
         </div>
-        <button class="taskflow-btn-primary" type="button" data-apply-filter style="margin-top: 24px; width: 100%; padding: 8px;">Apply</button>
+        <div style="display: flex; gap: 8px; margin-top: 24px;">
+            <button class="taskflow-btn-primary" type="button" data-apply-filter style="flex: 1; padding: 8px;">Apply</button>
+            <button class="taskflow-button secondary" type="button" data-clear-filter style="padding: 8px 16px;">Clear</button>
+        </div>
     </div>
 </div>
 

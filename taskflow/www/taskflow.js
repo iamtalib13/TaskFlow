@@ -55,6 +55,8 @@
 		if (state.navMode === "dashboard" && state.selectedProject) params.set("project", state.selectedProject);
 		if (state.selectedTeam && state.selectedTeam !== "all") params.set("team", state.selectedTeam);
 		if (state.taskView) params.set("view", state.taskView);
+        if (state.selectedStatuses && state.selectedStatuses.length) params.set("statuses", state.selectedStatuses.join(','));
+        if (state.selectedAssignees && state.selectedAssignees.length) params.set("assignees", state.selectedAssignees.join(','));
 
 		const query = params.toString();
 		const newUrl = `${window.location.pathname}${query ? `?${query}` : ""}`;
@@ -73,9 +75,14 @@
 		const project = params.get("project");
 		const team = params.get("team");
 		const view = params.get("view");
+        const statuses = params.get("statuses");
+        const assignees = params.get("assignees");
 
 		if (view) state.taskView = normalizeTaskView(view);
 		state.selectedTeam = team || "all";
+        state.selectedStatuses = statuses ? statuses.split(',') : JSON.parse(localStorage.getItem("taskflow_filter_statuses") || "[]");
+        state.selectedAssignees = assignees ? assignees.split(',') : JSON.parse(localStorage.getItem("taskflow_filter_assignees") || "[]");
+
 		if (refs.teamSwitcher) refs.teamSwitcher.value = state.selectedTeam;
 		syncTaskTabs();
 
@@ -386,32 +393,40 @@
 				});
 			}
 		});
+
+        // Close filter on outside click
+        document.addEventListener("click", (e) => {
+            const sidebar = document.querySelector("[data-filter-sidebar]");
+            const filterBtn = document.querySelector("[data-filter-button]");
+            if (sidebar && sidebar.classList.contains("open") && !sidebar.contains(e.target) && e.target !== filterBtn) {
+                sidebar.classList.remove("open");
+            }
+        });
 		document.querySelector("[data-apply-filter]")?.addEventListener("click", () => {
 			const statusInputs = document.querySelectorAll("[data-status-checkboxes] input:checked");
 			const assigneeInputs = document.querySelectorAll("[data-assignee-checkboxes] input:checked");
-			const selectedStatuses = Array.from(statusInputs).map((input) => input.value);
-			const selectedAssignees = Array.from(assigneeInputs).map((input) => input.value);
+			
+			state.selectedStatuses = Array.from(statusInputs).map((input) => input.value);
+			state.selectedAssignees = Array.from(assigneeInputs).map((input) => input.value);
 
-			localStorage.setItem("taskflow_filter_statuses", JSON.stringify(selectedStatuses));
-			localStorage.setItem("taskflow_filter_assignees", JSON.stringify(selectedAssignees));
+			localStorage.setItem("taskflow_filter_statuses", JSON.stringify(state.selectedStatuses));
+			localStorage.setItem("taskflow_filter_assignees", JSON.stringify(state.selectedAssignees));
 
-			const filteredTasks = (state.currentTasks || []).filter((task) =>
-				selectedStatuses.includes(task.status) &&
-				selectedAssignees.includes(task.assigned_to_name || "Unassigned")
-			);
+			refreshView();
+			document.querySelector("[data-filter-sidebar]")?.classList.remove("open");
+		});
 
-			const data = filteredTasks.map((task) => [
-				task.task_title,
-				{ name: task.assigned_to_name || "Unassigned", image: task.assigned_to_image },
-				task.status,
-				task.start_date ? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24)) : 0,
-				task.priority,
-				formatDate(task.due_date),
-				prettyDate(task.modified),
-				task.task_type || "Task"
-			]);
+		document.querySelector("[data-clear-filter]")?.addEventListener("click", () => {
+			state.selectedStatuses = [];
+			state.selectedAssignees = [];
 
-			state.hotInstance?.loadData(data);
+			localStorage.removeItem("taskflow_filter_statuses");
+			localStorage.removeItem("taskflow_filter_assignees");
+
+			updateUrlState();
+			refreshView();
+			
+			// Close sidebar
 			document.querySelector("[data-filter-sidebar]")?.classList.remove("open");
 		});
 
@@ -896,14 +911,33 @@
 		const project = workspace.project;
 		const tasks = workspace.tasks || [];
 
+		// Calculate oldest pending task
+		const alertContainer = document.querySelector('[data-oldest-task-alert]');
+		const pendingTasks = tasks.filter(t => !["Completed", "Cancelled"].includes(t.status) && t.start_date);
+		if (pendingTasks.length > 0) {
+			pendingTasks.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+			const oldest = pendingTasks[0];
+			const days = Math.floor(Math.abs(new Date() - new Date(oldest.start_date)) / (1000 * 60 * 60 * 24));
+			
+			const member = (state.bootstrap.team_members || []).find(m => m.employee === oldest.assigned_to);
+			const assigneeName = member ? member.label : (oldest.assigned_to || "Unassigned");
+
+			alertContainer.innerHTML = `<span class="taskflow-oldest-task-alert" style="cursor: pointer;" data-oldest-task-id="${escapeHtml(oldest.name)}">⚠️ Oldest pending task: ${escapeHtml(assigneeName)} (${days} days pending)</span>`;
+			alertContainer.querySelector('.taskflow-oldest-task-alert').addEventListener('click', () => {
+				openTaskModal(oldest);
+			});
+		} else {
+			alertContainer.innerHTML = '';
+		}
+
 		const totalTasks = tasks.length;
 		const completedTasks = tasks.filter(t => t.status === "Completed").length;
-		const pendingTasks = totalTasks - completedTasks;
+		const pendingCount = totalTasks - completedTasks;
 
 		refs.projectTitle.innerHTML = `
 			${escapeHtml(project.project_name)}
 			<span style="font-size: 20px; font-weight: 800; margin-left: 12px;">
-				<span style="color: #ef4444;">${pendingTasks}</span> / ${totalTasks}
+				<span style="color: #ef4444;">${pendingCount}</span> / ${totalTasks}
 			</span>
 		`;
 
@@ -1006,6 +1040,9 @@
 		}
 		if (state.selectedStatuses && state.selectedStatuses.length > 0) {
 			filtered = filtered.filter(t => state.selectedStatuses.includes(t.status));
+		}
+		if (state.selectedAssignees && state.selectedAssignees.length > 0) {
+			filtered = filtered.filter(t => state.selectedAssignees.includes(t.assigned_to_name || "Unassigned"));
 		}
 		return filterTasks(filtered);
 	}
