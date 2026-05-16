@@ -574,8 +574,12 @@ def get_task_details(task: str):
 
 
 @frappe.whitelist()
-def add_task_comment(task: str, content: str):
+def add_task_comment(payload: str):
 	_require_login()
+	data = frappe.parse_json(payload)
+	task = data.get("task")
+	content = data.get("content")
+	
 	if not content:
 		frappe.throw(_("Comment content is required"))
 		
