@@ -504,40 +504,31 @@ def save_project(payload: str):
 @frappe.whitelist()
 def save_task(payload: str):
 	_require_login()
-	data = frappe.parse_json(payload)
-	name = data.get("name")
+	try:
+		data = frappe.parse_json(payload)
+		name = data.get("name")
+		
+		doc = frappe.get_doc("Taskflow Task", name) if name and name != "undefined" else frappe.new_doc("Taskflow Task")
+		if name and name != "undefined":
+			doc.check_permission("write")
 
-	doc = frappe.get_doc("Taskflow Task", name) if name else frappe.new_doc("Taskflow Task")
-	if name:
-		doc.check_permission("write")
+		for fieldname in [
+			"task_title", "project", "parent_task", "team", "assigned_to", "status",
+			"priority", "task_type", "start_date", "due_date", "progress_percent",
+			"estimated_hours", "actual_hours", "description", "is_milestone",
+			"is_blocked", "sequence",
+		]:
+			if fieldname in data:
+				doc.set(fieldname, data.get(fieldname))
 
-	for fieldname in [
-		"task_title",
-		"project",
-		"parent_task",
-		"team",
-		"assigned_to",
-		"status",
-		"priority",
-		"task_type",
-		"start_date",
-		"due_date",
-		"progress_percent",
-		"estimated_hours",
-		"actual_hours",
-		"description",
-		"is_milestone",
-		"is_blocked",
-		"sequence",
-	]:
-		if fieldname in data:
-			doc.set(fieldname, data.get(fieldname))
+		if "checklist" in data:
+			doc.set("checklist", data.get("checklist"))
 
-	if "checklist" in data:
-		doc.set("checklist", data.get("checklist"))
-
-	doc.save(ignore_permissions=False)
-	return {"name": doc.name}
+		doc.save(ignore_permissions=False)
+		return {"name": doc.name}
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "save_task error")
+		raise
 
 
 @frappe.whitelist()

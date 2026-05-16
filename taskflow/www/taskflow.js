@@ -1498,21 +1498,13 @@ return `
 			columns: [
 				{ // Task Name
 					renderer: function(instance, td, row, col, prop, value, cellProperties) {
-						const span = document.createElement('span');
-						span.textContent = value || "";
-						span.style.color = "var(--taskflow-primary)";
-						span.style.cursor = "pointer";
+						td.innerHTML = `<span style="color: var(--taskflow-primary); cursor: pointer; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${escapeHtml(value || "")}</span>`;
 						
-						span.onmouseover = () => span.style.textDecoration = "underline";
-						span.onmouseout = () => span.style.textDecoration = "none";
-						
-						span.onclick = () => {
+						td.querySelector('span').onclick = () => {
 							const taskData = state.currentTasks[row];
 							if (taskData) openTaskModal(taskData);
 						};
 						
-						td.innerHTML = '';
-						td.appendChild(span);
 						return td;
 					}
 				}, 
@@ -1729,25 +1721,36 @@ return `
 
 	function _populateAdvancedTaskForm(task, currentProject) {
 		const form = refs.taskForm;
-		const team = task.team || currentProject.team;
-		form.elements.name.value = task.name;
-		form.elements.project.value = task.project;
-		form.elements.team.value = team;
-		form.elements.task_title.value = task.task_title;
-		form.elements.status.value = task.status;
-		form.elements.priority.value = task.priority;
-		form.elements.task_type.value = task.task_type || "Task";
-		form.elements.assigned_to.innerHTML = buildMemberOptions(team, task.assigned_to);
-		form.elements.start_date.value = datetimeInputValue(task.start_date);
-		form.elements.due_date.value = datetimeInputValue(task.due_date);
-		form.elements.estimated_hours.value = task.estimated_hours || "";
-		form.elements.sequence.value = task.sequence || "";
-		form.elements.description.value = stripHtml(task.description || "");
-		form.elements.is_milestone.checked = Boolean(task.is_milestone);
-		form.elements.is_blocked.checked = Boolean(task.is_blocked);
+		const team = task.team || (currentProject ? currentProject.team : "");
+		
+		const setVal = (name, val) => {
+			if (form.elements[name]) form.elements[name].value = val || "";
+		};
+
+		setVal("name", task.name);
+		setVal("project", task.project);
+		setVal("team", team);
+		setVal("task_title", task.task_title);
+		setVal("status", task.status);
+		setVal("priority", task.priority);
+		setVal("task_type", task.task_type || "Task");
+		
+		if (form.elements.assigned_to) {
+			form.elements.assigned_to.innerHTML = buildMemberOptions(team, task.assigned_to);
+		}
+		
+		setVal("start_date", datetimeInputValue(task.start_date));
+		setVal("due_date", datetimeInputValue(task.due_date));
+		setVal("estimated_hours", task.estimated_hours || "");
+		setVal("description", stripHtml(task.description || ""));
+		
+		if (form.elements.is_milestone) form.elements.is_milestone.checked = Boolean(task.is_milestone);
+		if (form.elements.is_blocked) form.elements.is_blocked.checked = Boolean(task.is_blocked);
 		
 		updateAvatar(task.assigned_to);
-		form.elements.assigned_to.onchange = (e) => updateAvatar(e.target.value);
+		if (form.elements.assigned_to) {
+			form.elements.assigned_to.onchange = (e) => updateAvatar(e.target.value);
+		}
 		
 		const idLabel = document.querySelector("[data-task-id-label]");
 		if (idLabel) idLabel.textContent = (task.name && task.name.includes("-")) ? task.name.split("-").pop() : (task.name || "");
