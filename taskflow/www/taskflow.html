@@ -271,20 +271,22 @@
 			<form class="taskflow-form" data-task-form-quick>
 				<input type="hidden" name="project" />
 				<input type="hidden" name="team" />
+				<div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--taskflow-border);">
+					<h2 id="taskflow-task-quick-title" style="margin: 0; font-size: 20px;">Create task</h2>
+                    <div style="display: flex; gap: 8px;">
+						<button class="taskflow-button secondary" type="button" data-close-modal="task-quick">Cancel</button>
+						<button class="taskflow-button primary" type="submit">Create task</button>
+					</div>
+                </div>
 				<div class="taskflow-modal-body-layout" style="display: flex; height: 500px;">
 				<!-- Main Content Area -->
 				<div style="flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
-					<h2 id="taskflow-task-quick-title" style="margin: 0; font-size: 20px;">Create task</h2>
 					<input type="text" name="task_title" placeholder="Task name" style="width: 100%; padding: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; font-size: 16px;" required />
 					<textarea name="description" placeholder="Task description" rows="10" style="width: 100%; padding: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; resize: none;"></textarea>
 					<div style="display: flex; gap: 8px;">
 						<button class="taskflow-button secondary" type="button" style="padding: 6px 12px;">✓ Add subtask</button>
 						<button class="taskflow-button secondary" type="button" style="padding: 6px 12px;">📎 Attach file</button>
 						<button class="taskflow-button secondary" type="button" style="padding: 6px 12px;">🔖 Add tag</button>
-					</div>
-					<div style="margin-top: auto; display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px;">
-						<button class="taskflow-button secondary" type="button" data-close-modal="task-quick">Cancel</button>
-						<button class="taskflow-button primary" type="submit">Create task</button>
 					</div>
 				</div>
 				<!-- Metadata Sidebar -->
@@ -369,6 +371,10 @@
 						<button class="taskflow-btn-ghost" type="button" style="color: var(--taskflow-text-muted); font-size: 18px;">🔗</button>
 						<button class="taskflow-btn-ghost" type="button" style="color: var(--taskflow-text-muted); font-size: 18px;">⋯</button>
 					</div>
+					<div style="display: flex; gap: 8px; margin-left: 12px;">
+                        <button class="taskflow-button secondary" type="button" data-close-modal="task" style="padding: 6px 16px;">Cancel</button>
+                        <button class="taskflow-button primary" type="submit" style="padding: 6px 16px;">Save Changes</button>
+                    </div>
 					<button class="taskflow-btn-ghost" type="button" data-close-modal="task" style="font-size: 24px; color: var(--taskflow-text-muted); padding: 0 4px;">&times;</button>
 				</div>
 			</div>
@@ -529,12 +535,6 @@
 						</div>
 					</div>
 				</aside>
-			</div>
-			
-			<!-- Footer Actions -->
-			<div style="padding: 20px 32px; border-top: 1px solid var(--taskflow-border); display: flex; justify-content: flex-end; gap: 12px; background: white; flex-shrink: 0;">
-				<button class="taskflow-button secondary" type="button" data-close-modal="task" style="padding: 10px 24px;">Cancel</button>
-				<button class="taskflow-button primary" type="submit" style="padding: 10px 32px;">Save Changes</button>
 			</div>
 		</form>
 	</div>

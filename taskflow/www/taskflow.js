@@ -312,9 +312,11 @@
 						state.projectWorkspace = null;
 						renderProjectWorkspace();
 						updateUrlState();
+						refreshView();
 						return;
 					}
 				}
+                refreshView();
 				if (state.navMode === 'team') {
 					renderTeamView();
 				} else {
@@ -521,12 +523,17 @@
 		// 1. Reset all views to hidden
 		document.querySelectorAll('.taskflow-view-content').forEach(el => el.classList.add('taskflow-hidden'));
 		
-		// 2. Hide all team-specific UI components
-		const teamElements = [
-			document.querySelector("[data-team-view]"),
-			document.querySelector("[data-team-switcher]")?.parentElement
-		];
-		teamElements.forEach(el => el && el.classList.add('taskflow-hidden'));
+		// 2. Hide all team-specific UI components (only when not in dashboard or team mode)
+        if (mode !== "dashboard" && mode !== "team") {
+            const teamElements = [
+                document.querySelector("[data-team-view]"),
+            ];
+            teamElements.forEach(el => el && el.classList.add('taskflow-hidden'));
+        } else {
+            // Ensure team switcher is visible in dashboard and team modes
+            const teamSwitcherParent = document.querySelector("[data-team-switcher]")?.parentElement;
+            if (teamSwitcherParent) teamSwitcherParent.classList.remove('taskflow-hidden');
+        }
 
 		// 3. Show/Manage mode-specific UI
 		const toolbar = document.querySelector('.taskflow-toolbar');
@@ -848,6 +855,10 @@
 		const teams = (state.bootstrap && state.bootstrap.teams) || [];
 		refs.teamSwitcher.innerHTML = `<option value="all">All Teams</option>` +
 			teams.map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.team_name)}</option>`).join("");
+        
+        if (state.selectedTeam) {
+            refs.teamSwitcher.value = state.selectedTeam;
+        }
 	}
 
 	function renderProjectList() {
