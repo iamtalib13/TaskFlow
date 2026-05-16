@@ -44,8 +44,17 @@ class TaskflowTask(Document):
 			self.progress_percent = 100
 			if not self.completed_on:
 				self.completed_on = frappe.utils.now_datetime()
+			
+			# Checklist validation
+			for item in self.checklist:
+				if not item.is_completed:
+					frappe.throw(_("Cannot complete task while checklist items are pending."))
 		elif self.progress_percent == 100 and self.status != "Completed":
 			self.status = "Completed"
+            # Checklist validation for auto-completion
+			for item in self.checklist:
+				if not item.is_completed:
+					frappe.throw(_("Cannot complete task while checklist items are pending."))
 
 	def _validate_user_access_rules(self):
 		if frappe.flags.in_install or frappe.flags.in_migrate:
@@ -61,5 +70,15 @@ class TaskflowTask(Document):
 		if not (can_manage_team(user, self.team) or can_operate_team(user, self.team)):
 			frappe.throw(_("You can only create or update tasks for teams you belong to."))
 
-		if self.assigned_to_user and self.assigned_to_user != user and not can_manage_team(user, self.team):
+		previous_doc = self.get_doc_before_save() if not self.is_new() else None
+		assigned_to_changed = self.is_new() or (
+			previous_doc and previous_doc.assigned_to != self.assigned_to
+		)
+
+		if (
+			assigned_to_changed
+			and self.assigned_to_user
+			and self.assigned_to_user != user
+			and not can_manage_team(user, self.team)
+		):
 			frappe.throw(_("Only a team manager can assign tasks to other users."))

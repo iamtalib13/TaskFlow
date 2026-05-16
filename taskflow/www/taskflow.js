@@ -235,21 +235,38 @@
 			
 			const removeBtn = e.target.closest("[data-remove-checklist-item]");
 			if (removeBtn) {
-				removeChecklistItem(removeBtn.dataset.removeChecklistItem);
+				const index = Number.parseInt(removeBtn.dataset.removeChecklistItem, 10);
+				if (!Number.isNaN(index)) {
+					removeChecklistItem(index);
+				}
 			}
 		});
 
 		document.addEventListener("change", (e) => {
-			const toggle = e.target.closest("[data-toggle-checklist-item]");
-			if (toggle) {
-				toggleChecklistItem(toggle.dataset.toggleChecklistItem, toggle.checked);
+			const toggle = e.target;
+			if (toggle instanceof HTMLInputElement && toggle.hasAttribute("data-toggle-checklist-item")) {
+				const index = Number.parseInt(toggle.dataset.toggleChecklistItem, 10);
+				if (!Number.isNaN(index)) {
+					toggleChecklistItem(index, toggle.checked);
+				}
+				return;
+			}
+
+			if (toggle instanceof HTMLInputElement && toggle.hasAttribute("data-edit-checklist-item")) {
+				const index = Number.parseInt(toggle.dataset.editChecklistItem, 10);
+				if (!Number.isNaN(index)) {
+					updateChecklistItem(index, toggle.value, { persist: true });
+				}
 			}
 		});
 
 		document.addEventListener("input", (e) => {
-			const editInput = e.target.closest("[data-edit-checklist-item]");
-			if (editInput) {
-				updateChecklistItem(editInput.dataset.editChecklistItem, editInput.value);
+			const editInput = e.target;
+			if (editInput instanceof HTMLInputElement && editInput.hasAttribute("data-edit-checklist-item")) {
+				const index = Number.parseInt(editInput.dataset.editChecklistItem, 10);
+				if (!Number.isNaN(index)) {
+					updateChecklistItem(index, editInput.value);
+				}
 			}
 		});
 
@@ -362,6 +379,12 @@
 		// Auto-save listeners for task form
 		refs.taskForm.querySelectorAll("input, select, textarea").forEach(el => {
 			if (el.name === "new_comment") return; // Skip comment input
+			if (
+				el.hasAttribute("data-new-checklist-item") ||
+				el.hasAttribute("data-toggle-checklist-item") ||
+				el.hasAttribute("data-edit-checklist-item") ||
+				el.closest("[data-checklist-wrapper]")
+			) return;
 			
 			const eventType = (el.tagName === "INPUT" && (el.type === "text" || el.type === "number")) || el.tagName === "TEXTAREA" 
 				? "input" 
@@ -1460,13 +1483,18 @@ return `
 	function renderList(tasks) {
 		if (!refs.listView) return;
 
-		refs.listView.innerHTML = '<div id="taskGrid" style="width: 100%; height: 100%;"></div>';
-
 		if (state.hotInstance) {
 			state.hotInstance.destroy();
+			state.hotInstance = null;
 		}
 
 		state.currentTasks = tasks;
+		if (typeof window.Handsontable !== "function") {
+			renderListFallback(tasks);
+			return;
+		}
+
+		refs.listView.innerHTML = '<div id="taskGrid" style="width: 100%; height: 100%;"></div>';
 
 		const data = tasks.map((task) => [
 			task.task_title,
@@ -1574,6 +1602,64 @@ return `
 				
 				return cellProperties;
 			}
+		});
+	}
+
+	function renderListFallback(tasks) {
+		const rows = tasks.map((task) => {
+			const taskName = escapeHtml(task.task_title || "");
+			const assignee = escapeHtml(capitalizeName(task.assigned_to_name || "Unassigned"));
+			const status = escapeHtml(task.status || "");
+			const age = task.start_date
+				? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24))
+				: 0;
+			const priority = escapeHtml(task.priority || "");
+			const dueDate = escapeHtml(formatDate(task.due_date));
+			const modified = escapeHtml(prettyDate(task.modified));
+			const taskType = escapeHtml(task.task_type || "Task");
+
+			return `
+				<tr data-task-fallback-row="${escapeHtml(task.name)}" style="cursor: pointer;">
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); color: var(--taskflow-primary); font-weight: 600;">${taskName}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${assignee}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${status}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); text-align: center;">${age}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${priority}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${dueDate}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${modified}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${taskType}</td>
+				</tr>
+			`;
+		}).join("");
+
+		refs.listView.innerHTML = `
+			<div style="padding: 12px; color: #b45309; background: #fffbeb; border-bottom: 1px solid #fde68a; font-size: 12px; font-weight: 600;">
+				Table fallback active because Handsontable failed to load.
+			</div>
+			<div style="overflow: auto; height: 100%;">
+				<table style="width: 100%; border-collapse: collapse; background: #fff;">
+					<thead>
+						<tr style="background: #f8fafc; text-align: left;">
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Task Name</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Assignee</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Status</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); text-align: center;">Age</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Priority</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Due Date</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Last Modified</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Tags</th>
+						</tr>
+					</thead>
+					<tbody>${rows}</tbody>
+				</table>
+			</div>
+		`;
+
+		refs.listView.querySelectorAll("[data-task-fallback-row]").forEach((row) => {
+			row.addEventListener("click", () => {
+				const task = findTask(row.dataset.taskFallbackRow);
+				if (task) openTaskModal(task);
+			});
 		});
 	}
 
@@ -1773,10 +1859,20 @@ return `
 	function renderChecklist() {
 		const list = document.querySelector("[data-checklist-list]");
 		const countLabel = document.querySelector("[data-checklist-count]");
+        const pendingContainer = document.querySelector("[data-pending-checklist-indicator]");
 		if (!list) return;
 
 		const items = state.currentChecklist;
+        const pendingItems = items.filter(i => !i.is_completed);
+
 		if (countLabel) countLabel.textContent = `${items.length} items`;
+        if (pendingContainer) {
+            if (pendingItems.length > 0) {
+                pendingContainer.innerHTML = `<span style="color: #ef4444; font-weight: 700; font-size: 12px; margin-left: 8px;">(${pendingItems.length} pending checklist items)</span>`;
+            } else {
+                pendingContainer.innerHTML = '';
+            }
+        }
 
 		if (!items.length) {
 			list.innerHTML = '<div class="taskflow-muted" style="font-size: 12px; padding: 12px; text-align: center;">No checklist items.</div>';
@@ -1786,7 +1882,7 @@ return `
 		list.innerHTML = items.map((item, index) => `
 			<div class="taskflow-checklist-item ${item.is_completed ? 'is-completed' : ''}">
 				<label class="taskflow-checkbox-wrapper">
-					<input type="checkbox" data-toggle-checklist-item="${index}" ${item.is_completed ? 'checked' : ''}>
+					<input type="checkbox" data-toggle-checklist-item="${index}" data-checklist-row-name="${escapeHtml(item.name || "")}" ${item.is_completed ? 'checked' : ''}>
 					<span class="taskflow-checkbox-custom"></span>
 				</label>
 				<input type="text" class="taskflow-checklist-input" data-edit-checklist-item="${index}" value="${escapeHtml(item.checklist_item)}" />
@@ -1808,30 +1904,65 @@ return `
 
 		input.value = "";
 		renderChecklist();
-		triggerAutoSave();
+		persistChecklistChanges({ immediate: true });
 	}
 
 	function removeChecklistItem(index) {
 		state.currentChecklist.splice(index, 1);
 		renderChecklist();
-		triggerAutoSave();
+		persistChecklistChanges({ immediate: true });
 	}
 
-	function toggleChecklistItem(index, checked) {
+	async function toggleChecklistItem(index, checked) {
 		const item = state.currentChecklist[index];
-		if (item) {
-			item.is_completed = checked ? 1 : 0;
+		console.log("[Taskflow Checklist] Toggle requested", {
+			index,
+			checked,
+			itemFound: Boolean(item),
+			item: item ? { checklist_item: item.checklist_item, is_completed: item.is_completed } : null,
+		});
+		if (!item) return;
+
+		const previousValue = item.is_completed;
+		item.is_completed = checked ? 1 : 0;
+		renderChecklist();
+
+		try {
+			await saveTaskChecklistToggle({
+				task: refs.taskForm?.elements?.name?.value || null,
+				index,
+				row_name: item.name || null,
+				checked: item.is_completed,
+			});
+		} catch (error) {
+			item.is_completed = previousValue;
 			renderChecklist();
-			triggerAutoSave();
 		}
 	}
 
-	function updateChecklistItem(index, value) {
+	function updateChecklistItem(index, value, options = {}) {
 		const item = state.currentChecklist[index];
 		if (item) {
 			item.checklist_item = value;
-			triggerAutoSave();
+			if (options.persist) {
+				persistChecklistChanges({ immediate: true });
+			}
 		}
+	}
+
+	function persistChecklistChanges(options = {}) {
+		console.log("[Taskflow Checklist] Persist requested", {
+			immediate: Boolean(options.immediate),
+			task: refs.taskForm?.elements?.name?.value || null,
+			status: refs.taskForm?.elements?.status?.value || null,
+			checklist: state.currentChecklist.map((item, index) => ({
+				index,
+				checklist_item: item.checklist_item,
+				is_completed: item.is_completed,
+				sequence: item.sequence,
+			})),
+		});
+		triggerChecklistAutoSave({ immediate: options.immediate });
 	}
 
 	function renderComments(comments) {
@@ -1971,6 +2102,7 @@ return `
 	}
 
 		function getTaskFormPayload(form) {
+			console.log("Current checklist in payload:", state.currentChecklist);
 			return {
 				name: getFormValue(form, "name") || undefined,
 				project: getFormValue(form, "project") || (state.projectWorkspace && state.projectWorkspace.project ? state.projectWorkspace.project.name : ""),
@@ -1991,13 +2123,59 @@ return `
 			};
 		}
 
-	function triggerAutoSave() {
+	function triggerChecklistAutoSave(options = {}) {
 		const form = refs.taskForm;
-		// Only auto-save if editing an existing task
 		if (!form || !form.elements.name.value) return;
 
 		if (state.autoSaveTimer) clearTimeout(state.autoSaveTimer);
-		
+
+		const delay = options.immediate ? 0 : 1000;
+
+		state.autoSaveTimer = setTimeout(async () => {
+			const statusEl = document.querySelector("[data-task-save-status]");
+			const textEl = document.querySelector("[data-task-save-text]");
+			const iconEl = document.querySelector("[data-task-save-icon]");
+			
+			if (statusEl) {
+				textEl.textContent = "Saving...";
+				iconEl.classList.add("taskflow-hidden");
+				iconEl.classList.remove("taskflow-save-icon-green");
+				statusEl.style.opacity = "1";
+			}
+
+			const payload = {
+				task: form.elements.name.value,
+				status: getFormValue(form, "status", "Open"),
+				checklist: state.currentChecklist,
+			};
+			console.log("[Taskflow Checklist] Auto-save payload", {
+				task: payload.task || null,
+				status: payload.status,
+				checklist: payload.checklist,
+			});
+			await saveTaskChecklist(payload);
+
+			if (statusEl) {
+				textEl.textContent = "Saved";
+				iconEl.textContent = "✓";
+				iconEl.classList.add("taskflow-save-icon-green");
+				iconEl.classList.remove("taskflow-hidden");
+				
+				setTimeout(() => {
+					statusEl.style.opacity = "0";
+				}, 2000);
+			}
+		}, delay);
+	}
+
+	function triggerAutoSave(options = {}) {
+		const form = refs.taskForm;
+		if (!form || !form.elements.name.value) return;
+
+		if (state.autoSaveTimer) clearTimeout(state.autoSaveTimer);
+
+		const delay = options.immediate ? 0 : 1000;
+
 		state.autoSaveTimer = setTimeout(async () => {
 			const statusEl = document.querySelector("[data-task-save-status]");
 			const textEl = document.querySelector("[data-task-save-text]");
@@ -2023,7 +2201,7 @@ return `
 					statusEl.style.opacity = "0";
 				}, 2000);
 			}
-		}, 1000);
+		}, delay);
 	}
 
 	async function saveProject(payload) {
@@ -2040,6 +2218,12 @@ return `
 		try {
 			const returnMode = state.navMode;
 			await apiCall("save_task", { payload: JSON.stringify(payload) }, "POST");
+			if (options.isAutoSave) {
+				console.log("[Taskflow Checklist] Auto-save success", {
+					task: payload.name || null,
+					checklistCount: Array.isArray(payload.checklist) ? payload.checklist.length : 0,
+				});
+			}
 			
 			if (!options.isAutoSave) {
 				closeModal("task");
@@ -2057,8 +2241,68 @@ return `
 			if (!options.isAutoSave) {
 				showMessage(error.message || "Unable to save task.");
 			} else {
-				console.error("Auto-save failed:", error);
+				console.error("[Taskflow Checklist] Auto-save failed", {
+					task: payload.name || null,
+					error: error?.message || error,
+					status: error?.status || null,
+					responsePayload: error?.responsePayload || null,
+					checklist: payload.checklist,
+				});
 			}
+		}
+	}
+
+	async function saveTaskChecklist(payload) {
+		try {
+			const result = await apiCall("save_task_checklist", { payload: JSON.stringify(payload) }, "POST");
+			if (result && result.task) {
+				replaceTaskInState(result.task);
+				state.currentChecklist = Array.isArray(result.task.checklist) ? result.task.checklist : state.currentChecklist;
+				renderChecklist();
+				refreshView();
+			}
+			console.log("[Taskflow Checklist] Auto-save success", {
+				task: payload.task || null,
+				checklistCount: Array.isArray(payload.checklist) ? payload.checklist.length : 0,
+			});
+		} catch (error) {
+			console.error("[Taskflow Checklist] Auto-save failed", {
+				task: payload.task || null,
+				error: error?.message || error,
+				status: error?.status || null,
+				responsePayload: error?.responsePayload || null,
+				checklist: payload.checklist,
+			});
+			throw error;
+		}
+	}
+
+	async function saveTaskChecklistToggle(payload) {
+		try {
+			const result = await apiCall("toggle_task_checklist_item", { payload: JSON.stringify(payload) }, "POST");
+			if (result && result.task) {
+				replaceTaskInState(result.task);
+				state.currentChecklist = Array.isArray(result.task.checklist) ? result.task.checklist : state.currentChecklist;
+				renderChecklist();
+				refreshView();
+			}
+			console.log("[Taskflow Checklist] Toggle save success", {
+				task: payload.task || null,
+				row_name: payload.row_name || null,
+				index: payload.index,
+				checked: payload.checked,
+			});
+		} catch (error) {
+			console.error("[Taskflow Checklist] Toggle save failed", {
+				task: payload.task || null,
+				row_name: payload.row_name || null,
+				index: payload.index,
+				checked: payload.checked,
+				error: error?.message || error,
+				status: error?.status || null,
+				responsePayload: error?.responsePayload || null,
+			});
+			throw error;
 		}
 	}
 
@@ -2233,7 +2477,10 @@ return `
 		const tasksMap = new Map();
 		bootstrapTasks.forEach(t => tasksMap.set(t.name, t));
 		workspaceTasks.forEach(t => tasksMap.set(t.name, t));
-		let allTasks = Array.from(tasksMap.values());
+		const allTasks = Array.from(tasksMap.values());
+		const previousColumnTasks = allTasks
+			.filter(t => t.status === previousStatus && t.name !== taskName)
+			.sort((a, b) => (Number(a.sequence || 0) - Number(b.sequence || 0)));
 
 		// Optimistically update status
 		task.status = nextStatus;
@@ -2253,6 +2500,11 @@ return `
 
 		// Re-calculate sequences
 		const newSequences = {};
+		previousColumnTasks.forEach((t, idx) => {
+			const newSeq = (idx + 1) * 10;
+			t.sequence = newSeq;
+			newSequences[t.name] = newSeq;
+		});
 		columnTasks.forEach((t, idx) => {
 			const newSeq = (idx + 1) * 10;
 			t.sequence = newSeq;
@@ -2262,18 +2514,23 @@ return `
 		refreshView();
 
 		try {
+			if (previousStatus !== nextStatus) {
+				await apiCall("save_task", {
+					payload: JSON.stringify({
+						name: taskName,
+						status: nextStatus,
+						sequence: newSequences[taskName] || task.sequence,
+					})
+				}, "POST");
+			}
+
 			await apiCall("update_task_sequences", { 
 				sequences: JSON.stringify(newSequences) 
 			}, "POST");
-			
-			if (previousStatus !== nextStatus) {
-				await apiCall("save_task", { 
-					payload: JSON.stringify({ 
-						name: taskName, 
-						status: nextStatus 
-					}) 
-				}, "POST");
-			}
+
+			updateTaskStatusInState(taskName, nextStatus);
+			await loadBootstrap(state.selectedProject, { updateUrl: false });
+			refreshView();
 		} catch (error) {
 			// Basic rollback (not perfect for bulk but better than nothing)
 			task.status = previousStatus;
@@ -2294,6 +2551,21 @@ return `
 			tasks.forEach((task) => {
 				if (task.name === taskName) task.status = status;
 			});
+		});
+	}
+
+	function replaceTaskInState(updatedTask) {
+		const taskLists = [
+			state.projectWorkspace && state.projectWorkspace.tasks,
+			state.bootstrap && state.bootstrap.tasks,
+		];
+
+		taskLists.forEach((tasks) => {
+			if (!Array.isArray(tasks)) return;
+			const index = tasks.findIndex((task) => task.name === updatedTask.name);
+			if (index !== -1) {
+				tasks[index] = { ...tasks[index], ...updatedTask };
+			}
 		});
 	}
 
@@ -2502,16 +2774,25 @@ return `
 				try {
 					payload = await response.json();
 				} catch (error) {
-					throw new Error(response.ok ? "Invalid server response." : `Request failed (${response.status}).`);
+					const requestError = new Error(response.ok ? "Invalid server response." : `Request failed (${response.status}).`);
+					requestError.status = response.status;
+					requestError.responsePayload = null;
+					throw requestError;
 				}
 				if (!response.ok) {
-					throw new Error(extractError(payload));
+					const requestError = new Error(extractError(payload));
+					requestError.status = response.status;
+					requestError.responsePayload = payload;
+					throw requestError;
 				}
 				return payload;
 			})
 			.then((payload) => {
 				if (payload.exc || payload._server_messages) {
-					throw new Error(extractError(payload));
+					const requestError = new Error(extractError(payload));
+					requestError.status = 200;
+					requestError.responsePayload = payload;
+					throw requestError;
 				}
 				return payload.message;
 			});
