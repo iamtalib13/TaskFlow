@@ -52,6 +52,120 @@ body.taskflow-portal-page {
     border: 1px solid #fecaca;
 }
 
+/* Assignment Section Scoped Styles */
+.taskflow-assignment-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 24px;
+    min-height: 120px;
+}
+
+.taskflow-assignment-label {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--taskflow-text-muted);
+    line-height: 1;
+}
+
+.taskflow-assignment-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.taskflow-assignment-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    background: var(--taskflow-primary);
+    color: #ffffff;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: 600;
+}
+
+.taskflow-assignment-select {
+    width: 100%;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid var(--taskflow-border);
+    background: #ffffff;
+    font-size: 13px;
+    color: var(--taskflow-text);
+    outline: none;
+    appearance: none;
+}
+
+.taskflow-assignment-select:focus {
+    border-color: var(--taskflow-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.taskflow-save-capsule {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid var(--taskflow-border);
+    background: #f8fafc;
+    color: var(--taskflow-text-muted);
+    height: 32px;
+    min-width: 70px;
+}
+
+.taskflow-save-icon-green {
+    color: #10b981;
+    font-weight: 800;
+}
+
+/* Comment Form Scoped Styles */
+.taskflow-comment-form {
+    border: 1px solid var(--taskflow-border);
+    border-radius: 8px;
+    padding: 12px;
+    background: #ffffff;
+}
+
+.taskflow-comment-form textarea {
+    width: 100%;
+    border: none;
+    padding: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    outline: none;
+    background: transparent;
+    resize: none;
+}
+
+.taskflow-comment-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--taskflow-border);
+}
+
+.taskflow-comment-toolbar {
+    display: flex;
+    gap: 12px;
+    color: var(--taskflow-text-muted);
+    font-size: 13px;
+    cursor: pointer;
+}
+
 /* Sidebar Nav */
 .taskflow-sidebar-nav {
     width: 60px; /* Collapsed width */

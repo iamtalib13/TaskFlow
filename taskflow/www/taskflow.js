@@ -57,6 +57,7 @@
 		if (state.taskView) params.set("view", state.taskView);
         if (state.selectedStatuses && state.selectedStatuses.length) params.set("statuses", state.selectedStatuses.join(','));
         if (state.selectedAssignees && state.selectedAssignees.length) params.set("assignees", state.selectedAssignees.join(','));
+		if (state.activeTaskName) params.set("task", state.activeTaskName);
 
 		const query = params.toString();
 		const newUrl = `${window.location.pathname}${query ? `?${query}` : ""}`;
@@ -77,6 +78,7 @@
 		const view = params.get("view");
         const statuses = params.get("statuses");
         const assignees = params.get("assignees");
+        const taskId = params.get("task");
 
 		if (view) state.taskView = normalizeTaskView(view);
 		state.selectedTeam = team || "all";
@@ -92,6 +94,11 @@
 			} else {
 				setNavMode("dashboard", options);
 			}
+            
+            if (taskId) {
+                const task = findTask(taskId);
+                if (task) openTaskModal(task);
+            }
 			return;
 		}
 
@@ -1646,7 +1653,7 @@ return `
 		toggleModal(refs.projectModal, true);
 	}
 
-	function openTaskModal(task) {
+	async function openTaskModal(task) {
 		const currentProject = state.projectWorkspace && state.projectWorkspace.project;
 		if (!currentProject && !task) return;
 
@@ -1660,7 +1667,7 @@ return `
 			// Populate Projects
 			const projectField = getFormElement(form, "project");
 			if (projectField) {
-				projectField.innerHTML = (state.bootstrap.projects || []).map(p => 
+				projectField.innerHTML = (state.bootstrap.projects || []).map(p =>
 					`<option value="${escapeHtml(p.name)}" ${p.name === currentProject.name ? 'selected' : ''}>${escapeHtml(p.project_name)}</option>`
 				).join("");
 			}
@@ -1670,16 +1677,42 @@ return `
 			getFormElement(form, "assigned_to").innerHTML = buildMemberOptions(currentProject.team, "");
 			getFormElement(form, "priority").value = "Medium";
 			getFormElement(form, "task_type").value = "Task";
-			
+
 			toggleModal(refs.taskModalQuick, true);
 		} else {
 			// Advanced View for existing tasks
 			state.taskModalMode = "edit";
+			state.activeTaskName = task.name;
+			updateUrlState();
 			const form = refs.taskForm;
 			if (!form) return; // Safety check
 			form.reset();
-			_populateAdvancedTaskForm(task, currentProject);
+
+			// Fetch fresh details to include comments
+			try {
+				const fullTask = await apiCall("get_task_details", { task: task.name });
+				if (fullTask.task) {
+					fullTask.task.comments = fullTask.comments;
+					_populateAdvancedTaskForm(fullTask.task, currentProject);
+				} else {
+					_populateAdvancedTaskForm(task, currentProject);
+				}
+			} catch (e) {
+				console.error("Failed to fetch task details", e);
+				_populateAdvancedTaskForm(task, currentProject);
+			}
+
 			toggleModal(refs.taskModal, true);
+		}
+	}
+	function updateAvatar(employeeId) {
+		const avatarContainer = document.querySelector("[data-assigned-avatar-large]");
+		const member = (state.bootstrap.team_members || []).find(m => m.employee === employeeId);
+		
+		if (member && member.user_image) {
+			avatarContainer.innerHTML = `<img src="${member.user_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+		} else {
+			avatarContainer.innerHTML = initials(member ? member.label : "UA");
 		}
 	}
 
@@ -1702,12 +1735,15 @@ return `
 		form.elements.is_milestone.checked = Boolean(task.is_milestone);
 		form.elements.is_blocked.checked = Boolean(task.is_blocked);
 		
+		updateAvatar(task.assigned_to);
+		form.elements.assigned_to.onchange = (e) => updateAvatar(e.target.value);
+		
 		const idLabel = document.querySelector("[data-task-id-label]");
-		if (idLabel) idLabel.textContent = task.name.split("-").pop() || task.name;
+		if (idLabel) idLabel.textContent = (task.name && task.name.includes("-")) ? task.name.split("-").pop() : (task.name || "");
 		
 		const projectBreadcrumb = document.querySelector("[data-task-project-breadcrumb]");
 		const typeBreadcrumb = document.querySelector("[data-task-type-breadcrumb]");
-		if (projectBreadcrumb) projectBreadcrumb.textContent = task.project_title || task.project;
+		if (projectBreadcrumb) projectBreadcrumb.textContent = task.project_title || task.project || "";
 		if (typeBreadcrumb) typeBreadcrumb.textContent = task.task_type || "Task";
 
 		const avatarLarge = document.querySelector("[data-assigned-avatar-large]");
@@ -1715,7 +1751,7 @@ return `
 
 		state.currentChecklist = task.checklist || [];
 		renderChecklist();
-		renderComments([]);
+		renderComments(Array.isArray(task.comments) ? task.comments : []);
         // Re-fetch details logic should be triggered here if needed
 		toggleModal(refs.taskModal, true);
 	}
@@ -1835,7 +1871,7 @@ return `
 		if (postButton) postButton.disabled = true;
 		
 		try {
-			await apiCall("add_task_comment", { task: taskName, content: content }, "POST");
+			await apiCall("add_task_comment", { payload: JSON.stringify({ task: taskName, content: content }) }, "POST");
 			form.elements.new_comment.value = "";
 			
 			// Refresh comments
@@ -1950,8 +1986,13 @@ return `
 		
 		state.autoSaveTimer = setTimeout(async () => {
 			const statusEl = document.querySelector("[data-task-save-status]");
+			const textEl = document.querySelector("[data-task-save-text]");
+			const iconEl = document.querySelector("[data-task-save-icon]");
+			
 			if (statusEl) {
-				statusEl.textContent = "Saving...";
+				textEl.textContent = "Saving...";
+				iconEl.classList.add("taskflow-hidden");
+				iconEl.classList.remove("taskflow-save-icon-green");
 				statusEl.style.opacity = "1";
 			}
 
@@ -1959,7 +2000,11 @@ return `
 			await saveTask(payload, { isAutoSave: true });
 
 			if (statusEl) {
-				statusEl.textContent = "Saved";
+				textEl.textContent = "Saved";
+				iconEl.textContent = "✓";
+				iconEl.classList.add("taskflow-save-icon-green");
+				iconEl.classList.remove("taskflow-hidden");
+				
 				setTimeout(() => {
 					statusEl.style.opacity = "0";
 				}, 2000);
@@ -2005,7 +2050,7 @@ return `
 
 	function closeModal(name) {
 		if (name === "project") toggleModal(refs.projectModal, false);
-		if (name === "task") toggleModal(refs.taskModal, false);
+		if (name === "task") closeTaskModal();
 		if (name === "task-quick") toggleModal(refs.taskModalQuick, false);
 	}
 
@@ -2407,6 +2452,12 @@ return `
 			const collapsed = refs.container.classList.contains("taskflow-sidebars-collapsed");
 			refs.sidebarToggle?.setAttribute("aria-expanded", collapsed ? "false" : "true");
 		}
+	}
+
+	function closeTaskModal() {
+		state.activeTaskName = null;
+		updateUrlState();
+		toggleModal(refs.taskModal, false);
 	}
 
 	function isMobileSidebar() {

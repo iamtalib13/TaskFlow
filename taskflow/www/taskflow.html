@@ -337,7 +337,6 @@
 					<div style="display: flex; align-items: center; gap: 12px; flex: 1;">
 						<span style="color: var(--taskflow-text-muted); font-size: 13px; font-weight: 700; flex-shrink: 0;" data-task-id-label>FEA-39</span>
 						<input type="text" name="task_title" data-task-form-title autocomplete="off" style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; background: transparent; border: none; outline: none; box-shadow: none; padding: 4px 8px; flex: 1; min-width: 0; border-radius: 4px;" placeholder="Task Title..." />
-						<span data-task-save-status style="font-size: 11px; color: var(--taskflow-text-muted); font-weight: 500; margin-left: 8px; opacity: 0; transition: opacity 0.3s; flex-shrink: 0;">Saving...</span>
 					</div>
 					<div class="taskflow-breadcrumbs" style="font-size: 11px; font-weight: 500;">
 						<span data-task-project-breadcrumb>AXE-1 Axessio (AG)</span> / <span data-task-type-breadcrumb>Feature Request</span>
@@ -345,6 +344,10 @@
 				</div>
 				<div class="taskflow-modal-header-actions" style="display: flex; align-items: center; gap: 16px;">
 					<div style="display: flex; gap: 10px;">
+						<div class="taskflow-save-capsule" data-task-save-status style="opacity: 0; transition: opacity 0.3s;">
+							<span data-task-save-text>Saving...</span>
+							<span data-task-save-icon class="taskflow-hidden">✓</span>
+						</div>
 						<select name="status" style="background: #eff6ff; color: #3b82f6; border-color: #dbeafe; border-radius: 20px; padding: 6px 16px; font-size: 12px; font-weight: 700; width: auto !important; height: 32px !important; display: inline-block !important; appearance: none; background-image: url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%233b82f6\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 8px center; background-size: 16px; padding-right: 32px !important;">
 							<option>Open</option>
 							<option>In Progress</option>
@@ -382,11 +385,11 @@
 						<div class="taskflow-adv-section-header">
 							<span>👤 Assignment</span>
 						</div>
-						<div class="taskflow-adv-section-body">
-							<label style="margin-bottom: 8px; display: block;">Assigned to</label>
-							<div style="display: flex; align-items: center; gap: 12px;">
-								<div class="taskflow-assignee-avatar" data-assigned-avatar-large style="width: 40px; height: 40px; font-size: 14px; background: var(--taskflow-primary); color: white;">TS</div>
-								<select name="assigned_to" style="flex: 1;"></select>
+						<div class="taskflow-adv-section-body taskflow-assignment-section">
+							<label class="taskflow-assignment-label">Assigned to</label>
+							<div class="taskflow-assignment-row">
+								<div class="taskflow-assignee-avatar taskflow-assignment-avatar" data-assigned-avatar-large>TS</div>
+								<select name="assigned_to" class="taskflow-assignment-select"></select>
 							</div>
 						</div>
 					</div>
@@ -519,18 +522,9 @@
 						</div>
 
 						<div class="taskflow-comment-form">
-							<!-- Rich Text Editor Toolbar Placeholder -->
-							<div style="display: flex; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--taskflow-border); margin-bottom: 12px; color: var(--taskflow-text-muted); font-size: 13px;">
-								<span style="cursor: pointer;"><b>B</b></span>
-								<span style="cursor: pointer;"><i>I</i></span>
-								<span style="cursor: pointer;"><u>U</u></span>
-								<span style="width: 1px; height: 16px; background: var(--taskflow-border);"></span>
-								<span style="cursor: pointer;">List</span>
-								<span style="cursor: pointer;">Link</span>
-							</div>
-							<textarea name="new_comment" placeholder="Add a comment..." rows="3" style="border: none; padding: 0; font-size: 14px; line-height: 1.5; outline: none; background: transparent;"></textarea>
-							<div style="display: flex; justify-content: flex-end; margin-top: 12px;">
-								<button class="taskflow-button primary" type="button" data-post-comment style="padding: 6px 20px; font-size: 13px;">Submit</button>
+							<textarea name="new_comment" placeholder="Add a comment..." rows="3"></textarea>
+							<div class="taskflow-comment-actions">
+								<button class="taskflow-button primary" type="button" data-post-comment>Submit</button>
 							</div>
 						</div>
 					</div>
