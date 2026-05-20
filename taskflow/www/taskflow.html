@@ -1,7 +1,8 @@
 {% extends "templates/base.html" %}
 
 {% block head %}
-<link href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/handsontable/styles/handsontable.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/handsontable/styles/ht-theme-main.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
 {% endblock %}
 
@@ -97,6 +98,10 @@
 		<div class="taskflow-toolbar">
 			<div class="taskflow-project-info">
 				<h1 class="taskflow-project-title" data-project-title>&nbsp;</h1>
+				<div class="taskflow-member-selector-container taskflow-hidden" data-member-selector-wrapper style="margin-left: 12px;">
+					<select class="taskflow-member-selector" data-member-selector aria-label="Select member" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--taskflow-border); font-size: 14px; font-weight: 600;">
+					</select>
+				</div>
 				<button class="taskflow-btn-star" type="button" aria-label="Star project" disabled>★</button>
 				<button class="taskflow-btn-more" type="button" aria-label="More project actions" disabled>⋯</button>
 			</div>

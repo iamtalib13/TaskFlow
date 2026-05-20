@@ -14,6 +14,7 @@
 		taskQuery: "",
 		projectQuery: "",
 		selectedTeam: "all",
+		selectedMember: null,
 		projectModalMode: "create",
 		taskModalMode: "create",
 		projectRequestId: 0,
@@ -161,6 +162,8 @@
 		refs.userName = document.querySelector("[data-user-name]");
 		refs.userImage = document.querySelector("[data-user-image]");
 		refs.userAvatarContainer = document.querySelector("[data-user-avatar-container]");
+		refs.memberSelectorWrapper = document.querySelector("[data-member-selector-wrapper]");
+		refs.memberSelector = document.querySelector("[data-member-selector]");
 	}
 
 	function bindEvents() {
@@ -312,9 +315,17 @@
 			refreshView();
 		});
 
+		if (refs.memberSelector) {
+			refs.memberSelector.addEventListener("change", (e) => {
+				state.selectedMember = e.target.value;
+				refreshView();
+			});
+		}
+
 		if (refs.teamSwitcher) {
 			refs.teamSwitcher.addEventListener("change", async (e) => {
 				state.selectedTeam = e.target.value;
+				state.selectedMember = null; // Reset selected member when team changes
 				renderProjectList();
 				if (state.navMode === "dashboard" && state.selectedProject) {
 					const projects = getVisibleProjects({ ignoreQuery: true });
@@ -932,12 +943,38 @@
 			if (breadcrumb) breadcrumb.textContent = "My Tasks";
 			refs.newTaskButton.disabled = true;
 			
+			// Handle Member Selector for My Tasks
+			if (refs.memberSelectorWrapper && refs.memberSelector) {
+				refs.memberSelectorWrapper.classList.remove("taskflow-hidden");
+				const currentTeam = state.selectedTeam;
+				const members = ((state.bootstrap && state.bootstrap.team_members) || [])
+					.filter(m => currentTeam === "all" || m.team === currentTeam);
+				
+				const currentUserEmail = state.bootstrap.user.user;
+				const currentMember = ((state.bootstrap && state.bootstrap.team_members) || [])
+					.find(m => m.user === currentUserEmail);
+				const defaultEmployee = currentMember ? currentMember.employee : null;
+
+				const options = members.map(m => 
+					`<option value="${escapeHtml(m.employee)}" ${m.employee === (state.selectedMember || defaultEmployee) ? 'selected' : ''}>${escapeHtml(m.label)}</option>`
+				).join("");
+				
+				refs.memberSelector.innerHTML = options;
+				if (!state.selectedMember) {
+					state.selectedMember = refs.memberSelector.value;
+				}
+			}
+
+			const activeEmployee = state.selectedMember;
 			const myTasks = (state.bootstrap.tasks || []).filter(t => 
-				t.assigned_to_user === state.bootstrap.user.user || 
-				t.assigned_to === state.bootstrap.user.full_name
+				t.assigned_to === activeEmployee
 			);
 			renderTaskArea(myTasks);
 			return;
+		}
+
+		if (refs.memberSelectorWrapper) {
+			refs.memberSelectorWrapper.classList.add("taskflow-hidden");
 		}
 
 		const workspace = state.projectWorkspace;
@@ -945,6 +982,10 @@
 			refs.projectTitle.textContent = "Select Project";
 			if (breadcrumb) breadcrumb.textContent = "None";
 			refs.newTaskButton.disabled = true;
+			
+			const alertContainer = document.querySelector('[data-oldest-task-alert]');
+			if (alertContainer) alertContainer.innerHTML = '';
+
 			renderTaskArea([], "Select a project to view tasks.");
 			return;
 		}
@@ -963,7 +1004,7 @@
 			const member = (state.bootstrap.team_members || []).find(m => m.employee === oldest.assigned_to);
 			const assigneeName = member ? member.label : (oldest.assigned_to || "Unassigned");
 
-			alertContainer.innerHTML = `<span class="taskflow-oldest-task-alert" style="cursor: pointer;" data-oldest-task-id="${escapeHtml(oldest.name)}">⚠️ Oldest pending task: ${escapeHtml(assigneeName)} (${days} days pending)</span>`;
+			alertContainer.innerHTML = `<span class="taskflow-oldest-task-alert" style="cursor: pointer;" data-oldest-task-id="${escapeHtml(oldest.name)}">⚠️ ${escapeHtml(assigneeName)} (${days} days pending)</span>`;
 			alertContainer.querySelector('.taskflow-oldest-task-alert').addEventListener('click', () => {
 				openTaskModal(oldest);
 			});
