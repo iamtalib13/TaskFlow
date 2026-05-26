@@ -10,7 +10,8 @@ from taskflow.taskflow.service.project_access import (
 from taskflow.taskflow.service.team_hierarchy import can_manage_team, can_operate_team, can_view_team
 
 
-PROJECT_MANAGER_ROLES = {"System Manager", "Taskflow Admin", "Projects Manager"}
+PROJECT_MANAGER_ROLES = {"Projects Manager"}
+GLOBAL_ACCESS_ROLES = {"System Manager", "Taskflow Admin"}
 
 
 def get_task_permission(user=None):
@@ -41,6 +42,9 @@ def has_taskflow_team_permission(doc, user=None, permission_type=None):
 	user = user or frappe.session.user
 	permission_type = permission_type or "read"
 
+	if GLOBAL_ACCESS_ROLES & set(frappe.get_roles(user)):
+		return True
+
 	if PROJECT_MANAGER_ROLES & set(frappe.get_roles(user)):
 		return True
 
@@ -53,6 +57,9 @@ def has_taskflow_team_permission(doc, user=None, permission_type=None):
 def has_taskflow_project_permission(doc, user=None, permission_type=None):
 	user = user or frappe.session.user
 	permission_type = permission_type or "read"
+
+	if GLOBAL_ACCESS_ROLES & set(frappe.get_roles(user)):
+		return True
 
 	if PROJECT_MANAGER_ROLES & set(frappe.get_roles(user)):
 		return True
@@ -69,6 +76,9 @@ def has_taskflow_project_permission(doc, user=None, permission_type=None):
 def has_taskflow_task_permission(doc, user=None, permission_type=None):
 	user = user or frappe.session.user
 	permission_type = permission_type or "read"
+
+	if GLOBAL_ACCESS_ROLES & set(frappe.get_roles(user)):
+		return True
 
 	if PROJECT_MANAGER_ROLES & set(frappe.get_roles(user)):
 		return True

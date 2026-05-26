@@ -7,7 +7,8 @@ import frappe
 
 MANAGER_TEAM_ROLES = {"Team Lead", "Project Manager", "Coordinator"}
 MANAGER_ACCESS_LEVELS = {"Manage", "Admin"}
-MANAGER_SYSTEM_ROLES = {"System Manager", "Taskflow Admin", "Projects Manager"}
+GLOBAL_ACCESS_ROLES = {"System Manager", "Taskflow Admin"}
+MANAGER_SYSTEM_ROLES = {"Projects Manager"}
 VIEW_ONLY_TEAM_ROLES = {"Viewer", "Auditor"}
 OPERATE_ACCESS_LEVELS = {"Operate", "Manage", "Admin"}
 
@@ -51,6 +52,15 @@ def get_descendant_teams(team_names: list[str]) -> set[str]:
 
 
 def get_accessible_teams(user: str) -> set[str]:
+	if _has_global_access(user):
+		return set(
+			frappe.get_all(
+				"Taskflow Team",
+				filters={"is_active": 1},
+				pluck="name",
+			)
+		)
+
 	memberships = get_user_team_memberships(user)
 	direct_teams = {row.team for row in memberships}
 	managed_teams = {
@@ -83,7 +93,7 @@ def get_managed_teams(user: str) -> set[str]:
 	if not user or user == "Guest":
 		return set()
 
-	if MANAGER_SYSTEM_ROLES & set(frappe.get_roles(user)):
+	if _has_global_access(user) or MANAGER_SYSTEM_ROLES & set(frappe.get_roles(user)):
 		return set(
 			frappe.get_all(
 				"Taskflow Team",
@@ -104,6 +114,9 @@ def is_team_member(user: str, team: str | None) -> bool:
 
 
 def can_view_team(user: str, team: str | None) -> bool:
+	if _has_global_access(user):
+		return bool(team)
+
 	return bool(team and team in get_accessible_teams(user))
 
 
@@ -128,7 +141,7 @@ def can_manage_team(user: str, team: str | None = None) -> bool:
 	if not user or user == "Guest":
 		return False
 
-	if MANAGER_SYSTEM_ROLES & set(frappe.get_roles(user)):
+	if _has_global_access(user) or MANAGER_SYSTEM_ROLES & set(frappe.get_roles(user)):
 		return True
 
 	if not team:
@@ -143,3 +156,7 @@ def build_name_filter_condition(doctype: str, fieldname: str, names: set[str]) -
 
 	escaped = ", ".join(frappe.db.escape(name) for name in sorted(names))
 	return f"`tab{doctype}`.`{fieldname}` in ({escaped})"
+
+
+def _has_global_access(user: str) -> bool:
+	return bool({"System Manager", "Taskflow Admin"} & set(frappe.get_roles(user)))
