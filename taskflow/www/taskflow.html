@@ -44,8 +44,11 @@
   <aside class="taskflow-sidebar-projects"> <!-- Projects Sidebar -->
     <div class="taskflow-brand-section"> <!-- Moved from nav sidebar -->
       <div class="taskflow-logo">
-        <div class="taskflow-logo-icon"></div>
-        <span class="taskflow-logo-text">Taskflow</span>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="taskflow-logo-icon">T</div>
+          <span class="taskflow-logo-text">Taskflow</span>
+        </div>
+        <button class="taskflow-btn-home-brand" onclick="window.location.href='/app/sahayog-home'" title="Sahayog Home">🏠</button>
       </div>
       <button class="taskflow-btn-primary full-width" type="button" data-new-project>
         <span class="taskflow-btn-icon">+</span> New Project
