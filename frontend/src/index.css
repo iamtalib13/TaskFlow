@@ -800,21 +800,51 @@ button {
 .workspace-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 24px;
-  padding: 0 8px;
+  padding: 0 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  border: 1px solid transparent;
 }
 
 .workspace-pill.is-active {
   background: #edf7f0;
   color: #166534;
+  border-color: #c7ead0;
+}
+
+.workspace-pill.is-success {
+  background: #e7f8ee;
+  color: #047857;
+  border-color: #bbebce;
+}
+
+.workspace-pill.is-info {
+  background: #eaf2ff;
+  color: #1d4ed8;
+  border-color: #cfe0ff;
+}
+
+.workspace-pill.is-warning {
+  background: #fff7e6;
+  color: #b45309;
+  border-color: #fde2a8;
+}
+
+.workspace-pill.is-danger {
+  background: #fff1f2;
+  color: #be123c;
+  border-color: #fecdd3;
 }
 
 .workspace-pill.is-muted {
   background: #f3f4f6;
   color: #4b5563;
+  border-color: #e5e7eb;
 }
 
 .workspace-assignee {

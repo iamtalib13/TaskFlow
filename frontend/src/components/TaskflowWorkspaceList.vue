@@ -192,18 +192,34 @@ function valueFor(row, key) {
 function statusLabel(row) {
   if (props.section === 'team') return row.is_active ? 'Active' : 'Inactive'
   if (row.is_archived) return 'Archived'
-  return row.status || 'Open'
+  return formatStatus(row.status)
 }
 
 function statusClass(row) {
   if (props.section === 'team') {
     return ['workspace-pill', row.is_active ? 'is-active' : 'is-muted']
   }
-  if (row.status === 'Completed') return ['workspace-pill', 'is-success']
-  if (row.status === 'Blocked') return ['workspace-pill', 'is-danger']
-  if (row.status === 'In Progress') return ['workspace-pill', 'is-info']
+
+  const status = normalizeStatus(row.status)
+  if (status.includes('completed') || status.includes('done') || status.includes('closed')) return ['workspace-pill', 'is-success']
+  if (status.includes('blocked') || status.includes('cancel') || status.includes('rejected')) return ['workspace-pill', 'is-danger']
+  if (status.includes('progress') || status.includes('working') || status.includes('review')) return ['workspace-pill', 'is-info']
+  if (status.includes('hold') || status.includes('pending') || status.includes('draft') || status.includes('open')) return ['workspace-pill', 'is-warning']
   if (row.is_archived) return ['workspace-pill', 'is-muted']
-  return ['workspace-pill', 'is-active']
+  return ['workspace-pill', 'is-muted']
+}
+
+function normalizeStatus(value) {
+  return String(value || 'Open').trim().toLowerCase()
+}
+
+function formatStatus(value) {
+  const normalized = String(value || 'Open').trim()
+  if (!normalized) return 'Open'
+  return normalized
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
 }
 
 function priorityClass(row) {
