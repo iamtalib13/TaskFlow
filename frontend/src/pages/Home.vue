@@ -5,7 +5,6 @@
       v-model:selectedProject="selectedProject"
       :teams="teams"
       :projects="projects"
-      :tasks="tasks"
     />
 
     <main class="workspace">

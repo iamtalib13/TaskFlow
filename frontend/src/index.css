@@ -275,18 +275,65 @@ button {
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   padding: 16px 14px 18px;
   background: #fff;
   border-right: 1px solid var(--tf-border);
 }
 
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 2px 10px;
+}
+
+.sidebar-brand__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #111827;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.sidebar-brand__text {
+  display: grid;
+  gap: 1px;
+}
+
+.sidebar-brand__text strong {
+  font-size: 15px;
+  line-height: 1.2;
+  color: var(--tf-text);
+}
+
+.sidebar-brand__text span {
+  font-size: 11px;
+  color: var(--tf-muted);
+}
+
 .sidebar-section {
   display: grid;
   gap: 10px;
+  min-height: 0;
+}
+
+.sidebar-section--overview {
+  gap: 0;
+}
+
+.sidebar-section--projects {
+  flex: 1;
+  min-height: 0;
 }
 
 .sidebar-section__head {
@@ -344,6 +391,70 @@ button {
   box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.04);
 }
 
+.sidebar-overview-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #374151;
+  border: 1px solid var(--tf-border);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-overview-btn.active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #1d4ed8;
+}
+
+.sidebar-overview-btn__label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sidebar-overview-btn__meta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--tf-border);
+  color: var(--tf-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sidebar-project-search {
+  display: block;
+}
+
+.sidebar-project-search input {
+  width: 100%;
+  min-height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--tf-border);
+  padding: 0 12px;
+  background: #fff;
+  color: var(--tf-text);
+  outline: none;
+}
+
+.sidebar-project-search input::placeholder {
+  color: #9ca3af;
+}
+
+.sidebar-project-search input:focus {
+  border-color: #d1d5db;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.04);
+}
+
 .sidebar-link,
 .sidebar-project {
   display: flex;
@@ -376,6 +487,10 @@ button {
 .sidebar-project-list {
   display: grid;
   gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .sidebar-project {
