@@ -803,8 +803,8 @@ button {
   top: 0;
   right: 0;
   z-index: 11;
-  width: 150px;
-  min-width: 150px;
+  width: 120px;
+  min-width: 120px;
   background: var(--tf-surface-subtle);
   box-shadow: -8px 0 14px -14px rgba(15, 23, 42, 0.35);
 }

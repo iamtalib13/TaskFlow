@@ -75,7 +75,7 @@
                 {{ row.priority || '—' }}
               </span>
 
-              <span v-else-if="column.key === 'modified'" class="workspace-task-modified">
+              <span v-else-if="column.key === 'modified'" class="workspace-task-modified workspace-task-modified--right">
                 {{ prettyModified(row.modified) }}
               </span>
 
