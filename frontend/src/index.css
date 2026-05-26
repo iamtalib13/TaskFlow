@@ -72,13 +72,28 @@ button {
   z-index: 10;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 16px;
   width: 100%;
   min-height: 56px;
   padding: 0 16px;
   background: var(--tf-surface);
   border-bottom: 1px solid var(--tf-border);
+}
+
+.workspace-header__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.workspace-header__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .workspace-content {
@@ -89,22 +104,11 @@ button {
 
 .workspace-toolbar {
   display: grid;
-  gap: 10px;
+  gap: 6px;
   width: 100%;
   padding: 14px 16px 12px;
   background: var(--tf-surface);
   border-bottom: 1px solid var(--tf-border);
-}
-
-.workspace-toolbar__top,
-.workspace-toolbar__bottom,
-.workspace-toolbar__left {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  flex-wrap: wrap;
-  min-width: 0;
 }
 
 .workspace-toolbar__titleblock {
@@ -147,14 +151,6 @@ button {
   color: var(--tf-muted);
   font-size: 11px;
   font-weight: 600;
-}
-
-.workspace-header__right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-shrink: 0;
-  width: 100%;
 }
 
 .workspace-tabs {

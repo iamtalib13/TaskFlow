@@ -9,21 +9,21 @@
 
     <main class="workspace">
       <TaskflowWorkspaceHeader
+        :active-view="activeView"
+        :primary-action-label="primaryActionLabel"
+        :search-query="searchQuery"
         :user-name="currentUserName"
         :user-image="currentUserImage"
+        @primary-action="handlePrimaryAction"
+        @update:activeView="activeView = $event"
+        @update:searchQuery="searchQuery = $event"
       />
 
       <div class="workspace-content">
         <TaskflowWorkspaceToolbar
-          :active-view="activeView"
-          :primary-action-label="primaryActionLabel"
-          :search-query="searchQuery"
           :workspace-title="workspaceTitle"
           :pending-task-count="selectedProjectTaskStats.pending"
           :total-task-count="selectedProjectTaskStats.total"
-          @primary-action="handlePrimaryAction"
-          @update:activeView="activeView = $event"
-          @update:searchQuery="searchQuery = $event"
         />
 
         <TaskflowWorkspaceList
@@ -66,31 +66,23 @@ const currentUserName = computed(
 const currentUserImage = computed(() => workspaceData.value.current_user?.user_image || '')
 const workspaceLoading = computed(() => Boolean(workspaceBootstrap.loading && !workspaceBootstrap.fetched))
 
-const teamNameById = computed(() =>
-  Object.fromEntries(teams.value.map((team) => [team.name, team.team_name || team.name])),
-)
 const projectNameById = computed(() =>
   Object.fromEntries(projects.value.map((project) => [project.name, project.project_name || project.name])),
 )
-
-const selectedTeamLabel = computed(() => {
-  return selectedTeam.value ? teamNameById.value[selectedTeam.value] || selectedTeam.value : ''
-})
 
 const selectedProjectLabel = computed(() => {
   return selectedProject.value ? projectNameById.value[selectedProject.value] || selectedProject.value : ''
 })
 
-const selectedProjectTaskStats = computed(() => {
-  const projectTasks = tasks.value.filter((task) => !selectedProject.value || task.project === selectedProject.value)
-  const total = projectTasks.length
-  const pending = projectTasks.filter((task) => !['Completed', 'Cancelled'].includes(task.status)).length
-
-  return {
-    total,
-    pending,
-  }
+const selectedProjectTaskRows = computed(() => {
+  if (!selectedProject.value) return []
+  return tasks.value.filter((task) => task.project === selectedProject.value)
 })
+
+const selectedProjectTaskStats = computed(() => ({
+  total: selectedProjectTaskRows.value.length,
+  pending: selectedProjectTaskRows.value.filter((task) => !['Completed', 'Cancelled'].includes(task.status)).length,
+}))
 
 const workspaceTitle = computed(() => selectedProjectLabel.value || 'All Projects')
 
@@ -103,24 +95,9 @@ const tableSection = computed(() => {
 
 const visibleRows = computed(() => {
   const query = normalizeText(searchQuery.value)
-
-  if (tableSection.value === 'team') {
-    const rows = teams.value
-    if (!query) return rows
-    return rows.filter((row) => buildSearchIndex(row, ['team_name', 'team_code', 'company', 'team_lead', 'description']).includes(query))
-  }
-
-  if (tableSection.value === 'task') {
-    const rows = tasks.value.filter((task) => !selectedProject.value || task.project === selectedProject.value)
-    if (!query) return rows
-    return rows.filter((row) => buildSearchIndex(row, ['task_title', 'project_title', 'assigned_to_name', 'status', 'priority', 'task_type', 'description']).includes(query))
-  }
-
-  if (tableSection.value === 'mom') return []
-
-  const rows = projects.value
-  if (!query) return rows
-  return rows.filter((row) => buildSearchIndex(row, ['project_name', 'project_code', 'team_name', 'status', 'priority', 'description']).includes(query))
+  const sectionRows = getRowsForSection(tableSection.value)
+  if (!query) return sectionRows
+  return sectionRows.filter((row) => matchesSearch(row, searchKeysForSection(tableSection.value), query))
 })
 
 const primaryActionLabel = computed(() => {
@@ -138,6 +115,28 @@ function buildSearchIndex(row, keys) {
     .map((key) => normalizeText(row?.[key]))
     .filter(Boolean)
     .join(' ')
+}
+
+function getRowsForSection(section) {
+  if (section === 'team') return teams.value
+  if (section === 'task') return selectedProjectTaskRows.value
+  if (section === 'mom') return []
+  return projects.value
+}
+
+function searchKeysForSection(section) {
+  if (section === 'team') {
+    return ['team_name', 'team_code', 'company', 'team_lead', 'description']
+  }
+  if (section === 'task') {
+    return ['task_title', 'project_title', 'assigned_to_name', 'status', 'priority', 'task_type', 'description']
+  }
+  if (section === 'mom') return []
+  return ['project_name', 'project_code', 'team_name', 'status', 'priority', 'description']
+}
+
+function matchesSearch(row, keys, query) {
+  return buildSearchIndex(row, keys).includes(query)
 }
 
 function hydrateFromRoute(query) {
