@@ -1,0 +1,70 @@
+{% extends "templates/base.html" %}
+
+{% block head %}
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  html, body {
+    height: 100%;
+  }
+
+  body.taskflow-v1-page {
+    margin: 0;
+    overflow: hidden;
+    background: #f6f7fb;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .taskflow-v1-shell {
+    height: 100vh;
+    display: block;
+  }
+
+  .taskflow-v1-frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #fff;
+  }
+
+  .taskflow-v1-fallback {
+    padding: 24px;
+    color: #374151;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+</style>
+{% endblock %}
+
+{% block banner %}{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="taskflow-v1-shell">
+  <iframe
+    class="taskflow-v1-frame"
+    data-spa-frame
+    title="Taskflow"
+    loading="lazy"
+  ></iframe>
+
+  <noscript>
+    <div class="taskflow-v1-fallback">
+      <h2>JavaScript is required</h2>
+      <p>Open the Taskflow app directly at <a data-spa-noscript href="#">Taskflow</a>.</p>
+    </div>
+  </noscript>
+</div>
+
+<script>
+  (function () {
+    const spaUrl = `${window.location.protocol}//${window.location.hostname}:8080/taskflow/`;
+    const frame = document.querySelector('[data-spa-frame]');
+    const noscriptLink = document.querySelector('[data-spa-noscript]');
+
+    if (frame) frame.src = spaUrl;
+    if (noscriptLink) noscriptLink.href = spaUrl;
+  })();
+</script>
+{% endblock %}
