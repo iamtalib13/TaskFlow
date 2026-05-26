@@ -673,7 +673,7 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   text-align: left;
-  padding: 12px 14px;
+  padding: 10px 10px;
   border-bottom: 1px solid var(--tf-border);
   white-space: nowrap;
 }
@@ -688,7 +688,7 @@ button {
 }
 
 .workspace-table tbody td {
-  padding: 12px 14px;
+  padding: 10px 10px;
   border-bottom: 1px solid #eef2f7;
   font-size: 13px;
   color: var(--tf-text);
@@ -721,8 +721,8 @@ button {
 
 .workspace-table__index,
 .workspace-table__index-head {
-  width: 72px;
-  min-width: 72px;
+  width: 60px;
+  min-width: 60px;
 }
 
 .workspace-table__index-head {
@@ -747,37 +747,37 @@ button {
 }
 
 .workspace-col--status {
-  width: 120px;
+  width: 104px;
 }
 
 .workspace-col--progress {
-  width: 110px;
+  width: 92px;
 }
 
 .workspace-col--task_title {
-  width: 240px;
+  width: 200px;
 }
 
 .workspace-col--project_title {
-  width: 180px;
+  width: 150px;
 }
 
 .workspace-col--assignee {
-  width: 220px;
+  width: 180px;
 }
 
 .workspace-col--start_date,
 .workspace-col--due_date,
 .workspace-col--estimated_completion_date {
-  width: 130px;
+  width: 116px;
 }
 
 .workspace-col--age {
-  width: 82px;
+  width: 72px;
 }
 
 .workspace-col--priority {
-  width: 100px;
+  width: 88px;
 }
 
 .workspace-col--modified {
@@ -785,8 +785,8 @@ button {
   top: 0;
   right: 0;
   z-index: 6;
-  width: 170px;
-  min-width: 170px;
+  width: 150px;
+  min-width: 150px;
   background: var(--tf-surface-subtle);
   box-shadow: -8px 0 14px -14px rgba(15, 23, 42, 0.35);
 }
@@ -794,7 +794,7 @@ button {
 .workspace-col--task_count,
 .workspace-col--member_count,
 .workspace-col--project_count {
-  width: 100px;
+  width: 84px;
 }
 
 .workspace-pill {
