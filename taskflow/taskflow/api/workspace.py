@@ -233,7 +233,7 @@ def _current_user_info() -> dict[str, Any]:
     }
 
 
-@frappe.whitelist(methods=["GET"])
+@frappe.whitelist(methods=["GET", "POST"])
 def get_workspace_bootstrap(team: str | None = None, project: str | None = None, search: str | None = None) -> dict[str, Any]:
     _require_login()
 

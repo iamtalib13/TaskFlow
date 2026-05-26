@@ -150,56 +150,54 @@ function updateActiveSection(value) {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.72);
+  gap: 12px;
+  padding: 12px;
+  background: #fff;
   border-right: 1px solid var(--tf-border);
-  backdrop-filter: blur(18px);
 }
 
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 4px 2px 2px;
+  gap: 10px;
+  padding: 2px 2px 4px;
 }
 
 .brand-mark {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #2563eb, #0ea5e9);
-  color: #fff;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+  background: #eef2f7;
+  color: #374151;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
 }
 
 .brand-text {
   display: grid;
-  gap: 2px;
+  gap: 1px;
 }
 
 .brand-name {
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #0f172a;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--tf-text);
 }
 
 .brand-subtitle {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--tf-muted);
-  font-weight: 600;
 }
 
 .sidebar-block {
   display: grid;
   gap: 8px;
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
 .sidebar-block--projects {
@@ -207,8 +205,8 @@ function updateActiveSection(value) {
 }
 
 .sidebar-label {
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--tf-muted);
@@ -221,15 +219,15 @@ function updateActiveSection(value) {
 
 .sidebar-field__label {
   font-size: 11px;
-  font-weight: 700;
-  color: #334155;
+  font-weight: 500;
+  color: #374151;
 }
 
 .sidebar-select {
   width: 100%;
-  min-height: 36px;
+  min-height: 34px;
   border-radius: 10px;
-  border: 1px solid #d8e0ea;
+  border: 1px solid var(--tf-border);
   padding: 0 10px;
   background: #fff;
   color: var(--tf-text);
@@ -237,8 +235,8 @@ function updateActiveSection(value) {
 }
 
 .sidebar-select:focus {
-  border-color: rgba(37, 99, 235, 0.45);
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.09);
+  border-color: #d1d5db;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.04);
 }
 
 .sidebar-link,
@@ -248,32 +246,33 @@ function updateActiveSection(value) {
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  min-height: 36px;
+  min-height: 34px;
   padding: 0 12px;
   border-radius: 10px;
   background: #fff;
-  color: #334155;
-  border: 1px solid #e2e8f0;
+  color: #374151;
+  border: 1px solid transparent;
   text-align: left;
   cursor: pointer;
 }
 
 .sidebar-link.active,
 .sidebar-project.active {
-  border-color: rgba(37, 99, 235, 0.32);
-  background: rgba(37, 99, 235, 0.08);
-  color: #0f172a;
+  background: #f9fafb;
+  color: var(--tf-text);
+  border-color: var(--tf-border);
 }
 
 .sidebar-project {
   flex-direction: column;
   align-items: flex-start;
   padding: 10px 12px;
+  border-color: var(--tf-border);
 }
 
 .sidebar-project__title {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.2;
 }
 
@@ -285,8 +284,8 @@ function updateActiveSection(value) {
 .sidebar-empty {
   padding: 10px 12px;
   border-radius: 10px;
-  background: #f8fafc;
-  border: 1px dashed #d8e0ea;
+  background: #f9fafb;
+  border: 1px dashed var(--tf-border);
   color: var(--tf-muted);
   font-size: 12px;
 }

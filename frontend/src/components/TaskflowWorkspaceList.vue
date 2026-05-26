@@ -135,8 +135,8 @@ function progressLabel(row) {
 <style scoped>
 .workspace-panel {
   display: grid;
-  gap: 14px;
-  padding: 18px;
+  gap: 12px;
+  padding: 16px 12px 18px;
 }
 
 .workspace-panel__head {
@@ -147,8 +147,8 @@ function progressLabel(row) {
 }
 
 .workspace-panel__eyebrow {
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--tf-muted);
@@ -156,23 +156,23 @@ function progressLabel(row) {
 
 .workspace-panel__title {
   margin: 4px 0 0;
-  font-size: 22px;
+  font-size: 18px;
   line-height: 1.1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
+  color: var(--tf-text);
 }
 
 .workspace-panel__count {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--tf-muted);
 }
 
 .workspace-table-wrap {
   overflow: auto;
   border: 1px solid var(--tf-border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: var(--tf-surface);
 }
 
 .workspace-table {
@@ -185,67 +185,64 @@ function progressLabel(row) {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--tf-surface-subtle);
+  color: var(--tf-muted);
   font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   text-align: left;
-  padding: 14px 14px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tf-border);
 }
 
 .workspace-table tbody td {
-  padding: 14px 14px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-  font-size: 14px;
-  color: #0f172a;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 13px;
+  color: var(--tf-text);
   vertical-align: top;
 }
 
 .workspace-table tbody tr:hover {
-  background: rgba(37, 99, 235, 0.03);
+  background: #fcfcfd;
 }
 
 .workspace-table__index {
   width: 72px;
   color: var(--tf-muted);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .workspace-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 24px;
+  padding: 0 8px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .workspace-pill.is-active {
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
+  background: #edf7f0;
+  color: #166534;
 }
 
 .workspace-pill.is-muted {
-  background: rgba(148, 163, 184, 0.16);
-  color: #475569;
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 .workspace-panel__empty {
-  padding: 20px;
-  border: 1px dashed rgba(148, 163, 184, 0.4);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.72);
+  padding: 18px;
+  border: 1px dashed var(--tf-border);
+  border-radius: 8px;
+  background: var(--tf-surface);
   color: var(--tf-muted);
 }
 
 @media (max-width: 1180px) {
-  .workspace-panel {
-    padding: 14px;
-  }
-
   .workspace-panel__head {
     align-items: flex-start;
     flex-direction: column;

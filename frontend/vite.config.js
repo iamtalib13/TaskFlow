@@ -38,7 +38,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: `../${path.basename(path.resolve('..'))}/public/frontend`,
+    outDir: '../taskflow/public/frontend',
     emptyOutDir: true,
     target: 'es2015',
   },

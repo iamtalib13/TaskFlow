@@ -30,26 +30,29 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TaskflowSidebar from '@/components/TaskflowSidebar.vue'
 import TaskflowWorkspaceHeader from '@/components/TaskflowWorkspaceHeader.vue'
 import TaskflowWorkspaceList from '@/components/TaskflowWorkspaceList.vue'
 import TaskflowWorkspaceToolbar from '@/components/TaskflowWorkspaceToolbar.vue'
+import { workspaceBootstrap } from '@/data/workspace'
 
 const route = useRoute()
 const router = useRouter()
 
-const teams = ref([])
-const projects = ref([])
-const currentUserName = ref('')
-const currentUserImage = ref('')
 const selectedTeam = ref('')
 const selectedProject = ref('')
 const activeSection = ref('overview')
 const activeView = ref('table')
 const searchQuery = ref('')
 const syncingFromRoute = ref(false)
+
+const workspaceData = computed(() => workspaceBootstrap.data || {})
+const teams = computed(() => workspaceData.value.teams || [])
+const projects = computed(() => workspaceData.value.projects || [])
+const currentUserName = computed(() => workspaceData.value.current_user?.full_name || workspaceData.value.current_user?.name || '')
+const currentUserImage = computed(() => workspaceData.value.current_user?.user_image || '')
 
 const teamNameById = computed(() => Object.fromEntries(teams.value.map((team) => [team.name, team.team_name || team.name])))
 const projectNameById = computed(() => Object.fromEntries(projects.value.map((project) => [project.name, project.project_name || project.name])))
@@ -139,45 +142,13 @@ function sameQuery(a, b) {
 }
 
 async function loadWorkspace() {
-  try {
-    const params = new URLSearchParams()
-
-    if (selectedTeam.value) params.set('team', selectedTeam.value)
-    if (selectedProject.value) params.set('project', selectedProject.value)
-    if (searchQuery.value) params.set('search', searchQuery.value)
-
-    const query = params.toString()
-    const url = query
-      ? `/api/v2/method/taskflow.taskflow.api.workspace.get_workspace_bootstrap?${query}`
-      : '/api/v2/method/taskflow.taskflow.api.workspace.get_workspace_bootstrap'
-
-    const response = await fetch(url, {
-      credentials: 'same-origin',
-    })
-    const data = await response.json()
-    const payload = data.message ?? data ?? {}
-
-    teams.value = payload.teams ?? []
-    projects.value = payload.projects ?? []
-    currentUserName.value = payload.current_user?.full_name || payload.current_user?.name || ''
-    currentUserImage.value = payload.current_user?.user_image || ''
-
-    if (payload.selected_team !== undefined) {
-      selectedTeam.value = payload.selected_team || ''
-    }
-
-    if (payload.selected_project !== undefined) {
-      selectedProject.value = payload.selected_project || ''
-    }
-
-    syncQueryToRoute()
-  } catch (error) {
-    teams.value = []
-    projects.value = []
-    currentUserName.value = ''
-    currentUserImage.value = ''
-    console.error('Failed to load workspace bootstrap', error)
+  const params = {
+    team: selectedTeam.value || undefined,
+    project: selectedProject.value || undefined,
+    search: searchQuery.value || undefined,
   }
+
+  await workspaceBootstrap.fetch(params)
 }
 
 function syncQueryToRoute() {
