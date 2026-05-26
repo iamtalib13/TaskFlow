@@ -31,7 +31,6 @@
       <table class="workspace-table workspace-task-table">
         <thead>
           <tr>
-            <th class="workspace-table__index-head">Sr No.</th>
             <th v-for="column in columns" :key="column.key" :class="`workspace-col--${column.key}`">
               {{ column.label }}
             </th>
@@ -39,7 +38,6 @@
         </thead>
         <tbody>
           <tr v-for="(row, index) in rows" :key="row.name || index" class="workspace-task-row">
-            <td class="workspace-table__index">{{ index + 1 }}</td>
             <td v-for="column in columns" :key="column.key" :class="`workspace-cell--${column.key}`">
               <span v-if="column.key === 'task_title'" class="workspace-task-main">
                 <strong class="workspace-task-main__title">{{ row.task_title || '—' }}</strong>

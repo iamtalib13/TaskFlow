@@ -618,6 +618,7 @@ button {
 
 .workspace-task-modified--right {
   text-align: right;
+  padding-right: 6px;
 }
 
 .workspace-table thead th.workspace-col--modified,
@@ -724,10 +725,6 @@ button {
   background: #eff6ff;
 }
 
-.workspace-table tbody tr:hover .workspace-table__index {
-  background: #eff6ff;
-}
-
 .workspace-table tbody td.workspace-cell--modified {
   position: sticky;
   right: 0;
@@ -738,30 +735,6 @@ button {
 
 .workspace-table tbody tr:hover td.workspace-cell--modified {
   background: #eff6ff;
-}
-
-.workspace-table__index,
-.workspace-table__index-head {
-  width: 60px;
-  min-width: 60px;
-}
-
-.workspace-table__index-head {
-  position: sticky;
-  top: 0;
-  z-index: 13;
-  background: var(--tf-surface-subtle);
-  white-space: nowrap;
-  box-shadow: 0 1px 0 var(--tf-border);
-  background-clip: padding-box;
-}
-
-.workspace-table__index {
-  position: relative;
-  z-index: 1;
-  color: var(--tf-muted);
-  font-weight: 600;
-  background: var(--tf-surface);
 }
 
 .workspace-col--status {
