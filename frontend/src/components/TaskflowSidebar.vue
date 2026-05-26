@@ -63,7 +63,8 @@
           :class="{ active: selectedProject === project.name }"
           @click="updateSelectedProject(project.name)"
         >
-          <span class="sidebar-project__title">{{ projectLabel(project) }}</span>
+          <span class="sidebar-project__title">{{ project.project_name || project.name }}</span>
+          <span class="sidebar-project__count">{{ project.pending_task_count || 0 }}</span>
         </button>
         <div v-if="!filteredProjects.length" class="sidebar-empty">No projects for this team.</div>
       </div>
@@ -128,11 +129,6 @@ function buildSearchIndex(project) {
 
 function normalizeText(value) {
   return value == null ? '' : String(value).trim().toLowerCase()
-}
-
-function projectLabel(project) {
-  const pending = Number(project.pending_task_count || 0)
-  return `${project.project_name || project.name} (${pending})`
 }
 
 function selectOverview() {
