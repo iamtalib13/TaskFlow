@@ -726,10 +726,12 @@ button {
 }
 
 .workspace-table__index-head {
-  position: relative;
-  z-index: 1;
+  position: sticky;
+  top: 0;
+  z-index: 9;
   background: var(--tf-surface-subtle);
   white-space: nowrap;
+  box-shadow: 0 1px 0 var(--tf-border);
 }
 
 .workspace-table__index {
