@@ -8,11 +8,14 @@
     </div>
 
     <div class="workspace-header__right">
-      <div class="workspace-profile" aria-label="Talib Sheikh profile user">
-        <div class="workspace-avatar">TS</div>
+      <div class="workspace-profile" aria-label="Current user profile">
+        <div class="workspace-avatar">
+          <img v-if="userImage" :src="userImage" :alt="`${userName} avatar`" />
+          <span v-else>{{ userInitials }}</span>
+        </div>
         <div class="workspace-profile__text">
-          <strong>Talib Sheikh</strong>
-          <span>Profile user</span>
+          <strong>{{ userName }}</strong>
+          <span>Signed in user</span>
         </div>
       </div>
     </div>
@@ -20,10 +23,30 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   selectionPath: {
     type: String,
     default: 'Overview',
   },
+  userName: {
+    type: String,
+    default: '',
+  },
+  userImage: {
+    type: String,
+    default: '',
+  },
+})
+
+const userInitials = computed(() => {
+  if (!props.userName) return 'U'
+  return props.userName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'U'
 })
 </script>

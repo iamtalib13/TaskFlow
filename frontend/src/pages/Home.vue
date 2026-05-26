@@ -9,7 +9,11 @@
     />
 
     <main class="workspace">
-      <TaskflowWorkspaceHeader :selection-path="selectionPath" />
+      <TaskflowWorkspaceHeader
+        :selection-path="selectionPath"
+        :user-name="currentUserName"
+        :user-image="currentUserImage"
+      />
 
       <TaskflowWorkspaceToolbar
         :active-view="activeView"
@@ -38,6 +42,8 @@ const router = useRouter()
 
 const teams = ref([])
 const projects = ref([])
+const currentUserName = ref('')
+const currentUserImage = ref('')
 const selectedTeam = ref('')
 const selectedProject = ref('')
 const activeSection = ref('overview')
@@ -153,6 +159,8 @@ async function loadWorkspace() {
 
     teams.value = payload.teams ?? []
     projects.value = payload.projects ?? []
+    currentUserName.value = payload.current_user?.full_name || payload.current_user?.name || ''
+    currentUserImage.value = payload.current_user?.user_image || ''
 
     if (payload.selected_team !== undefined) {
       selectedTeam.value = payload.selected_team || ''
@@ -166,6 +174,8 @@ async function loadWorkspace() {
   } catch (error) {
     teams.value = []
     projects.value = []
+    currentUserName.value = ''
+    currentUserImage.value = ''
     console.error('Failed to load workspace bootstrap', error)
   }
 }

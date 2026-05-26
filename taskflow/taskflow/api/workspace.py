@@ -222,6 +222,17 @@ def _apply_fields(doc, payload: dict[str, Any], allowed_fields: set[str]) -> Non
             setattr(doc, field, payload[field])
 
 
+def _current_user_info() -> dict[str, Any]:
+    user = frappe.session.user
+    details = frappe.db.get_value("User", user, ["full_name", "user_image", "email"], as_dict=True) or {}
+    return {
+        "name": user,
+        "full_name": details.get("full_name") or user,
+        "user_image": details.get("user_image"),
+        "email": details.get("email") or user,
+    }
+
+
 @frappe.whitelist(methods=["GET"])
 def get_workspace_bootstrap(team: str | None = None, project: str | None = None, search: str | None = None) -> dict[str, Any]:
     _require_login()
@@ -267,6 +278,7 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
     return {
         "teams": teams,
         "projects": projects,
+        "current_user": _current_user_info(),
         "selected_team": resolved_team,
         "selected_project": resolved_project,
         "summary": {
