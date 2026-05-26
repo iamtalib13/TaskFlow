@@ -203,8 +203,9 @@ function statusClass(row) {
   const status = normalizeStatus(row.status)
   if (status.includes('completed') || status.includes('done') || status.includes('closed')) return ['workspace-pill', 'is-success']
   if (status.includes('blocked') || status.includes('cancel') || status.includes('rejected')) return ['workspace-pill', 'is-danger']
-  if (status.includes('progress') || status.includes('working') || status.includes('review')) return ['workspace-pill', 'is-info']
-  if (status.includes('hold') || status.includes('pending') || status.includes('draft') || status.includes('open')) return ['workspace-pill', 'is-warning']
+  if (status.includes('progress') || status.includes('working') || status.includes('review')) return ['workspace-pill', 'is-warning']
+  if (status.includes('hold') || status.includes('pending') || status.includes('draft')) return ['workspace-pill', 'is-muted']
+  if (status.includes('open')) return ['workspace-pill', 'is-danger']
   if (row.is_archived) return ['workspace-pill', 'is-muted']
   return ['workspace-pill', 'is-muted']
 }
