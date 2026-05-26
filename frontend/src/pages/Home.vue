@@ -50,18 +50,39 @@
     </aside>
 
     <main class="workspace">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">SaaS workspace</p>
-          <h1>Taskflow workspace shell.</h1>
-          <p class="lede">
-            Sidebar se Team aur Project select karo. Neeche ka area abhi intentionally blank hai, next steps yahin add honge.
-          </p>
+      <header class="workspace-header">
+        <div class="workspace-tabs" role="tablist" aria-label="Workspace views">
+          <button
+            type="button"
+            class="workspace-tab"
+            :class="{ active: activeView === 'table' }"
+            @click="activeView = 'table'"
+          >
+            Table view
+          </button>
+          <button
+            type="button"
+            class="workspace-tab"
+            :class="{ active: activeView === 'kanban' }"
+            @click="activeView = 'kanban'"
+          >
+            Kanban board
+          </button>
         </div>
 
-        <div class="hero-actions">
-          <Button theme="blue" variant="solid" label="Create Project" />
-          <Button variant="outline" label="Refresh" @click="refreshWorkspace" />
+        <div class="workspace-header__right">
+          <button type="button" class="workspace-add-btn">Add new</button>
+          <label class="workspace-search">
+            <span class="sr-only">Search</span>
+            <input v-model="searchQuery" type="search" placeholder="Search" />
+          </label>
+          <div class="workspace-profile" aria-label="Talib Sheikh profile user">
+            <div class="workspace-avatar">TS</div>
+            <div class="workspace-profile__text">
+              <strong>Talib Sheikh</strong>
+              <span>Profile user</span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -72,10 +93,12 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { Badge, Button, createResource } from 'frappe-ui'
+import { Badge, createResource } from 'frappe-ui'
 
 const selectedTeam = ref('')
 const selectedProject = ref('')
+const activeView = ref('table')
+const searchQuery = ref('')
 
 const workspace = createResource({
   url: '/api/v2/method/taskflow.taskflow.api.workspace.get_workspace_bootstrap',
