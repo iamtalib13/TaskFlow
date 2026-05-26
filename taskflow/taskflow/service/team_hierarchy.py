@@ -7,7 +7,7 @@ import frappe
 
 MANAGER_TEAM_ROLES = {"Team Lead", "Project Manager", "Coordinator"}
 MANAGER_ACCESS_LEVELS = {"Manage", "Admin"}
-MANAGER_SYSTEM_ROLES = {"System Manager", "Taskflow Admin", "Project Manager", "Projects Manager"}
+MANAGER_SYSTEM_ROLES = {"System Manager", "Taskflow Admin", "Projects Manager"}
 VIEW_ONLY_TEAM_ROLES = {"Viewer", "Auditor"}
 OPERATE_ACCESS_LEVELS = {"Operate", "Manage", "Admin"}
 

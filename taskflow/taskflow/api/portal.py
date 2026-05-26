@@ -13,11 +13,6 @@ from taskflow.permissions import (
     has_taskflow_team_permission,
 )
 from taskflow.taskflow.service.team_hierarchy import can_manage_team, can_operate_team
-
-
-PROJECT_MANAGER_ROLES = frozenset(
-    {"System Manager", "Taskflow Admin", "Project Manager", "Projects Manager"}
-)
 TASK_STATUSES = ["Open", "In Progress", "Review", "On Hold", "Completed", "Cancelled"]
 
 _TASK_FIELDS = [
@@ -439,7 +434,7 @@ def get_portal_bootstrap() -> dict:
         "status_options": TASK_STATUSES,
         "priority_options": ["Low", "Medium", "High", "Critical"],
         "task_type_options": ["Task", "Bug", "Story", "Approval", "Research", "Meeting"],
-        "can_create_project": bool(PROJECT_MANAGER_ROLES & set(frappe.get_roles(frappe.session.user))),
+        "can_create_project": bool(can_manage_team(frappe.session.user)),
     }
 
 
