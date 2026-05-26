@@ -2310,117 +2310,240 @@ body.taskflow-dragging .taskflow-card-dragging {
 	background: transparent !important;
 }
 
-#taskGrid {
-	width: 100% !important;
-	height: 100% !important;
-}
-
-.gridjs-tr {
-    height: 48px !important;
-}
-
-.gridjs-td {
-    padding: 8px 12px !important;
-    vertical-align: middle !important;
-}
-
-.clusterize {
-	height: 100% !important;
+.taskflow-super-table-shell {
+	height: 100%;
 	display: flex;
 	flex-direction: column;
-	min-height: 100%;
+	min-height: 0;
+	background: #ffffff;
+	border: 1px solid var(--taskflow-border);
+	border-radius: 14px;
+	overflow: hidden;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-.clusterize-scroll {
+.taskflow-super-table-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--taskflow-border);
+	background: linear-gradient(180deg, #ffffff, #f8fafc);
+	flex-shrink: 0;
+}
+
+.taskflow-super-table-summary {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--taskflow-text);
+}
+
+.taskflow-super-table-summary strong {
+	font-size: 16px;
+	font-weight: 800;
+}
+
+.taskflow-super-table-hint,
+.taskflow-super-table-status {
+	color: var(--taskflow-text-muted);
+	font-size: 12px;
+}
+
+.taskflow-super-table-scroll {
 	flex: 1;
-	overflow-y: auto;
+	min-height: 0;
+	overflow: auto;
+	background: #ffffff;
 }
 
-/* Center align specific columns */
-.taskflow-table th:nth-child(5),
-.taskflow-table td:nth-child(5),
-.taskflow-table th:nth-child(6),
-.taskflow-table td:nth-child(6),
-.taskflow-table th:nth-child(8),
-.taskflow-table td:nth-child(8) {
-    text-align: center !important;
+.taskflow-super-table {
+	width: 100%;
+	min-width: 1380px;
+	border-collapse: separate;
+	border-spacing: 0;
+	font-size: 12px;
 }
 
-/* Force Light Theme on Handsontable */
-.handsontable {
-    background-color: #ffffff !important;
-    color: #333 !important;
+.taskflow-super-table thead th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: #f8fafc;
+	border-bottom: 1px solid var(--taskflow-border);
+	box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+	text-align: left;
+	padding: 0;
+	white-space: nowrap;
 }
 
-.handsontable th {
-    background-color: #f8fafc !important;
-    color: #64748b !important;
+.taskflow-super-sort {
+	width: 100%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 12px 14px;
+	border: 0;
+	background: transparent;
+	font: inherit;
+	font-weight: 700;
+	color: var(--taskflow-text-muted);
+	cursor: pointer;
 }
 
-.handsontable td {
-    background-color: #ffffff !important;
-    color: #333 !important;
+.taskflow-super-sort:hover,
+.taskflow-super-sort.is-active {
+	background: rgba(59, 130, 246, 0.06);
+	color: var(--taskflow-text);
 }
 
-/* Absolute Light Theme Override */
-.handsontable, .handsontable .wtHolder, .handsontable .htCore, .handsontable .htCore tbody tr td, .handsontable .htCore thead tr th {
-    background-color: #ffffff !important;
-    color: #000000 !important;
-    border-color: #e5e7eb !important;
+.taskflow-super-sort-icon {
+	font-size: 11px;
+	flex-shrink: 0;
+	color: var(--taskflow-text-muted);
 }
 
-.handsontable tbody tr:hover td {
-    background-color: #f1f5f9 !important;
+.taskflow-super-table tbody td {
+	border-bottom: 1px solid #eef2f7;
+	padding: 0;
+	vertical-align: middle;
 }
 
-/* Clean Handsontable Styles */
-.handsontable {
-    font-family: inherit !important;
+.taskflow-super-row {
+	height: 48px;
+	cursor: pointer;
+	transition: background-color 0.14s ease;
 }
 
-.handsontable thead th {
-    vertical-align: middle !important;
+.taskflow-super-row:hover {
+	background: #f8fafc;
 }
 
-.handsontable td {
-    vertical-align: middle !important;
+.taskflow-super-row:focus-visible {
+	outline: 2px solid rgba(59, 130, 246, 0.35);
+	outline-offset: -2px;
+	position: relative;
+	z-index: 1;
 }
 
-/* Modern UI/UX for Handsontable */
-.handsontable {
-    --ag-font-family: 'Inter', sans-serif;
-    font-size: 13px !important;
+.taskflow-super-cell {
+	padding: 8px 14px !important;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 240px;
+	color: var(--taskflow-text);
 }
 
-.handsontable th {
-    background-color: #ffffff !important;
-    color: #64748b !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-    border-right: none !important;
+.taskflow-super-cell--task {
+	width: 240px;
+	max-width: 240px;
 }
 
-.handsontable td {
-    border-bottom: 1px solid #f1f5f9 !important;
-    border-right: none !important;
-    color: #1e293b !important;
+.taskflow-super-cell--index {
+	width: 72px;
+	max-width: 72px;
+	font-weight: 700;
+	color: var(--taskflow-text-muted);
 }
 
-.handsontable .htCore {
-    border: none !important;
+.taskflow-super-cell--center {
+	text-align: center;
 }
 
-.handsontable tr:hover td {
-    background-color: #f8fafc !important;
+.taskflow-super-cell--muted {
+	color: var(--taskflow-text-muted);
 }
 
-/* Scaling Fixes */
-.handsontable {
-    font-size: 14px !important;
+.taskflow-super-task {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
 }
 
-.handsontable td, .handsontable th {
-    padding: 12px 16px !important;
-    height: 48px !important;
+.taskflow-super-task-title {
+	font-weight: 700;
+	color: var(--taskflow-primary);
+	line-height: 1.2;
+}
+
+.taskflow-super-task-meta {
+	font-size: 11px;
+	color: var(--taskflow-text-muted);
+}
+
+.taskflow-super-assignee {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.taskflow-super-avatar {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	overflow: hidden;
+	background: #e2e8f0;
+	color: #475569;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10px;
+	font-weight: 800;
+	flex-shrink: 0;
+}
+
+.taskflow-super-avatar img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.taskflow-super-pill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px 10px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+	border: 1px solid transparent;
+}
+
+.taskflow-super-pill.priority-low {
+	background: #f8fafc;
+	color: #64748b;
+	border-color: #e2e8f0;
+}
+
+.taskflow-super-pill.priority-medium {
+	background: #eff6ff;
+	color: #2563eb;
+	border-color: #bfdbfe;
+}
+
+.taskflow-super-pill.priority-high {
+	background: #fff7ed;
+	color: #ea580c;
+	border-color: #fed7aa;
+}
+
+.taskflow-super-pill.priority-critical {
+	background: #fef2f2;
+	color: #dc2626;
+	border-color: #fecaca;
+}
+
+.taskflow-super-empty-row td {
+	padding: 0 !important;
+	border-bottom: 0 !important;
 }
 
 .taskflow-filter-sidebar {

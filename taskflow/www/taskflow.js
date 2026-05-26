@@ -4,6 +4,23 @@
 	const TASK_VIEWS = ["list", "kanban", "dashboard", "timeline", "files", "settings"];
 	const NAV_MODES = ["dashboard", "my-tasks", "calendar", "reports", "team", "settings"];
 	const NAV_PLACEHOLDER_MODES = ["calendar", "reports", "settings"];
+	const LIST_ROW_HEIGHT = 48;
+	const LIST_BUFFER_ROWS = 8;
+	const LIST_COLUMN_COUNT = 12;
+	const LIST_COLUMNS = [
+		{ key: null, label: "Sr No.", sortable: false },
+		{ key: "task_title", label: "Task" },
+		{ key: "project_title", label: "Project" },
+		{ key: "assigned_to_name", label: "Assignee" },
+		{ key: "status", label: "Status" },
+		{ key: "start_date", label: "Start Date" },
+		{ key: "due_date", label: "Due Date" },
+		{ key: "estimated_completion_date", label: "Est. Date" },
+		{ key: "age", label: "Age" },
+		{ key: "priority", label: "Priority" },
+		{ key: "modified", label: "Last Modified" },
+		{ key: "task_type", label: "Type" },
+	];
 
 	const state = {
 		bootstrap: null,
@@ -22,6 +39,7 @@
 		suppressTaskClick: false,
 		currentChecklist: [],
 		autoSaveTimer: null,
+		listTable: null,
 	};
 
 	const refs = {};
@@ -1588,193 +1606,271 @@ return `
 	function renderList(tasks) {
 		if (!refs.listView) return;
 
-		if (state.hotInstance) {
-			state.hotInstance.destroy();
-			state.hotInstance = null;
-		}
-
 		state.currentTasks = tasks;
-		if (typeof window.Handsontable !== "function") {
-			renderListFallback(tasks);
-			return;
-		}
+		state.listTable = state.listTable || {
+			sortKey: "modified",
+			sortDirection: "desc",
+			rowHeight: LIST_ROW_HEIGHT,
+			bufferRows: LIST_BUFFER_ROWS,
+			rafId: 0,
+			resizeBound: false,
+		};
 
-		refs.listView.innerHTML = '<div id="taskGrid" style="width: 100%; height: 100%;"></div>';
-
-		const data = tasks.map((task) => [
-			task.task_title,
-			task.project_title || task.project || "No Project",
-			{ name: task.assigned_to_name || "Unassigned", image: task.assigned_to_image },
-			task.status,
-			formatDate(task.start_date),
-			formatDate(task.due_date),
-			formatDate(task.estimated_completion_date),
-			task.start_date ? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24)) : 0,
-			task.priority,
-			prettyDate(task.modified),
-			task.task_type || "Task"
-		]);
-
-		state.hotInstance = new Handsontable(document.querySelector("#taskGrid"), {
-			data: data,
-			theme: 'ht-theme-main',
-			colHeaders: ["Task Name", "Project", "Assignee", "Status", "Start Date", "Due Date", "Est. Date", "Age", "Priority", "Last Modified", "Tags"],
-			rowHeaders: true,
-			height: '100%',
-			width: '100%',
-			licenseKey: 'non-commercial-and-evaluation',
-			readOnly: true,
-			contextMenu: true,
-			filters: true,
-			dropdownMenu: true,
-			stretchH: 'all',
-			manualColumnResize: true,
-			manualRowResize: true,
-			selectionMode: 'single',
-			columns: [
-				{ // Task Name
-					renderer: function(instance, td, row, col, prop, value, cellProperties) {
-						td.innerHTML = `<span style="color: var(--taskflow-primary); cursor: pointer; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${escapeHtml(value || "")}</span>`;
-						
-						td.querySelector('span').onclick = () => {
-							const taskData = state.currentTasks[row];
-							if (taskData) openTaskModal(taskData);
-						};
-						
-						return td;
-					}
-				}, 
-				{ // Project
-				},
-				{ // Assignee
-					renderer: function(instance, td, row, col, prop, value, cellProperties) {
-						// Ensure value is the object we expect
-						const data = instance.getDataAtRowProp(row, col);
-						const name = (value && value.name) || (data && data.name) || "Unassigned";
-						const image = (value && value.image) || (data && data.image);
-						
-						const formattedName = capitalizeName(name);
-						const avatarHtml = image 
-							? `<img src="${image}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 8px;">`
-							: `<div style="width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-right: 8px;">${initials(name)}</div>`;
-						
-						td.innerHTML = `<div style="display: flex; align-items: center;">${avatarHtml} <span>${escapeHtml(formattedName)}</span></div>`;
-						return td;
-					}
-				},
-				{}, // Status
-				{}, // Start Date
-				{}, // Due Date
-				{}, // Est Date
-				{}, // Age
-				{}, // Priority
-				{}, // Last Modified
-				{}  // Tags
-			],
-			cells: function(row, col) {
-				const cellProperties = {};
-				
-				// Status column renderer (Index 3)
-				if (col === 3) {
-					cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
-						td.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; height: 100%;">${getStatusBadge(value)}</div>`;
-						td.style.textAlign = 'center';
-						return td;
-					};
-				}
-
-				// Age column renderer (Index 7)
-				if (col === 7) {
-					cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
-						const age = parseInt(value) || 0;
-						const maxAge = 30;
-						const intensity = Math.min(age / maxAge, 1);
-						const r = Math.floor(156 + (153 * intensity));
-						const g = Math.floor(165 - (138 * intensity));
-						const b = Math.floor(165 - (138 * intensity));
-						
-						td.innerHTML = `<span style="color: rgb(${r}, ${g}, ${b}); font-weight: 700;">${escapeHtml(value || "0")}</span>`;
-						td.style.textAlign = 'center';
-						return td;
-					};
-				}
-				
-				// 'Just now' highlighting (Last Modified is col 9)
-				const modifiedDate = this.instance.getDataAtCell(row, 9);
-				if (modifiedDate === 'Just now') {
-					cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
-						Handsontable.renderers.TextRenderer.apply(this, arguments);
-						td.style.backgroundColor = '#dcfce7';
-					};
-				}
-				
-				return cellProperties;
-			}
-		});
-	}
-
-	function renderListFallback(tasks) {
-		const rows = tasks.map((task) => {
-			const taskName = escapeHtml(task.task_title || "");
-			const assignee = escapeHtml(capitalizeName(task.assigned_to_name || "Unassigned"));
-			const statusBadge = getStatusBadge(task.status);
-			const startDate = escapeHtml(formatDate(task.start_date));
-			const dueDate = escapeHtml(formatDate(task.due_date));
-			const estDate = escapeHtml(formatDate(task.estimated_completion_date));
-			const age = task.start_date
-				? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24))
-				: 0;
-			const priority = escapeHtml(task.priority || "");
-			const modified = escapeHtml(prettyDate(task.modified));
-			const taskType = escapeHtml(task.task_type || "Task");
-
-			return `
-				<tr data-task-fallback-row="${escapeHtml(task.name)}" style="cursor: pointer;">
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); color: var(--taskflow-primary); font-weight: 600;">${taskName}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${assignee}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); text-align: center;">${statusBadge}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${startDate}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${dueDate}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${estDate}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); text-align: center;">${age}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${priority}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${modified}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${taskType}</td>
-				</tr>
-			`;
-		}).join("");
+		state.listTable.tasks = sortTasksForList(tasks);
 
 		refs.listView.innerHTML = `
-			<div style="padding: 12px; color: #b45309; background: #fffbeb; border-bottom: 1px solid #fde68a; font-size: 12px; font-weight: 600;">
-				Table fallback active because Handsontable failed to load.
-			</div>
-			<div style="overflow: auto; height: 100%;">
-				<table style="width: 100%; border-collapse: collapse; background: #fff;">
-					<thead>
-						<tr style="background: #f8fafc; text-align: left;">
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Task Name</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Assignee</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); text-align: center;">Status</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Start Date</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Due Date</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Est. Date</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); text-align: center;">Age</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Priority</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Last Modified</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Tags</th>
-						</tr>
-					</thead>
-					<tbody>${rows}</tbody>
-				</table>
+			<div class="taskflow-super-table-shell">
+				<div class="taskflow-super-table-bar">
+					<div class="taskflow-super-table-summary">
+						<strong data-task-table-count>${state.listTable.tasks.length}</strong>
+						<span>tasks</span>
+					</div>
+					<div class="taskflow-super-table-status" data-task-table-range></div>
+				</div>
+				<div class="taskflow-super-table-scroll" data-task-table-scroll>
+					<table class="taskflow-super-table">
+						<thead>
+							<tr>
+								${LIST_COLUMNS.map((column) => `
+									<th>
+										<button type="button" class="taskflow-super-sort" data-sort-key="${column.key}" aria-sort="none">
+											<span>${escapeHtml(column.label)}</span>
+											<span class="taskflow-super-sort-icon">${getSortIndicator(column.key)}</span>
+										</button>
+									</th>
+								`).join("")}
+							</tr>
+						</thead>
+						<tbody data-task-table-body></tbody>
+					</table>
+				</div>
 			</div>
 		`;
 
-		refs.listView.querySelectorAll("[data-task-fallback-row]").forEach((row) => {
-			row.addEventListener("click", () => {
-				const task = findTask(row.dataset.taskFallbackRow);
-				if (task) openTaskModal(task);
-			});
+		refs.listScroll = refs.listView.querySelector("[data-task-table-scroll]");
+		refs.listBody = refs.listView.querySelector("[data-task-table-body]");
+		refs.listRange = refs.listView.querySelector("[data-task-table-range]");
+		refs.listSortButtons = refs.listView.querySelectorAll("[data-sort-key]");
+
+		if (refs.listScroll) {
+			refs.listScroll.addEventListener("scroll", scheduleListRender, { passive: true });
+		}
+
+		refs.listSortButtons.forEach((button) => {
+			button.addEventListener("click", () => setListSort(button.dataset.sortKey));
 		});
+
+		refs.listBody?.addEventListener("click", handleListRowActivation);
+		refs.listBody?.addEventListener("keydown", handleListRowKeydown);
+
+		if (!state.listTable.resizeBound) {
+			window.addEventListener("resize", scheduleListRender);
+			state.listTable.resizeBound = true;
+		}
+
+		scheduleListRender();
+	}
+
+	function setListSort(sortKey) {
+		if (!state.listTable || !sortKey) return;
+
+		if (state.listTable.sortKey === sortKey) {
+			state.listTable.sortDirection = state.listTable.sortDirection === "asc" ? "desc" : "asc";
+		} else {
+			state.listTable.sortKey = sortKey;
+			state.listTable.sortDirection = getDefaultListSortDirection(sortKey);
+		}
+
+		renderList(state.currentTasks || []);
+	}
+
+	function getDefaultListSortDirection(sortKey) {
+		return ["modified", "start_date", "due_date", "estimated_completion_date", "age"].includes(sortKey) ? "desc" : "asc";
+	}
+
+	function getSortIndicator(sortKey) {
+		if (!state.listTable || state.listTable.sortKey !== sortKey) return "↕";
+		return state.listTable.sortDirection === "asc" ? "↑" : "↓";
+	}
+
+	function scheduleListRender() {
+		if (!state.listTable) return;
+		if (state.listTable.rafId) return;
+
+		state.listTable.rafId = window.requestAnimationFrame(() => {
+			state.listTable.rafId = 0;
+			renderListViewport();
+		});
+	}
+
+	function renderListViewport() {
+		if (!refs.listScroll || !refs.listBody || !state.listTable) return;
+
+		const tasks = state.listTable.tasks || [];
+		const total = tasks.length;
+
+		if (!total) {
+			refs.listBody.innerHTML = `
+				<tr class="taskflow-super-empty-row">
+					<td colspan="${LIST_COLUMN_COUNT}">
+						<div class="taskflow-empty" style="margin: 24px 0;">No tasks found.</div>
+					</td>
+				</tr>
+			`;
+			if (refs.listRange) refs.listRange.textContent = "0 tasks";
+			syncListSortState();
+			return;
+		}
+
+		const rowHeight = state.listTable.rowHeight || LIST_ROW_HEIGHT;
+		const bufferRows = state.listTable.bufferRows || LIST_BUFFER_ROWS;
+		const viewportHeight = Math.max(refs.listScroll.clientHeight || 0, rowHeight * 8);
+		const visibleCount = Math.ceil(viewportHeight / rowHeight) + bufferRows * 2;
+		const scrollTop = refs.listScroll.scrollTop || 0;
+		const start = Math.max(0, Math.floor(scrollTop / rowHeight) - bufferRows);
+		const end = Math.min(total, start + visibleCount);
+		const topSpacer = start * rowHeight;
+		const bottomSpacer = Math.max(0, (total - end) * rowHeight);
+
+		refs.listBody.innerHTML = `
+			${topSpacer > 0 ? renderListSpacerRow(topSpacer) : ""}
+			${tasks.slice(start, end).map((task, index) => renderListRow(task, start + index)).join("")}
+			${bottomSpacer > 0 ? renderListSpacerRow(bottomSpacer) : ""}
+		`;
+
+		if (refs.listRange) {
+			refs.listRange.textContent = `${start + 1}-${end} of ${total}`;
+		}
+
+		syncListSortState();
+	}
+
+	function syncListSortState() {
+		if (!refs.listSortButtons || !state.listTable) return;
+		refs.listSortButtons.forEach((button) => {
+			const active = button.dataset.sortKey === state.listTable.sortKey;
+			button.setAttribute("aria-sort", active ? (state.listTable.sortDirection === "asc" ? "ascending" : "descending") : "none");
+			button.classList.toggle("is-active", active);
+		});
+	}
+
+	function renderListSpacerRow(height) {
+		return `<tr class="taskflow-super-spacer" aria-hidden="true"><td colspan="${LIST_COLUMN_COUNT}" style="height:${height}px; padding:0; border:none;"></td></tr>`;
+	}
+
+	function renderListRow(task, index) {
+		const taskName = task.task_title || "";
+		const projectTitle = task.project_title || task.project || "No Project";
+		const assigneeName = capitalizeName(task.assigned_to_name || "Unassigned");
+		const assigneeImage = task.assigned_to_image;
+		const age = getTaskAgeDays(task);
+		const priority = task.priority || "Medium";
+		const modified = prettyDate(task.modified) || "Just now";
+		const rowLabel = `${taskName || "Task"}${projectTitle ? `, ${projectTitle}` : ""}`;
+		return `
+			<tr class="taskflow-super-row" data-task-row="${escapeHtml(task.name)}" tabindex="0" role="button" aria-label="${escapeHtml(`Open ${rowLabel}`)}">
+				<td class="taskflow-super-cell taskflow-super-cell--center taskflow-super-cell--index">${escapeHtml(String(index + 1))}</td>
+				<td class="taskflow-super-cell taskflow-super-cell--task">
+					<div class="taskflow-super-task">
+						<div class="taskflow-super-task-title">${escapeHtml(taskName)}</div>
+						<div class="taskflow-super-task-meta">${escapeHtml(task.task_type || "Task")}</div>
+					</div>
+				</td>
+				<td class="taskflow-super-cell">${escapeHtml(projectTitle)}</td>
+				<td class="taskflow-super-cell">
+					<div class="taskflow-super-assignee">
+						<span class="taskflow-super-avatar">
+							${assigneeImage ? `<img src="${escapeHtml(assigneeImage)}" alt="" />` : escapeHtml(initials(assigneeName))}
+						</span>
+						<span>${escapeHtml(assigneeName)}</span>
+					</div>
+				</td>
+				<td class="taskflow-super-cell taskflow-super-cell--center">${getStatusBadge(task.status)}</td>
+				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(formatDate(task.start_date))}</td>
+				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(formatDate(task.due_date))}</td>
+				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(formatDate(task.estimated_completion_date))}</td>
+				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(String(age))}</td>
+				<td class="taskflow-super-cell taskflow-super-cell--center"><span class="taskflow-super-pill priority-${slugify(priority)}">${escapeHtml(priority)}</span></td>
+				<td class="taskflow-super-cell taskflow-super-cell--muted">${escapeHtml(modified)}</td>
+				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(task.task_type || "Task")}</td>
+			</tr>
+		`;
+	}
+
+	function handleListRowActivation(event) {
+		const row = event.target.closest("[data-task-row]");
+		if (!row) return;
+		if (event.target.closest("button, a, input, select, textarea")) return;
+		const task = findTask(row.dataset.taskRow);
+		if (task) openTaskModal(task);
+	}
+
+	function handleListRowKeydown(event) {
+		if (event.key !== "Enter" && event.key !== " ") return;
+		const row = event.target.closest("[data-task-row]");
+		if (!row) return;
+		event.preventDefault();
+		const task = findTask(row.dataset.taskRow);
+		if (task) openTaskModal(task);
+	}
+
+	function getTaskAgeDays(task) {
+		if (!task || !task.start_date) return 0;
+		const startDate = parseDateValue(task.start_date);
+		if (!startDate) return 0;
+		return Math.floor(Math.abs(new Date() - startDate) / (1000 * 60 * 60 * 24));
+	}
+
+	function getListSortValue(task, sortKey) {
+		switch (sortKey) {
+			case "task_title":
+				return String(task.task_title || "").toLowerCase();
+			case "project_title":
+				return String(task.project_title || task.project || "").toLowerCase();
+			case "assigned_to_name":
+				return String(task.assigned_to_name || "Unassigned").toLowerCase();
+			case "status": {
+				const index = STATUS_COLUMNS.indexOf(task.status);
+				return index === -1 ? 999 : index;
+			}
+			case "start_date":
+				return parseDateValue(task.start_date)?.getTime() || 0;
+			case "due_date":
+				return parseDateValue(task.due_date)?.getTime() || 0;
+			case "estimated_completion_date":
+				return parseDateValue(task.estimated_completion_date)?.getTime() || 0;
+			case "age":
+				return getTaskAgeDays(task);
+			case "priority": {
+				const priorities = { low: 1, medium: 2, high: 3, critical: 4 };
+				return priorities[String(task.priority || "").toLowerCase()] || 999;
+			}
+			case "modified":
+				return parseDateValue(task.modified)?.getTime() || 0;
+			case "task_type":
+				return String(task.task_type || "Task").toLowerCase();
+			default:
+				return String(task[sortKey] || "").toLowerCase();
+		}
+	}
+
+	function compareListTasks(a, b, sortKey, direction) {
+		const left = getListSortValue(a, sortKey);
+		const right = getListSortValue(b, sortKey);
+		if (left === right) return 0;
+		const isAscending = direction === "asc";
+		if (typeof left === "string" || typeof right === "string") {
+			return left.toString().localeCompare(right.toString()) * (isAscending ? 1 : -1);
+		}
+		return (left > right ? 1 : -1) * (isAscending ? 1 : -1);
+	}
+
+	function sortTasksForList(tasks) {
+		const list = [...(tasks || [])];
+		const sortKey = state.listTable ? state.listTable.sortKey : "modified";
+		const direction = state.listTable ? state.listTable.sortDirection : "desc";
+		list.sort((a, b) => compareListTasks(a, b, sortKey, direction));
+		return list;
 	}
 
 	function renderColumn(status, tasks, canAddTask) {
