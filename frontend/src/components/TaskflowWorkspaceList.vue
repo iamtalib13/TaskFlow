@@ -77,7 +77,7 @@
               </span>
 
               <span v-else-if="column.key === 'modified'" class="workspace-task-modified">
-                {{ formatDateTime(row.modified) }}
+                {{ prettyModified(row.modified) }}
               </span>
 
               <span v-else>{{ valueFor(row, column.key) }}</span>
@@ -264,16 +264,28 @@ function formatDate(value) {
   }).format(date)
 }
 
-function formatDateTime(value) {
+function prettyModified(value) {
   if (!value) return '—'
+
   const date = new Date(String(value).replace(' ', 'T'))
   if (Number.isNaN(date.getTime())) return String(value)
+
+  const diff = Date.now() - date.getTime()
+  if (diff < 60000) return 'Just now'
+
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 60) return `${minutes}m ago`
+
+  const hours = Math.floor(diff / 3600000)
+  if (hours < 24) return `${hours}h ago`
+
+  const days = Math.floor(diff / 86400000)
+  if (days < 7) return `${days}d ago`
+
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
   }).format(date)
 }
 
