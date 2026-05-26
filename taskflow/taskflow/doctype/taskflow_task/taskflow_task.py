@@ -33,6 +33,9 @@ class TaskflowTask(Document):
 		if self.start_date and self.due_date and self.start_date > self.due_date:
 			frappe.throw("Due Date cannot be before Start Date.")
 
+		if self.start_date and self.estimated_completion_date and self.start_date > self.estimated_completion_date:
+			frappe.throw("Estimated Completion Date cannot be before Start Date.")
+
 		if self.completed_on and self.start_date and self.completed_on < self.start_date:
 			frappe.throw("Completed On cannot be before Start Date.")
 

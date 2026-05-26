@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "format:TFT-{#####}",
- "creation": "2026-05-07 00:00:00.000000",
+ "creation": "2026-05-07 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -23,6 +23,7 @@
   "timeline_section",
   "start_date",
   "due_date",
+  "estimated_completion_date",
   "timeline_column",
   "completed_on",
   "sequence",
@@ -141,13 +142,18 @@
   },
   {
    "fieldname": "start_date",
-   "fieldtype": "Datetime",
+   "fieldtype": "Date",
    "label": "Start Date"
   },
   {
    "fieldname": "due_date",
-   "fieldtype": "Datetime",
+   "fieldtype": "Date",
    "label": "Due Date"
+  },
+  {
+   "fieldname": "estimated_completion_date",
+   "fieldtype": "Date",
+   "label": "Estimated Completion Date"
   },
   {
    "fieldname": "timeline_column",
@@ -238,11 +244,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-07 00:00:00.000000",
+ "modified": "2026-05-26 15:07:57.976488",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",
- "naming_rule": "Expression",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -300,6 +306,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "task_title,project,team,assigned_to",
  "sort_field": "modified",
  "sort_order": "DESC",

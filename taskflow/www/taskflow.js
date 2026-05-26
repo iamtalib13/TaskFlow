@@ -31,6 +31,7 @@
 	async function init() {
 		cacheDom();
 		applyInitialUrlState();
+		initTaskDatepickers();
 		bindEvents();
 		await loadBootstrap(state.selectedProject, { updateUrl: false });
 		await loadStateFromUrl({ updateUrl: false });
@@ -48,6 +49,58 @@
 		state.selectedTeam = team || "all";
 		if (view) state.taskView = normalizeTaskView(view);
 		syncTaskTabs();
+	}
+
+	function initTaskDatepickers() {
+		if (!window.flatpickr) return;
+
+		const selectors = [
+			'form[data-task-form-quick] input[name="start_date"]',
+			'form[data-task-form-quick] input[name="due_date"]',
+			'form[data-task-form] input[name="start_date"]',
+			'form[data-task-form] input[name="due_date"]',
+			'form[data-task-form] input[name="estimated_completion_date"]',
+		];
+
+		document.querySelectorAll(selectors.join(",")).forEach((input) => {
+			if (input._flatpickr) input._flatpickr.destroy();
+
+			const instance = window.flatpickr(input, {
+				dateFormat: "Y-m-d",
+				altInput: true,
+				altFormat: "d-m-Y",
+				altInputClass: input.className,
+				allowInput: false,
+				clickOpens: true,
+				disableMobile: true,
+				defaultDate: input.value || null,
+				onChange: () => input.dispatchEvent(new Event("change", { bubbles: true })),
+			});
+
+			if (instance.altInput) {
+				instance.altInput.placeholder = "DD-MM-YYYY";
+				instance.altInput.inputMode = "numeric";
+			}
+		});
+	}
+
+	function syncTaskDatepickers(form) {
+		if (!form?.elements) return;
+
+		["start_date", "due_date", "estimated_completion_date"].forEach((fieldname) => {
+			const input = form.elements[fieldname];
+			if (!input?._flatpickr) return;
+
+			if (input.value) {
+				input._flatpickr.setDate(input.value, false, "Y-m-d");
+			} else {
+				input._flatpickr.clear();
+			}
+
+			if (input._flatpickr.altInput) {
+				input._flatpickr.altInput.placeholder = "DD-MM-YYYY";
+			}
+		});
 	}
 
 	function updateUrlState(options = {}) {
@@ -725,6 +778,8 @@
                         <tr>
                             <th style="padding: 12px; text-align: left; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0; width: 50px;">Sr No</th>
                             <th style="padding: 12px; text-align: left; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Project Name</th>
+                            <th style="padding: 12px; text-align: center; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Start Date</th>
+                            <th style="padding: 12px; text-align: center; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">End Date</th>
                             <th style="padding: 12px; text-align: center; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Assigned</th>
                             <th style="padding: 12px; text-align: center; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Pending</th>
                             <th style="padding: 12px; text-align: center; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Overdue</th>
@@ -736,13 +791,13 @@
                             <tr style="border-bottom: 1px solid #f1f5f9;">
                                 <td style="padding: 12px; color: #64748b;">${i + 1}</td>
                                 <td style="padding: 12px; font-weight: 500;">${escapeHtml(p.name)}</td>
+                                <td style="padding: 12px; text-align: center; font-size: 12px;">${formatDate(p.start_date)}</td>
+                                <td style="padding: 12px; text-align: center; font-size: 12px;">${formatDate(p.end_date)}</td>
                                 <td style="padding: 12px; text-align: center; font-weight: 600;">${p.assigned}</td>
                                 <td style="padding: 12px; text-align: center; font-weight: 600;">${p.pending ?? p.assigned ?? 0}</td>
                                 <td style="padding: 12px; text-align: center; font-weight: 600; color: ${p.overdue > 0 ? '#ef4444' : '#64748b'};">${p.overdue}</td>
                                 <td style="padding: 12px; text-align: center;">
-                                    <span style="background: ${p.status === 'Active' ? '#dcfce7' : '#f1f5f9'}; color: ${p.status === 'Active' ? '#166534' : '#475569'}; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
-                                        ${p.status}
-                                    </span>
+                                    ${getStatusBadge(p.status)}
                                 </td>
                             </tr>
                         `).join('')}
@@ -1323,6 +1378,16 @@ return `
 		return colors[status] || "#cbd5e1";
 	}
 
+	function getStatusClass(status) {
+		if (!status) return "";
+		return "status-" + status.toLowerCase().replace(/\s+/g, "-");
+	}
+
+	function getStatusBadge(status) {
+		const statusClass = getStatusClass(status);
+		return `<span class="taskflow-status-capsule ${statusClass}">${escapeHtml(status || "")}</span>`;
+	}
+
 	function renderBoard(tasks) {
 		if (!refs.board) return;
 		const canAddTask = canCreateTask();
@@ -1541,9 +1606,11 @@ return `
 			task.project_title || task.project || "No Project",
 			{ name: task.assigned_to_name || "Unassigned", image: task.assigned_to_image },
 			task.status,
+			formatDate(task.start_date),
+			formatDate(task.due_date),
+			formatDate(task.estimated_completion_date),
 			task.start_date ? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24)) : 0,
 			task.priority,
-			formatDate(task.due_date),
 			prettyDate(task.modified),
 			task.task_type || "Task"
 		]);
@@ -1551,7 +1618,7 @@ return `
 		state.hotInstance = new Handsontable(document.querySelector("#taskGrid"), {
 			data: data,
 			theme: 'ht-theme-main',
-			colHeaders: ["Task Name", "Project", "Assignee", "Status", "Age", "Priority", "Due Date", "Last Modified", "Tags"],
+			colHeaders: ["Task Name", "Project", "Assignee", "Status", "Start Date", "Due Date", "Est. Date", "Age", "Priority", "Last Modified", "Tags"],
 			rowHeaders: true,
 			height: '100%',
 			width: '100%',
@@ -1596,34 +1663,28 @@ return `
 					}
 				},
 				{}, // Status
+				{}, // Start Date
+				{}, // Due Date
+				{}, // Est Date
 				{}, // Age
 				{}, // Priority
-				{}, // Due Date
 				{}, // Last Modified
 				{}  // Tags
 			],
 			cells: function(row, col) {
 				const cellProperties = {};
 				
-				// Status column renderer (Index 2)
-				if (col === 2) {
+				// Status column renderer (Index 3)
+				if (col === 3) {
 					cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
-						const colors = {
-							"Open": { bg: "#eff6ff", text: "#3b82f6" },
-							"In Progress": { bg: "#fef3c7", text: "#d97706" },
-							"Review": { bg: "#f3e8ff", text: "#9333ea" },
-							"On Hold": { bg: "#f1f5f9", text: "#475569" },
-							"Completed": { bg: "#dcfce7", text: "#16a34a" },
-							"Cancelled": { bg: "#fee2e2", text: "#dc2626" }
-						};
-						const style = colors[value] || { bg: "#f1f5f9", text: "#475569" };
-						td.innerHTML = `<span style="background: ${style.bg}; color: ${style.text}; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 11px; text-transform: uppercase;">${escapeHtml(value || "")}</span>`;
+						td.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; height: 100%;">${getStatusBadge(value)}</div>`;
 						td.style.textAlign = 'center';
+						return td;
 					};
 				}
 
-				// Age column renderer (Index 3)
-				if (col === 3) {
+				// Age column renderer (Index 7)
+				if (col === 7) {
 					cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
 						const age = parseInt(value) || 0;
 						const maxAge = 30;
@@ -1634,11 +1695,12 @@ return `
 						
 						td.innerHTML = `<span style="color: rgb(${r}, ${g}, ${b}); font-weight: 700;">${escapeHtml(value || "0")}</span>`;
 						td.style.textAlign = 'center';
+						return td;
 					};
 				}
 				
-				// 'Just now' highlighting (Last Modified is col 6)
-				const modifiedDate = this.instance.getDataAtCell(row, 6);
+				// 'Just now' highlighting (Last Modified is col 9)
+				const modifiedDate = this.instance.getDataAtCell(row, 9);
 				if (modifiedDate === 'Just now') {
 					cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
 						Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -1655,12 +1717,14 @@ return `
 		const rows = tasks.map((task) => {
 			const taskName = escapeHtml(task.task_title || "");
 			const assignee = escapeHtml(capitalizeName(task.assigned_to_name || "Unassigned"));
-			const status = escapeHtml(task.status || "");
+			const statusBadge = getStatusBadge(task.status);
+			const startDate = escapeHtml(formatDate(task.start_date));
+			const dueDate = escapeHtml(formatDate(task.due_date));
+			const estDate = escapeHtml(formatDate(task.estimated_completion_date));
 			const age = task.start_date
 				? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24))
 				: 0;
 			const priority = escapeHtml(task.priority || "");
-			const dueDate = escapeHtml(formatDate(task.due_date));
 			const modified = escapeHtml(prettyDate(task.modified));
 			const taskType = escapeHtml(task.task_type || "Task");
 
@@ -1668,10 +1732,12 @@ return `
 				<tr data-task-fallback-row="${escapeHtml(task.name)}" style="cursor: pointer;">
 					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); color: var(--taskflow-primary); font-weight: 600;">${taskName}</td>
 					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${assignee}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${status}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); text-align: center;">${statusBadge}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${startDate}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${dueDate}</td>
+					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${estDate}</td>
 					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); text-align: center;">${age}</td>
 					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${priority}</td>
-					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${dueDate}</td>
 					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${modified}</td>
 					<td style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">${taskType}</td>
 				</tr>
@@ -1688,10 +1754,12 @@ return `
 						<tr style="background: #f8fafc; text-align: left;">
 							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Task Name</th>
 							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Assignee</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Status</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); text-align: center;">Status</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Start Date</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Due Date</th>
+							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Est. Date</th>
 							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border); text-align: center;">Age</th>
 							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Priority</th>
-							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Due Date</th>
 							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Last Modified</th>
 							<th style="padding: 10px 12px; border-bottom: 1px solid var(--taskflow-border);">Tags</th>
 						</tr>
@@ -1813,6 +1881,7 @@ return `
 			getFormElement(form, "assigned_to").innerHTML = buildMemberOptions(currentProject.team, "");
 			getFormElement(form, "priority").value = "Medium";
 			getFormElement(form, "task_type").value = "Task";
+			syncTaskDatepickers(form);
 
 			toggleModal(refs.taskModalQuick, true);
 		} else {
@@ -1874,7 +1943,9 @@ return `
 		
 		setVal("start_date", dateInputValue(task.start_date));
 		setVal("due_date", dateInputValue(task.due_date));
+		setVal("estimated_completion_date", dateInputValue(task.estimated_completion_date));
 		setVal("estimated_hours", task.estimated_hours || "");
+		syncTaskDatepickers(form);
 		setVal("description", stripHtml(task.description || ""));
 		
 		if (form.elements.is_milestone) form.elements.is_milestone.checked = Boolean(task.is_milestone);
@@ -2155,14 +2226,27 @@ return `
 	function validateTaskDates(form) {
 		const startDate = getFormValue(form, "start_date");
 		const dueDate = getFormValue(form, "due_date");
-		if (!startDate || !dueDate) return true;
+		const estimatedCompletionDate = getFormValue(form, "estimated_completion_date");
 
-		const start = parseDateValue(startDate);
-		const end = parseDateValue(dueDate);
-		if (!start || !end || end >= start) return true;
+		if (startDate && dueDate) {
+			const start = parseDateValue(startDate);
+			const end = parseDateValue(dueDate);
+			if (start && end && end < start) {
+				showMessage("End Date cannot be earlier than Start Date.");
+				return false;
+			}
+		}
 
-		showMessage("End Date cannot be earlier than Start Date.");
-		return false;
+		if (startDate && estimatedCompletionDate) {
+			const start = parseDateValue(startDate);
+			const estimated = parseDateValue(estimatedCompletionDate);
+			if (start && estimated && estimated < start) {
+				showMessage("Estimated Completion Date cannot be earlier than Start Date.");
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 		function getTaskFormPayload(form) {
@@ -2176,8 +2260,9 @@ return `
 				priority: getFormValue(form, "priority", "Medium"),
 				task_type: getFormValue(form, "task_type", "Task"),
 				assigned_to: getFormValue(form, "assigned_to") || null,
-				start_date: getFormValue(form, "start_date") || null,
-				due_date: getFormValue(form, "due_date") || null,
+				start_date: normalizeDateForPayload(getFormValue(form, "start_date")),
+				due_date: normalizeDateForPayload(getFormValue(form, "due_date")),
+				estimated_completion_date: normalizeDateForPayload(getFormValue(form, "estimated_completion_date")),
 				estimated_hours: getFormValue(form, "estimated_hours", 0) || 0,
 				sequence: getFormValue(form, "sequence") || null,
 				description: getFormValue(form, "description", ""),
@@ -2895,10 +2980,14 @@ return `
 		if (!value) return "Not set";
 		const date = parseDateValue(value);
 		if (!date) return "Not set";
+		return formatDisplayDate(date);
+	}
+
+	function formatDisplayDate(date) {
 		const d = String(date.getDate()).padStart(2, '0');
 		const m = String(date.getMonth() + 1).padStart(2, '0');
 		const y = date.getFullYear();
-		return `${d}/${m}/${y}`;
+		return `${d}-${m}-${y}`;
 	}
 
 	function dateInputValue(value) {
@@ -2950,9 +3039,30 @@ return `
 	function parseDateValue(value) {
 		if (!value) return null;
 		if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-		const normalized = String(value).trim().replace(" ", "T");
+
+		const trimmed = String(value).trim();
+		const dmyMatch = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+		if (dmyMatch) {
+			const [, day, month, year] = dmyMatch;
+			const date = new Date(Number(year), Number(month) - 1, Number(day));
+			return Number.isNaN(date.getTime()) ? null : date;
+		}
+
+		const normalized = trimmed.replace(" ", "T");
 		const date = new Date(normalized);
 		return Number.isNaN(date.getTime()) ? null : date;
+	}
+
+	function displayDateInputValue(value) {
+		if (!value) return "";
+		const date = parseDateValue(value);
+		return date ? formatDisplayDate(date) : "";
+	}
+
+	function normalizeDateForPayload(value) {
+		if (!value) return null;
+		const date = parseDateValue(value);
+		return date ? formatLocalDate(date) : null;
 	}
 
 	function formatLocalDate(date) {

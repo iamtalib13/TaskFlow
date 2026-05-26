@@ -3,7 +3,9 @@
 {% block head %}
 <link href="https://cdn.jsdelivr.net/npm/handsontable/styles/handsontable.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/handsontable/styles/ht-theme-main.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 {% endblock %}
 
 {% block banner %}{% endblock %}
@@ -321,11 +323,11 @@
 						<select name="assigned_to" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
 					<div class="taskflow-quick-date-group">
 						<div style="font-weight: 700; color: var(--taskflow-text-muted);">Start Date</div>
-						<input type="date" name="start_date" class="taskflow-quick-date-input" />
+						<input type="text" name="start_date" class="taskflow-date-input taskflow-quick-date-input" placeholder="DD-MM-YYYY" inputmode="numeric" />
 					</div>
 					<div class="taskflow-quick-date-group">
 						<div style="font-weight: 700; color: var(--taskflow-text-muted);">End Date</div>
-						<input type="date" name="due_date" class="taskflow-quick-date-input" />
+						<input type="text" name="due_date" class="taskflow-date-input taskflow-quick-date-input" placeholder="DD-MM-YYYY" inputmode="numeric" />
 					</div>
 						<div style="font-weight: 700; color: var(--taskflow-text-muted);">Priority</div>
 						<select name="priority" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);">
@@ -421,14 +423,21 @@
 									<span class="taskflow-adv-icon">🕒</span>
 									<label>Start Date</label>
 								</div>
-								<input type="date" name="start_date" style="width: 100%;" />
+								<input type="text" name="start_date" class="taskflow-date-input" style="width: 100%;" placeholder="DD-MM-YYYY" inputmode="numeric" />
 							</div>
 							<div>
 								<div class="taskflow-adv-label-row">
 									<span class="taskflow-adv-icon">⌛</span>
 									<label>Due Date • <span style="color: #ef4444;">Due Today</span></label>
 								</div>
-								<input type="date" name="due_date" style="width: 100%; border-color: #fca5a5;" />
+								<input type="text" name="due_date" class="taskflow-date-input" style="width: 100%; border-color: #fca5a5;" placeholder="DD-MM-YYYY" inputmode="numeric" />
+							</div>
+							<div>
+								<div class="taskflow-adv-label-row">
+									<span class="taskflow-adv-icon">📌</span>
+									<label>Estimated Completion Date</label>
+								</div>
+								<input type="text" name="estimated_completion_date" class="taskflow-date-input" style="width: 100%;" placeholder="DD-MM-YYYY" inputmode="numeric" />
 							</div>
 							<div>
 								<div class="taskflow-adv-label-row">

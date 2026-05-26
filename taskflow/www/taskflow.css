@@ -252,6 +252,22 @@ button:disabled {
 	gap: 6px;
 }
 
+.taskflow-date-input {
+	padding-right: 38px !important;
+	background-color: #ffffff;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2' stroke-width='1.8'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 10px center;
+	background-size: 16px;
+	cursor: pointer;
+}
+
+.taskflow-date-input:focus {
+	border-color: var(--taskflow-primary);
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+	outline: none;
+}
+
 .taskflow-quick-date-input {
 	width: 100%;
 	padding: 8px;
@@ -718,6 +734,60 @@ textarea:focus-visible,
 	width: 8px;
 	height: 8px;
 	border-radius: 50%;
+}
+
+.taskflow-status-capsule {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px 12px;
+	border-radius: 20px;
+	font-size: 11px;
+	font-weight: 700;
+	white-space: nowrap;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	min-width: 80px;
+	border: 1px solid transparent;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.taskflow-status-capsule.status-active,
+.taskflow-status-capsule.status-completed {
+	background-color: #dcfce7;
+	color: #166534;
+	border-color: #bbf7d0;
+}
+
+.taskflow-status-capsule.status-open {
+	background-color: #dbeafe;
+	color: #1e40af;
+	border-color: #bfdbfe;
+}
+
+.taskflow-status-capsule.status-in-progress {
+	background-color: #fef3c7;
+	color: #92400e;
+	border-color: #fde68a;
+}
+
+.taskflow-status-capsule.status-on-hold,
+.taskflow-status-capsule.status-review {
+	background-color: #f1f5f9;
+	color: #475569;
+	border-color: #e2e8f0;
+}
+
+.taskflow-status-capsule.status-cancelled {
+	background-color: #fee2e2;
+	color: #991b1b;
+	border-color: #fecaca;
+}
+
+.taskflow-status-capsule.status-draft {
+	background-color: #f3f4f6;
+	color: #374151;
+	border-color: #e5e7eb;
 }
 
 .taskflow-column-name {

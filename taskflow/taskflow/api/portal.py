@@ -33,6 +33,7 @@ _TASK_FIELDS = [
     "task_type",
     "start_date",
     "due_date",
+    "estimated_completion_date",
     "completed_on",
     "progress_percent",
     "estimated_hours",
@@ -87,6 +88,7 @@ _ALLOWED_TASK_FIELDS = [
     "task_type",
     "start_date",
     "due_date",
+    "estimated_completion_date",
     "progress_percent",
     "estimated_hours",
     "actual_hours",
@@ -292,6 +294,10 @@ def _serialize_task(
     employee_name_map: dict[str, str] | None = None,
 ) -> dict:
     """Serialize a Taskflow Task document."""
+    task_team = task.team
+    if not task_team and task.project:
+        task_team = frappe.db.get_value("Taskflow Project", task.project, "team")
+
     project_title = (project_map or {}).get(task.project)
     if not project_title and task.project:
         project_title = frappe.db.get_value("Taskflow Project", task.project, "project_name")
@@ -309,7 +315,7 @@ def _serialize_task(
         "task_title": task.task_title,
         "project": task.project,
         "project_title": project_title,
-        "team": task.team,
+        "team": task_team,
         "assigned_by": task.assigned_by,
         "assigned_to": task.assigned_to,
         "assigned_to_name": assigned_to_name,
@@ -320,6 +326,7 @@ def _serialize_task(
         "task_type": task.task_type,
         "start_date": task.start_date,
         "due_date": task.due_date,
+        "estimated_completion_date": task.estimated_completion_date,
         "completed_on": task.completed_on,
         "progress_percent": task.progress_percent,
         "estimated_hours": task.estimated_hours,
@@ -632,7 +639,9 @@ def save_task(payload: str) -> dict:
 
         if "checklist" in data:
             checklist_items = data.get("checklist") or []
-            if data.get("status") == "Completed":
+            new_status = data.get("status") or doc.status
+            # Only validate checklist if marking as completed for the first time or if already completed and checklist changed
+            if new_status == "Completed" and (is_new or doc.status != "Completed"):
                 pending_items = [item for item in checklist_items if not item.get("is_completed")]
                 if pending_items:
                     frappe.throw(_("Cannot complete task while checklist items are pending."))
