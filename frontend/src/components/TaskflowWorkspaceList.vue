@@ -1,6 +1,6 @@
 <template>
-  <section class="workspace-panel" :aria-label="sectionLabel">
-    <div class="workspace-panel__head">
+  <section class="workspace-panel" :class="{ 'workspace-panel--task': section === 'task' }" :aria-label="sectionLabel">
+    <div v-if="section !== 'task'" class="workspace-panel__head">
       <div class="workspace-panel__title-wrap">
         <div class="workspace-panel__eyebrow">{{ sectionLabel }}</div>
         <h2 class="workspace-panel__title">{{ sectionTitle }}</h2>
@@ -27,7 +27,7 @@
       <button type="button" class="workspace-empty-action" @click="emit('primary-action')">Add new</button>
     </div>
 
-    <div v-else-if="rows.length" class="workspace-table-wrap">
+    <div v-else-if="rows.length" class="workspace-table-wrap workspace-table-wrap--task">
       <table class="workspace-table">
         <thead>
           <tr>
@@ -81,21 +81,18 @@ const emit = defineEmits(['primary-action'])
 const sectionLabel = computed(() => {
   if (props.section === 'team') return 'Team Records'
   if (props.section === 'mom') return 'Minutes of Meeting'
-  if (props.section === 'task') return 'Task Records'
   return 'Project Records'
 })
 
 const sectionTitle = computed(() => {
   if (props.section === 'team') return 'Existing Teams'
   if (props.section === 'mom') return 'Meeting Log'
-  if (props.section === 'task') return 'Project Tasks'
   return 'Existing Projects'
 })
 
 const emptyLabel = computed(() => {
   if (props.section === 'team') return 'No team records available.'
   if (props.section === 'mom') return 'No meeting records available yet.'
-  if (props.section === 'task') return 'No tasks found for this project.'
   return 'No project records available.'
 })
 

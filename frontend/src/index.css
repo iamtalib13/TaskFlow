@@ -98,6 +98,7 @@ button {
 
 .workspace-content {
   min-width: 0;
+  min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
 }
@@ -433,6 +434,35 @@ button {
   padding: 16px;
 }
 
+.workspace-panel--task {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+}
+
+.workspace-panel--task .workspace-table-wrap,
+.workspace-panel--task .workspace-panel__empty,
+.workspace-panel--task .workspace-panel__loading {
+  flex: 1;
+  min-height: 0;
+}
+
+.workspace-panel--task .workspace-table-wrap {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 0;
+  height: 100%;
+}
+
+.workspace-panel--task .workspace-table {
+  min-width: 100%;
+  height: 100%;
+}
+
 .workspace-panel__head {
   display: flex;
   align-items: flex-end;
@@ -468,6 +498,7 @@ button {
   border-radius: 12px;
   background: var(--tf-surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  min-height: 0;
 }
 
 .workspace-table {
