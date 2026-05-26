@@ -18,6 +18,9 @@
           :active-view="activeView"
           :primary-action-label="primaryActionLabel"
           :search-query="searchQuery"
+          :workspace-title="workspaceTitle"
+          :pending-task-count="selectedProjectTaskStats.pending"
+          :total-task-count="selectedProjectTaskStats.total"
           @primary-action="handlePrimaryAction"
           @update:activeView="activeView = $event"
           @update:searchQuery="searchQuery = $event"
@@ -77,6 +80,19 @@ const selectedTeamLabel = computed(() => {
 const selectedProjectLabel = computed(() => {
   return selectedProject.value ? projectNameById.value[selectedProject.value] || selectedProject.value : ''
 })
+
+const selectedProjectTaskStats = computed(() => {
+  const projectTasks = tasks.value.filter((task) => !selectedProject.value || task.project === selectedProject.value)
+  const total = projectTasks.length
+  const pending = projectTasks.filter((task) => !['Completed', 'Cancelled'].includes(task.status)).length
+
+  return {
+    total,
+    pending,
+  }
+})
+
+const workspaceTitle = computed(() => selectedProjectLabel.value || 'All Projects')
 
 const tableSection = computed(() => {
   if (activeSection.value === 'team') return 'team'
