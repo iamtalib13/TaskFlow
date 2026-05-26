@@ -64,7 +64,7 @@
           @click="updateSelectedProject(project.name)"
         >
           <span class="sidebar-project__title">{{ project.project_name || project.name }}</span>
-          <span class="sidebar-project__count">{{ project.pending_task_count || 0 }}</span>
+          <span v-if="Number(project.pending_task_count || 0) > 0" class="sidebar-project__count">{{ project.pending_task_count }}</span>
         </button>
         <div v-if="!filteredProjects.length" class="sidebar-empty">No projects for this team.</div>
       </div>
