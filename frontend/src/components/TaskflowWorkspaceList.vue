@@ -76,10 +76,6 @@
                 {{ row.priority || '—' }}
               </span>
 
-              <span v-else-if="column.key === 'modified'" class="workspace-task-modified">
-                {{ formatDateTime(row.modified) }}
-              </span>
-
               <span v-else>{{ valueFor(row, column.key) }}</span>
             </td>
           </tr>
@@ -155,7 +151,6 @@ const columns = computed(() => {
       { key: 'estimated_completion_date', label: 'Estimated Date' },
       { key: 'age', label: 'Age' },
       { key: 'priority', label: 'Priority' },
-      { key: 'modified', label: 'Last modified' },
     ]
   }
 
@@ -244,19 +239,6 @@ function formatDate(value) {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-  }).format(date)
-}
-
-function formatDateTime(value) {
-  if (!value) return '—'
-  const date = new Date(String(value).replace(' ', 'T'))
-  if (Number.isNaN(date.getTime())) return String(value)
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   }).format(date)
 }
 

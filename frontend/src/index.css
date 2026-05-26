@@ -460,11 +460,12 @@ button {
   box-shadow: none;
   min-height: 0;
   height: 100%;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 .workspace-panel--task .workspace-table {
-  min-width: 100%;
+  min-width: 1480px;
   height: auto;
 }
 
@@ -502,7 +503,8 @@ button {
 }
 
 .workspace-table-wrap {
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   border: 1px solid var(--tf-border);
   border-radius: 12px;
   background: var(--tf-surface);
@@ -590,10 +592,6 @@ button {
 
 .workspace-col--priority {
   width: 100px;
-}
-
-.workspace-col--modified {
-  width: 170px;
 }
 
 .workspace-col--task_count,
