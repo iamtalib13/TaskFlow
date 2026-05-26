@@ -1,82 +1,12 @@
 <template>
   <div class="taskflow-shell">
-    <aside class="taskflow-sidebar">
-      <div class="sidebar-brand">
-        <div class="brand-mark">T</div>
-        <div class="brand-text">
-          <div class="brand-name">Taskflow</div>
-          <div class="brand-subtitle">Workspace</div>
-        </div>
-      </div>
-
-      <section class="sidebar-block" aria-label="Master controls">
-        <div class="sidebar-label">Master Control</div>
-
-        <div class="sidebar-field">
-          <label class="sidebar-field__label" for="team-select">Team</label>
-          <select id="team-select" v-model="selectedTeam" class="sidebar-select">
-            <option value="">All Teams</option>
-            <option v-for="team in teams" :key="team.name" :value="team.name">
-              {{ team.team_name }} · {{ team.team_code }}
-            </option>
-          </select>
-        </div>
-
-        <div class="sidebar-field">
-          <label class="sidebar-field__label" for="project-select">Project</label>
-          <select id="project-select" v-model="selectedProject" class="sidebar-select">
-            <option value="">All Projects</option>
-            <option v-for="project in visibleProjects" :key="project.name" :value="project.name">
-              {{ project.project_name }} · {{ project.project_code }}
-            </option>
-          </select>
-        </div>
-      </section>
-
-      <section class="sidebar-block" aria-label="Workspace options">
-        <div class="sidebar-label">Options</div>
-        <button
-          type="button"
-          class="sidebar-link"
-          :class="{ active: activeSection === 'overview' }"
-          @click="activeSection = 'overview'"
-        >
-          Overview
-        </button>
-        <button
-          type="button"
-          class="sidebar-link"
-          :class="{ active: activeSection === 'team' }"
-          @click="activeSection = 'team'"
-        >
-          Team
-        </button>
-        <button
-          type="button"
-          class="sidebar-link"
-          :class="{ active: activeSection === 'mom' }"
-          @click="activeSection = 'mom'"
-        >
-          Minutes of Meeting
-        </button>
-      </section>
-
-      <section class="sidebar-block sidebar-block--projects" aria-label="Project list">
-        <div class="sidebar-label">Project List</div>
-        <button
-          v-for="project in visibleProjects"
-          :key="project.name"
-          type="button"
-          class="sidebar-project"
-          :class="{ active: selectedProject === project.name }"
-          @click="selectedProject = project.name"
-        >
-          <span class="sidebar-project__title">{{ project.project_name }}</span>
-          <span class="sidebar-project__meta">{{ project.project_code }}</span>
-        </button>
-        <div v-if="!visibleProjects.length" class="sidebar-empty">No projects for this team.</div>
-      </section>
-    </aside>
+    <TaskflowSidebar
+      v-model:selectedTeam="selectedTeam"
+      v-model:selectedProject="selectedProject"
+      v-model:activeSection="activeSection"
+      :teams="teams"
+      :projects="projects"
+    />
 
     <main class="workspace">
       <header class="workspace-header">
@@ -125,7 +55,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
+import TaskflowSidebar from '@/components/TaskflowSidebar.vue'
 
 const teams = ref([])
 const projects = ref([])
@@ -133,11 +64,6 @@ const selectedTeam = ref('')
 const selectedProject = ref('')
 const activeSection = ref('overview')
 const activeView = ref('table')
-
-const visibleProjects = computed(() => {
-  if (!selectedTeam.value) return projects.value
-  return projects.value.filter((project) => project.team === selectedTeam.value)
-})
 
 async function loadWorkspace() {
   try {
@@ -155,12 +81,6 @@ async function loadWorkspace() {
     console.error('Failed to load workspace bootstrap', error)
   }
 }
-
-watch(selectedTeam, () => {
-  if (!visibleProjects.value.some((project) => project.name === selectedProject.value)) {
-    selectedProject.value = ''
-  }
-})
 
 onMounted(loadWorkspace)
 </script>
