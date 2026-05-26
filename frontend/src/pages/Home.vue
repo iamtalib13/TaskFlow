@@ -21,35 +21,41 @@
 
       <div class="workspace-content">
         <TaskflowWorkspaceToolbar
+          v-if="tableSection !== 'team'"
           :workspace-title="workspaceTitle"
           :pending-task-count="selectedProjectTaskStats.pending"
           :total-task-count="selectedProjectTaskStats.total"
         />
 
+        <TaskflowTeamCards v-if="tableSection === 'team'" :teams="teams" />
         <TaskflowWorkspaceList
           :section="tableSection"
           :rows="visibleRows"
           :loading="workspaceLoading"
           @primary-action="handlePrimaryAction"
+          @task-click="openTask"
         />
-      </div>
-    </main>
+        </div>
+        </main>
 
-    <TaskflowTaskForm
-      v-model="taskFormOpen"
-      :teams="teams"
-      :projects="projects"
-      :assignee-options="taskAssigneeOptions"
-      :status-options="statusOptions"
-      :priority-options="priorityOptions"
-      :task-type-options="taskTypeOptions"
-      :default-team="selectedTeam"
-      :default-project="selectedProject"
-      :saving="taskSaveLoading"
-      :error-message="taskFormError"
-      @submit="submitTaskForm"
-      @cancel="clearTaskFormState"
-    />
+        <TaskflowTaskForm
+        v-model="taskFormOpen"
+        :mode="taskFormMode"
+        :initial-task="selectedTask"
+        :teams="teams"
+        :projects="projects"
+        :assignee-options="taskAssigneeOptions"
+        :status-options="statusOptions"
+        :priority-options="priorityOptions"
+        :task-type-options="taskTypeOptions"
+        :default-team="selectedTeam"
+        :default-project="selectedProject"
+        :saving="taskSaveLoading"
+        :error-message="taskFormError"
+        @submit="submitTaskForm"
+        @cancel="clearTaskFormState"
+        />
+
   </div>
 </template>
 
@@ -58,6 +64,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TaskflowSidebar from '@/components/TaskflowSidebar.vue'
 import TaskflowTaskForm from '@/components/TaskflowTaskForm.vue'
+import TaskflowTeamCards from '@/components/TaskflowTeamCards.vue'
 import TaskflowWorkspaceHeader from '@/components/TaskflowWorkspaceHeader.vue'
 import TaskflowWorkspaceList from '@/components/TaskflowWorkspaceList.vue'
 import TaskflowWorkspaceToolbar from '@/components/TaskflowWorkspaceToolbar.vue'
@@ -74,6 +81,8 @@ const searchQuery = ref('')
 const syncingFromRoute = ref(false)
 const taskFormOpen = ref(false)
 const taskFormError = ref('')
+const selectedTask = ref(null)
+const taskFormMode = ref('create')
 
 const workspaceData = computed(() => workspaceBootstrap.data || {})
 const teams = computed(() => workspaceData.value.teams || [])
@@ -226,7 +235,15 @@ function syncQueryToRoute() {
 }
 
 function handlePrimaryAction() {
-  if (primaryActionLabel.value !== 'New Task +') return
+  taskFormMode.value = 'create'
+  selectedTask.value = null
+  taskFormError.value = ''
+  taskFormOpen.value = true
+}
+
+function openTask(task) {
+  taskFormMode.value = 'edit'
+  selectedTask.value = task
   taskFormError.value = ''
   taskFormOpen.value = true
 }

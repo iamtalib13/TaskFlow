@@ -37,7 +37,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(row, index) in rows" :key="row.name || index" class="workspace-task-row">
+          <tr v-for="(row, index) in rows" :key="row.name || index" class="workspace-task-row" :class="{ 'is-recent': prettyModified(row.modified) === 'Just now' }" @click="emit('task-click', row)">
             <td v-for="column in columns" :key="column.key" :class="`workspace-cell--${column.key}`">
               <span v-if="column.key === 'task_title'" class="workspace-task-main">
                 <strong class="workspace-task-main__title">{{ row.task_title || '—' }}</strong>
@@ -108,7 +108,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['primary-action'])
+const emit = defineEmits(['primary-action', 'task-click'])
 const isTaskSection = computed(() => props.section === 'task')
 
 const sectionLabel = computed(() => {

@@ -1,156 +1,192 @@
 <template>
   <aside class="taskflow-sidebar">
+    <!-- Brand -->
     <div class="sidebar-brand">
-      <div class="sidebar-brand__icon" aria-hidden="true">T</div>
+      <div class="sidebar-brand__icon">T</div>
       <div class="sidebar-brand__text">
         <strong>Taskflow</strong>
         <span>Workspace</span>
       </div>
     </div>
 
-    <section class="sidebar-section sidebar-section--overview" aria-label="Team overview">
+    <!-- Overview Section -->
+    <section class="sidebar-section">
       <button
         type="button"
-        class="sidebar-overview-btn"
+        class="sidebar-nav-item"
         :class="{ active: isOverviewSelected }"
         @click="selectOverview"
       >
-        <span class="sidebar-overview-btn__label">Team Overview</span>
-        <span class="sidebar-overview-btn__meta">{{ filteredProjects.length }}</span>
+        <span class="sidebar-nav-item__label">Team Overview</span>
+        <span class="sidebar-nav-item__meta">{{ totalProjectCount }}</span>
       </button>
     </section>
 
-    <section class="sidebar-section" aria-label="Team selection">
-      <div class="sidebar-section__label">Team selection</div>
-      <label class="sidebar-field" for="team-select">
-        <span class="sidebar-field__label">Choose team</span>
+    <!-- Team Selection -->
+    <section class="sidebar-section">
+      <div class="sidebar-section-header">Team selection</div>
+      <div class="sidebar-field">
         <select
-          id="team-select"
           :value="selectedTeam"
           class="sidebar-select"
-          @change="updateSelectedTeam($event.target.value)"
+          @change="onTeamChange($event.target.value)"
         >
           <option value="">All Teams</option>
           <option v-for="team in teams" :key="team.name" :value="team.name">
-            {{ team.team_name }} · {{ team.team_code }}
+            {{ team.team_name }}
           </option>
         </select>
-      </label>
+      </div>
     </section>
 
-    <section class="sidebar-section sidebar-section--projects" aria-label="Project list">
-      <div class="sidebar-section__head">
-        <div class="sidebar-section__label">Projects</div>
-        <span class="sidebar-section__meta">{{ filteredProjects.length }}</span>
+    <!-- Projects Section -->
+    <section class="sidebar-section sidebar-section--projects">
+      <div class="sidebar-section-header">
+        <span>Projects</span>
+        <span class="sidebar-section-meta">{{ filteredProjects.length }}</span>
       </div>
 
-      <label class="sidebar-project-search" for="project-search">
-        <span class="sr-only">Search projects</span>
+      <div class="sidebar-search">
         <input
-          id="project-search"
           v-model="projectSearch"
           type="search"
-          placeholder="Search projects"
+          placeholder="Search projects..."
         />
-      </label>
+      </div>
 
-      <div class="sidebar-project-list">
+      <nav class="sidebar-project-list">
         <button
           v-for="project in filteredProjects"
           :key="project.name"
           type="button"
-          class="sidebar-project"
+          class="sidebar-nav-item"
           :class="{ active: selectedProject === project.name }"
-          @click="updateSelectedProject(project.name)"
+          @click="onProjectClick(project.name)"
         >
-          <span class="sidebar-project__title">{{ project.project_name || project.name }}</span>
-          <span v-if="Number(project.pending_task_count || 0) > 0" class="sidebar-project__count">{{ project.pending_task_count }}</span>
+          <span class="sidebar-nav-item__label">{{ project.project_name || project.name }}</span>
+          <span v-if="project.pending_task_count > 0" class="sidebar-nav-item__meta">
+            {{ project.pending_task_count }}
+          </span>
         </button>
-        <div v-if="!filteredProjects.length" class="sidebar-empty">No projects for this team.</div>
-      </div>
+        <div v-if="!filteredProjects.length" class="sidebar-empty">No projects found.</div>
+      </nav>
     </section>
   </aside>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
-  teams: {
-    type: Array,
-    default: () => [],
-  },
-  projects: {
-    type: Array,
-    default: () => [],
-  },
-  selectedTeam: {
-    type: String,
-    default: '',
-  },
-  selectedProject: {
-    type: String,
-    default: '',
-  },
+  teams: { type: Array, default: () => [] },
+  projects: { type: Array, default: () => [] },
+  selectedTeam: { type: String, default: '' },
+  selectedProject: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:selectedTeam', 'update:selectedProject'])
 const projectSearch = ref('')
 
-const isOverviewSelected = computed(() => !props.selectedTeam)
-
-const visibleProjects = computed(() => {
-  const items = !props.selectedTeam
-    ? props.projects
-    : props.projects.filter((project) => project.team === props.selectedTeam)
-
-  return [...items].sort((a, b) => {
-    const aPending = Number(a.pending_task_count || 0)
-    const bPending = Number(b.pending_task_count || 0)
-    if (bPending !== aPending) return bPending - aPending
-    return String(a.project_name || a.name || '').localeCompare(String(b.project_name || b.name || ''))
-  })
+watch([() => props.selectedTeam, () => props.selectedProject], () => {
+  projectSearch.value = ''
 })
+
+const isOverviewSelected = computed(() => !props.selectedTeam && !props.selectedProject)
+const totalProjectCount = computed(() => props.projects.length)
 
 const filteredProjects = computed(() => {
-  const query = normalizeText(projectSearch.value)
-  if (!query) return visibleProjects.value
-  return visibleProjects.value.filter((project) => {
-    return buildSearchIndex(project).includes(query)
-  })
+  const query = projectSearch.value.toLowerCase().trim()
+  const source = props.selectedTeam 
+    ? props.projects.filter(p => p.team === props.selectedTeam)
+    : props.projects
+    
+  if (!query) return source
+  return source.filter(p => 
+    (p.project_name || '').toLowerCase().includes(query) || 
+    (p.project_code || '').toLowerCase().includes(query)
+  )
 })
 
-function buildSearchIndex(project) {
-  return [project.project_name, project.project_code, project.team_name, project.status, project.priority]
-    .map((value) => normalizeText(value))
-    .filter(Boolean)
-    .join(' ')
-}
-
-function normalizeText(value) {
-  return value == null ? '' : String(value).trim().toLowerCase()
-}
-
 function selectOverview() {
-  projectSearch.value = ''
   emit('update:selectedTeam', '')
   emit('update:selectedProject', '')
 }
 
-function updateSelectedTeam(value) {
-  const nextProjects = !value
-    ? props.projects
-    : props.projects.filter((project) => project.team === value)
-
-  projectSearch.value = ''
-  emit('update:selectedTeam', value)
-
-  if (!nextProjects.some((project) => project.name === props.selectedProject)) {
-    emit('update:selectedProject', '')
-  }
+function onTeamChange(teamId) {
+  emit('update:selectedTeam', teamId)
+  emit('update:selectedProject', '')
 }
 
-function updateSelectedProject(value) {
-  emit('update:selectedProject', value)
+function onProjectClick(projectId) {
+  emit('update:selectedProject', projectId)
 }
 </script>
+
+<style scoped>
+.taskflow-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 16px;
+  border-right: 1px solid var(--tf-border);
+  background: #fff;
+  overflow: hidden;
+}
+
+.sidebar-section { 
+  margin-bottom: 20px; 
+  flex-shrink: 0;
+}
+
+.sidebar-section--projects {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-section-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.sidebar-nav-item {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sidebar-nav-item:hover { background: #f3f4f6; }
+.sidebar-nav-item.active { background: #eef2ff; color: #1d4ed8; }
+.sidebar-nav-item__meta {
+  background: #f3f4f6;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  margin-left: 8px;
+}
+.sidebar-search { margin-bottom: 10px; flex-shrink: 0; }
+.sidebar-search input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+.sidebar-project-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+</style>

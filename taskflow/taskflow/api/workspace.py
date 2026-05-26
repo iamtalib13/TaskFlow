@@ -408,6 +408,15 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
     if resolved_team and resolved_team not in team_map:
         resolved_team = ""
 
+    # Fetch all projects for sidebar navigation
+    all_project_rows = frappe.get_all(
+        "Taskflow Project",
+        fields=PROJECT_FIELDS,
+        filters={"is_archived": 0},
+        order_by="modified desc",
+    )
+    
+    # Filter projects for the specific workspace view
     project_filters = _build_project_filters(resolved_team, project, search)
     project_rows = frappe.get_all(
         "Taskflow Project",
@@ -431,6 +440,8 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
     )
 
     project_map = {row["name"]: row["project_name"] or row["name"] for row in project_rows}
+    all_project_map = {row["name"]: row["project_name"] or row["name"] for row in all_project_rows}
+    
     project_team_map = {row["name"]: row.get("team") for row in project_rows}
     task_employee_details_map = _bulk_employee_details(
         [row.get("assigned_to") for row in task_rows if row.get("assigned_to")]
@@ -443,6 +454,16 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
         ]
     )
 
+    # All projects for sidebar
+    all_projects = [
+        _serialize_project(row, task_counts, project_member_counts, team_map)
+        for row in all_project_rows
+    ]
+    all_projects.sort(
+        key=lambda item: (-int(item.get("pending_task_count") or 0), item.get("project_name") or item.get("name") or ""),
+    )
+
+    # Filtered projects for workspace view
     projects = [
         _serialize_project(row, task_counts, project_member_counts, team_map)
         for row in project_rows
@@ -456,13 +477,13 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
     ]
 
     resolved_project = _as_text(project)
-    if resolved_project and not any(item["name"] == resolved_project for item in projects):
+    if resolved_project and not any(item["name"] == resolved_project for item in all_projects):
         resolved_project = ""
 
     selected_project_team = ""
     if resolved_project:
         selected_project_team = next(
-            (row.get("team") for row in project_rows if row.get("name") == resolved_project),
+            (row.get("team") for row in all_project_rows if row.get("name") == resolved_project),
             "",
         ) or ""
 
@@ -470,13 +491,13 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
     assignee_options = _team_assignee_options(assignee_team_names)
 
     tasks = [
-        _serialize_task(row, project_map, project_team_map, task_employee_details_map, task_user_image_map)
+        _serialize_task(row, all_project_map, project_team_map, task_employee_details_map, task_user_image_map)
         for row in task_rows
     ]
 
     return {
         "teams": teams,
-        "projects": projects,
+        "projects": all_projects, # Send all projects to sidebar
         "tasks": tasks,
         "task_assignee_options": assignee_options,
         "current_user": _current_user_info(),
@@ -484,9 +505,9 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
         "selected_project": resolved_project,
         "summary": {
             "team_count": len(teams),
-            "project_count": len(projects),
-            "active_project_count": sum(1 for item in projects if not item["is_archived"]),
-            "task_count": sum(item["task_count"] for item in projects),
+            "project_count": len(all_projects),
+            "active_project_count": sum(1 for item in all_projects if not item["is_archived"]),
+            "task_count": sum(item["task_count"] for item in all_projects),
         },
     }
 
