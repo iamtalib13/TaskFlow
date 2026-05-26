@@ -11,7 +11,7 @@
 
       <div class="sidebar-panel">
         <div class="panel-label">Team</div>
-        <select v-model="selectedTeam" class="field-select">
+        <select class="field-select">
           <option value="">All Teams</option>
           <option v-for="team in teams" :key="team.name" :value="team.name">
             {{ team.team_name }} · {{ team.team_code }}
@@ -21,31 +21,12 @@
 
       <div class="sidebar-panel">
         <div class="panel-label">Project</div>
-        <select v-model="selectedProject" class="field-select">
+        <select class="field-select">
           <option value="">All Projects</option>
           <option v-for="project in projects" :key="project.name" :value="project.name">
             {{ project.project_name }} · {{ project.project_code }}
           </option>
         </select>
-      </div>
-
-      <div class="sidebar-stats">
-        <div class="mini-stat">
-          <span>Total Teams</span>
-          <strong>{{ summary.team_count || 0 }}</strong>
-        </div>
-        <div class="mini-stat">
-          <span>Visible Projects</span>
-          <strong>{{ summary.project_count || 0 }}</strong>
-        </div>
-        <div class="mini-stat">
-          <span>Active Projects</span>
-          <strong>{{ summary.active_project_count || 0 }}</strong>
-        </div>
-      </div>
-
-      <div class="sidebar-footer">
-        <Badge :label="loading ? 'Syncing' : 'Ready'" :theme="loading ? 'blue' : 'green'" />
       </div>
     </aside>
 
@@ -74,7 +55,7 @@
           <button type="button" class="workspace-add-btn">Add new</button>
           <label class="workspace-search">
             <span class="sr-only">Search</span>
-            <input v-model="searchQuery" type="search" placeholder="Search" />
+            <input type="search" placeholder="Search" />
           </label>
           <div class="workspace-profile" aria-label="Talib Sheikh profile user">
             <div class="workspace-avatar">TS</div>
@@ -92,38 +73,28 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { Badge, createResource } from 'frappe-ui'
+import { onMounted, ref } from 'vue'
 
-const selectedTeam = ref('')
-const selectedProject = ref('')
+const teams = ref([])
+const projects = ref([])
 const activeView = ref('table')
-const searchQuery = ref('')
 
-const workspace = createResource({
-  url: '/api/v2/method/taskflow.taskflow.api.workspace.get_workspace_bootstrap',
-  method: 'GET',
-  auto: false,
-})
+async function loadWorkspace() {
+  try {
+    const response = await fetch('/api/v2/method/taskflow.taskflow.api.workspace.get_workspace_bootstrap', {
+      credentials: 'same-origin',
+    })
+    const data = await response.json()
+    const payload = data.message ?? data ?? {}
 
-const payload = computed(() => workspace.data?.message ?? workspace.data ?? {})
-const loading = computed(() => Boolean(workspace.loading))
-const teams = computed(() => payload.value?.teams ?? [])
-const projects = computed(() => payload.value?.projects ?? [])
-const summary = computed(() => payload.value?.summary ?? {})
-
-async function refreshWorkspace() {
-  await workspace.fetch({
-    team: selectedTeam.value || '',
-    project: selectedProject.value || '',
-  })
+    teams.value = payload.teams ?? []
+    projects.value = payload.projects ?? []
+  } catch (error) {
+    teams.value = []
+    projects.value = []
+    console.error('Failed to load workspace bootstrap', error)
+  }
 }
 
-watch([selectedTeam, selectedProject], () => {
-  refreshWorkspace()
-})
-
-onMounted(() => {
-  refreshWorkspace()
-})
+onMounted(loadWorkspace)
 </script>
