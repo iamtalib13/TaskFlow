@@ -13,7 +13,12 @@
 
       <div class="sidebar-field">
         <label class="sidebar-field__label" for="team-select">Team</label>
-        <select id="team-select" v-model="selectedTeam" class="sidebar-select">
+        <select
+          id="team-select"
+          :value="selectedTeam"
+          class="sidebar-select"
+          @change="updateSelectedTeam($event.target.value)"
+        >
           <option value="">All Teams</option>
           <option v-for="team in teams" :key="team.name" :value="team.name">
             {{ team.team_name }} · {{ team.team_code }}
@@ -23,7 +28,12 @@
 
       <div class="sidebar-field">
         <label class="sidebar-field__label" for="project-select">Project</label>
-        <select id="project-select" v-model="selectedProject" class="sidebar-select">
+        <select
+          id="project-select"
+          :value="selectedProject"
+          class="sidebar-select"
+          @change="updateSelectedProject($event.target.value)"
+        >
           <option value="">All Projects</option>
           <option v-for="project in visibleProjects" :key="project.name" :value="project.name">
             {{ project.project_name }} · {{ project.project_code }}
@@ -38,7 +48,7 @@
         type="button"
         class="sidebar-link"
         :class="{ active: activeSection === 'overview' }"
-        @click="activeSection = 'overview'"
+        @click="updateActiveSection('overview')"
       >
         Overview
       </button>
@@ -46,7 +56,7 @@
         type="button"
         class="sidebar-link"
         :class="{ active: activeSection === 'team' }"
-        @click="activeSection = 'team'"
+        @click="updateActiveSection('team')"
       >
         Team
       </button>
@@ -54,7 +64,7 @@
         type="button"
         class="sidebar-link"
         :class="{ active: activeSection === 'mom' }"
-        @click="activeSection = 'mom'"
+        @click="updateActiveSection('mom')"
       >
         Minutes of Meeting
       </button>
@@ -68,7 +78,7 @@
         type="button"
         class="sidebar-project"
         :class="{ active: selectedProject === project.name }"
-        @click="selectedProject = project.name"
+        @click="updateSelectedProject(project.name)"
       >
         <span class="sidebar-project__title">{{ project.project_name }}</span>
         <span class="sidebar-project__meta">{{ project.project_code }}</span>
@@ -79,7 +89,7 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 
 const props = defineProps({
   teams: {
@@ -90,33 +100,46 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  selectedTeam: {
+    type: String,
+    default: '',
+  },
+  selectedProject: {
+    type: String,
+    default: '',
+  },
+  activeSection: {
+    type: String,
+    default: 'overview',
+  },
 })
 
-const selectedTeam = defineModel('selectedTeam', {
-  type: String,
-  default: '',
-})
-
-const selectedProject = defineModel('selectedProject', {
-  type: String,
-  default: '',
-})
-
-const activeSection = defineModel('activeSection', {
-  type: String,
-  default: 'overview',
-})
+const emit = defineEmits(['update:selectedTeam', 'update:selectedProject', 'update:activeSection'])
 
 const visibleProjects = computed(() => {
-  if (!selectedTeam.value) return props.projects
-  return props.projects.filter((project) => project.team === selectedTeam.value)
+  if (!props.selectedTeam) return props.projects
+  return props.projects.filter((project) => project.team === props.selectedTeam)
 })
 
-watch(selectedTeam, () => {
-  if (!visibleProjects.value.some((project) => project.name === selectedProject.value)) {
-    selectedProject.value = ''
+function updateSelectedTeam(value) {
+  const nextProjects = !value
+    ? props.projects
+    : props.projects.filter((project) => project.team === value)
+
+  emit('update:selectedTeam', value)
+
+  if (!nextProjects.some((project) => project.name === props.selectedProject)) {
+    emit('update:selectedProject', '')
   }
-})
+}
+
+function updateSelectedProject(value) {
+  emit('update:selectedProject', value)
+}
+
+function updateActiveSection(value) {
+  emit('update:activeSection', value)
+}
 </script>
 
 <style scoped>
@@ -261,8 +284,9 @@ watch(selectedTeam, () => {
 
 .sidebar-empty {
   padding: 10px 12px;
-  border: 1px dashed #d8e0ea;
   border-radius: 10px;
+  background: #f8fafc;
+  border: 1px dashed #d8e0ea;
   color: var(--tf-muted);
   font-size: 12px;
 }

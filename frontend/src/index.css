@@ -59,8 +59,8 @@ button {
   min-width: 0;
   height: 100vh;
   overflow: auto;
-  padding: 0;
   display: grid;
+  grid-template-rows: auto 1fr;
   gap: 0;
 }
 
@@ -191,11 +191,6 @@ button {
 .workspace-profile__text span {
   font-size: 12px;
   color: var(--tf-muted);
-}
-
-.workspace-empty {
-  min-height: calc(100vh - 64px);
-  background: transparent;
 }
 
 @media (max-width: 1180px) {
