@@ -213,6 +213,13 @@ button {
   box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
 }
 
+.workspace-add-btn--secondary {
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid #d8e0ea;
+  box-shadow: none;
+}
+
 .workspace-search {
   display: flex;
   align-items: center;

@@ -53,6 +53,7 @@
 
         <div class="workspace-header__right">
           <button type="button" class="workspace-add-btn">Add new</button>
+          <button type="button" class="workspace-add-btn workspace-add-btn--secondary">New Task +</button>
           <label class="workspace-search">
             <span class="sr-only">Search</span>
             <input type="search" placeholder="Search" />
