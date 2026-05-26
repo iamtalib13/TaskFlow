@@ -729,9 +729,11 @@ button {
   position: sticky;
   top: 0;
   left: 0;
-  z-index: 7;
+  z-index: 9;
   background: var(--tf-surface-subtle);
   box-shadow: 8px 0 14px -14px rgba(15, 23, 42, 0.35);
+  background-clip: padding-box;
+  white-space: nowrap;
 }
 
 .workspace-table__index {
