@@ -391,6 +391,33 @@ button {
   color: inherit;
 }
 
+.sidebar-task-list {
+  display: grid;
+  gap: 6px;
+}
+
+.sidebar-task {
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--tf-border);
+  background: #fff;
+  text-align: left;
+}
+
+.sidebar-task__title {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--tf-text);
+}
+
+.sidebar-task__meta {
+  font-size: 11px;
+  color: var(--tf-muted);
+}
+
 .sidebar-empty {
   padding: 10px 12px;
   border-radius: 10px;

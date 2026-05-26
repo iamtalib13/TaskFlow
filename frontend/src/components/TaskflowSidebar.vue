@@ -39,6 +39,27 @@
         <div v-if="!visibleProjects.length" class="sidebar-empty">No projects for this team.</div>
       </div>
     </section>
+
+    <section class="sidebar-section sidebar-section--tasks" aria-label="Project tasks">
+      <div class="sidebar-section__head">
+        <div class="sidebar-section__label">Tasks</div>
+        <span class="sidebar-section__meta">{{ visibleTasks.length }}</span>
+      </div>
+
+      <div v-if="selectedProject" class="sidebar-task-list">
+        <button
+          v-for="task in visibleTasks"
+          :key="task.name"
+          type="button"
+          class="sidebar-task"
+        >
+          <span class="sidebar-task__title">{{ task.task_title }}</span>
+          <span class="sidebar-task__meta">{{ task.status }}</span>
+        </button>
+        <div v-if="!visibleTasks.length" class="sidebar-empty">No tasks in this project.</div>
+      </div>
+      <div v-else class="sidebar-empty">Select a project to view tasks.</div>
+    </section>
   </aside>
 </template>
 
@@ -51,6 +72,10 @@ const props = defineProps({
     default: () => [],
   },
   projects: {
+    type: Array,
+    default: () => [],
+  },
+  tasks: {
     type: Array,
     default: () => [],
   },
@@ -77,6 +102,11 @@ const visibleProjects = computed(() => {
     if (bPending !== aPending) return bPending - aPending
     return String(a.project_name || a.name || '').localeCompare(String(b.project_name || b.name || ''))
   })
+})
+
+const visibleTasks = computed(() => {
+  if (!props.selectedProject) return []
+  return props.tasks.filter((task) => task.project === props.selectedProject)
 })
 
 function projectLabel(project) {
