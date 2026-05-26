@@ -646,6 +646,7 @@ button {
 }
 
 .workspace-table-wrap {
+  position: relative;
   overflow-x: auto;
   overflow-y: auto;
   border: 1px solid var(--tf-border);
@@ -653,11 +654,13 @@ button {
   background: var(--tf-surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   min-height: 0;
+  isolation: isolate;
 }
 
 .workspace-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   min-width: 860px;
   table-layout: fixed;
 }
@@ -665,7 +668,7 @@ button {
 .workspace-table thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 10;
   background: var(--tf-surface-subtle);
   color: var(--tf-muted);
   font-size: 11px;
@@ -676,13 +679,14 @@ button {
   padding: 10px 10px;
   border-bottom: 1px solid var(--tf-border);
   white-space: nowrap;
+  background-clip: padding-box;
 }
 
 .workspace-table thead th.workspace-col--modified {
   position: sticky;
   top: 0;
   right: 0;
-  z-index: 8;
+  z-index: 12;
   background: var(--tf-surface-subtle);
   box-shadow: -8px 0 14px -14px rgba(15, 23, 42, 0.35);
 }
@@ -728,10 +732,11 @@ button {
 .workspace-table__index-head {
   position: sticky;
   top: 0;
-  z-index: 9;
+  z-index: 13;
   background: var(--tf-surface-subtle);
   white-space: nowrap;
   box-shadow: 0 1px 0 var(--tf-border);
+  background-clip: padding-box;
 }
 
 .workspace-table__index {
@@ -743,7 +748,7 @@ button {
 }
 
 .workspace-col--status {
-  width: 104px;
+  width: 96px;
 }
 
 .workspace-col--progress {
@@ -769,18 +774,18 @@ button {
 }
 
 .workspace-col--age {
-  width: 72px;
+  width: 56px;
 }
 
 .workspace-col--priority {
-  width: 88px;
+  width: 76px;
 }
 
 .workspace-col--modified {
   position: sticky;
   top: 0;
   right: 0;
-  z-index: 6;
+  z-index: 11;
   width: 150px;
   min-width: 150px;
   background: var(--tf-surface-subtle);
