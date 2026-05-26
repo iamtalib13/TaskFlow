@@ -1,38 +1,10 @@
 <template>
   <header class="workspace-header">
     <div class="workspace-header__left">
-      <button type="button" class="workspace-add-btn" @click="emit('primary-action')">
-        {{ props.primaryActionLabel }}
-      </button>
-
-      <div class="workspace-tabs" role="tablist" aria-label="Workspace views">
-        <button
-          type="button"
-          class="workspace-tab"
-          :class="{ active: props.activeView === 'table' }"
-          @click="emit('update:activeView', 'table')"
-        >
-          Table view
-        </button>
-        <button
-          type="button"
-          class="workspace-tab"
-          :class="{ active: props.activeView === 'kanban' }"
-          @click="emit('update:activeView', 'kanban')"
-        >
-          Kanban board
-        </button>
+      <div class="workspace-breadcrumb">
+        <div class="workspace-breadcrumb__label">Selection Path</div>
+        <div class="workspace-breadcrumb__path">{{ selectionPath }}</div>
       </div>
-
-      <label class="workspace-search">
-        <span class="sr-only">Search</span>
-        <input
-          type="search"
-          :value="props.searchQuery"
-          placeholder="Search"
-          @input="emit('update:searchQuery', $event.target.value)"
-        />
-      </label>
     </div>
 
     <div class="workspace-header__right">
@@ -48,20 +20,10 @@
 </template>
 
 <script setup>
-const props = defineProps({
-  activeView: {
+defineProps({
+  selectionPath: {
     type: String,
-    default: 'table',
-  },
-  primaryActionLabel: {
-    type: String,
-    default: 'New Task +',
-  },
-  searchQuery: {
-    type: String,
-    default: '',
+    default: 'Overview',
   },
 })
-
-const emit = defineEmits(['primary-action', 'update:activeView', 'update:searchQuery'])
 </script>
