@@ -1,6 +1,6 @@
 <template>
-  <section class="workspace-panel" :class="{ 'workspace-panel--task': section === 'task' }" :aria-label="sectionLabel">
-    <div v-if="section !== 'task'" class="workspace-panel__head">
+  <section class="workspace-panel" :class="{ 'workspace-panel--task': isTaskSection }" :aria-label="sectionLabel">
+    <div v-if="!isTaskSection" class="workspace-panel__head">
       <div class="workspace-panel__title-wrap">
         <div class="workspace-panel__eyebrow">{{ sectionLabel }}</div>
         <h2 class="workspace-panel__title">{{ sectionTitle }}</h2>
@@ -21,14 +21,14 @@
       Minutes of Meeting records will appear here.
     </div>
 
-    <div v-else-if="section === 'task' && !rows.length" class="workspace-panel__empty workspace-panel__empty--task">
+    <div v-else-if="isTaskSection && !rows.length" class="workspace-panel__empty workspace-panel__empty--task">
       <div class="workspace-panel__empty-title">No task here</div>
       <div class="workspace-panel__empty-text">This project does not have any tasks yet.</div>
       <button type="button" class="workspace-empty-action" @click="emit('primary-action')">Add new</button>
     </div>
 
     <div v-else-if="rows.length" class="workspace-table-wrap workspace-table-wrap--task">
-      <table class="workspace-table">
+      <table class="workspace-table workspace-task-table">
         <thead>
           <tr>
             <th class="workspace-table__index-head">Sr No.</th>
@@ -38,24 +38,48 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(row, index) in rows" :key="row.name || index">
+          <tr v-for="(row, index) in rows" :key="row.name || index" class="workspace-task-row">
             <td class="workspace-table__index">{{ index + 1 }}</td>
-            <td v-for="column in columns" :key="column.key">
-              <span v-if="column.key === 'status'" :class="statusClass(row)">
-                {{ statusLabel(row) }}
+            <td v-for="column in columns" :key="column.key" :class="`workspace-cell--${column.key}`">
+              <span v-if="column.key === 'task_title'" class="workspace-task-main">
+                <strong class="workspace-task-main__title">{{ row.task_title || row.name || '—' }}</strong>
+                <span class="workspace-task-main__meta">{{ row.task_type || 'Task' }}</span>
               </span>
+
+              <span v-else-if="column.key === 'project_title'" class="workspace-task-project" :title="row.project_title || row.project || '—'">
+                {{ row.project_title || row.project || '—' }}
+              </span>
+
               <span v-else-if="column.key === 'assignee'" class="workspace-assignee">
                 <span class="workspace-assignee__avatar">
                   <img v-if="row.assigned_to_image" :src="row.assigned_to_image" :alt="row.assigned_to_name || 'Assignee'" />
                   <span v-else>{{ initials(row.assigned_to_name || row.assigned_to || 'UA') }}</span>
                 </span>
-                <span class="workspace-assignee__name">{{ row.assigned_to_name || 'Unassigned' }}</span>
+                <span class="workspace-assignee__name" :title="row.assigned_to_name || row.assigned_to || 'Unassigned'">
+                  {{ row.assigned_to_name || 'Unassigned' }}
+                </span>
               </span>
-              <span v-else-if="column.key === 'age'">{{ ageLabel(row) }}</span>
-              <span v-else-if="column.key === 'modified'">{{ formatDateTime(row.modified) }}</span>
-              <span v-else-if="column.key === 'start_date' || column.key === 'due_date' || column.key === 'estimated_completion_date'">
+
+              <span v-else-if="column.key === 'status'" :class="statusClass(row)">
+                {{ statusLabel(row) }}
+              </span>
+
+              <span v-else-if="column.key === 'start_date' || column.key === 'due_date' || column.key === 'estimated_completion_date'" class="workspace-task-date">
                 {{ formatDate(row[column.key]) }}
               </span>
+
+              <span v-else-if="column.key === 'age'" class="workspace-age-pill">
+                {{ ageLabel(row) }}
+              </span>
+
+              <span v-else-if="column.key === 'priority'" :class="priorityClass(row)">
+                {{ row.priority || '—' }}
+              </span>
+
+              <span v-else-if="column.key === 'modified'" class="workspace-task-modified">
+                {{ formatDateTime(row.modified) }}
+              </span>
+
               <span v-else>{{ valueFor(row, column.key) }}</span>
             </td>
           </tr>
@@ -88,6 +112,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['primary-action'])
+const isTaskSection = computed(() => props.section === 'task')
 
 const sectionLabel = computed(() => {
   if (props.section === 'team') return 'Team Records'
@@ -119,7 +144,7 @@ const columns = computed(() => {
     ]
   }
 
-  if (props.section === 'task') {
+  if (isTaskSection.value) {
     return [
       { key: 'task_title', label: 'Task Name' },
       { key: 'project_title', label: 'Project' },
@@ -174,10 +199,19 @@ function statusClass(row) {
   if (props.section === 'team') {
     return ['workspace-pill', row.is_active ? 'is-active' : 'is-muted']
   }
-  if (row.is_archived) {
-    return ['workspace-pill', 'is-muted']
-  }
+  if (row.status === 'Completed') return ['workspace-pill', 'is-success']
+  if (row.status === 'Blocked') return ['workspace-pill', 'is-danger']
+  if (row.status === 'In Progress') return ['workspace-pill', 'is-info']
+  if (row.is_archived) return ['workspace-pill', 'is-muted']
   return ['workspace-pill', 'is-active']
+}
+
+function priorityClass(row) {
+  const priority = String(row.priority || '').toLowerCase()
+  if (!priority) return ['workspace-pill', 'is-muted']
+  if (priority.includes('critical') || priority.includes('high')) return ['workspace-pill', 'is-danger']
+  if (priority.includes('medium')) return ['workspace-pill', 'is-info']
+  return ['workspace-pill', 'is-muted']
 }
 
 function ageLabel(row) {
