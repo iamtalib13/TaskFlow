@@ -557,6 +557,36 @@ button {
   width: 110px;
 }
 
+.workspace-col--task_title {
+  width: 240px;
+}
+
+.workspace-col--project_title {
+  width: 180px;
+}
+
+.workspace-col--assignee {
+  width: 220px;
+}
+
+.workspace-col--start_date,
+.workspace-col--due_date,
+.workspace-col--estimated_completion_date {
+  width: 130px;
+}
+
+.workspace-col--age {
+  width: 82px;
+}
+
+.workspace-col--priority {
+  width: 100px;
+}
+
+.workspace-col--modified {
+  width: 170px;
+}
+
 .workspace-col--task_count,
 .workspace-col--member_count,
 .workspace-col--project_count {
@@ -581,6 +611,40 @@ button {
 .workspace-pill.is-muted {
   background: #f3f4f6;
   color: #4b5563;
+}
+
+.workspace-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workspace-assignee__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: #eef2f7;
+  color: #374151;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.workspace-assignee__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.workspace-assignee__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-panel__empty,

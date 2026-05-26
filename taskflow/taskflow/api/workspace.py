@@ -72,6 +72,7 @@ TASK_FIELDS = [
     "project",
     "team",
     "assigned_to",
+    "assigned_to_user",
     "status",
     "priority",
     "task_type",
@@ -86,6 +87,7 @@ TASK_FIELDS = [
     "is_blocked",
     "sequence",
     "description",
+    "creation",
     "modified",
 ]
 
@@ -173,7 +175,7 @@ def _team_name_map(team_rows: list[dict[str, Any]]) -> dict[str, str]:
     return {row["name"]: row["team_name"] or row["name"] for row in team_rows}
 
 
-def _bulk_employee_names(employee_ids: list[str]) -> dict[str, str]:
+def _bulk_employee_details(employee_ids: list[str]) -> dict[str, dict[str, Any]]:
     employee_ids = [employee_id for employee_id in employee_ids if employee_id]
     if not employee_ids:
         return {}
@@ -181,9 +183,25 @@ def _bulk_employee_names(employee_ids: list[str]) -> dict[str, str]:
     rows = frappe.get_all(
         "Employee",
         filters={"name": ["in", list(dict.fromkeys(employee_ids))]},
-        fields=["name", "employee_name"],
+        fields=["name", "employee_name", "user_id"],
     )
-    return {row.name: row.employee_name for row in rows}
+    return {
+        row.name: {"employee_name": row.employee_name, "user_id": row.user_id}
+        for row in rows
+    }
+
+
+def _bulk_user_images(user_ids: list[str]) -> dict[str, str | None]:
+    user_ids = [user_id for user_id in user_ids if user_id]
+    if not user_ids:
+        return {}
+
+    rows = frappe.get_all(
+        "User",
+        filters={"name": ["in", list(dict.fromkeys(user_ids))]},
+        fields=["name", "user_image"],
+    )
+    return {row.name: row.user_image for row in rows}
 
 
 def _serialize_team(row: dict[str, Any], member_counts: dict[str, int], project_counts: dict[str, int]) -> dict[str, Any]:
@@ -207,17 +225,25 @@ def _serialize_task(
     row: dict[str, Any],
     project_map: dict[str, str],
     project_team_map: dict[str, str],
-    employee_name_map: dict[str, str],
+    employee_details_map: dict[str, dict[str, Any]],
+    user_image_map: dict[str, str | None],
 ) -> dict[str, Any]:
     project_name = row.get("project")
+    assigned_to = row.get("assigned_to")
+    employee_details = employee_details_map.get(assigned_to, {})
+    assigned_to_user = row.get("assigned_to_user") or employee_details.get("user_id")
+    assigned_to_name = employee_details.get("employee_name") or assigned_to
+    assigned_to_image = user_image_map.get(assigned_to_user)
     return {
         "name": row["name"],
         "task_title": row.get("task_title"),
         "project": project_name,
         "project_title": project_map.get(project_name, project_name),
         "team": row.get("team") or project_team_map.get(project_name),
-        "assigned_to": row.get("assigned_to"),
-        "assigned_to_name": employee_name_map.get(row.get("assigned_to"), row.get("assigned_to")),
+        "assigned_to": assigned_to,
+        "assigned_to_name": assigned_to_name,
+        "assigned_to_user": assigned_to_user,
+        "assigned_to_image": assigned_to_image,
         "status": row.get("status"),
         "priority": row.get("priority"),
         "task_type": row.get("task_type"),
@@ -232,6 +258,7 @@ def _serialize_task(
         "is_blocked": frappe.utils.cint(row.get("is_blocked")),
         "sequence": row.get("sequence"),
         "description": row.get("description"),
+        "creation": row.get("creation"),
         "modified": row.get("modified"),
     }
 
@@ -345,7 +372,16 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
 
     project_map = {row["name"]: row["project_name"] or row["name"] for row in project_rows}
     project_team_map = {row["name"]: row.get("team") for row in project_rows}
-    task_employee_name_map = _bulk_employee_names([row.get("assigned_to") for row in task_rows if row.get("assigned_to")])
+    task_employee_details_map = _bulk_employee_details(
+        [row.get("assigned_to") for row in task_rows if row.get("assigned_to")]
+    )
+    task_user_image_map = _bulk_user_images(
+        [
+            row.get("assigned_to_user") or task_employee_details_map.get(row.get("assigned_to"), {}).get("user_id")
+            for row in task_rows
+            if row.get("assigned_to") or row.get("assigned_to_user")
+        ]
+    )
 
     projects = [
         _serialize_project(row, task_counts, project_member_counts, team_map)
@@ -364,7 +400,7 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
         resolved_project = ""
 
     tasks = [
-        _serialize_task(row, project_map, project_team_map, task_employee_name_map)
+        _serialize_task(row, project_map, project_team_map, task_employee_details_map, task_user_image_map)
         for row in task_rows
     ]
 

@@ -44,7 +44,18 @@
               <span v-if="column.key === 'status'" :class="statusClass(row)">
                 {{ statusLabel(row) }}
               </span>
-              <span v-else-if="column.key === 'progress'">{{ progressLabel(row) }}</span>
+              <span v-else-if="column.key === 'assignee'" class="workspace-assignee">
+                <span class="workspace-assignee__avatar">
+                  <img v-if="row.assigned_to_image" :src="row.assigned_to_image" :alt="row.assigned_to_name || 'Assignee'" />
+                  <span v-else>{{ initials(row.assigned_to_name || row.assigned_to || 'UA') }}</span>
+                </span>
+                <span class="workspace-assignee__name">{{ row.assigned_to_name || 'Unassigned' }}</span>
+              </span>
+              <span v-else-if="column.key === 'age'">{{ ageLabel(row) }}</span>
+              <span v-else-if="column.key === 'modified'">{{ formatDateTime(row.modified) }}</span>
+              <span v-else-if="column.key === 'start_date' || column.key === 'due_date' || column.key === 'estimated_completion_date'">
+                {{ formatDate(row[column.key]) }}
+              </span>
               <span v-else>{{ valueFor(row, column.key) }}</span>
             </td>
           </tr>
@@ -110,12 +121,16 @@ const columns = computed(() => {
 
   if (props.section === 'task') {
     return [
-      { key: 'task_title', label: 'Task' },
+      { key: 'task_title', label: 'Task Name' },
+      { key: 'project_title', label: 'Project' },
+      { key: 'assignee', label: 'Assignee' },
       { key: 'status', label: 'Status' },
-      { key: 'priority', label: 'Priority' },
-      { key: 'assigned_to_name', label: 'Assigned To' },
+      { key: 'start_date', label: 'Start Date' },
       { key: 'due_date', label: 'Due Date' },
-      { key: 'progress', label: 'Progress' },
+      { key: 'estimated_completion_date', label: 'Estimated Date' },
+      { key: 'age', label: 'Age' },
+      { key: 'priority', label: 'Priority' },
+      { key: 'modified', label: 'Last modified' },
     ]
   }
 
@@ -135,9 +150,12 @@ function valueFor(row, key) {
   if (key === 'team_code') return row.team_code || '—'
   if (key === 'project_code') return row.project_code || '—'
   if (key === 'project_name') return row.project_name || row.name || '—'
+  if (key === 'project_title') return row.project_title || row.project_name || row.project || '—'
   if (key === 'task_title') return row.task_title || row.name || '—'
   if (key === 'assigned_to_name') return row.assigned_to_name || row.assigned_to || '—'
   if (key === 'due_date') return row.due_date || '—'
+  if (key === 'start_date') return row.start_date || '—'
+  if (key === 'estimated_completion_date') return row.estimated_completion_date || '—'
   if (key === 'priority') return row.priority || '—'
   if (key === 'team') return row.team_name || row.team || '—'
   if (key === 'task_count') return row.task_count ?? 0
@@ -162,8 +180,58 @@ function statusClass(row) {
   return ['workspace-pill', 'is-active']
 }
 
-function progressLabel(row) {
-  const value = Number(row.completion_percent || 0)
-  return `${value}%`
+function ageLabel(row) {
+  const source = row.creation || row.start_date
+  if (!source) return '—'
+
+  const date = new Date(String(source).replace(' ', 'T'))
+  if (Number.isNaN(date.getTime())) return '—'
+
+  const diff = Date.now() - date.getTime()
+  if (diff <= 0) return '0m'
+
+  const days = Math.floor(diff / 86400000)
+  if (days > 0) return `${days}d`
+
+  const hours = Math.floor(diff / 3600000)
+  if (hours > 0) return `${hours}h`
+
+  const minutes = Math.floor(diff / 60000)
+  if (minutes > 0) return `${minutes}m`
+
+  return '0m'
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+  const date = new Date(String(value).replace(' ', 'T'))
+  if (Number.isNaN(date.getTime())) return String(value)
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date)
+}
+
+function formatDateTime(value) {
+  if (!value) return '—'
+  const date = new Date(String(value).replace(' ', 'T'))
+  if (Number.isNaN(date.getTime())) return String(value)
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function initials(value) {
+  return String(value)
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'UA'
 }
 </script>
