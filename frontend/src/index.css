@@ -59,10 +59,11 @@ button {
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 20px;
+  gap: 14px;
+  padding: 16px;
   background: rgba(255, 255, 255, 0.72);
   border-right: 1px solid var(--tf-border);
   backdrop-filter: blur(18px);
@@ -107,38 +108,98 @@ button {
   font-weight: 600;
 }
 
-.sidebar-panel {
+.sidebar-block {
   display: grid;
   gap: 8px;
-  padding: 16px;
-  border-radius: 18px;
-  border: 1px solid var(--tf-border);
-  background: rgba(255, 255, 255, 0.86);
+  padding-top: 4px;
 }
 
-.panel-label {
-  margin: 0;
-  color: var(--tf-muted);
+.sidebar-block--projects {
+  gap: 6px;
+}
+
+.sidebar-label {
+  font-size: 11px;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 12px;
-  font-weight: 700;
+  color: var(--tf-muted);
 }
 
-.field-select {
+.sidebar-field {
+  display: grid;
+  gap: 4px;
+}
+
+.sidebar-field__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.sidebar-select {
   width: 100%;
-  min-height: 44px;
-  border-radius: 12px;
+  min-height: 36px;
+  border-radius: 10px;
   border: 1px solid #d8e0ea;
-  padding: 0 14px;
+  padding: 0 10px;
   background: #fff;
   color: var(--tf-text);
   outline: none;
 }
 
-.field-select:focus {
+.sidebar-select:focus {
   border-color: rgba(37, 99, 235, 0.45);
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.09);
+}
+
+.sidebar-link,
+.sidebar-project {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-link.active,
+.sidebar-project.active {
+  border-color: rgba(37, 99, 235, 0.32);
+  background: rgba(37, 99, 235, 0.08);
+  color: #0f172a;
+}
+
+.sidebar-project {
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 12px;
+}
+
+.sidebar-project__title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.sidebar-project__meta {
+  font-size: 11px;
+  color: var(--tf-muted);
+}
+
+.sidebar-empty {
+  padding: 10px 12px;
+  border: 1px dashed #d8e0ea;
+  border-radius: 10px;
+  color: var(--tf-muted);
+  font-size: 12px;
 }
 
 .workspace {
@@ -165,6 +226,13 @@ button {
   border-bottom: 1px solid var(--tf-border);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
   backdrop-filter: blur(16px);
+}
+
+.workspace-header__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .workspace-tabs {
@@ -198,7 +266,7 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-shrink: 0;
   justify-content: flex-end;
 }
 
@@ -211,13 +279,6 @@ button {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
-}
-
-.workspace-add-btn--secondary {
-  background: #fff;
-  color: #0f172a;
-  border: 1px solid #d8e0ea;
-  box-shadow: none;
 }
 
 .workspace-search {
