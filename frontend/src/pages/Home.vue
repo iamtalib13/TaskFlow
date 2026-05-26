@@ -34,6 +34,22 @@
         />
       </div>
     </main>
+
+    <TaskflowTaskForm
+      v-model="taskFormOpen"
+      :teams="teams"
+      :projects="projects"
+      :assignee-options="taskAssigneeOptions"
+      :status-options="statusOptions"
+      :priority-options="priorityOptions"
+      :task-type-options="taskTypeOptions"
+      :default-team="selectedTeam"
+      :default-project="selectedProject"
+      :saving="taskSaveLoading"
+      :error-message="taskFormError"
+      @submit="submitTaskForm"
+      @cancel="clearTaskFormState"
+    />
   </div>
 </template>
 
@@ -41,10 +57,11 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TaskflowSidebar from '@/components/TaskflowSidebar.vue'
+import TaskflowTaskForm from '@/components/TaskflowTaskForm.vue'
 import TaskflowWorkspaceHeader from '@/components/TaskflowWorkspaceHeader.vue'
 import TaskflowWorkspaceList from '@/components/TaskflowWorkspaceList.vue'
 import TaskflowWorkspaceToolbar from '@/components/TaskflowWorkspaceToolbar.vue'
-import { workspaceBootstrap } from '@/data/workspace'
+import { saveWorkspaceTask, workspaceBootstrap } from '@/data/workspace'
 
 const route = useRoute()
 const router = useRouter()
@@ -55,16 +72,23 @@ const activeSection = ref('overview')
 const activeView = ref('table')
 const searchQuery = ref('')
 const syncingFromRoute = ref(false)
+const taskFormOpen = ref(false)
+const taskFormError = ref('')
 
 const workspaceData = computed(() => workspaceBootstrap.data || {})
 const teams = computed(() => workspaceData.value.teams || [])
 const projects = computed(() => workspaceData.value.projects || [])
 const tasks = computed(() => workspaceData.value.tasks || [])
+const taskAssigneeOptions = computed(() => workspaceData.value.task_assignee_options || [])
+const statusOptions = computed(() => workspaceData.value.status_options || ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled'])
+const priorityOptions = computed(() => workspaceData.value.priority_options || ['Low', 'Medium', 'High', 'Critical'])
+const taskTypeOptions = computed(() => workspaceData.value.task_type_options || ['Task', 'Bug', 'Story', 'Approval', 'Research', 'Meeting'])
 const currentUserName = computed(
   () => workspaceData.value.current_user?.full_name || workspaceData.value.current_user?.name || '',
 )
 const currentUserImage = computed(() => workspaceData.value.current_user?.user_image || '')
 const workspaceLoading = computed(() => Boolean(workspaceBootstrap.loading && !workspaceBootstrap.fetched))
+const taskSaveLoading = computed(() => Boolean(saveWorkspaceTask.loading))
 
 const projectNameById = computed(() =>
   Object.fromEntries(projects.value.map((project) => [project.name, project.project_name || project.name])),
@@ -185,6 +209,7 @@ function sameQuery(a, b) {
 async function loadWorkspace() {
   const params = {
     team: selectedTeam.value || undefined,
+    project: selectedProject.value || undefined,
     search: searchQuery.value || undefined,
   }
 
@@ -201,7 +226,34 @@ function syncQueryToRoute() {
 }
 
 function handlePrimaryAction() {
-  // Reserved for the next step when create dialogs are wired up.
+  if (primaryActionLabel.value !== 'New Task +') return
+  taskFormError.value = ''
+  taskFormOpen.value = true
+}
+
+function clearTaskFormState() {
+  taskFormError.value = ''
+}
+
+async function submitTaskForm(payload) {
+  taskFormError.value = ''
+  const nextPayload = {
+    ...payload,
+    team: payload.team || selectedTeam.value || undefined,
+    project: payload.project || selectedProject.value || undefined,
+  }
+
+  try {
+    await saveWorkspaceTask.submit(nextPayload)
+    taskFormOpen.value = false
+    await loadWorkspace()
+  } catch (error) {
+    taskFormError.value = extractErrorMessage(error)
+  }
+}
+
+function extractErrorMessage(error) {
+  return error?.messages?.[0] || error?.message || 'Could not save task.'
 }
 
 watch(

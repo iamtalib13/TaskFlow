@@ -91,6 +91,29 @@ TASK_FIELDS = [
     "modified",
 ]
 
+TASK_WRITE_FIELDS = {
+    "task_title",
+    "project",
+    "team",
+    "parent_task",
+    "assigned_by",
+    "assigned_to",
+    "status",
+    "priority",
+    "task_type",
+    "start_date",
+    "due_date",
+    "estimated_completion_date",
+    "completed_on",
+    "sequence",
+    "progress_percent",
+    "estimated_hours",
+    "actual_hours",
+    "is_milestone",
+    "is_blocked",
+    "description",
+}
+
 
 def _require_login() -> None:
     if frappe.session.user == "Guest":
@@ -202,6 +225,43 @@ def _bulk_user_images(user_ids: list[str]) -> dict[str, str | None]:
         fields=["name", "user_image"],
     )
     return {row.name: row.user_image for row in rows}
+
+
+def _team_assignee_options(team_names: list[str]) -> list[dict[str, Any]]:
+    team_names = [team_name for team_name in team_names if team_name]
+    if not team_names:
+        return []
+
+    member_rows = frappe.get_all(
+        "Taskflow Team Member",
+        filters={"parent": ["in", list(dict.fromkeys(team_names))], "is_active": 1},
+        fields=["parent as team", "employee", "team_role"],
+        order_by="parent asc, idx asc",
+    )
+    employee_details = _bulk_employee_details([row.employee for row in member_rows if row.employee])
+    user_images = _bulk_user_images(
+        [details.get("user_id") for details in employee_details.values() if details.get("user_id")]
+    )
+
+    options = []
+    seen_employees: set[str] = set()
+    for row in member_rows:
+        if not row.employee or row.employee in seen_employees:
+            continue
+        seen_employees.add(row.employee)
+        details = employee_details.get(row.employee, {})
+        user_id = details.get("user_id")
+        options.append(
+            {
+                "value": row.employee,
+                "label": details.get("employee_name") or row.employee,
+                "team": row.team,
+                "team_role": row.team_role,
+                "user": user_id,
+                "user_image": user_images.get(user_id),
+            }
+        )
+    return options
 
 
 def _serialize_team(row: dict[str, Any], member_counts: dict[str, int], project_counts: dict[str, int]) -> dict[str, Any]:
@@ -399,6 +459,16 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
     if resolved_project and not any(item["name"] == resolved_project for item in projects):
         resolved_project = ""
 
+    selected_project_team = ""
+    if resolved_project:
+        selected_project_team = next(
+            (row.get("team") for row in project_rows if row.get("name") == resolved_project),
+            "",
+        ) or ""
+
+    assignee_team_names = [resolved_team or selected_project_team] if (resolved_team or selected_project_team) else [row["name"] for row in team_rows]
+    assignee_options = _team_assignee_options(assignee_team_names)
+
     tasks = [
         _serialize_task(row, project_map, project_team_map, task_employee_details_map, task_user_image_map)
         for row in task_rows
@@ -408,6 +478,7 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
         "teams": teams,
         "projects": projects,
         "tasks": tasks,
+        "task_assignee_options": assignee_options,
         "current_user": _current_user_info(),
         "selected_team": resolved_team,
         "selected_project": resolved_project,
@@ -472,3 +543,24 @@ def delete_project(name: str) -> dict[str, Any]:
     _require_login()
     frappe.delete_doc("Taskflow Project", name, ignore_permissions=False)
     return {"name": name}
+
+
+@frappe.whitelist(methods=["POST"])
+def save_task(payload: str) -> dict[str, Any]:
+    _require_login()
+    data = _parse_payload(payload)
+    name = _as_text(data.get("name"))
+    if name:
+        doc = frappe.get_doc("Taskflow Task", name)
+        doc.check_permission("write")
+    else:
+        doc = frappe.new_doc("Taskflow Task")
+        if not data.get("assigned_by"):
+            data["assigned_by"] = frappe.session.user
+
+    _apply_fields(doc, data, TASK_WRITE_FIELDS)
+    if doc.is_new():
+        doc.insert(ignore_permissions=False)
+    else:
+        doc.save(ignore_permissions=False)
+    return {"name": doc.name}
