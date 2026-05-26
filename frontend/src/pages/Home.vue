@@ -3,32 +3,33 @@
     <TaskflowSidebar
       v-model:selectedTeam="selectedTeam"
       v-model:selectedProject="selectedProject"
-      v-model:activeSection="activeSection"
       :teams="teams"
       :projects="projects"
     />
 
     <main class="workspace">
       <TaskflowWorkspaceHeader
-        :selection-path="selectionPath"
         :user-name="currentUserName"
         :user-image="currentUserImage"
       />
 
-      <TaskflowWorkspaceToolbar
-        :active-view="activeView"
-        :primary-action-label="primaryActionLabel"
-        :search-query="searchQuery"
-        @primary-action="handlePrimaryAction"
-        @update:activeView="activeView = $event"
-        @update:searchQuery="searchQuery = $event"
-      />
+      <div class="workspace-content">
+        <TaskflowWorkspaceToolbar
+          :active-view="activeView"
+          :primary-action-label="primaryActionLabel"
+          :search-query="searchQuery"
+          @primary-action="handlePrimaryAction"
+          @update:activeView="activeView = $event"
+          @update:searchQuery="searchQuery = $event"
+        />
 
-      <TaskflowWorkspaceList
-        :section="activeSection"
-        :rows="visibleRows"
-        :loading="workspaceLoading"
-      />
+        <TaskflowWorkspaceList
+          :section="tableSection"
+          :rows="visibleRows"
+          :loading="workspaceLoading"
+          @primary-action="handlePrimaryAction"
+        />
+      </div>
     </main>
   </div>
 </template>
@@ -55,6 +56,7 @@ const syncingFromRoute = ref(false)
 const workspaceData = computed(() => workspaceBootstrap.data || {})
 const teams = computed(() => workspaceData.value.teams || [])
 const projects = computed(() => workspaceData.value.projects || [])
+const tasks = computed(() => workspaceData.value.tasks || [])
 const currentUserName = computed(
   () => workspaceData.value.current_user?.full_name || workspaceData.value.current_user?.name || '',
 )
@@ -76,49 +78,38 @@ const selectedProjectLabel = computed(() => {
   return selectedProject.value ? projectNameById.value[selectedProject.value] || selectedProject.value : ''
 })
 
-const selectionPath = computed(() => {
-  const parts = []
-
-  if (activeSection.value === 'team') {
-    parts.push('Team')
-  } else if (activeSection.value === 'mom') {
-    parts.push('Minutes of Meeting')
-  } else {
-    parts.push('Overview')
-  }
-
-  if (selectedTeamLabel.value && activeSection.value !== 'team') {
-    parts.push(selectedTeamLabel.value)
-  }
-
-  if (selectedProjectLabel.value) {
-    parts.push(selectedProjectLabel.value)
-  }
-
-  return parts.join(' / ')
-})
-
-const activeRows = computed(() => {
-  if (activeSection.value === 'team') return teams.value
-  if (activeSection.value === 'mom') return []
-  return projects.value
+const tableSection = computed(() => {
+  if (activeSection.value === 'team') return 'team'
+  if (activeSection.value === 'mom') return 'mom'
+  if (selectedProject.value && activeView.value === 'table') return 'task'
+  return 'overview'
 })
 
 const visibleRows = computed(() => {
   const query = normalizeText(searchQuery.value)
-  if (!query) return activeRows.value
 
-  const keys =
-    activeSection.value === 'team'
-      ? ['team_name', 'team_code', 'company', 'team_lead', 'description']
-      : ['project_name', 'project_code', 'team_name', 'status', 'priority', 'description']
+  if (tableSection.value === 'team') {
+    const rows = teams.value
+    if (!query) return rows
+    return rows.filter((row) => buildSearchIndex(row, ['team_name', 'team_code', 'company', 'team_lead', 'description']).includes(query))
+  }
 
-  return activeRows.value.filter((row) => buildSearchIndex(row, keys).includes(query))
+  if (tableSection.value === 'task') {
+    const rows = tasks.value.filter((task) => !selectedProject.value || task.project === selectedProject.value)
+    if (!query) return rows
+    return rows.filter((row) => buildSearchIndex(row, ['task_title', 'project_title', 'assigned_to_name', 'status', 'priority', 'task_type', 'description']).includes(query))
+  }
+
+  if (tableSection.value === 'mom') return []
+
+  const rows = projects.value
+  if (!query) return rows
+  return rows.filter((row) => buildSearchIndex(row, ['project_name', 'project_code', 'team_name', 'status', 'priority', 'description']).includes(query))
 })
 
 const primaryActionLabel = computed(() => {
-  if (activeSection.value === 'team') return 'New Team'
-  if (activeSection.value === 'mom') return 'New Meeting'
+  if (tableSection.value === 'team') return 'New Team'
+  if (tableSection.value === 'mom') return 'New Meeting'
   return 'New Task +'
 })
 
@@ -179,7 +170,6 @@ function sameQuery(a, b) {
 async function loadWorkspace() {
   const params = {
     team: selectedTeam.value || undefined,
-    project: selectedProject.value || undefined,
     search: searchQuery.value || undefined,
   }
 

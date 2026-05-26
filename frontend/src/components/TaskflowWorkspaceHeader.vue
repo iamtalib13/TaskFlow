@@ -1,12 +1,5 @@
 <template>
   <header class="workspace-header">
-    <div class="workspace-header__left">
-      <div class="workspace-breadcrumb">
-        <div class="workspace-breadcrumb__label">Current selection</div>
-        <div class="workspace-breadcrumb__path">{{ selectionPath }}</div>
-      </div>
-    </div>
-
     <div class="workspace-header__right">
       <div class="workspace-profile" aria-label="Current user profile">
         <div class="workspace-avatar">
@@ -26,10 +19,6 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  selectionPath: {
-    type: String,
-    default: 'Overview',
-  },
   userName: {
     type: String,
     default: '',

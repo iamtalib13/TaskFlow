@@ -1,18 +1,10 @@
 <template>
   <aside class="taskflow-sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-mark">T</div>
-      <div class="brand-text">
-        <div class="brand-name">Taskflow</div>
-        <div class="brand-subtitle">Workspace</div>
-      </div>
-    </div>
-
     <section class="sidebar-section" aria-label="Workspace filters">
-      <div class="sidebar-section__label">Workspace</div>
+      <div class="sidebar-section__label">Team</div>
 
       <div class="sidebar-field">
-        <label class="sidebar-field__label" for="team-select">Team</label>
+        <label class="sidebar-field__label" for="team-select">Team selection</label>
         <select
           id="team-select"
           :value="selectedTeam"
@@ -25,50 +17,7 @@
           </option>
         </select>
       </div>
-
-      <div class="sidebar-field">
-        <label class="sidebar-field__label" for="project-select">Project</label>
-        <select
-          id="project-select"
-          :value="selectedProject"
-          class="sidebar-select"
-          @change="updateSelectedProject($event.target.value)"
-        >
-          <option value="">All Projects</option>
-          <option v-for="project in visibleProjects" :key="project.name" :value="project.name">
-            {{ project.project_name }} · {{ project.project_code }}
-          </option>
-        </select>
-      </div>
     </section>
-
-    <nav class="sidebar-section" aria-label="Workspace navigation">
-      <div class="sidebar-section__label">Sections</div>
-      <button
-        type="button"
-        class="sidebar-link"
-        :class="{ active: activeSection === 'overview' }"
-        @click="updateActiveSection('overview')"
-      >
-        <span>Overview</span>
-      </button>
-      <button
-        type="button"
-        class="sidebar-link"
-        :class="{ active: activeSection === 'team' }"
-        @click="updateActiveSection('team')"
-      >
-        <span>Team</span>
-      </button>
-      <button
-        type="button"
-        class="sidebar-link"
-        :class="{ active: activeSection === 'mom' }"
-        @click="updateActiveSection('mom')"
-      >
-        <span>Minutes of Meeting</span>
-      </button>
-    </nav>
 
     <section class="sidebar-section sidebar-section--projects" aria-label="Project list">
       <div class="sidebar-section__head">
@@ -85,8 +34,7 @@
           :class="{ active: selectedProject === project.name }"
           @click="updateSelectedProject(project.name)"
         >
-          <span class="sidebar-project__title">{{ project.project_name }}</span>
-          <span class="sidebar-project__meta">{{ project.project_code }}</span>
+          <span class="sidebar-project__title">{{ projectLabel(project) }}</span>
         </button>
         <div v-if="!visibleProjects.length" class="sidebar-empty">No projects for this team.</div>
       </div>
@@ -114,18 +62,27 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  activeSection: {
-    type: String,
-    default: 'overview',
-  },
 })
 
-const emit = defineEmits(['update:selectedTeam', 'update:selectedProject', 'update:activeSection'])
+const emit = defineEmits(['update:selectedTeam', 'update:selectedProject'])
 
 const visibleProjects = computed(() => {
-  if (!props.selectedTeam) return props.projects
-  return props.projects.filter((project) => project.team === props.selectedTeam)
+  const items = !props.selectedTeam
+    ? props.projects
+    : props.projects.filter((project) => project.team === props.selectedTeam)
+
+  return [...items].sort((a, b) => {
+    const aPending = Number(a.pending_task_count || 0)
+    const bPending = Number(b.pending_task_count || 0)
+    if (bPending !== aPending) return bPending - aPending
+    return String(a.project_name || a.name || '').localeCompare(String(b.project_name || b.name || ''))
+  })
 })
+
+function projectLabel(project) {
+  const pending = Number(project.pending_task_count || 0)
+  return `${project.project_name || project.name} (${pending})`
+}
 
 function updateSelectedTeam(value) {
   const nextProjects = !value
@@ -141,9 +98,5 @@ function updateSelectedTeam(value) {
 
 function updateSelectedProject(value) {
   emit('update:selectedProject', value)
-}
-
-function updateActiveSection(value) {
-  emit('update:activeSection', value)
 }
 </script>

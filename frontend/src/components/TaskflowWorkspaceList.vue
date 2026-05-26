@@ -21,6 +21,12 @@
       Minutes of Meeting records will appear here.
     </div>
 
+    <div v-else-if="section === 'task' && !rows.length" class="workspace-panel__empty workspace-panel__empty--task">
+      <div class="workspace-panel__empty-title">No task here</div>
+      <div class="workspace-panel__empty-text">This project does not have any tasks yet.</div>
+      <button type="button" class="workspace-empty-action" @click="emit('primary-action')">Add new</button>
+    </div>
+
     <div v-else-if="rows.length" class="workspace-table-wrap">
       <table class="workspace-table">
         <thead>
@@ -70,21 +76,26 @@ const props = defineProps({
   },
 })
 
+const emit = defineEmits(['primary-action'])
+
 const sectionLabel = computed(() => {
   if (props.section === 'team') return 'Team Records'
   if (props.section === 'mom') return 'Minutes of Meeting'
+  if (props.section === 'task') return 'Task Records'
   return 'Project Records'
 })
 
 const sectionTitle = computed(() => {
   if (props.section === 'team') return 'Existing Teams'
   if (props.section === 'mom') return 'Meeting Log'
+  if (props.section === 'task') return 'Project Tasks'
   return 'Existing Projects'
 })
 
 const emptyLabel = computed(() => {
   if (props.section === 'team') return 'No team records available.'
   if (props.section === 'mom') return 'No meeting records available yet.'
+  if (props.section === 'task') return 'No tasks found for this project.'
   return 'No project records available.'
 })
 
@@ -97,6 +108,17 @@ const columns = computed(() => {
       { key: 'project_count', label: 'Projects' },
       { key: 'member_count', label: 'Members' },
       { key: 'status', label: 'Status' },
+    ]
+  }
+
+  if (props.section === 'task') {
+    return [
+      { key: 'task_title', label: 'Task' },
+      { key: 'status', label: 'Status' },
+      { key: 'priority', label: 'Priority' },
+      { key: 'assigned_to_name', label: 'Assigned To' },
+      { key: 'due_date', label: 'Due Date' },
+      { key: 'progress', label: 'Progress' },
     ]
   }
 
@@ -116,6 +138,10 @@ function valueFor(row, key) {
   if (key === 'team_code') return row.team_code || '—'
   if (key === 'project_code') return row.project_code || '—'
   if (key === 'project_name') return row.project_name || row.name || '—'
+  if (key === 'task_title') return row.task_title || row.name || '—'
+  if (key === 'assigned_to_name') return row.assigned_to_name || row.assigned_to || '—'
+  if (key === 'due_date') return row.due_date || '—'
+  if (key === 'priority') return row.priority || '—'
   if (key === 'team') return row.team_name || row.team || '—'
   if (key === 'task_count') return row.task_count ?? 0
   if (key === 'member_count') return row.member_count ?? 0

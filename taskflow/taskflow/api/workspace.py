@@ -66,6 +66,29 @@ PROJECT_WRITE_FIELDS = {
     "description",
 }
 
+TASK_FIELDS = [
+    "name",
+    "task_title",
+    "project",
+    "team",
+    "assigned_to",
+    "status",
+    "priority",
+    "task_type",
+    "start_date",
+    "due_date",
+    "estimated_completion_date",
+    "completed_on",
+    "progress_percent",
+    "estimated_hours",
+    "actual_hours",
+    "is_milestone",
+    "is_blocked",
+    "sequence",
+    "description",
+    "modified",
+]
+
 
 def _require_login() -> None:
     if frappe.session.user == "Guest":
@@ -150,6 +173,19 @@ def _team_name_map(team_rows: list[dict[str, Any]]) -> dict[str, str]:
     return {row["name"]: row["team_name"] or row["name"] for row in team_rows}
 
 
+def _bulk_employee_names(employee_ids: list[str]) -> dict[str, str]:
+    employee_ids = [employee_id for employee_id in employee_ids if employee_id]
+    if not employee_ids:
+        return {}
+
+    rows = frappe.get_all(
+        "Employee",
+        filters={"name": ["in", list(dict.fromkeys(employee_ids))]},
+        fields=["name", "employee_name"],
+    )
+    return {row.name: row.employee_name for row in rows}
+
+
 def _serialize_team(row: dict[str, Any], member_counts: dict[str, int], project_counts: dict[str, int]) -> dict[str, Any]:
     return {
         "name": row["name"],
@@ -164,6 +200,39 @@ def _serialize_team(row: dict[str, Any], member_counts: dict[str, int], project_
         "description": row.get("description"),
         "member_count": member_counts.get(row["name"], 0),
         "project_count": project_counts.get(row["name"], 0),
+    }
+
+
+def _serialize_task(
+    row: dict[str, Any],
+    project_map: dict[str, str],
+    project_team_map: dict[str, str],
+    employee_name_map: dict[str, str],
+) -> dict[str, Any]:
+    project_name = row.get("project")
+    return {
+        "name": row["name"],
+        "task_title": row.get("task_title"),
+        "project": project_name,
+        "project_title": project_map.get(project_name, project_name),
+        "team": row.get("team") or project_team_map.get(project_name),
+        "assigned_to": row.get("assigned_to"),
+        "assigned_to_name": employee_name_map.get(row.get("assigned_to"), row.get("assigned_to")),
+        "status": row.get("status"),
+        "priority": row.get("priority"),
+        "task_type": row.get("task_type"),
+        "start_date": row.get("start_date"),
+        "due_date": row.get("due_date"),
+        "estimated_completion_date": row.get("estimated_completion_date"),
+        "completed_on": row.get("completed_on"),
+        "progress_percent": frappe.utils.cint(row.get("progress_percent")),
+        "estimated_hours": row.get("estimated_hours"),
+        "actual_hours": row.get("actual_hours"),
+        "is_milestone": frappe.utils.cint(row.get("is_milestone")),
+        "is_blocked": frappe.utils.cint(row.get("is_blocked")),
+        "sequence": row.get("sequence"),
+        "description": row.get("description"),
+        "modified": row.get("modified"),
     }
 
 
@@ -192,6 +261,7 @@ def _serialize_project(
         "is_archived": frappe.utils.cint(row.get("is_archived")),
         "description": row.get("description"),
         "task_count": stats.get("task_count", 0),
+        "pending_task_count": stats.get("open_count", 0),
         "open_task_count": stats.get("open_count", 0),
         "completed_task_count": stats.get("completed_count", 0),
         "member_count": project_member_counts.get(row["name"], 0),
@@ -262,10 +332,28 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
     task_counts = _project_counts()
     project_member_counts = _project_member_counts()
 
+    tasks_filters: dict[str, Any] = {}
+    if resolved_team:
+        tasks_filters["team"] = resolved_team
+
+    task_rows = frappe.get_all(
+        "Taskflow Task",
+        fields=TASK_FIELDS,
+        filters=tasks_filters,
+        order_by="sequence asc, modified desc",
+    )
+
+    project_map = {row["name"]: row["project_name"] or row["name"] for row in project_rows}
+    project_team_map = {row["name"]: row.get("team") for row in project_rows}
+    task_employee_name_map = _bulk_employee_names([row.get("assigned_to") for row in task_rows if row.get("assigned_to")])
+
     projects = [
         _serialize_project(row, task_counts, project_member_counts, team_map)
         for row in project_rows
     ]
+    projects.sort(
+        key=lambda item: (-int(item.get("pending_task_count") or 0), item.get("project_name") or item.get("name") or ""),
+    )
     teams = [
         _serialize_team(row, team_member_counts, team_project_counts)
         for row in team_rows
@@ -275,9 +363,15 @@ def get_workspace_bootstrap(team: str | None = None, project: str | None = None,
     if resolved_project and not any(item["name"] == resolved_project for item in projects):
         resolved_project = ""
 
+    tasks = [
+        _serialize_task(row, project_map, project_team_map, task_employee_name_map)
+        for row in task_rows
+    ]
+
     return {
         "teams": teams,
         "projects": projects,
+        "tasks": tasks,
         "current_user": _current_user_info(),
         "selected_team": resolved_team,
         "selected_project": resolved_project,
