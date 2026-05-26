@@ -678,6 +678,15 @@ button {
   white-space: nowrap;
 }
 
+.workspace-table thead th.workspace-col--modified {
+  position: sticky;
+  top: 0;
+  right: 0;
+  z-index: 8;
+  background: var(--tf-surface-subtle);
+  box-shadow: -8px 0 14px -14px rgba(15, 23, 42, 0.35);
+}
+
 .workspace-table tbody td {
   padding: 12px 14px;
   border-bottom: 1px solid #eef2f7;
