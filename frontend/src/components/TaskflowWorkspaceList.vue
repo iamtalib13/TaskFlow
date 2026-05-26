@@ -43,7 +43,6 @@
             <td v-for="column in columns" :key="column.key" :class="`workspace-cell--${column.key}`">
               <span v-if="column.key === 'task_title'" class="workspace-task-main">
                 <strong class="workspace-task-main__title">{{ row.task_title || '—' }}</strong>
-                <span class="workspace-task-main__meta">{{ row.task_type || 'Task' }}</span>
               </span>
 
               <span v-else-if="column.key === 'project_title'" class="workspace-task-project" :title="row.project_title || row.project || '—'">
