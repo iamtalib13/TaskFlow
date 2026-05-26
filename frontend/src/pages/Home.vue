@@ -24,7 +24,11 @@
         @update:searchQuery="searchQuery = $event"
       />
 
-      <TaskflowWorkspaceList :section="activeSection" :rows="activeRows" />
+      <TaskflowWorkspaceList
+        :section="activeSection"
+        :rows="visibleRows"
+        :loading="workspaceLoading"
+      />
     </main>
   </div>
 </template>
@@ -51,11 +55,18 @@ const syncingFromRoute = ref(false)
 const workspaceData = computed(() => workspaceBootstrap.data || {})
 const teams = computed(() => workspaceData.value.teams || [])
 const projects = computed(() => workspaceData.value.projects || [])
-const currentUserName = computed(() => workspaceData.value.current_user?.full_name || workspaceData.value.current_user?.name || '')
+const currentUserName = computed(
+  () => workspaceData.value.current_user?.full_name || workspaceData.value.current_user?.name || '',
+)
 const currentUserImage = computed(() => workspaceData.value.current_user?.user_image || '')
+const workspaceLoading = computed(() => Boolean(workspaceBootstrap.loading && !workspaceBootstrap.fetched))
 
-const teamNameById = computed(() => Object.fromEntries(teams.value.map((team) => [team.name, team.team_name || team.name])))
-const projectNameById = computed(() => Object.fromEntries(projects.value.map((project) => [project.name, project.project_name || project.name])))
+const teamNameById = computed(() =>
+  Object.fromEntries(teams.value.map((team) => [team.name, team.team_name || team.name])),
+)
+const projectNameById = computed(() =>
+  Object.fromEntries(projects.value.map((project) => [project.name, project.project_name || project.name])),
+)
 
 const selectedTeamLabel = computed(() => {
   return selectedTeam.value ? teamNameById.value[selectedTeam.value] || selectedTeam.value : ''
@@ -93,10 +104,34 @@ const activeRows = computed(() => {
   return projects.value
 })
 
+const visibleRows = computed(() => {
+  const query = normalizeText(searchQuery.value)
+  if (!query) return activeRows.value
+
+  const keys =
+    activeSection.value === 'team'
+      ? ['team_name', 'team_code', 'company', 'team_lead', 'description']
+      : ['project_name', 'project_code', 'team_name', 'status', 'priority', 'description']
+
+  return activeRows.value.filter((row) => buildSearchIndex(row, keys).includes(query))
+})
+
 const primaryActionLabel = computed(() => {
   if (activeSection.value === 'team') return 'New Team'
+  if (activeSection.value === 'mom') return 'New Meeting'
   return 'New Task +'
 })
+
+function normalizeText(value) {
+  return value == null ? '' : String(value).trim().toLowerCase()
+}
+
+function buildSearchIndex(row, keys) {
+  return keys
+    .map((key) => normalizeText(row?.[key]))
+    .filter(Boolean)
+    .join(' ')
+}
 
 function hydrateFromRoute(query) {
   syncingFromRoute.value = true

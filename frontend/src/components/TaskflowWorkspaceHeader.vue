@@ -2,7 +2,7 @@
   <header class="workspace-header">
     <div class="workspace-header__left">
       <div class="workspace-breadcrumb">
-        <div class="workspace-breadcrumb__label">Selection Path</div>
+        <div class="workspace-breadcrumb__label">Current selection</div>
         <div class="workspace-breadcrumb__path">{{ selectionPath }}</div>
       </div>
     </div>
@@ -42,11 +42,13 @@ const props = defineProps({
 
 const userInitials = computed(() => {
   if (!props.userName) return 'U'
-  return props.userName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'U'
+  return (
+    props.userName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'U'
+  )
 })
 </script>

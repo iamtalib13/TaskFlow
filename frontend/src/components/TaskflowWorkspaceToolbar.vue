@@ -1,6 +1,6 @@
 <template>
   <header class="workspace-toolbar">
-    <div class="workspace-header__left">
+    <div class="workspace-toolbar__left">
       <button type="button" class="workspace-add-btn" @click="emit('primary-action')">
         {{ primaryActionLabel }}
       </button>
@@ -23,13 +23,15 @@
           Kanban board
         </button>
       </div>
+    </div>
 
+    <div class="workspace-toolbar__right">
       <label class="workspace-search">
         <span class="sr-only">Search</span>
         <input
           type="search"
           :value="searchQuery"
-          placeholder="Search"
+          placeholder="Search records"
           @input="emit('update:searchQuery', $event.target.value)"
         />
       </label>

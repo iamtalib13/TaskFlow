@@ -5,10 +5,19 @@
         <div class="workspace-panel__eyebrow">{{ sectionLabel }}</div>
         <h2 class="workspace-panel__title">{{ sectionTitle }}</h2>
       </div>
-      <div class="workspace-panel__count">{{ rows.length }} records</div>
+      <div class="workspace-panel__count">{{ loading ? 'Loading...' : `${rows.length} records` }}</div>
     </div>
 
-    <div v-if="section === 'mom'" class="workspace-panel__empty">
+    <div v-if="loading" class="workspace-panel__loading" aria-live="polite">
+      <div v-for="n in 5" :key="n" class="workspace-skeleton-row">
+        <span class="workspace-skeleton workspace-skeleton--index"></span>
+        <span class="workspace-skeleton"></span>
+        <span class="workspace-skeleton"></span>
+        <span class="workspace-skeleton"></span>
+      </div>
+    </div>
+
+    <div v-else-if="section === 'mom'" class="workspace-panel__empty">
       Minutes of Meeting records will appear here.
     </div>
 
@@ -16,8 +25,8 @@
       <table class="workspace-table">
         <thead>
           <tr>
-            <th>Sr No.</th>
-            <th v-for="column in columns" :key="column.key">
+            <th class="workspace-table__index-head">Sr No.</th>
+            <th v-for="column in columns" :key="column.key" :class="`workspace-col--${column.key}`">
               {{ column.label }}
             </th>
           </tr>
@@ -54,6 +63,10 @@ const props = defineProps({
   rows: {
     type: Array,
     default: () => [],
+  },
+  loading: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -131,125 +144,3 @@ function progressLabel(row) {
   return `${value}%`
 }
 </script>
-
-<style scoped>
-.workspace-panel {
-  display: grid;
-  gap: 12px;
-  padding: 16px 12px 18px;
-}
-
-.workspace-panel__head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.workspace-panel__eyebrow {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--tf-muted);
-}
-
-.workspace-panel__title {
-  margin: 4px 0 0;
-  font-size: 18px;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  color: var(--tf-text);
-}
-
-.workspace-panel__count {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--tf-muted);
-}
-
-.workspace-table-wrap {
-  overflow: auto;
-  border: 1px solid var(--tf-border);
-  border-radius: 8px;
-  background: var(--tf-surface);
-}
-
-.workspace-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 860px;
-}
-
-.workspace-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--tf-surface-subtle);
-  color: var(--tf-muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  text-align: left;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--tf-border);
-}
-
-.workspace-table tbody td {
-  padding: 12px 14px;
-  border-bottom: 1px solid #eef2f7;
-  font-size: 13px;
-  color: var(--tf-text);
-  vertical-align: top;
-}
-
-.workspace-table tbody tr:hover {
-  background: #fcfcfd;
-}
-
-.workspace-table__index {
-  width: 72px;
-  color: var(--tf-muted);
-  font-weight: 600;
-}
-
-.workspace-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.workspace-pill.is-active {
-  background: #edf7f0;
-  color: #166534;
-}
-
-.workspace-pill.is-muted {
-  background: #f3f4f6;
-  color: #4b5563;
-}
-
-.workspace-panel__empty {
-  padding: 18px;
-  border: 1px dashed var(--tf-border);
-  border-radius: 8px;
-  background: var(--tf-surface);
-  color: var(--tf-muted);
-}
-
-@media (max-width: 1180px) {
-  .workspace-panel__head {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .workspace-table {
-    min-width: 760px;
-  }
-}
-</style>
