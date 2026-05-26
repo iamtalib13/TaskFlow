@@ -246,6 +246,28 @@ button:disabled {
 	width: 100%;
 }
 
+.taskflow-quick-date-group {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.taskflow-quick-date-input {
+	width: 100%;
+	padding: 8px;
+	border-radius: 6px;
+	border: 1px solid var(--taskflow-border);
+}
+
+.taskflow-quick-readonly-input {
+	width: 100%;
+	padding: 8px;
+	border-radius: 6px;
+	border: 1px solid var(--taskflow-border);
+	background: #ffffff;
+	color: var(--taskflow-text);
+}
+
 .taskflow-nav {
 	flex: 1;
 	padding: 0 12px;

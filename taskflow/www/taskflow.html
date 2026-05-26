@@ -297,7 +297,7 @@
 				<!-- Metadata Sidebar -->
 				<aside style="width: 260px; background: #f8fafc; border-left: 1px solid var(--taskflow-border); padding: 24px; font-size: 13px; display: flex; flex-direction: column; gap: 12px;">
 					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Project</div>
-					<select name="project" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border); margin-bottom: 8px;"></select>
+					<input type="text" name="project_display" class="taskflow-quick-readonly-input" readonly />
 					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Type</div>
 
 						<select name="task_type" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);">
@@ -319,8 +319,14 @@
 						</select>
 						<div style="font-weight: 700; color: var(--taskflow-text-muted);">Assignee</div>
 						<select name="assigned_to" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);"></select>
-					<div style="font-weight: 700; color: var(--taskflow-text-muted);">Schedule</div>
-						<input type="date" name="due_date" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);" />
+					<div class="taskflow-quick-date-group">
+						<div style="font-weight: 700; color: var(--taskflow-text-muted);">Start Date</div>
+						<input type="date" name="start_date" class="taskflow-quick-date-input" />
+					</div>
+					<div class="taskflow-quick-date-group">
+						<div style="font-weight: 700; color: var(--taskflow-text-muted);">End Date</div>
+						<input type="date" name="due_date" class="taskflow-quick-date-input" />
+					</div>
 						<div style="font-weight: 700; color: var(--taskflow-text-muted);">Priority</div>
 						<select name="priority" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--taskflow-border);">
 							<option>Low</option>
@@ -415,14 +421,14 @@
 									<span class="taskflow-adv-icon">🕒</span>
 									<label>Start Date</label>
 								</div>
-								<input type="datetime-local" name="start_date" style="width: 100%;" />
+								<input type="date" name="start_date" style="width: 100%;" />
 							</div>
 							<div>
 								<div class="taskflow-adv-label-row">
 									<span class="taskflow-adv-icon">⌛</span>
 									<label>Due Date • <span style="color: #ef4444;">Due Today</span></label>
 								</div>
-								<input type="datetime-local" name="due_date" style="width: 100%; border-color: #fca5a5;" />
+								<input type="date" name="due_date" style="width: 100%; border-color: #fca5a5;" />
 							</div>
 							<div>
 								<div class="taskflow-adv-label-row">

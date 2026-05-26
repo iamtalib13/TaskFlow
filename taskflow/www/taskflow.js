@@ -344,9 +344,11 @@
 						return;
 					}
 				}
-                refreshView();
+
 				if (state.navMode === 'team') {
 					renderTeamView();
+				} else if (state.navMode === 'my-tasks') {
+					renderProjectWorkspace();
 				} else {
 					refreshView();
 				}
@@ -950,10 +952,7 @@
 				const members = ((state.bootstrap && state.bootstrap.team_members) || [])
 					.filter(m => currentTeam === "all" || m.team === currentTeam);
 				
-				const currentUserEmail = state.bootstrap.user.user;
-				const currentMember = ((state.bootstrap && state.bootstrap.team_members) || [])
-					.find(m => m.user === currentUserEmail);
-				const defaultEmployee = currentMember ? currentMember.employee : null;
+				const defaultEmployee = getCurrentUserEmployeeId();
 
 				const options = members.map(m => 
 					`<option value="${escapeHtml(m.employee)}" ${m.employee === (state.selectedMember || defaultEmployee) ? 'selected' : ''}>${escapeHtml(m.label)}</option>`
@@ -1139,9 +1138,9 @@
 
 		let tasks = [];
 		if (state.navMode === "my-tasks") {
+			const activeEmployee = state.selectedMember || getCurrentUserEmployeeId();
 			tasks = (state.bootstrap.tasks || []).filter(t => 
-				t.assigned_to_user === state.bootstrap.user.user || 
-				t.assigned_to === state.bootstrap.user.full_name
+				t.assigned_to === activeEmployee
 			);
 		} else if (state.projectWorkspace) {
 			tasks = state.projectWorkspace.tasks || [];
@@ -1539,6 +1538,7 @@ return `
 
 		const data = tasks.map((task) => [
 			task.task_title,
+			task.project_title || task.project || "No Project",
 			{ name: task.assigned_to_name || "Unassigned", image: task.assigned_to_image },
 			task.status,
 			task.start_date ? Math.floor(Math.abs(new Date() - new Date(task.start_date)) / (1000 * 60 * 60 * 24)) : 0,
@@ -1551,7 +1551,7 @@ return `
 		state.hotInstance = new Handsontable(document.querySelector("#taskGrid"), {
 			data: data,
 			theme: 'ht-theme-main',
-			colHeaders: ["Task Name", "Assignee", "Status", "Age", "Priority", "Due Date", "Last Modified", "Tags"],
+			colHeaders: ["Task Name", "Project", "Assignee", "Status", "Age", "Priority", "Due Date", "Last Modified", "Tags"],
 			rowHeaders: true,
 			height: '100%',
 			width: '100%',
@@ -1577,10 +1577,15 @@ return `
 						return td;
 					}
 				}, 
+				{ // Project
+				},
 				{ // Assignee
 					renderer: function(instance, td, row, col, prop, value, cellProperties) {
-						const name = value?.name || "Unassigned";
-						const image = value?.image;
+						// Ensure value is the object we expect
+						const data = instance.getDataAtRowProp(row, col);
+						const name = (value && value.name) || (data && data.name) || "Unassigned";
+						const image = (value && value.image) || (data && data.image);
+						
 						const formattedName = capitalizeName(name);
 						const avatarHtml = image 
 							? `<img src="${image}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 8px;">`
@@ -1794,12 +1799,13 @@ return `
 			if (!form) return;
 			form.reset();
 
-			// Populate Projects
 			const projectField = getFormElement(form, "project");
 			if (projectField) {
-				projectField.innerHTML = (state.bootstrap.projects || []).map(p =>
-					`<option value="${escapeHtml(p.name)}" ${p.name === currentProject.name ? 'selected' : ''}>${escapeHtml(p.project_name)}</option>`
-				).join("");
+				projectField.value = currentProject.name;
+			}
+			const projectDisplayField = getFormElement(form, "project_display");
+			if (projectDisplayField) {
+				projectDisplayField.value = currentProject.project_name || currentProject.name;
 			}
 
 			getFormElement(form, "team").value = currentProject.team;
@@ -1866,8 +1872,8 @@ return `
 			form.elements.assigned_to.innerHTML = buildMemberOptions(team, task.assigned_to);
 		}
 		
-		setVal("start_date", datetimeInputValue(task.start_date));
-		setVal("due_date", datetimeInputValue(task.due_date));
+		setVal("start_date", dateInputValue(task.start_date));
+		setVal("due_date", dateInputValue(task.due_date));
 		setVal("estimated_hours", task.estimated_hours || "");
 		setVal("description", stripHtml(task.description || ""));
 		
@@ -1876,7 +1882,10 @@ return `
 		
 		updateAvatar(task.assigned_to);
 		if (form.elements.assigned_to) {
-			form.elements.assigned_to.onchange = (e) => updateAvatar(e.target.value);
+			form.elements.assigned_to.addEventListener("change", (e) => {
+				updateAvatar(e.target.value);
+				triggerAutoSave({ immediate: true });
+			});
 		}
 		
 		const idLabel = document.querySelector("[data-task-id-label]");
@@ -2123,6 +2132,7 @@ return `
 		event.preventDefault();
 		const form = event.currentTarget;
 		if (form.dataset.saving === "1") return;
+		if (!validateTaskDates(form)) return;
 		
 		const submitBtn = form.querySelector('button[type="submit"]');
 		const originalText = submitBtn.textContent;
@@ -2140,6 +2150,19 @@ return `
 			submitBtn.disabled = false;
 			setFormSaving(form, false);
 		}
+	}
+
+	function validateTaskDates(form) {
+		const startDate = getFormValue(form, "start_date");
+		const dueDate = getFormValue(form, "due_date");
+		if (!startDate || !dueDate) return true;
+
+		const start = parseDateValue(startDate);
+		const end = parseDateValue(dueDate);
+		if (!start || !end || end >= start) return true;
+
+		showMessage("End Date cannot be earlier than Start Date.");
+		return false;
 	}
 
 		function getTaskFormPayload(form) {
@@ -2419,6 +2442,14 @@ return `
 
 	function normalizeNavMode(mode) {
 		return NAV_MODES.includes(mode) ? mode : null;
+	}
+
+	function getCurrentUserEmployeeId() {
+		if (!state.bootstrap || !state.bootstrap.user) return null;
+		const currentUserEmail = state.bootstrap.user.user;
+		const member = ((state.bootstrap && state.bootstrap.team_members) || [])
+			.find(m => m.user === currentUserEmail);
+		return member ? member.employee : null;
 	}
 
 	function getHistoryState() {
