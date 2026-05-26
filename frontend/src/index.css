@@ -489,7 +489,8 @@ button {
   gap: 6px;
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 4px;
 }
 
@@ -499,12 +500,14 @@ button {
   justify-content: space-between;
   gap: 12px;
   width: 100%;
+  min-width: 0;
   padding-top: 8px;
   padding-bottom: 8px;
   text-align: left;
 }
 
 .sidebar-project__title {
+  flex: 1;
   min-width: 0;
   font-size: 13px;
   font-weight: 500;
