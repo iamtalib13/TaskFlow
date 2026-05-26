@@ -726,24 +726,18 @@ button {
 }
 
 .workspace-table__index-head {
-  position: sticky;
-  top: 0;
-  left: 0;
-  z-index: 9;
+  position: relative;
+  z-index: 1;
   background: var(--tf-surface-subtle);
-  box-shadow: 8px 0 14px -14px rgba(15, 23, 42, 0.35);
-  background-clip: padding-box;
   white-space: nowrap;
 }
 
 .workspace-table__index {
-  position: sticky;
-  left: 0;
-  z-index: 4;
+  position: relative;
+  z-index: 1;
   color: var(--tf-muted);
   font-weight: 600;
   background: var(--tf-surface);
-  box-shadow: 8px 0 14px -14px rgba(15, 23, 42, 0.28);
 }
 
 .workspace-col--status {
