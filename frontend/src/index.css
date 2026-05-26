@@ -616,6 +616,23 @@ button {
   color: var(--tf-muted);
 }
 
+.workspace-task-modified--right {
+  text-align: right;
+}
+
+.workspace-table thead th.workspace-col--modified,
+.workspace-table tbody td.workspace-cell--modified {
+  text-align: right;
+}
+
+.workspace-table thead th.workspace-col--modified {
+  padding-right: 12px;
+}
+
+.workspace-table tbody td.workspace-cell--modified {
+  padding-right: 12px;
+}
+
 .workspace-panel__head {
   display: flex;
   align-items: flex-end;
