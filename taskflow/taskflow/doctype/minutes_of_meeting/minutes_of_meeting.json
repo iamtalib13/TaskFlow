@@ -5,19 +5,26 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "description"
+  "description",
+  "assignment"
  ],
  "fields": [
   {
    "fieldname": "description",
    "fieldtype": "Text Editor",
    "label": "Description"
+  },
+  {
+   "fieldname": "assignment",
+   "fieldtype": "Table",
+   "label": "Assignment",
+   "options": "Meeting Task Item"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-27 10:26:09.275268",
+ "modified": "2026-05-27 10:29:38.063934",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Minutes of Meeting",
