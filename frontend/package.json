@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && yarn copy-html-entry",
+    "copy-html-entry": "cp ../taskflow/public/frontend/index.html ../taskflow/www/taskflow.html",
     "preview": "vite preview"
   },
   "dependencies": {

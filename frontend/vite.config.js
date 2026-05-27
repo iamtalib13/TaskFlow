@@ -5,7 +5,8 @@ import { webserver_port } from '../../../sites/common_site_config.json'
 
 const proxyTarget = `http://127.0.0.1:${webserver_port}`
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/assets/taskflow/frontend/' : '/',
   plugins: [vue()],
   server: {
     host: '0.0.0.0',
@@ -42,4 +43,4 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2015',
   },
-})
+}))

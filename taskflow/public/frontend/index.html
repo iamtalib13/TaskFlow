@@ -2,19 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="/favicon.png" />
+    <link rel="icon" href="/assets/taskflow/frontend/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Frappe UI App</title>
-    <script type="module" crossorigin src="/assets/index.b421bbaa.js"></script>
-    <link rel="modulepreload" href="/assets/vendor.46a7c6e2.js">
-    <link rel="stylesheet" href="/assets/index.cf98addf.css">
+    <title>Taskflow</title>
+    <script type="module" crossorigin src="/assets/taskflow/frontend/assets/index.a0a4ce83.js"></script>
+    <link rel="modulepreload" href="/assets/taskflow/frontend/assets/vendor.918d9845.js">
+    <link rel="stylesheet" href="/assets/taskflow/frontend/assets/index.030e3f6e.css">
   </head>
   <body>
     <div id="app"></div>
     <div id="modals"></div>
     <div id="popovers"></div>
 
-    <script> window.csrf_token = '{{ csrf_token }}'; </script>
+    <script>
+      window.csrf_token = window.csrf_token || "{{ csrf_token }}"
+      window.site_name = "{{ site_name }}"
+      if (!window.frappe) window.frappe = {}
+      window.frappe.boot = {{ boot }}
+    </script>
     
   </body>
 </html>
