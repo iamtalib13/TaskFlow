@@ -6,6 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "task_details_tab",
   "task_identity_section",
   "task_title",
   "project",
@@ -18,6 +19,8 @@
   "assigned_to_user",
   "assignment_column",
   "status",
+  "pending_with",
+  "guided_by",
   "priority",
   "task_type",
   "timeline_section",
@@ -39,7 +42,13 @@
   "checklist_section",
   "checklist",
   "dependency_section",
-  "dependencies"
+  "dependencies",
+  "ticket_details_tab",
+  "ticket_details_section",
+  "ticket_date",
+  "ticket_id",
+  "ticket_raised_by",
+  "ticket_description"
  ],
  "fields": [
   {
@@ -117,7 +126,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "\nOpen\nIn Progress\nReview\nOn Hold\nCompleted\nCancelled",
+   "options": "\nOpen\nIn Progress\nReview\nOn Hold\nCompleted\nCancelled\nOverdue",
    "reqd": 1
   },
   {
@@ -133,7 +142,7 @@
    "fieldname": "task_type",
    "fieldtype": "Select",
    "label": "Task Type",
-   "options": "\nTask\nBug\nStory\nApproval\nResearch\nMeeting"
+   "options": "\nTask\nBug\nCustomization Request"
   },
   {
    "fieldname": "timeline_section",
@@ -240,11 +249,58 @@
    "fieldtype": "Table",
    "label": "Dependencies",
    "options": "Taskflow Task Dependency"
+  },
+  {
+   "fieldname": "pending_with",
+   "fieldtype": "Link",
+   "label": "Pending With",
+   "options": "Taskflow Team"
+  },
+  {
+   "fieldname": "guided_by",
+   "fieldtype": "Link",
+   "label": "Guided By",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "ticket_details_section",
+   "fieldtype": "Section Break",
+   "label": "Ticket Details"
+  },
+  {
+   "fieldname": "ticket_date",
+   "fieldtype": "Date",
+   "label": "Ticket Date"
+  },
+  {
+   "fieldname": "ticket_id",
+   "fieldtype": "Data",
+   "label": "Ticket ID"
+  },
+  {
+   "fieldname": "ticket_raised_by",
+   "fieldtype": "Select",
+   "label": "Ticket Raised By"
+  },
+  {
+   "fieldname": "ticket_description",
+   "fieldtype": "Small Text",
+   "label": "Ticket Description"
+  },
+  {
+   "fieldname": "ticket_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Ticket Details"
+  },
+  {
+   "fieldname": "task_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Task Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-26 15:07:57.976488",
+ "modified": "2026-06-20 13:41:11.538519",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",

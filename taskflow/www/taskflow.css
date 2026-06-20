@@ -24,12 +24,15 @@
 /* Remove overflow: hidden from body to check if it's clipping the clickable area */
 body.taskflow-portal-page {
 	margin: 0;
-	font-family: 'Inter', system-ui, -apple-system, sans-serif;
+	font-family:
+		"Inter",
+		system-ui,
+		-apple-system,
+		sans-serif;
 	background-color: var(--taskflow-bg);
 	color: var(--taskflow-text);
-	overflow: auto; 
+	overflow: auto;
 }
-
 
 .taskflow-container {
 	display: flex;
@@ -42,145 +45,345 @@ body.taskflow-portal-page {
 }
 
 .taskflow-oldest-task-alert {
-    color: #ef4444;
-    font-weight: 700;
-    font-size: 13px;
-    margin-left: 16px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+	color: #ef4444;
+	font-weight: 700;
+	font-size: 13px;
+	margin-left: 16px;
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: #fef2f2;
+	border: 1px solid #fecaca;
 }
 
 /* Assignment Section Scoped Styles */
 .taskflow-assignment-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 24px;
-    min-height: 150px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-height: 80px;
+}
+
+/* Left Sidebar Redesign */
+.tfl-fields-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	padding: 0 !important;
+}
+
+.tfl-field-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--taskflow-border);
+	min-height: 44px;
+}
+
+.tfl-field-row:last-child {
+	border-bottom: none;
+}
+
+.tfl-field-label {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--taskflow-text-muted);
+	white-space: nowrap;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	flex-shrink: 0;
+	min-width: 110px;
+}
+
+.tfl-icon {
+	font-size: 13px;
+}
+
+.tfl-due-badge {
+	background: #fef2f2;
+	color: #ef4444;
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 6px;
+	border-radius: 4px;
+	border: 1px solid #fecaca;
+	margin-left: 4px;
+}
+
+.tfl-input {
+	flex: 1;
+	height: 32px !important;
+	padding: 0 10px !important;
+	border-radius: 6px;
+	border: 1px solid var(--taskflow-border);
+	background: #f8fafc;
+	font-size: 12px;
+	color: var(--taskflow-text);
+	outline: none;
+	min-width: 0;
+	text-align: right;
+}
+
+.tfl-input:focus {
+	border-color: var(--taskflow-primary);
+	background: #fff;
+	box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+}
+
+.tfl-select {
+	flex: 1;
+	height: 32px !important;
+	padding: 0 28px 0 10px !important;
+	border-radius: 6px;
+	border: 1px solid var(--taskflow-border);
+	background: #f8fafc;
+	font-size: 12px;
+	color: var(--taskflow-text);
+	outline: none;
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 8px center;
+	background-size: 13px;
+	min-width: 0;
+	cursor: pointer;
+}
+
+.tfl-select:focus {
+	border-color: var(--taskflow-primary);
+	background-color: #fff;
+}
+
+.tfl-assignee-control {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+	min-width: 0;
+}
+
+.tfl-avatar {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: var(--taskflow-primary);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.tfl-checkbox-row {
+	display: flex;
+	gap: 12px;
+	padding: 10px 16px;
+	flex-wrap: wrap;
+}
+
+.tfl-checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--taskflow-text);
+	cursor: pointer;
+	position: relative;
+}
+
+.tfl-checkbox-label input[type="checkbox"] {
+	opacity: 0;
+	position: absolute;
+	width: 16px;
+	height: 16px;
+	margin: 0;
+	cursor: pointer;
+}
+
+.tfl-checkbox-box {
+	width: 16px;
+	height: 16px;
+	border: 2px solid #cbd5e1;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	transition: all 0.15s;
+}
+
+.tfl-checkbox-label input[type="checkbox"]:checked ~ .tfl-checkbox-box {
+	background: var(--taskflow-primary);
+	border-color: var(--taskflow-primary);
+}
+
+.tfl-checkbox-label input[type="checkbox"]:checked ~ .tfl-checkbox-box::after {
+	content: "✓";
+	color: white;
+	font-size: 11px;
+	font-weight: 800;
+	line-height: 1;
+}
+
+/* Quill Description Editor */
+#taskflow-desc-editor .ql-toolbar {
+	border-radius: 8px 8px 0 0;
+	border-color: var(--taskflow-border) !important;
+	background: #f8fafc;
+}
+
+#taskflow-desc-editor .ql-container {
+	border-radius: 0 0 8px 8px;
+	border-color: var(--taskflow-border) !important;
+	font-size: 14px;
+	min-height: 160px;
+	font-family: inherit;
+}
+
+#taskflow-desc-editor .ql-editor {
+	min-height: 160px;
+	line-height: 1.6;
+	color: var(--taskflow-text);
+}
+
+/* override generic modal input styles for tfl inputs */
+.taskflow-modal.advanced-task-view .tfl-input,
+.taskflow-modal.advanced-task-view .tfl-select {
+	width: auto !important;
+	display: block;
+	padding: 0 10px !important;
 }
 
 .taskflow-assignment-label {
-    margin: 0;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--taskflow-text-muted);
-    line-height: 1;
+	margin: 0;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	color: var(--taskflow-text-muted);
+	line-height: 1;
 }
 
 .taskflow-assignment-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
 }
 
 .taskflow-assignment-avatar {
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
-    background: var(--taskflow-primary);
-    color: #ffffff;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    font-weight: 600;
+	width: 36px !important;
+	height: 36px !important;
+	font-size: 14px !important;
+	background: var(--taskflow-primary);
+	color: #ffffff;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	font-weight: 600;
 }
 
 .taskflow-assignment-select {
-    width: 100%;
-    height: 36px;
-    padding: 0 10px;
-    border-radius: 8px;
-    border: 1px solid var(--taskflow-border);
-    background: #ffffff;
-    font-size: 13px;
-    color: var(--taskflow-text);
-    outline: none;
-    appearance: none;
+	width: 100%;
+	height: 36px !important;
+	padding: 0 10px !important;
+	border-radius: 8px;
+	border: 1px solid var(--taskflow-border);
+	background: #ffffff;
+	font-size: 13px;
+	color: var(--taskflow-text);
+	outline: none;
+	appearance: none !important;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
+	background-repeat: no-repeat !important;
+	background-position: right 8px center !important;
+	background-size: 14px !important;
+	padding-right: 28px !important;
 }
 
 .taskflow-assignment-select:focus {
-    border-color: var(--taskflow-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+	border-color: var(--taskflow-primary);
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .taskflow-save-capsule {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-    border: 1px solid var(--taskflow-border);
-    background: #f8fafc;
-    color: var(--taskflow-text-muted);
-    height: 32px;
-    min-width: 70px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 6px 16px;
+	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 700;
+	border: 1px solid var(--taskflow-border);
+	background: #f8fafc;
+	color: var(--taskflow-text-muted);
+	height: 32px;
+	min-width: 70px;
 }
 
 .taskflow-save-icon-green {
-    color: #10b981;
-    font-weight: 800;
+	color: #10b981;
+	font-weight: 800;
 }
 
 /* Comment Form Scoped Styles */
 .taskflow-comment-form {
-    border: 1px solid var(--taskflow-border);
-    border-radius: 8px;
-    padding: 12px;
-    background: #ffffff;
+	border: 1px solid var(--taskflow-border);
+	border-radius: 8px;
+	padding: 12px;
+	background: #ffffff;
 }
 
 .taskflow-comment-form textarea {
-    width: 100%;
-    border: none;
-    padding: 0;
-    font-size: 14px;
-    line-height: 1.5;
-    outline: none;
-    background: transparent;
-    resize: none;
+	width: 100%;
+	border: none;
+	padding: 0;
+	font-size: 14px;
+	line-height: 1.5;
+	outline: none;
+	background: transparent;
+	resize: none;
 }
 
 .taskflow-comment-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--taskflow-border);
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--taskflow-border);
 }
 
 .taskflow-comment-toolbar {
-    display: flex;
-    gap: 12px;
-    color: var(--taskflow-text-muted);
-    font-size: 13px;
-    cursor: pointer;
+	display: flex;
+	gap: 12px;
+	color: var(--taskflow-text-muted);
+	font-size: 13px;
+	cursor: pointer;
 }
 
 /* Sidebar Nav */
 .taskflow-sidebar-nav {
-    width: 60px; /* Collapsed width */
-    overflow: hidden;
-    transition: width 0.3s ease-in-out; /* Smooth transition for expansion */
-    background: var(--taskflow-sidebar-bg);
-    border-right: 1px solid var(--taskflow-border);
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    padding: 10px 0; /* Add padding for content when collapsed */
+	width: 60px; /* Collapsed width */
+	overflow: hidden;
+	transition: width 0.3s ease-in-out; /* Smooth transition for expansion */
+	background: var(--taskflow-sidebar-bg);
+	border-right: 1px solid var(--taskflow-border);
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+	padding: 10px 0; /* Add padding for content when collapsed */
 }
 
 .taskflow-sidebar-nav:hover {
-    width: 260px; /* Expanded width on hover */
+	width: 260px; /* Expanded width on hover */
 }
 
 /* Sidebar Projects */
@@ -223,7 +426,7 @@ body.taskflow-portal-page {
 .taskflow-btn-home-brand:hover {
 	background: #e2e8f0;
 	transform: translateY(-1px);
-	box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .taskflow-logo-icon {
@@ -326,72 +529,71 @@ button:disabled {
 
 /* Nav Item Styles */
 .taskflow-nav-item {
-    display: flex; /* Default to flex for alignment */
-    align-items: center;
-    padding: 10px 12px; /* Padding for expanded state */
-    border-radius: 8px;
-    color: var(--taskflow-text-muted);
-    font-size: 14px; /* Base font size */
-    font-weight: 500;
-    cursor: pointer;
-    margin-bottom: 2px;
-    white-space: nowrap; /* Prevent text wrapping */
-    overflow: hidden; /* Hide overflowing content */
-    justify-content: flex-start; /* Default alignment */
+	display: flex; /* Default to flex for alignment */
+	align-items: center;
+	padding: 10px 12px; /* Padding for expanded state */
+	border-radius: 8px;
+	color: var(--taskflow-text-muted);
+	font-size: 14px; /* Base font size */
+	font-weight: 500;
+	cursor: pointer;
+	margin-bottom: 2px;
+	white-space: nowrap; /* Prevent text wrapping */
+	overflow: hidden; /* Hide overflowing content */
+	justify-content: flex-start; /* Default alignment */
 }
 
 /* Styles for collapsed state (default) */
 .taskflow-sidebar-nav .taskflow-nav-item {
-    flex-direction: column; /* Stack icon and text */
-    justify-content: center; /* Center vertically */
-    align-items: center; /* Center horizontally */
-    padding: 12px 12px; /* Adjusted padding: top/bottom 12px, left/right 12px */
-    margin-bottom: 8px; /* Increased bottom margin for better separation */
-    text-align: center;
-    font-size: 0; /* Hide text nodes by reducing font size */
-    line-height: 0; /* Attempt to hide text nodes via line-height */
-    width: 100%; /* Ensure item takes full width of sidebar */
-    max-width: 60px; /* Ensure item is constrained to sidebar width */
+	flex-direction: column; /* Stack icon and text */
+	justify-content: center; /* Center vertically */
+	align-items: center; /* Center horizontally */
+	padding: 12px 12px; /* Adjusted padding: top/bottom 12px, left/right 12px */
+	margin-bottom: 8px; /* Increased bottom margin for better separation */
+	text-align: center;
+	font-size: 0; /* Hide text nodes by reducing font size */
+	line-height: 0; /* Attempt to hide text nodes via line-height */
+	width: 100%; /* Ensure item takes full width of sidebar */
+	max-width: 60px; /* Ensure item is constrained to sidebar width */
 }
 
 .taskflow-sidebar-nav .taskflow-nav-item .taskflow-nav-icon {
-    margin-right: 0; /* Remove right margin */
-    font-size: 22px; /* Slightly larger icon */
-    width: auto;
-    color: inherit; /* Ensure icon color is inherited correctly */
+	margin-right: 0; /* Remove right margin */
+	font-size: 22px; /* Slightly larger icon */
+	width: auto;
+	color: inherit; /* Ensure icon color is inherited correctly */
 }
 
 /* Hide text content and badges when collapsed */
 .taskflow-sidebar-nav .taskflow-nav-item span:not(.taskflow-nav-icon),
 .taskflow-sidebar-nav .taskflow-nav-item .taskflow-badge {
-    display: none;
+	display: none;
 }
 
 /* Styles for expanded state (on hover) */
 .taskflow-sidebar-nav:hover .taskflow-nav-item {
-    flex-direction: row; /* Restore side-by-side layout */
-    justify-content: flex-start; /* Align left when expanded */
-    align-items: center; /* Re-align items vertically */
-    padding: 10px 12px; /* Restore original padding */
-    text-align: left; /* Restore text alignment */
-    font-size: 14px; /* Restore base font size */
-    line-height: normal; /* Restore normal line height */
-    width: auto; /* Allow item to take necessary width */
-    max-width: none; /* Remove max-width constraint */
+	flex-direction: row; /* Restore side-by-side layout */
+	justify-content: flex-start; /* Align left when expanded */
+	align-items: center; /* Re-align items vertically */
+	padding: 10px 12px; /* Restore original padding */
+	text-align: left; /* Restore text alignment */
+	font-size: 14px; /* Restore base font size */
+	line-height: normal; /* Restore normal line height */
+	width: auto; /* Allow item to take necessary width */
+	max-width: none; /* Remove max-width constraint */
 }
 
 .taskflow-sidebar-nav:hover .taskflow-nav-item .taskflow-nav-icon {
-    margin-right: 12px; /* Restore right margin for icon */
-    font-size: 18px; /* Restore icon size */
-    width: 20px; /* Restore icon width */
+	margin-right: 12px; /* Restore right margin for icon */
+	font-size: 18px; /* Restore icon size */
+	width: 20px; /* Restore icon width */
 }
 
 /* Show text content and badges when expanded */
 .taskflow-sidebar-nav:hover .taskflow-nav-item span:not(.taskflow-nav-icon),
 .taskflow-sidebar-nav:hover .taskflow-nav-item .taskflow-badge {
-    display: inline; /* Show text and badges */
+	display: inline; /* Show text and badges */
 }
-
 
 .taskflow-badge {
 	margin-left: auto;
@@ -454,7 +656,8 @@ textarea:focus-visible,
 	white-space: nowrap;
 }
 
-.taskflow-project-item:hover, .taskflow-project-item.active {
+.taskflow-project-item:hover,
+.taskflow-project-item.active {
 	background: #eff6ff;
 }
 
@@ -489,7 +692,7 @@ textarea:focus-visible,
 }
 
 .taskflow-view-content.full-width {
-    overflow-y: hidden;
+	overflow-y: hidden;
 }
 
 .taskflow-header {
@@ -602,7 +805,8 @@ textarea:focus-visible,
 	letter-spacing: -0.03em;
 }
 
-.taskflow-btn-star, .taskflow-btn-more {
+.taskflow-btn-star,
+.taskflow-btn-more {
 	background: none;
 	border: none;
 	font-size: 20px;
@@ -641,7 +845,7 @@ textarea:focus-visible,
 	background: var(--taskflow-primary);
 	color: white;
 	border: none;
-	border-left: 1px solid rgba(255,255,255,0.2);
+	border-left: 1px solid rgba(255, 255, 255, 0.2);
 	padding: 0 10px;
 	border-radius: 0 8px 8px 0;
 	cursor: pointer;
@@ -671,7 +875,7 @@ textarea:focus-visible,
 }
 
 .taskflow-tab.active::after {
-	content: '';
+	content: "";
 	position: absolute;
 	bottom: -1px;
 	left: 0;
@@ -723,7 +927,9 @@ textarea:focus-visible,
 	padding: 12px;
 	display: flex;
 	flex-direction: column;
-	transition: background 0.2s, outline-color 0.2s;
+	transition:
+		background 0.2s,
+		outline-color 0.2s;
 	outline: 2px solid transparent;
 	outline-offset: 2px;
 }
@@ -840,7 +1046,7 @@ textarea:focus-visible,
 	flex-direction: column;
 	gap: 12px;
 	overflow-y: auto; /* Enable vertical scroll */
-	flex-grow: 1;    /* Take up remaining space */
+	flex-grow: 1; /* Take up remaining space */
 	padding-right: 4px; /* Space for scrollbar */
 	min-height: 50px;
 	scrollbar-width: thin;
@@ -879,7 +1085,7 @@ textarea:focus-visible,
 	background: white;
 	border-radius: 10px;
 	padding: 16px;
-	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 	cursor: pointer;
 	border: 1px solid transparent;
 	transition: border-color 0.2s;
@@ -985,10 +1191,22 @@ body.taskflow-dragging .taskflow-card-dragging {
 	text-transform: capitalize;
 }
 
-.priority-low { background: #f1f5f9; color: #64748b; }
-.priority-medium { background: #eff6ff; color: #3b82f6; }
-.priority-high { background: #fef2f2; color: #ef4444; }
-.priority-critical { background: #7f1d1d; color: white; }
+.priority-low {
+	background: #f1f5f9;
+	color: #64748b;
+}
+.priority-medium {
+	background: #eff6ff;
+	color: #3b82f6;
+}
+.priority-high {
+	background: #fef2f2;
+	color: #ef4444;
+}
+.priority-critical {
+	background: #7f1d1d;
+	color: white;
+}
 
 .taskflow-assignee-avatar {
 	width: 24px;
@@ -1058,8 +1276,12 @@ body.taskflow-dragging .taskflow-card-dragging {
 	font-weight: 600;
 }
 
-.taskflow-trend-up { color: #10b981; }
-.taskflow-trend-down { color: #ef4444; }
+.taskflow-trend-up {
+	color: #10b981;
+}
+.taskflow-trend-down {
+	color: #ef4444;
+}
 
 .taskflow-dashboard-charts {
 	display: grid;
@@ -1170,9 +1392,18 @@ body.taskflow-dragging .taskflow-card-dragging {
 	text-transform: capitalize;
 }
 
-.load-high { background: #fef2f2; color: #ef4444; }
-.load-medium { background: #fffbeb; color: #d97706; }
-.load-low { background: #ecfdf5; color: #10b981; }
+.load-high {
+	background: #fef2f2;
+	color: #ef4444;
+}
+.load-medium {
+	background: #fffbeb;
+	color: #d97706;
+}
+.load-low {
+	background: #ecfdf5;
+	color: #10b981;
+}
 
 .taskflow-member-task-summary {
 	font-size: 12px;
@@ -1381,22 +1612,22 @@ body.taskflow-dragging .taskflow-card-dragging {
 
 /* Role-based labels */
 .taskflow-role-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 2px 6px;
-    border-radius: 4px;
-    display: inline-block;
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	padding: 2px 6px;
+	border-radius: 4px;
+	display: inline-block;
 }
 
 .taskflow-role-golden {
-    background: #fef3c7;
-    color: #b45309;
+	background: #fef3c7;
+	color: #b45309;
 }
 
 .taskflow-role-blue {
-    background: #e0f2fe;
-    color: #0369a1;
+	background: #e0f2fe;
+	color: #0369a1;
 }
 .taskflow-hidden {
 	display: none !important;
@@ -1411,40 +1642,54 @@ body.taskflow-dragging .taskflow-card-dragging {
 }
 
 /* Timeline View */
-.taskflow-timeline-wrapper { background: white; padding: 24px; border-radius: 16px; border: 1px solid var(--taskflow-border); }
-.taskflow-timeline-header { margin-bottom: 24px; }
-.taskflow-timeline-header h3 { margin: 0; font-size: 18px; }
-.taskflow-timeline-header p { margin: 4px 0 0; color: var(--taskflow-text-muted); font-size: 13px; }
+.taskflow-timeline-wrapper {
+	background: white;
+	padding: 24px;
+	border-radius: 16px;
+	border: 1px solid var(--taskflow-border);
+}
+.taskflow-timeline-header {
+	margin-bottom: 24px;
+}
+.taskflow-timeline-header h3 {
+	margin: 0;
+	font-size: 18px;
+}
+.taskflow-timeline-header p {
+	margin: 4px 0 0;
+	color: var(--taskflow-text-muted);
+	font-size: 13px;
+}
 
 .taskflow-timeline-grid {
-    position: relative;
-    height: 300px;
-    border-top: 1px solid #e2e8f0;
-    margin-top: 20px;
+	position: relative;
+	height: 300px;
+	border-top: 1px solid #e2e8f0;
+	margin-top: 20px;
 }
 .taskflow-timeline-task {
-    position: absolute;
-    height: 36px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    font-size: 12px;
-    background: #dbeafe;
-    border: 1px solid #bfdbfe;
-    color: #1e40af;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+	position: absolute;
+	height: 36px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	padding: 0 10px;
+	font-size: 12px;
+	background: #dbeafe;
+	border: 1px solid #bfdbfe;
+	color: #1e40af;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 .taskflow-timeline-header-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid #e2e8f0;
-    margin-bottom: 10px;
-    font-size: 12px;
-    color: var(--taskflow-text-muted);
+	display: flex;
+	justify-content: space-between;
+	padding: 10px 0;
+	border-bottom: 1px solid #e2e8f0;
+	margin-bottom: 10px;
+	font-size: 12px;
+	color: var(--taskflow-text-muted);
 }
 
 .taskflow-team-grid {
@@ -1553,7 +1798,9 @@ body.taskflow-dragging .taskflow-card-dragging {
 	justify-content: center;
 	z-index: 1000;
 }
-.taskflow-modal-backdrop.open { display: flex; }
+.taskflow-modal-backdrop.open {
+	display: flex;
+}
 .taskflow-comment-form textarea {
 	width: 100%;
 	padding: 12px;
@@ -1586,11 +1833,14 @@ body.taskflow-dragging .taskflow-card-dragging {
 .taskflow-modal.advanced-task-view .taskflow-modal-header {
 	background: var(--taskflow-sidebar-bg);
 	border-bottom: 1px solid var(--taskflow-border);
-	padding: 16px 32px;
-	height: 72px;
+	padding: 12px 24px;
+	min-height: 72px;
+	height: auto;
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
 }
 
 .taskflow-modal.advanced-task-view .taskflow-modal-header select {
@@ -1626,6 +1876,8 @@ body.taskflow-dragging .taskflow-card-dragging {
 	flex-direction: column;
 	gap: 24px;
 	background: var(--taskflow-sidebar-bg);
+	min-height: 0;
+	flex-shrink: 0;
 }
 
 .taskflow-modal-middle-content {
@@ -1788,7 +2040,7 @@ body.taskflow-dragging .taskflow-card-dragging {
 .taskflow-sidebar-tab.active {
 	background: white;
 	color: var(--taskflow-primary);
-	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 	border: 1px solid var(--taskflow-border);
 }
 
@@ -1949,7 +2201,8 @@ body.taskflow-dragging .taskflow-card-dragging {
 .taskflow-form {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
+	flex: 1;
+	min-height: 0;
 	overflow: hidden;
 }
 
@@ -2016,7 +2269,7 @@ body.taskflow-dragging .taskflow-card-dragging {
 	border-radius: 14px;
 	border-top-left-radius: 2px;
 	border: 1px solid var(--taskflow-border);
-	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 	position: relative;
 	min-width: 60px;
 }
@@ -2083,7 +2336,8 @@ body.taskflow-dragging .taskflow-card-dragging {
 	outline: none;
 }
 
-.taskflow-comment-attach, .taskflow-comment-send {
+.taskflow-comment-attach,
+.taskflow-comment-send {
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -2123,9 +2377,20 @@ body.taskflow-dragging .taskflow-card-dragging {
 	line-height: 1.5;
 }
 
-.taskflow-form label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px; }
-.taskflow-form input, .taskflow-form select, .taskflow-form textarea {
-	width: 100%; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 8px; outline: none;
+.taskflow-form label {
+	display: block;
+	margin-bottom: 8px;
+	font-weight: 600;
+	font-size: 13px;
+}
+.taskflow-form input,
+.taskflow-form select,
+.taskflow-form textarea {
+	width: 100%;
+	padding: 10px;
+	border: 1px solid var(--taskflow-border);
+	border-radius: 8px;
+	outline: none;
 }
 
 .taskflow-rail-row {
@@ -2547,18 +2812,18 @@ body.taskflow-dragging .taskflow-card-dragging {
 }
 
 .taskflow-filter-sidebar {
-    position: fixed;
-    top: 64px;
-    right: -300px;
-    width: 300px;
-    height: 100%;
-    background: white;
-    border-left: 1px solid var(--taskflow-border);
-    transition: right 0.3s ease;
-    z-index: 1000;
-    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+	position: fixed;
+	top: 64px;
+	right: -300px;
+	width: 300px;
+	height: 100%;
+	background: white;
+	border-left: 1px solid var(--taskflow-border);
+	transition: right 0.3s ease;
+	z-index: 1000;
+	box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .taskflow-filter-sidebar.open {
-    right: 0;
+	right: 0;
 }
