@@ -124,11 +124,15 @@
 	function updateUrlState(options = {}) {
 		const params = new URLSearchParams();
 		params.set("mode", state.navMode);
-		if (state.navMode === "dashboard" && state.selectedProject) params.set("project", state.selectedProject);
-		if (state.selectedTeam && state.selectedTeam !== "all") params.set("team", state.selectedTeam);
+		if (state.navMode === "dashboard" && state.selectedProject)
+			params.set("project", state.selectedProject);
+		if (state.selectedTeam && state.selectedTeam !== "all")
+			params.set("team", state.selectedTeam);
 		if (state.taskView) params.set("view", state.taskView);
-        if (state.selectedStatuses && state.selectedStatuses.length) params.set("statuses", state.selectedStatuses.join(','));
-        if (state.selectedAssignees && state.selectedAssignees.length) params.set("assignees", state.selectedAssignees.join(','));
+		if (state.selectedStatuses && state.selectedStatuses.length)
+			params.set("statuses", state.selectedStatuses.join(","));
+		if (state.selectedAssignees && state.selectedAssignees.length)
+			params.set("assignees", state.selectedAssignees.join(","));
 		if (state.activeTaskName) params.set("task", state.activeTaskName);
 
 		const query = params.toString();
@@ -148,14 +152,18 @@
 		const project = params.get("project");
 		const team = params.get("team");
 		const view = params.get("view");
-        const statuses = params.get("statuses");
-        const assignees = params.get("assignees");
-        const taskId = params.get("task");
+		const statuses = params.get("statuses");
+		const assignees = params.get("assignees");
+		const taskId = params.get("task");
 
 		if (view) state.taskView = normalizeTaskView(view);
 		state.selectedTeam = team || "all";
-        state.selectedStatuses = statuses ? statuses.split(',') : JSON.parse(localStorage.getItem("taskflow_filter_statuses") || "[]");
-        state.selectedAssignees = assignees ? assignees.split(',') : JSON.parse(localStorage.getItem("taskflow_filter_assignees") || "[]");
+		state.selectedStatuses = statuses
+			? statuses.split(",")
+			: JSON.parse(localStorage.getItem("taskflow_filter_statuses") || "[]");
+		state.selectedAssignees = assignees
+			? assignees.split(",")
+			: JSON.parse(localStorage.getItem("taskflow_filter_assignees") || "[]");
 
 		if (refs.teamSwitcher) refs.teamSwitcher.value = state.selectedTeam;
 		syncTaskTabs();
@@ -166,11 +174,11 @@
 			} else {
 				setNavMode("dashboard", options);
 			}
-            
-            if (taskId) {
-                const task = findTask(taskId);
-                if (task) openTaskModal(task);
-            }
+
+			if (taskId) {
+				const task = findTask(taskId);
+				if (task) openTaskModal(task);
+			}
 			return;
 		}
 
@@ -189,7 +197,7 @@
 
 	function syncTaskTabs() {
 		if (refs.viewToggle) {
-			refs.viewToggle.querySelectorAll(".taskflow-tab").forEach(tab => {
+			refs.viewToggle.querySelectorAll(".taskflow-tab").forEach((tab) => {
 				const isActive = tab.dataset.view === state.taskView;
 				tab.classList.toggle("active", isActive);
 				tab.setAttribute("aria-selected", isActive ? "true" : "false");
@@ -235,6 +243,28 @@
 		refs.userAvatarContainer = document.querySelector("[data-user-avatar-container]");
 		refs.memberSelectorWrapper = document.querySelector("[data-member-selector-wrapper]");
 		refs.memberSelector = document.querySelector("[data-member-selector]");
+
+		// Initialize Quill for description
+		if (document.getElementById("taskflow-desc-editor") && window.Quill) {
+			window._taskDescEditor = new Quill("#taskflow-desc-editor", {
+				theme: "snow",
+				placeholder: "Add a more detailed description...",
+				modules: {
+					toolbar: [
+						["bold", "italic", "underline", "strike"],
+						[{ list: "ordered" }, { list: "bullet" }],
+						[{ header: [1, 2, 3, false] }],
+						["clean"],
+					],
+				},
+			});
+			// Keep hidden input in sync on every change
+			window._taskDescEditor.on("text-change", () => {
+				const hiddenDesc = refs.taskForm && refs.taskForm.querySelector('input[name="description"]');
+				if (hiddenDesc) hiddenDesc.value = window._taskDescEditor.root.innerHTML;
+				triggerAutoSave();
+			});
+		}
 	}
 
 	function bindEvents() {
@@ -255,7 +285,7 @@
 				card.classList.remove("taskflow-card-drop-target");
 			});
 		};
-		
+
 		// Project View Tab Navigation (Dedicated handler)
 		const tabsContainer = document.querySelector(".taskflow-tabs");
 		if (tabsContainer) {
@@ -282,11 +312,15 @@
 					closeSidebars();
 				}
 			}
-            
+
 			// Actions
 			const newTaskButton = e.target.closest("[data-new-task]");
 			if (newTaskButton) {
-				if (newTaskButton.disabled || newTaskButton.getAttribute("aria-disabled") === "true") return;
+				if (
+					newTaskButton.disabled ||
+					newTaskButton.getAttribute("aria-disabled") === "true"
+				)
+					return;
 				openTaskModal();
 			}
 
@@ -306,7 +340,7 @@
 			if (e.target.closest("[data-add-checklist-item]")) {
 				addChecklistItem();
 			}
-			
+
 			const removeBtn = e.target.closest("[data-remove-checklist-item]");
 			if (removeBtn) {
 				const index = Number.parseInt(removeBtn.dataset.removeChecklistItem, 10);
@@ -318,7 +352,10 @@
 
 		document.addEventListener("change", (e) => {
 			const toggle = e.target;
-			if (toggle instanceof HTMLInputElement && toggle.hasAttribute("data-toggle-checklist-item")) {
+			if (
+				toggle instanceof HTMLInputElement &&
+				toggle.hasAttribute("data-toggle-checklist-item")
+			) {
 				const index = Number.parseInt(toggle.dataset.toggleChecklistItem, 10);
 				if (!Number.isNaN(index)) {
 					toggleChecklistItem(index, toggle.checked);
@@ -326,7 +363,10 @@
 				return;
 			}
 
-			if (toggle instanceof HTMLInputElement && toggle.hasAttribute("data-edit-checklist-item")) {
+			if (
+				toggle instanceof HTMLInputElement &&
+				toggle.hasAttribute("data-edit-checklist-item")
+			) {
 				const index = Number.parseInt(toggle.dataset.editChecklistItem, 10);
 				if (!Number.isNaN(index)) {
 					updateChecklistItem(index, toggle.value, { persist: true });
@@ -336,7 +376,10 @@
 
 		document.addEventListener("input", (e) => {
 			const editInput = e.target;
-			if (editInput instanceof HTMLInputElement && editInput.hasAttribute("data-edit-checklist-item")) {
+			if (
+				editInput instanceof HTMLInputElement &&
+				editInput.hasAttribute("data-edit-checklist-item")
+			) {
 				const index = Number.parseInt(editInput.dataset.editChecklistItem, 10);
 				if (!Number.isNaN(index)) {
 					updateChecklistItem(index, editInput.value);
@@ -349,7 +392,7 @@
 		if (commentTextarea) {
 			commentTextarea.addEventListener("input", () => {
 				commentTextarea.style.height = "auto";
-				commentTextarea.style.height = (commentTextarea.scrollHeight) + "px";
+				commentTextarea.style.height = commentTextarea.scrollHeight + "px";
 			});
 			commentTextarea.addEventListener("keydown", (e) => {
 				if (e.key === "Enter" && !e.shiftKey) {
@@ -358,7 +401,7 @@
 				}
 			});
 		}
-		
+
 		const checklistInput = document.querySelector("[data-new-checklist-item]");
 		if (checklistInput) {
 			checklistInput.addEventListener("keydown", (e) => {
@@ -400,7 +443,9 @@
 				renderProjectList();
 				if (state.navMode === "dashboard" && state.selectedProject) {
 					const projects = getVisibleProjects({ ignoreQuery: true });
-					const selectedProjectVisible = projects.some((project) => project.name === state.selectedProject);
+					const selectedProjectVisible = projects.some(
+						(project) => project.name === state.selectedProject,
+					);
 					if (!selectedProjectVisible) {
 						const nextProject = projects[0];
 						if (nextProject) {
@@ -416,9 +461,9 @@
 					}
 				}
 
-				if (state.navMode === 'team') {
+				if (state.navMode === "team") {
 					renderTeamView();
-				} else if (state.navMode === 'my-tasks') {
+				} else if (state.navMode === "my-tasks") {
 					renderProjectWorkspace();
 				} else {
 					refreshView();
@@ -443,7 +488,7 @@
 		refs.projectForm.addEventListener("submit", submitProjectForm);
 		refs.taskForm.addEventListener("submit", submitTaskForm);
 		refs.taskFormQuick.addEventListener("submit", submitTaskForm);
-		
+
 		// Robust click handler for task save button
 		const taskSaveBtn = refs.taskForm.querySelector('button[type="submit"]');
 		if (taskSaveBtn) {
@@ -453,27 +498,30 @@
 					return;
 				}
 				e.preventDefault();
-				submitTaskForm({ 
-					preventDefault: () => {}, 
-					currentTarget: refs.taskForm 
+				submitTaskForm({
+					preventDefault: () => {},
+					currentTarget: refs.taskForm,
 				});
 			});
 		}
-		
+
 		// Auto-save listeners for task form
-		refs.taskForm.querySelectorAll("input, select, textarea").forEach(el => {
+		refs.taskForm.querySelectorAll("input, select, textarea").forEach((el) => {
 			if (el.name === "new_comment") return; // Skip comment input
 			if (
 				el.hasAttribute("data-new-checklist-item") ||
 				el.hasAttribute("data-toggle-checklist-item") ||
 				el.hasAttribute("data-edit-checklist-item") ||
 				el.closest("[data-checklist-wrapper]")
-			) return;
-			
-			const eventType = (el.tagName === "INPUT" && (el.type === "text" || el.type === "number")) || el.tagName === "TEXTAREA" 
-				? "input" 
-				: "change";
-				
+			)
+				return;
+
+			const eventType =
+				(el.tagName === "INPUT" && (el.type === "text" || el.type === "number")) ||
+				el.tagName === "TEXTAREA"
+					? "input"
+					: "change";
+
 			el.addEventListener(eventType, () => {
 				triggerAutoSave();
 			});
@@ -484,7 +532,7 @@
 			projectLead.innerHTML = buildMemberOptions(event.target.value, "");
 		});
 		document.querySelectorAll("[data-close-modal]").forEach((button) => {
-				button.addEventListener("click", () => closeModal(button.dataset.closeModal));
+			button.addEventListener("click", () => closeModal(button.dataset.closeModal));
 		});
 
 		// Filter Button Handler
@@ -493,40 +541,64 @@
 			e.stopPropagation();
 			const sidebar = document.querySelector("[data-filter-sidebar]");
 			sidebar.classList.toggle("open");
-			
+
 			if (sidebar.classList.contains("open")) {
 				const assigneeContainer = document.querySelector("[data-assignee-checkboxes]");
-				const assignees = [...new Set(state.currentTasks.map(t => t.assigned_to_name || "Unassigned"))];
-				const savedAssignees = JSON.parse(localStorage.getItem("taskflow_filter_assignees") || "[]");
-				const savedStatuses = JSON.parse(localStorage.getItem("taskflow_filter_statuses") || "[]");
+				const assignees = [
+					...new Set(state.currentTasks.map((t) => t.assigned_to_name || "Unassigned")),
+				];
+				const savedAssignees = JSON.parse(
+					localStorage.getItem("taskflow_filter_assignees") || "[]",
+				);
+				const savedStatuses = JSON.parse(
+					localStorage.getItem("taskflow_filter_statuses") || "[]",
+				);
 
-				assigneeContainer.innerHTML = assignees.map(name => 
-					`<label><input type="checkbox" value="${escapeHtml(name)}" ${savedAssignees.includes(name) ? "checked" : ""} /> ${escapeHtml(name)}</label>`
-				).join("");
-				
-				document.querySelectorAll("[data-status-checkboxes] input").forEach(input => {
+				assigneeContainer.innerHTML = assignees
+					.map(
+						(name) =>
+							`<label><input type="checkbox" value="${escapeHtml(name)}" ${savedAssignees.includes(name) ? "checked" : ""} /> ${escapeHtml(name)}</label>`,
+					)
+					.join("");
+
+				document.querySelectorAll("[data-status-checkboxes] input").forEach((input) => {
 					input.checked = savedStatuses.includes(input.value);
 				});
 			}
 		});
 
-        // Close filter on outside click
-        document.addEventListener("click", (e) => {
-            const sidebar = document.querySelector("[data-filter-sidebar]");
-            const filterBtn = document.querySelector("[data-filter-button]");
-            if (sidebar && sidebar.classList.contains("open") && !sidebar.contains(e.target) && e.target !== filterBtn) {
-                sidebar.classList.remove("open");
-            }
-        });
+		// Close filter on outside click
+		document.addEventListener("click", (e) => {
+			const sidebar = document.querySelector("[data-filter-sidebar]");
+			const filterBtn = document.querySelector("[data-filter-button]");
+			if (
+				sidebar &&
+				sidebar.classList.contains("open") &&
+				!sidebar.contains(e.target) &&
+				e.target !== filterBtn
+			) {
+				sidebar.classList.remove("open");
+			}
+		});
 		document.querySelector("[data-apply-filter]")?.addEventListener("click", () => {
-			const statusInputs = document.querySelectorAll("[data-status-checkboxes] input:checked");
-			const assigneeInputs = document.querySelectorAll("[data-assignee-checkboxes] input:checked");
-			
+			const statusInputs = document.querySelectorAll(
+				"[data-status-checkboxes] input:checked",
+			);
+			const assigneeInputs = document.querySelectorAll(
+				"[data-assignee-checkboxes] input:checked",
+			);
+
 			state.selectedStatuses = Array.from(statusInputs).map((input) => input.value);
 			state.selectedAssignees = Array.from(assigneeInputs).map((input) => input.value);
 
-			localStorage.setItem("taskflow_filter_statuses", JSON.stringify(state.selectedStatuses));
-			localStorage.setItem("taskflow_filter_assignees", JSON.stringify(state.selectedAssignees));
+			localStorage.setItem(
+				"taskflow_filter_statuses",
+				JSON.stringify(state.selectedStatuses),
+			);
+			localStorage.setItem(
+				"taskflow_filter_assignees",
+				JSON.stringify(state.selectedAssignees),
+			);
 
 			refreshView();
 			document.querySelector("[data-filter-sidebar]")?.classList.remove("open");
@@ -541,7 +613,7 @@
 
 			updateUrlState();
 			refreshView();
-			
+
 			// Close sidebar
 			document.querySelector("[data-filter-sidebar]")?.classList.remove("open");
 		});
@@ -550,13 +622,20 @@
 			refs.sidebarToggle.addEventListener("click", toggleSidebars);
 		}
 		document.addEventListener("keydown", (event) => {
+			if (event.ctrlKey && event.key === "s") {
+				const taskModal = document.querySelector("[data-task-modal]");
+				if (taskModal && taskModal.getAttribute("aria-hidden") !== "true") {
+					event.preventDefault();
+					refs.taskForm.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+					return;
+				}
+			}
 			if (event.key !== "Escape") return;
 			closeModal("project");
 			closeModal("task");
 			closeModal("task-quick");
 			closeMemberDetail();
 			closeSidebars();
-
 		});
 		window.addEventListener("popstate", () => {
 			loadStateFromUrl({ updateUrl: false });
@@ -619,7 +698,8 @@
 
 	function getSelectedTeamName() {
 		if (state.selectedTeam === "all") return "All Teams";
-		const team = state.bootstrap && state.bootstrap.teams.find(t => t.name === state.selectedTeam);
+		const team =
+			state.bootstrap && state.bootstrap.teams.find((t) => t.name === state.selectedTeam);
 		return team ? team.team_name : "Team";
 	}
 
@@ -628,23 +708,24 @@
 		state.navMode = mode;
 
 		// 1. Reset all views to hidden
-		document.querySelectorAll('.taskflow-view-content').forEach(el => el.classList.add('taskflow-hidden'));
-		
+		document
+			.querySelectorAll(".taskflow-view-content")
+			.forEach((el) => el.classList.add("taskflow-hidden"));
+
 		// 2. Hide all team-specific UI components (only when not in dashboard or team mode)
-        if (mode !== "dashboard" && mode !== "team") {
-            const teamElements = [
-                document.querySelector("[data-team-view]"),
-            ];
-            teamElements.forEach(el => el && el.classList.add('taskflow-hidden'));
-        } else {
-            // Ensure team switcher is visible in dashboard and team modes
-            const teamSwitcherParent = document.querySelector("[data-team-switcher]")?.parentElement;
-            if (teamSwitcherParent) teamSwitcherParent.classList.remove('taskflow-hidden');
-        }
+		if (mode !== "dashboard" && mode !== "team") {
+			const teamElements = [document.querySelector("[data-team-view]")];
+			teamElements.forEach((el) => el && el.classList.add("taskflow-hidden"));
+		} else {
+			// Ensure team switcher is visible in dashboard and team modes
+			const teamSwitcherParent =
+				document.querySelector("[data-team-switcher]")?.parentElement;
+			if (teamSwitcherParent) teamSwitcherParent.classList.remove("taskflow-hidden");
+		}
 
 		// 3. Show/Manage mode-specific UI
-		const toolbar = document.querySelector('.taskflow-toolbar');
-		const tabs = document.querySelector('.taskflow-tabs');
+		const toolbar = document.querySelector(".taskflow-toolbar");
+		const tabs = document.querySelector(".taskflow-tabs");
 		const breadcrumb = document.querySelector("[data-project-breadcrumb]");
 		const isPlaceholderMode = NAV_PLACEHOLDER_MODES.includes(mode);
 
@@ -652,35 +733,37 @@
 			// SHOW TEAM UI
 			state.selectedProject = null;
 			state.projectWorkspace = null;
-			toolbar?.classList.add('taskflow-hidden');
-			tabs?.classList.add('taskflow-hidden');
-			
+			toolbar?.classList.add("taskflow-hidden");
+			tabs?.classList.add("taskflow-hidden");
+
 			state.selectedTeam = state.selectedTeam || "all";
 			const teamName = getSelectedTeamName();
 			if (refs.projectTitle) refs.projectTitle.textContent = teamName;
 			if (breadcrumb) breadcrumb.textContent = `Team / ${teamName}`;
 			if (refs.newTaskButton) refs.newTaskButton.disabled = true;
-			
-			document.querySelector("[data-team-view]")?.classList.remove('taskflow-hidden');
-			document.querySelector("[data-team-switcher]")?.parentElement.classList.remove('taskflow-hidden');
-			
+
+			document.querySelector("[data-team-view]")?.classList.remove("taskflow-hidden");
+			document
+				.querySelector("[data-team-switcher]")
+				?.parentElement.classList.remove("taskflow-hidden");
+
 			updateNavActive();
 			renderProjectList();
 		} else if (isPlaceholderMode) {
 			// SHOW PLACEHOLDER UI
-			toolbar?.classList.add('taskflow-hidden');
-			tabs?.classList.add('taskflow-hidden');
+			toolbar?.classList.add("taskflow-hidden");
+			tabs?.classList.add("taskflow-hidden");
 			const label = getNavModeLabel(mode);
 			if (refs.projectTitle) refs.projectTitle.textContent = label;
 			if (breadcrumb) breadcrumb.textContent = label;
-			if (refs.dashboardView) refs.dashboardView.classList.remove('taskflow-hidden');
+			if (refs.dashboardView) refs.dashboardView.classList.remove("taskflow-hidden");
 			renderNavPlaceholder(mode);
 			updateNavActive();
 			renderProjectList();
 		} else {
 			// SHOW PROJECT UI
-			toolbar?.classList.remove('taskflow-hidden');
-			tabs?.classList.remove('taskflow-hidden');
+			toolbar?.classList.remove("taskflow-hidden");
+			tabs?.classList.remove("taskflow-hidden");
 			if (refs.newTaskButton) refs.newTaskButton.disabled = false;
 			updateNavActive();
 			renderProjectList();
@@ -690,19 +773,21 @@
 		if (options.updateUrl !== false) updateUrlState({ replace: options.replace });
 	}
 	async function renderTeamView() {
-		const teamGrid = document.querySelector('[data-team-grid]');
-		const teamTimeline = document.querySelector('[data-team-timeline]');
-		const header = document.querySelector('[data-team-view] h2');
+		const teamGrid = document.querySelector("[data-team-grid]");
+		const teamTimeline = document.querySelector("[data-team-timeline]");
+		const header = document.querySelector("[data-team-view] h2");
 		const teamName = getSelectedTeamName();
-        const viewToggle = document.querySelector('[data-team-view-toggle]');
+		const viewToggle = document.querySelector("[data-team-view-toggle]");
 
 		if (!teamGrid || !teamTimeline) return;
-        
-        viewToggle.querySelectorAll('.taskflow-tab').forEach(t => t.classList.toggle('active', t.dataset.view === state.teamView));
-        
+
+		viewToggle
+			.querySelectorAll(".taskflow-tab")
+			.forEach((t) => t.classList.toggle("active", t.dataset.view === state.teamView));
+
 		if (header) header.textContent = `${teamName} Team Dashboard`;
-        
-        try {
+
+		try {
 			const data = await apiCall("get_dashboard_data");
 			const allGlobalData = data.global_team_data || [];
 			let filteredMembers = allGlobalData;
@@ -711,39 +796,41 @@
 					// We need to fetch team memberships, as they are not directly in global_team_data
 					// Assuming bootstrap.team_members contains this info
 					const memberTeams = ((state.bootstrap && state.bootstrap.team_members) || [])
-						.filter(tm => tm.employee === member.employee)
-						.map(tm => tm.team);
+						.filter((tm) => tm.employee === member.employee)
+						.map((tm) => tm.team);
 					return memberTeams.includes(state.selectedTeam);
 				});
 			}
 
-            if (state.teamView === 'cards') {
-                teamGrid.classList.remove('taskflow-hidden');
-                teamTimeline.classList.add('taskflow-hidden');
-                renderTeamCards(filteredMembers, teamGrid);
-            } else {
-                teamGrid.classList.add('taskflow-hidden');
-                teamTimeline.classList.remove('taskflow-hidden');
-                renderTeamTimeline(filteredMembers, teamTimeline);
-            }
-        } catch (err) {
-            console.error(err);
-            teamGrid.innerHTML = '<div class="taskflow-empty">Error loading team data.</div>';
-        }
-    }
+			if (state.teamView === "cards") {
+				teamGrid.classList.remove("taskflow-hidden");
+				teamTimeline.classList.add("taskflow-hidden");
+				renderTeamCards(filteredMembers, teamGrid);
+			} else {
+				teamGrid.classList.add("taskflow-hidden");
+				teamTimeline.classList.remove("taskflow-hidden");
+				renderTeamTimeline(filteredMembers, teamTimeline);
+			}
+		} catch (err) {
+			console.error(err);
+			teamGrid.innerHTML = '<div class="taskflow-empty">Error loading team data.</div>';
+		}
+	}
 
-    function renderTeamCards(filteredMembers, teamGrid) {
-        if (filteredMembers.length === 0) {
-            teamGrid.innerHTML = '<div class="taskflow-empty">No team members found.</div>';
-            return;
-        }
+	function renderTeamCards(filteredMembers, teamGrid) {
+		if (filteredMembers.length === 0) {
+			teamGrid.innerHTML = '<div class="taskflow-empty">No team members found.</div>';
+			return;
+		}
 
-        teamGrid.innerHTML = filteredMembers.map(m => {
-            const totalTasks = (m.pending_tasks || 0) + (m.completed_tasks || 0);
-            const progress = totalTasks > 0 ? Math.round((m.completed_tasks / totalTasks) * 100) : 0;
-            const projectCount = (m.projects || []).length;
+		teamGrid.innerHTML = filteredMembers
+			.map((m) => {
+				const totalTasks = (m.pending_tasks || 0) + (m.completed_tasks || 0);
+				const progress =
+					totalTasks > 0 ? Math.round((m.completed_tasks / totalTasks) * 100) : 0;
+				const projectCount = (m.projects || []).length;
 
-            return `
+				return `
             <div class="taskflow-team-card" data-member-id='${escapeHtml(m.employee)}' style="margin-bottom: 12px; cursor: pointer; padding: 16px; border: 1px solid var(--taskflow-border); border-radius: 8px;">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                     <div class="taskflow-avatar" style="width: 40px; height: 40px; background: #3b82f6; color: white;">
@@ -762,23 +849,26 @@
                     <div style="width: ${progress}%; height: 100%; background: #10b981; border-radius: 3px;"></div>
                 </div>
             </div>`;
-        }).join('');
+			})
+			.join("");
 
-        teamGrid.querySelectorAll('[data-member-id]').forEach(card => {
-            card.addEventListener('click', () => {
-                const member = filteredMembers.find(m => m.employee === card.dataset.memberId);
-                showMemberDetailsPanel(member);
-                teamGrid.querySelectorAll('.taskflow-team-card').forEach(c => c.style.borderColor = 'var(--taskflow-border)');
-                card.style.borderColor = 'var(--taskflow-primary)';
-            });
-        });
-    }
+		teamGrid.querySelectorAll("[data-member-id]").forEach((card) => {
+			card.addEventListener("click", () => {
+				const member = filteredMembers.find((m) => m.employee === card.dataset.memberId);
+				showMemberDetailsPanel(member);
+				teamGrid
+					.querySelectorAll(".taskflow-team-card")
+					.forEach((c) => (c.style.borderColor = "var(--taskflow-border)"));
+				card.style.borderColor = "var(--taskflow-primary)";
+			});
+		});
+	}
 
-    function showMemberDetailsPanel(m) {
-        const detailPanel = document.querySelector('[data-team-detail]');
-        const projectStats = m.project_stats || [];
+	function showMemberDetailsPanel(m) {
+		const detailPanel = document.querySelector("[data-team-detail]");
+		const projectStats = m.project_stats || [];
 
-        detailPanel.innerHTML = `
+		detailPanel.innerHTML = `
             <div style="display: flex; align-items: flex-start; gap: 24px; margin-bottom: 24px;">
                 <div class="taskflow-avatar" style="width: 80px; height: 80px; font-size: 24px;">
                     ${m.user_image ? `<img src="${m.user_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : initials(m.full_name)}
@@ -790,7 +880,9 @@
             </div>
 
             <h3 style="font-size: 16px; margin-bottom: 16px;">Currently Assigned Projects</h3>
-            ${projectStats.length > 0 ? `
+            ${
+				projectStats.length > 0
+					? `
                 <table class="taskflow-table" style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
                     <thead style="background: #f8fafc;">
                         <tr>
@@ -805,7 +897,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${projectStats.map((p, i) => `
+                        ${projectStats
+							.map(
+								(p, i) => `
                             <tr style="border-bottom: 1px solid #f1f5f9;">
                                 <td style="padding: 12px; color: #64748b;">${i + 1}</td>
                                 <td style="padding: 12px; font-weight: 500;">${escapeHtml(p.name)}</td>
@@ -813,24 +907,28 @@
                                 <td style="padding: 12px; text-align: center; font-size: 12px;">${formatDate(p.end_date)}</td>
                                 <td style="padding: 12px; text-align: center; font-weight: 600;">${p.assigned}</td>
                                 <td style="padding: 12px; text-align: center; font-weight: 600;">${p.pending ?? p.assigned ?? 0}</td>
-                                <td style="padding: 12px; text-align: center; font-weight: 600; color: ${p.overdue > 0 ? '#ef4444' : '#64748b'};">${p.overdue}</td>
+                                <td style="padding: 12px; text-align: center; font-weight: 600; color: ${p.overdue > 0 ? "#ef4444" : "#64748b"};">${p.overdue}</td>
                                 <td style="padding: 12px; text-align: center;">
                                     ${getStatusBadge(p.status)}
                                 </td>
                             </tr>
-                        `).join('')}
+                        `,
+							)
+							.join("")}
                     </tbody>
                 </table>
-            ` : '<p style="color: var(--taskflow-text-muted); font-size: 14px;">No projects currently assigned.</p>'}
+            `
+					: '<p style="color: var(--taskflow-text-muted); font-size: 14px;">No projects currently assigned.</p>'
+			}
         `;
-    }
+	}
 
-    async function renderTeamTimeline(allMembers, container) {
-        try {
-            const data = await apiCall("get_team_workload_planner", { team: state.selectedTeam });
-            const { members, projects } = data;
+	async function renderTeamTimeline(allMembers, container) {
+		try {
+			const data = await apiCall("get_team_workload_planner", { team: state.selectedTeam });
+			const { members, projects } = data;
 
-            container.innerHTML = `
+			container.innerHTML = `
                 <div style="background: white; border-radius: 8px; border: 1px solid #d1d5db; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                     <div style="overflow-x: auto;">
                         <table class="taskflow-table" style="width: 100%; border-collapse: collapse; font-family: 'Inter', system-ui, sans-serif;">
@@ -839,54 +937,63 @@
                                     <th style="padding: 12px 16px; text-align: left; position: sticky; left: 0; background: #f9fafb; z-index: 2; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">Sr No</th>
                                     <th style="padding: 12px 16px; text-align: left; position: sticky; left: 46px; background: #f9fafb; z-index: 2; border-right: 1px solid #d1d5db; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">Team Member</th>
                                     <th style="padding: 12px 16px; text-align: center; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">Workload %</th>
-                                    ${projects.map(p => `<th style="padding: 12px 16px; text-align: center; min-width: 130px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">${escapeHtml(p.project_name)}</th>`).join('')}
+                                    ${projects.map((p) => `<th style="padding: 12px 16px; text-align: center; min-width: 130px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">${escapeHtml(p.project_name)}</th>`).join("")}
                                 </tr>
                             </thead>
                             <tbody style="font-size: 13px;">
-                                ${members.map((m, i) => `
+                                ${members
+									.map(
+										(m, i) => `
                                     <tr style="border-bottom: 1px solid #f3f4f6;">
                                         <td style="padding: 12px 16px; position: sticky; left: 0; background: white; z-index: 1; color: #374151;">${i + 1}</td>
                                         <td style="padding: 12px 16px; position: sticky; left: 46px; background: white; z-index: 1; border-right: 1px solid #e5e7eb; font-weight: 600; color: #111827;">${escapeHtml(m.full_name)}</td>
                                         <td style="padding: 12px 16px; text-align: center;">
                                             <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
                                                 <div style="width: 60px; height: 6px; background: #e5e7eb; border-radius: 3px;">
-                                                    <div style="width: ${m.workload}%; height: 100%; background: ${m.workload > 80 ? '#f43f5e' : '#10b981'}; border-radius: 3px;"></div>
+                                                    <div style="width: ${m.workload}%; height: 100%; background: ${m.workload > 80 ? "#f43f5e" : "#10b981"}; border-radius: 3px;"></div>
                                                 </div>
                                                 <span style="font-weight: 600; font-size: 12px; color: #374151;">${m.workload}%</span>
                                             </div>
                                         </td>
-                                        ${projects.map(p => `
+                                        ${projects
+											.map(
+												(p) => `
                                             <td style="padding: 8px 12px; text-align: center;">
                                                 <button class="taskflow-btn-ghost" onclick="window.toggleProjectAssignment('${m.employee}', '${p.name}')" 
-                                                        style="padding: 4px 12px; border-radius: 12px; border: 1px solid ${m.assignments.includes(p.name) ? '#bbf7d0' : '#e5e7eb'}; background: ${m.assignments.includes(p.name) ? '#f0fdf4' : 'transparent'}; font-size: 11px; font-weight: 600; color: ${m.assignments.includes(p.name) ? '#166534' : '#9ca3af'}; cursor: pointer;">
-                                                    ${m.assignments.includes(p.name) ? 'Assigned' : 'Assign'}
+                                                        style="padding: 4px 12px; border-radius: 12px; border: 1px solid ${m.assignments.includes(p.name) ? "#bbf7d0" : "#e5e7eb"}; background: ${m.assignments.includes(p.name) ? "#f0fdf4" : "transparent"}; font-size: 11px; font-weight: 600; color: ${m.assignments.includes(p.name) ? "#166534" : "#9ca3af"}; cursor: pointer;">
+                                                    ${m.assignments.includes(p.name) ? "Assigned" : "Assign"}
                                                 </button>
                                             </td>
-                                        `).join('')}
+                                        `,
+											)
+											.join("")}
                                     </tr>
-                                `).join('')}
+                                `,
+									)
+									.join("")}
                             </tbody>
                         </table>
                     </div>
                 </div>
             `;
-        } catch (err) {
-            console.error(err);
-            container.innerHTML = '<div class="taskflow-empty">Error loading workload planner.</div>';
-        }
-    }
+		} catch (err) {
+			console.error(err);
+			container.innerHTML =
+				'<div class="taskflow-empty">Error loading workload planner.</div>';
+		}
+	}
 
-    window.toggleProjectAssignment = async (employee, project) => {
-        try {
-            await apiCall("toggle_team_member_assignment", { employee, project }, "POST");
-            renderTeamView();
-        } catch (e) {
-            showMessage("Failed to update assignment.");
-        }
-    };
+	window.toggleProjectAssignment = async (employee, project) => {
+		try {
+			await apiCall("toggle_team_member_assignment", { employee, project }, "POST");
+			renderTeamView();
+		} catch (e) {
+			showMessage("Failed to update assignment.");
+		}
+	};
 	function showMemberDetail(member) {
-		const backdrop = document.createElement('div');
-		backdrop.className = 'taskflow-modal-backdrop open';
+		const backdrop = document.createElement("div");
+		backdrop.className = "taskflow-modal-backdrop open";
 		backdrop.dataset.memberDetailModal = "1";
 		backdrop.innerHTML = `
 			<div class="taskflow-modal">
@@ -912,16 +1019,17 @@
 		document.body.appendChild(backdrop);
 		const close = () => backdrop.remove();
 		backdrop.querySelector("[data-close-member-detail]")?.addEventListener("click", close);
-		backdrop.addEventListener('click', (e) => { if(e.target === backdrop) close(); });
+		backdrop.addEventListener("click", (e) => {
+			if (e.target === backdrop) close();
+		});
 	}
 
 	function closeMemberDetail() {
 		document.querySelectorAll("[data-member-detail-modal]").forEach((modal) => modal.remove());
 	}
 
-
 	function updateNavActive() {
-		refs.navItems.forEach(item => {
+		refs.navItems.forEach((item) => {
 			const isActive = item.dataset.nav === state.navMode;
 			item.classList.toggle("active", isActive);
 			item.setAttribute("aria-current", isActive ? "page" : "false");
@@ -931,7 +1039,7 @@
 	function renderBootstrap() {
 		renderTeamSwitcher();
 		renderProjectList();
-		
+
 		if (state.bootstrap && state.bootstrap.user) {
 			const u = state.bootstrap.user;
 			if (refs.userName) refs.userName.textContent = u.full_name;
@@ -947,9 +1055,10 @@
 		}
 
 		if (refs.myTasksCount && state.bootstrap) {
-			const myTasks = (state.bootstrap.tasks || []).filter(t => 
-				t.assigned_to_user === state.bootstrap.user.user || 
-				t.assigned_to === state.bootstrap.user.full_name
+			const myTasks = (state.bootstrap.tasks || []).filter(
+				(t) =>
+					t.assigned_to_user === state.bootstrap.user.user ||
+					t.assigned_to === state.bootstrap.user.full_name,
 			);
 			refs.myTasksCount.textContent = myTasks.length;
 		}
@@ -962,17 +1071,23 @@
 	function renderTeamSwitcher() {
 		if (!refs.teamSwitcher) return;
 		const teams = (state.bootstrap && state.bootstrap.teams) || [];
-		refs.teamSwitcher.innerHTML = `<option value="all">All Teams</option>` +
-			teams.map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.team_name)}</option>`).join("");
-        
-        if (state.selectedTeam) {
-            refs.teamSwitcher.value = state.selectedTeam;
-        }
+		refs.teamSwitcher.innerHTML =
+			`<option value="all">All Teams</option>` +
+			teams
+				.map(
+					(t) =>
+						`<option value="${escapeHtml(t.name)}">${escapeHtml(t.team_name)}</option>`,
+				)
+				.join("");
+
+		if (state.selectedTeam) {
+			refs.teamSwitcher.value = state.selectedTeam;
+		}
 	}
 
 	function renderProjectList() {
 		const projects = getVisibleProjects();
-		
+
 		if (refs.projectCount) {
 			refs.projectCount.textContent = projects.length;
 		}
@@ -986,7 +1101,10 @@
 
 		refs.projectList.innerHTML = projects
 			.map((project, idx) => {
-				const activeClass = (state.navMode === "dashboard" && project.name === state.selectedProject) ? "active" : "";
+				const activeClass =
+					state.navMode === "dashboard" && project.name === state.selectedProject
+						? "active"
+						: "";
 				const color = colors[idx % colors.length];
 				const initialsStr = initials(project.project_name);
 				const pendingCount = project.open_tasks || 0;
@@ -1012,25 +1130,29 @@
 
 	function renderProjectWorkspace() {
 		const breadcrumb = document.querySelector("[data-project-breadcrumb]");
-		
+
 		if (state.navMode === "my-tasks") {
 			refs.projectTitle.textContent = "My Tasks";
 			if (breadcrumb) breadcrumb.textContent = "My Tasks";
 			refs.newTaskButton.disabled = true;
-			
+
 			// Handle Member Selector for My Tasks
 			if (refs.memberSelectorWrapper && refs.memberSelector) {
 				refs.memberSelectorWrapper.classList.remove("taskflow-hidden");
 				const currentTeam = state.selectedTeam;
-				const members = ((state.bootstrap && state.bootstrap.team_members) || [])
-					.filter(m => currentTeam === "all" || m.team === currentTeam);
-				
+				const members = ((state.bootstrap && state.bootstrap.team_members) || []).filter(
+					(m) => currentTeam === "all" || m.team === currentTeam,
+				);
+
 				const defaultEmployee = getCurrentUserEmployeeId();
 
-				const options = members.map(m => 
-					`<option value="${escapeHtml(m.employee)}" ${m.employee === (state.selectedMember || defaultEmployee) ? 'selected' : ''}>${escapeHtml(m.label)}</option>`
-				).join("");
-				
+				const options = members
+					.map(
+						(m) =>
+							`<option value="${escapeHtml(m.employee)}" ${m.employee === (state.selectedMember || defaultEmployee) ? "selected" : ""}>${escapeHtml(m.label)}</option>`,
+					)
+					.join("");
+
 				refs.memberSelector.innerHTML = options;
 				if (!state.selectedMember) {
 					state.selectedMember = refs.memberSelector.value;
@@ -1038,8 +1160,8 @@
 			}
 
 			const activeEmployee = state.selectedMember;
-			const myTasks = (state.bootstrap.tasks || []).filter(t => 
-				t.assigned_to === activeEmployee
+			const myTasks = (state.bootstrap.tasks || []).filter(
+				(t) => t.assigned_to === activeEmployee,
 			);
 			renderTaskArea(myTasks);
 			return;
@@ -1054,9 +1176,9 @@
 			refs.projectTitle.textContent = "Select Project";
 			if (breadcrumb) breadcrumb.textContent = "None";
 			refs.newTaskButton.disabled = true;
-			
-			const alertContainer = document.querySelector('[data-oldest-task-alert]');
-			if (alertContainer) alertContainer.innerHTML = '';
+
+			const alertContainer = document.querySelector("[data-oldest-task-alert]");
+			if (alertContainer) alertContainer.innerHTML = "";
 
 			renderTaskArea([], "Select a project to view tasks.");
 			return;
@@ -1066,26 +1188,34 @@
 		const tasks = workspace.tasks || [];
 
 		// Calculate oldest pending task
-		const alertContainer = document.querySelector('[data-oldest-task-alert]');
-		const pendingTasks = tasks.filter(t => !["Completed", "Cancelled"].includes(t.status) && t.start_date);
+		const alertContainer = document.querySelector("[data-oldest-task-alert]");
+		const pendingTasks = tasks.filter(
+			(t) => !["Completed", "Cancelled"].includes(t.status) && t.start_date,
+		);
 		if (pendingTasks.length > 0) {
 			pendingTasks.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 			const oldest = pendingTasks[0];
-			const days = Math.floor(Math.abs(new Date() - new Date(oldest.start_date)) / (1000 * 60 * 60 * 24));
-			
-			const member = (state.bootstrap.team_members || []).find(m => m.employee === oldest.assigned_to);
-			const assigneeName = member ? member.label : (oldest.assigned_to || "Unassigned");
+			const days = Math.floor(
+				Math.abs(new Date() - new Date(oldest.start_date)) / (1000 * 60 * 60 * 24),
+			);
+
+			const member = (state.bootstrap.team_members || []).find(
+				(m) => m.employee === oldest.assigned_to,
+			);
+			const assigneeName = member ? member.label : oldest.assigned_to || "Unassigned";
 
 			alertContainer.innerHTML = `<span class="taskflow-oldest-task-alert" style="cursor: pointer;" data-oldest-task-id="${escapeHtml(oldest.name)}">⚠️ ${escapeHtml(assigneeName)} (${days} days pending)</span>`;
-			alertContainer.querySelector('.taskflow-oldest-task-alert').addEventListener('click', () => {
-				openTaskModal(oldest);
-			});
+			alertContainer
+				.querySelector(".taskflow-oldest-task-alert")
+				.addEventListener("click", () => {
+					openTaskModal(oldest);
+				});
 		} else {
-			alertContainer.innerHTML = '';
+			alertContainer.innerHTML = "";
 		}
 
 		const totalTasks = tasks.length;
-		const completedTasks = tasks.filter(t => t.status === "Completed").length;
+		const completedTasks = tasks.filter((t) => t.status === "Completed").length;
 		const pendingCount = totalTasks - completedTasks;
 
 		refs.projectTitle.innerHTML = `
@@ -1096,12 +1226,14 @@
 		`;
 
 		if (breadcrumb) breadcrumb.textContent = project.project_name;
-		refs.newTaskButton.disabled = !(project.permissions.can_manage_team || project.permissions.can_operate_team);
+		refs.newTaskButton.disabled = !(
+			project.permissions.can_manage_team || project.permissions.can_operate_team
+		);
 		renderTaskArea(tasks);
 	}
 
 	function renderTimeline(tasks) {
-		const grid = document.querySelector('[data-timeline-grid]');
+		const grid = document.querySelector("[data-timeline-grid]");
 		if (!grid || !tasks.length) {
 			if (grid) {
 				grid.style.minHeight = "";
@@ -1111,42 +1243,46 @@
 		}
 
 		// Filter tasks with dates
-		const scheduledTasks = tasks.filter(t => parseDateValue(t.start_date) && parseDateValue(t.due_date));
+		const scheduledTasks = tasks.filter(
+			(t) => parseDateValue(t.start_date) && parseDateValue(t.due_date),
+		);
 		if (!scheduledTasks.length) {
 			grid.style.minHeight = "";
 			grid.innerHTML = '<div class="taskflow-empty">No tasks with schedule data.</div>';
 			return;
 		}
 
-		const startDates = scheduledTasks.map(t => parseDateValue(t.start_date).getTime());
-		const endDates = scheduledTasks.map(t => parseDateValue(t.due_date).getTime());
+		const startDates = scheduledTasks.map((t) => parseDateValue(t.start_date).getTime());
+		const endDates = scheduledTasks.map((t) => parseDateValue(t.due_date).getTime());
 		const minDate = Math.min(...startDates);
 		const maxDate = Math.max(...endDates);
 		const duration = maxDate - minDate || 1;
-		grid.style.minHeight = `${Math.max(300, 80 + (scheduledTasks.length * 50))}px`;
+		grid.style.minHeight = `${Math.max(300, 80 + scheduledTasks.length * 50)}px`;
 
 		grid.innerHTML = `
 			<div class="taskflow-timeline-header-row">
 				<span>${new Date(minDate).toLocaleDateString()}</span>
 				<span>${new Date(maxDate).toLocaleDateString()}</span>
 			</div>
-			${scheduledTasks.map((t, index) => {
-				const start = parseDateValue(t.start_date).getTime();
-				const end = parseDateValue(t.due_date).getTime();
-				const left = ((start - minDate) / duration) * 100;
-				const width = Math.max(((end - start) / duration) * 100, 5);
-				return `
-					<div class="taskflow-timeline-task" style="left: ${left}%; width: ${width}%; top: ${50 + (index * 50)}px;">
+			${scheduledTasks
+				.map((t, index) => {
+					const start = parseDateValue(t.start_date).getTime();
+					const end = parseDateValue(t.due_date).getTime();
+					const left = ((start - minDate) / duration) * 100;
+					const width = Math.max(((end - start) / duration) * 100, 5);
+					return `
+					<div class="taskflow-timeline-task" style="left: ${left}%; width: ${width}%; top: ${50 + index * 50}px;">
 						${escapeHtml(t.task_title)}
 					</div>
 				`;
-			}).join("")}
+				})
+				.join("")}
 		`;
 	}
 
 	function renderTaskArea(tasks, emptyMessage) {
 		const visibleTasks = getFilteredTasks(tasks);
-		
+
 		if (refs.root) {
 			refs.root.classList.toggle("is-kanban", state.taskView === "kanban");
 		}
@@ -1157,10 +1293,10 @@
 			{ el: refs.dashboardView, key: "dashboard" },
 			{ el: refs.timelineView, key: "timeline" },
 			{ el: refs.filesView, key: "files" },
-			{ el: refs.settingsView, key: "settings" }
+			{ el: refs.settingsView, key: "settings" },
 		];
 
-		views.forEach(v => {
+		views.forEach((v) => {
 			if (v.el) v.el.classList.toggle("taskflow-hidden", v.key !== state.taskView);
 		});
 
@@ -1170,7 +1306,6 @@
 		}
 
 		if (emptyMessage) {
-
 			renderActiveEmptyState(emptyMessage);
 		} else if (state.taskView === "list") {
 			renderList(visibleTasks);
@@ -1190,13 +1325,15 @@
 	function getFilteredTasks(tasks) {
 		let filtered = tasks;
 		if (state.selectedTeam && state.selectedTeam !== "all") {
-			filtered = filtered.filter(t => t.team === state.selectedTeam);
+			filtered = filtered.filter((t) => t.team === state.selectedTeam);
 		}
 		if (state.selectedStatuses && state.selectedStatuses.length > 0) {
-			filtered = filtered.filter(t => state.selectedStatuses.includes(t.status));
+			filtered = filtered.filter((t) => state.selectedStatuses.includes(t.status));
 		}
 		if (state.selectedAssignees && state.selectedAssignees.length > 0) {
-			filtered = filtered.filter(t => state.selectedAssignees.includes(t.assigned_to_name || "Unassigned"));
+			filtered = filtered.filter((t) =>
+				state.selectedAssignees.includes(t.assigned_to_name || "Unassigned"),
+			);
 		}
 		return filterTasks(filtered);
 	}
@@ -1212,9 +1349,7 @@
 		let tasks = [];
 		if (state.navMode === "my-tasks") {
 			const activeEmployee = state.selectedMember || getCurrentUserEmployeeId();
-			tasks = (state.bootstrap.tasks || []).filter(t => 
-				t.assigned_to === activeEmployee
-			);
+			tasks = (state.bootstrap.tasks || []).filter((t) => t.assigned_to === activeEmployee);
 		} else if (state.projectWorkspace) {
 			tasks = state.projectWorkspace.tasks || [];
 		} else if (state.navMode === "dashboard") {
@@ -1228,42 +1363,56 @@
 	function renderDashboard(tasks) {
 		if (!refs.dashboardView) return;
 
-		const completed = tasks.filter(t => t.status === "Completed").length;
-		const inProgress = tasks.filter(t => t.status === "In Progress").length;
-		const overdue = tasks.filter(t => {
+		const completed = tasks.filter((t) => t.status === "Completed").length;
+		const inProgress = tasks.filter((t) => t.status === "In Progress").length;
+		const overdue = tasks.filter((t) => {
 			const dueDate = parseDateValue(t.due_date);
 			return dueDate && dueDate < new Date() && t.status !== "Completed";
 		}).length;
 		const total = tasks.length;
 
 		const stats = [
-			{ label: "Total Tasks", value: total, trend: "Stable", color: "var(--taskflow-primary)" },
+			{
+				label: "Total Tasks",
+				value: total,
+				trend: "Stable",
+				color: "var(--taskflow-primary)",
+			},
 			{ label: "Completed", value: completed, trend: "+12%", color: "#10b981" },
 			{ label: "In Progress", value: inProgress, trend: "Active", color: "#3b82f6" },
-			{ label: "Overdue", value: overdue, trend: "-2", color: "#ef4444" }
+			{ label: "Overdue", value: overdue, trend: "-2", color: "#ef4444" },
 		];
 
-		const statusBreakdown = getStatusColumns().map(status => {
-			const count = tasks.filter(t => t.status === status).length;
+		const statusBreakdown = getStatusColumns().map((status) => {
+			const count = tasks.filter((t) => t.status === status).length;
 			const percent = total ? Math.round((count / total) * 100) : 0;
 			return { status, count, percent };
 		});
 
 		// Team Performance Data
 		const members = (state.projectWorkspace && state.projectWorkspace.team_members) || [];
-		const performanceCardsHtml = members.map(m => {
-			const memberTasks = tasks.filter(t => t.assigned_to === m.employee || t.assigned_to_user === m.user);
-			const done = memberTasks.filter(t => t.status === "Completed").length;
-			const pending = memberTasks.filter(t => !["Completed", "Cancelled"].includes(t.status)).length;
-			const totalM = memberTasks.length;
-			const rate = totalM ? Math.round((done / totalM) * 100) : 0;
-			const highPriority = memberTasks.filter(t => ["High", "Critical"].includes(t.priority)).length;
-			
-			const loadCount = pending; // Use pending tasks for load calculation
-			const loadClass = loadCount > 8 ? 'load-high' : loadCount > 4 ? 'load-medium' : 'load-low';
-			const loadLabel = loadCount > 8 ? 'high load' : loadCount > 4 ? 'medium load' : 'low load';
-			const score = rate; // Placeholder for performance score
-return `
+		const performanceCardsHtml = members
+			.map((m) => {
+				const memberTasks = tasks.filter(
+					(t) => t.assigned_to === m.employee || t.assigned_to_user === m.user,
+				);
+				const done = memberTasks.filter((t) => t.status === "Completed").length;
+				const pending = memberTasks.filter(
+					(t) => !["Completed", "Cancelled"].includes(t.status),
+				).length;
+				const totalM = memberTasks.length;
+				const rate = totalM ? Math.round((done / totalM) * 100) : 0;
+				const highPriority = memberTasks.filter((t) =>
+					["High", "Critical"].includes(t.priority),
+				).length;
+
+				const loadCount = pending; // Use pending tasks for load calculation
+				const loadClass =
+					loadCount > 8 ? "load-high" : loadCount > 4 ? "load-medium" : "load-low";
+				const loadLabel =
+					loadCount > 8 ? "high load" : loadCount > 4 ? "medium load" : "low load";
+				const score = rate; // Placeholder for performance score
+				return `
 	<div class="taskflow-perf-card">
 		<div class="taskflow-perf-header">
 			<div class="taskflow-perf-user">
@@ -1281,8 +1430,8 @@ return `
 								</div>
 							</div>
 						</div>
-						<div class="taskflow-perf-badge ${rate >= 80 ? 'excellent' : rate >= 50 ? 'good' : 'average'}">
-							${rate >= 80 ? 'Excellent' : rate >= 50 ? 'Good' : 'Average'}
+						<div class="taskflow-perf-badge ${rate >= 80 ? "excellent" : rate >= 50 ? "good" : "average"}">
+							${rate >= 80 ? "Excellent" : rate >= 50 ? "Good" : "Average"}
 						</div>
 					</div>
 					
@@ -1304,7 +1453,7 @@ return `
 							<div class="taskflow-perf-stat-label">Status</div>
 							<div class="taskflow-perf-stat-value" style="font-size: 16px; display: flex; align-items: center; gap: 6px;">
 								<span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></span>
-								${totalM > 0 ? 'Active' : 'Low activity'}
+								${totalM > 0 ? "Active" : "Low activity"}
 							</div>
 						</div>
 					</div>
@@ -1320,11 +1469,14 @@ return `
 					</div>
 				</div>
 			`;
-		}).join("");
+			})
+			.join("");
 
 		refs.dashboardView.innerHTML = `
 			<div class="taskflow-dashboard-grid">
-				${stats.map(s => `
+				${stats
+					.map(
+						(s) => `
 					<div class="taskflow-widget-card">
 						<span class="taskflow-widget-label">${s.label}</span>
 						<span class="taskflow-widget-value" style="color: ${s.color}">${s.value}</span>
@@ -1332,7 +1484,9 @@ return `
 							<span class="${getTrendClass(s.trend)}">${s.trend}</span> vs last week
 						</div>
 					</div>
-				`).join("")}
+				`,
+					)
+					.join("")}
 			</div>
 
 			<div class="taskflow-dashboard-charts">
@@ -1342,7 +1496,9 @@ return `
 						<button class="taskflow-btn-ghost" type="button" aria-label="More chart actions" disabled>⋯</button>
 					</div>
 					<div class="taskflow-progress-list">
-						${statusBreakdown.map(b => `
+						${statusBreakdown
+							.map(
+								(b) => `
 							<div class="taskflow-progress-item">
 								<div class="taskflow-progress-meta">
 									<span>${escapeHtml(b.status)}</span>
@@ -1352,7 +1508,9 @@ return `
 									<div class="taskflow-progress-fill" style="width: ${b.percent}%; background: ${getStatusColor(b.status)}"></div>
 								</div>
 							</div>
-						`).join("")}
+						`,
+							)
+							.join("")}
 					</div>
 				</div>
 
@@ -1386,12 +1544,12 @@ return `
 
 	function getStatusColor(status) {
 		const colors = {
-			"Open": "#64748b",
+			Open: "#64748b",
 			"In Progress": "#3b82f6",
-			"Review": "#f59e0b",
+			Review: "#f59e0b",
 			"On Hold": "#ef4444",
-			"Completed": "#10b981",
-			"Cancelled": "#94a3b8"
+			Completed: "#10b981",
+			Cancelled: "#94a3b8",
 		};
 		return colors[status] || "#cbd5e1";
 	}
@@ -1409,7 +1567,15 @@ return `
 	function renderBoard(tasks) {
 		if (!refs.board) return;
 		const canAddTask = canCreateTask();
-		refs.board.innerHTML = getStatusColumns().map((status) => renderColumn(status, tasks.filter((task) => task.status === status), canAddTask)).join("");
+		refs.board.innerHTML = getStatusColumns()
+			.map((status) =>
+				renderColumn(
+					status,
+					tasks.filter((task) => task.status === status),
+					canAddTask,
+				),
+			)
+			.join("");
 
 		refs.board.querySelectorAll("[data-task-edit]").forEach((button) => {
 			button.addEventListener("click", () => {
@@ -1460,7 +1626,7 @@ return `
 				card.setAttribute("aria-grabbed", "true");
 				event.dataTransfer.effectAllowed = "move";
 				event.dataTransfer.setData("text/plain", state.draggedTaskName);
-				
+
 				document.body.classList.add("taskflow-dragging");
 			});
 
@@ -1468,7 +1634,7 @@ return `
 				card.classList.remove("taskflow-card-dragging");
 				card.setAttribute("aria-grabbed", "false");
 				document.body.classList.remove("taskflow-dragging");
-				
+
 				refs.board.querySelectorAll(".taskflow-column-drop-target").forEach((column) => {
 					column.classList.remove("taskflow-column-drop-target");
 					delete column.dataset.dragCounter;
@@ -1476,7 +1642,7 @@ return `
 				refs.board.querySelectorAll(".taskflow-card-drop-target").forEach((c) => {
 					c.classList.remove("taskflow-card-drop-target");
 				});
-				
+
 				state.draggedTaskName = null;
 				state.suppressTaskClick = true;
 				window.setTimeout(() => {
@@ -1485,7 +1651,8 @@ return `
 			});
 
 			card.addEventListener("dragover", (event) => {
-				if (!state.draggedTaskName || state.draggedTaskName === card.dataset.taskCard) return;
+				if (!state.draggedTaskName || state.draggedTaskName === card.dataset.taskCard)
+					return;
 				event.preventDefault();
 				event.stopPropagation();
 				card.classList.add("taskflow-card-drop-target");
@@ -1496,16 +1663,17 @@ return `
 			});
 
 			card.addEventListener("drop", async (event) => {
-				if (!state.draggedTaskName || state.draggedTaskName === card.dataset.taskCard) return;
+				if (!state.draggedTaskName || state.draggedTaskName === card.dataset.taskCard)
+					return;
 				event.preventDefault();
 				event.stopPropagation();
 				card.classList.remove("taskflow-card-drop-target");
-				
+
 				const draggedTaskName = state.draggedTaskName;
 				const targetTaskName = card.dataset.taskCard;
 				const column = card.closest("[data-status]");
 				const nextStatus = column ? column.dataset.status : null;
-				
+
 				if (draggedTaskName && nextStatus) {
 					await moveTaskToPosition(draggedTaskName, nextStatus, targetTaskName);
 				}
@@ -1520,19 +1688,19 @@ return `
 				column.classList.add("taskflow-column-dragging");
 				event.dataTransfer.effectAllowed = "move";
 				event.dataTransfer.setData("text/kanban-status", state.draggedStatus);
-				
+
 				document.body.classList.add("taskflow-dragging");
 			});
 
 			column.addEventListener("dragend", () => {
 				column.classList.remove("taskflow-column-dragging");
 				document.body.classList.remove("taskflow-dragging");
-				
+
 				refs.board.querySelectorAll(".taskflow-column-drop-target").forEach((col) => {
 					col.classList.remove("taskflow-column-drop-target");
 					delete col.dataset.dragCounter;
 				});
-				
+
 				state.draggedStatus = null;
 			});
 
@@ -1552,12 +1720,12 @@ return `
 				if (state.draggedTaskName) {
 					const task = findTask(state.draggedTaskName);
 					if (!task || !canUpdateTaskStatus(task)) return;
-					
+
 					event.preventDefault();
 					let counter = parseInt(column.dataset.dragCounter || "0", 10);
 					counter++;
 					column.dataset.dragCounter = counter;
-					
+
 					if (counter === 1) {
 						column.classList.add("taskflow-column-drop-target");
 					}
@@ -1572,7 +1740,7 @@ return `
 					let counter = parseInt(column.dataset.dragCounter || "0", 10);
 					counter--;
 					column.dataset.dragCounter = counter;
-					
+
 					if (counter <= 0) {
 						column.classList.remove("taskflow-column-drop-target");
 						delete column.dataset.dragCounter;
@@ -1586,9 +1754,10 @@ return `
 				event.preventDefault();
 				column.classList.remove("taskflow-column-drop-target");
 				delete column.dataset.dragCounter;
-				
+
 				if (state.draggedTaskName) {
-					const taskName = event.dataTransfer.getData("text/plain") || state.draggedTaskName;
+					const taskName =
+						event.dataTransfer.getData("text/plain") || state.draggedTaskName;
 					const nextStatus = column.dataset.status;
 					if (taskName && nextStatus) {
 						await moveTaskToPosition(taskName, nextStatus, null);
@@ -1631,14 +1800,16 @@ return `
 					<table class="taskflow-super-table">
 						<thead>
 							<tr>
-								${LIST_COLUMNS.map((column) => `
+								${LIST_COLUMNS.map(
+									(column) => `
 									<th>
 										<button type="button" class="taskflow-super-sort" data-sort-key="${column.key}" aria-sort="none">
 											<span>${escapeHtml(column.label)}</span>
 											<span class="taskflow-super-sort-icon">${getSortIndicator(column.key)}</span>
 										</button>
 									</th>
-								`).join("")}
+								`,
+								).join("")}
 							</tr>
 						</thead>
 						<tbody data-task-table-body></tbody>
@@ -1675,7 +1846,8 @@ return `
 		if (!state.listTable || !sortKey) return;
 
 		if (state.listTable.sortKey === sortKey) {
-			state.listTable.sortDirection = state.listTable.sortDirection === "asc" ? "desc" : "asc";
+			state.listTable.sortDirection =
+				state.listTable.sortDirection === "asc" ? "desc" : "asc";
 		} else {
 			state.listTable.sortKey = sortKey;
 			state.listTable.sortDirection = getDefaultListSortDirection(sortKey);
@@ -1685,7 +1857,11 @@ return `
 	}
 
 	function getDefaultListSortDirection(sortKey) {
-		return ["modified", "start_date", "due_date", "estimated_completion_date", "age"].includes(sortKey) ? "desc" : "asc";
+		return ["modified", "start_date", "due_date", "estimated_completion_date", "age"].includes(
+			sortKey,
+		)
+			? "desc"
+			: "asc";
 	}
 
 	function getSortIndicator(sortKey) {
@@ -1734,7 +1910,10 @@ return `
 
 		refs.listBody.innerHTML = `
 			${topSpacer > 0 ? renderListSpacerRow(topSpacer) : ""}
-			${tasks.slice(start, end).map((task, index) => renderListRow(task, start + index)).join("")}
+			${tasks
+				.slice(start, end)
+				.map((task, index) => renderListRow(task, start + index))
+				.join("")}
 			${bottomSpacer > 0 ? renderListSpacerRow(bottomSpacer) : ""}
 		`;
 
@@ -1749,7 +1928,14 @@ return `
 		if (!refs.listSortButtons || !state.listTable) return;
 		refs.listSortButtons.forEach((button) => {
 			const active = button.dataset.sortKey === state.listTable.sortKey;
-			button.setAttribute("aria-sort", active ? (state.listTable.sortDirection === "asc" ? "ascending" : "descending") : "none");
+			button.setAttribute(
+				"aria-sort",
+				active
+					? state.listTable.sortDirection === "asc"
+						? "ascending"
+						: "descending"
+					: "none",
+			);
 			button.classList.toggle("is-active", active);
 		});
 	}
@@ -1875,7 +2061,9 @@ return `
 
 	function renderColumn(status, tasks, canAddTask) {
 		const dotColor = getStatusColor(status);
-		const sortedTasks = [...tasks].sort((a, b) => (Number(a.sequence || 0) - Number(b.sequence || 0)));
+		const sortedTasks = [...tasks].sort(
+			(a, b) => Number(a.sequence || 0) - Number(b.sequence || 0),
+		);
 		return `
 			<section class="taskflow-column" data-status="${escapeHtml(status)}" draggable="true">
 				<div class="taskflow-column-header">
@@ -1898,9 +2086,12 @@ return `
 		const draggable = canUpdateTaskStatus(task);
 		const projectTitle = task.project_title || task.project || "No Project";
 		const statuses = getStatusColumns();
-		const statusOptions = statuses.map(s => 
-			`<option value="${escapeHtml(s)}" ${s === task.status ? 'selected' : ''}>${escapeHtml(s)}</option>`
-		).join("");
+		const statusOptions = statuses
+			.map(
+				(s) =>
+					`<option value="${escapeHtml(s)}" ${s === task.status ? "selected" : ""}>${escapeHtml(s)}</option>`,
+			)
+			.join("");
 
 		return `
 			<article class="taskflow-card ${draggable ? "taskflow-card-draggable" : ""}" data-task-card="${escapeHtml(task.name)}" data-task-edit="${escapeHtml(task.name)}" draggable="${draggable ? "true" : "false"}" aria-grabbed="false">
@@ -1931,7 +2122,7 @@ return `
 	function openProjectModal(project) {
 		state.projectModalMode = project ? "edit" : "create";
 		refs.projectFormTitle.textContent = project ? "Edit Project" : "Create Project";
-		
+
 		const submitBtn = refs.projectForm.querySelector('button[type="submit"]');
 		if (submitBtn) submitBtn.textContent = project ? "Save Changes" : "Create Project";
 
@@ -1947,7 +2138,10 @@ return `
 		form.elements.end_date.value = dateInputValue(project ? project.end_date : "");
 		form.elements.expected_hours.value = project ? project.expected_hours || "" : "";
 		form.elements.completion_percent.value = project ? project.completion_percent || 0 : 0;
-		form.elements.project_lead.innerHTML = buildMemberOptions(project ? project.team : null, project ? project.project_lead : "");
+		form.elements.project_lead.innerHTML = buildMemberOptions(
+			project ? project.team : null,
+			project ? project.project_lead : "",
+		);
 		form.elements.description.value = project ? stripHtml(project.description || "") : "";
 		toggleModal(refs.projectModal, true);
 	}
@@ -1974,7 +2168,10 @@ return `
 
 			getFormElement(form, "team").value = currentProject.team;
 			getFormElement(form, "status").value = "Open";
-			getFormElement(form, "assigned_to").innerHTML = buildMemberOptions(currentProject.team, "");
+			getFormElement(form, "assigned_to").innerHTML = buildMemberOptions(
+				currentProject.team,
+				"",
+			);
 			getFormElement(form, "priority").value = "Medium";
 			getFormElement(form, "task_type").value = "Task";
 			syncTaskDatepickers(form);
@@ -2008,8 +2205,8 @@ return `
 	}
 	function updateAvatar(employeeId) {
 		const avatarContainer = document.querySelector("[data-assigned-avatar-large]");
-		const member = (state.bootstrap.team_members || []).find(m => m.employee === employeeId);
-		
+		const member = (state.bootstrap.team_members || []).find((m) => m.employee === employeeId);
+
 		if (member && member.user_image) {
 			avatarContainer.innerHTML = `<img src="${member.user_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
 		} else {
@@ -2020,7 +2217,7 @@ return `
 	function _populateAdvancedTaskForm(task, currentProject) {
 		const form = refs.taskForm;
 		const team = task.team || (currentProject ? currentProject.team : "");
-		
+
 		const setVal = (name, val) => {
 			if (form.elements[name]) form.elements[name].value = val || "";
 		};
@@ -2032,21 +2229,27 @@ return `
 		setVal("status", task.status);
 		setVal("priority", task.priority);
 		setVal("task_type", task.task_type || "Task");
-		
+
 		if (form.elements.assigned_to) {
 			form.elements.assigned_to.innerHTML = buildMemberOptions(team, task.assigned_to);
 		}
-		
+
 		setVal("start_date", dateInputValue(task.start_date));
 		setVal("due_date", dateInputValue(task.due_date));
 		setVal("estimated_completion_date", dateInputValue(task.estimated_completion_date));
 		setVal("estimated_hours", task.estimated_hours || "");
 		syncTaskDatepickers(form);
 		setVal("description", stripHtml(task.description || ""));
-		
-		if (form.elements.is_milestone) form.elements.is_milestone.checked = Boolean(task.is_milestone);
+		// load into Quill
+		if (window._taskDescEditor) {
+			const raw = task.description || "";
+			window._taskDescEditor.root.innerHTML = raw;
+		}
+
+		if (form.elements.is_milestone)
+			form.elements.is_milestone.checked = Boolean(task.is_milestone);
 		if (form.elements.is_blocked) form.elements.is_blocked.checked = Boolean(task.is_blocked);
-		
+
 		updateAvatar(task.assigned_to);
 		if (form.elements.assigned_to) {
 			form.elements.assigned_to.addEventListener("change", (e) => {
@@ -2054,58 +2257,65 @@ return `
 				triggerAutoSave({ immediate: true });
 			});
 		}
-		
+
 		const idLabel = document.querySelector("[data-task-id-label]");
-		if (idLabel) idLabel.textContent = (task.name && task.name.includes("-")) ? task.name.split("-").pop() : (task.name || "");
-		
+		if (idLabel)
+			idLabel.textContent =
+				task.name && task.name.includes("-")
+					? task.name.split("-").pop()
+					: task.name || "";
+
 		const projectBreadcrumb = document.querySelector("[data-task-project-breadcrumb]");
 		const typeBreadcrumb = document.querySelector("[data-task-type-breadcrumb]");
-		if (projectBreadcrumb) projectBreadcrumb.textContent = task.project_title || task.project || "";
+		if (projectBreadcrumb)
+			projectBreadcrumb.textContent = task.project_title || task.project || "";
 		if (typeBreadcrumb) typeBreadcrumb.textContent = task.task_type || "Task";
-
-		const avatarLarge = document.querySelector("[data-assigned-avatar-large]");
-		if (avatarLarge) avatarLarge.textContent = initials(task.assigned_to || "UA");
 
 		state.currentChecklist = task.checklist || [];
 		renderChecklist();
 		renderComments(Array.isArray(task.comments) ? task.comments : []);
-        // Re-fetch details logic should be triggered here if needed
+		// Re-fetch details logic should be triggered here if needed
 		toggleModal(refs.taskModal, true);
 	}
 
 	function renderChecklist() {
 		const list = document.querySelector("[data-checklist-list]");
 		const countLabel = document.querySelector("[data-checklist-count]");
-        const pendingContainer = document.querySelector("[data-pending-checklist-indicator]");
+		const pendingContainer = document.querySelector("[data-pending-checklist-indicator]");
 		if (!list) return;
 
 		const items = state.currentChecklist;
-        const pendingItems = items.filter(i => !i.is_completed);
+		const pendingItems = items.filter((i) => !i.is_completed);
 
 		if (countLabel) countLabel.textContent = `${items.length} items`;
-        if (pendingContainer) {
-            if (pendingItems.length > 0) {
-                pendingContainer.innerHTML = `<span style="color: #ef4444; font-weight: 700; font-size: 12px; margin-left: 8px;">(${pendingItems.length} pending checklist items)</span>`;
-            } else {
-                pendingContainer.innerHTML = '';
-            }
-        }
+		if (pendingContainer) {
+			if (pendingItems.length > 0) {
+				pendingContainer.innerHTML = `<span style="color: #ef4444; font-weight: 700; font-size: 12px; margin-left: 8px;">(${pendingItems.length} pending checklist items)</span>`;
+			} else {
+				pendingContainer.innerHTML = "";
+			}
+		}
 
 		if (!items.length) {
-			list.innerHTML = '<div class="taskflow-muted" style="font-size: 12px; padding: 12px; text-align: center;">No checklist items.</div>';
+			list.innerHTML =
+				'<div class="taskflow-muted" style="font-size: 12px; padding: 12px; text-align: center;">No checklist items.</div>';
 			return;
 		}
 
-		list.innerHTML = items.map((item, index) => `
-			<div class="taskflow-checklist-item ${item.is_completed ? 'is-completed' : ''}">
+		list.innerHTML = items
+			.map(
+				(item, index) => `
+			<div class="taskflow-checklist-item ${item.is_completed ? "is-completed" : ""}">
 				<label class="taskflow-checkbox-wrapper">
-					<input type="checkbox" data-toggle-checklist-item="${index}" data-checklist-row-name="${escapeHtml(item.name || "")}" ${item.is_completed ? 'checked' : ''}>
+					<input type="checkbox" data-toggle-checklist-item="${index}" data-checklist-row-name="${escapeHtml(item.name || "")}" ${item.is_completed ? "checked" : ""}>
 					<span class="taskflow-checkbox-custom"></span>
 				</label>
 				<input type="text" class="taskflow-checklist-input" data-edit-checklist-item="${index}" value="${escapeHtml(item.checklist_item)}" />
 				<button class="taskflow-checklist-remove" type="button" data-remove-checklist-item="${index}" title="Remove item">&times;</button>
 			</div>
-		`).join("");
+		`,
+			)
+			.join("");
 	}
 
 	function addChecklistItem() {
@@ -2116,7 +2326,7 @@ return `
 		state.currentChecklist.push({
 			checklist_item: value,
 			is_completed: 0,
-			sequence: (state.currentChecklist.length + 1) * 10
+			sequence: (state.currentChecklist.length + 1) * 10,
 		});
 
 		input.value = "";
@@ -2136,7 +2346,9 @@ return `
 			index,
 			checked,
 			itemFound: Boolean(item),
-			item: item ? { checklist_item: item.checklist_item, is_completed: item.is_completed } : null,
+			item: item
+				? { checklist_item: item.checklist_item, is_completed: item.is_completed }
+				: null,
 		});
 		if (!item) return;
 
@@ -2185,35 +2397,38 @@ return `
 	function renderComments(comments) {
 		const list = document.querySelector("[data-comment-list]");
 		if (!list) return;
-		
+
 		if (!comments || !comments.length) {
-			list.innerHTML = '<div class="taskflow-muted" style="text-align: center; padding: 16px;">No comments yet.</div>';
+			list.innerHTML =
+				'<div class="taskflow-muted" style="text-align: center; padding: 16px;">No comments yet.</div>';
 			return;
 		}
-		
+
 		const currentUser = state.bootstrap && state.bootstrap.user && state.bootstrap.user.user;
-		
+
 		// Sort or reverse comments to ensure newest is at the bottom
 		// Assuming the API returns newest first, we reverse it.
 		const displayComments = [...comments].reverse();
 
-		list.innerHTML = displayComments.map(c => {
-			const isMe = c.owner === currentUser;
-			return `
-				<div class="taskflow-comment-item ${isMe ? 'is-me' : ''}">
+		list.innerHTML = displayComments
+			.map((c) => {
+				const isMe = c.owner === currentUser;
+				return `
+				<div class="taskflow-comment-item ${isMe ? "is-me" : ""}">
 					<div class="taskflow-assignee-avatar" style="width: 28px; height: 28px; font-size: 11px; flex-shrink: 0;">
 						${c.author_image ? `<img src="${c.author_image}" alt="" style="width: 100%; height: 100%; object-fit: cover;">` : initials(c.author_name)}
 					</div>
 					<div class="taskflow-comment-content">
 						<div class="taskflow-comment-header">
-							<span class="taskflow-comment-author">${escapeHtml(isMe ? 'You' : c.author_name)}</span>
+							<span class="taskflow-comment-author">${escapeHtml(isMe ? "You" : c.author_name)}</span>
 							<span class="taskflow-comment-date">${prettyDate(c.creation)}</span>
 						</div>
 						<div class="taskflow-comment-text">${escapeHtml(c.content)}</div>
 					</div>
 				</div>
 			`;
-		}).join("");
+			})
+			.join("");
 
 		// Scroll to bottom immediately and after a short delay to ensure rendering is complete
 		list.scrollTop = list.scrollHeight;
@@ -2226,16 +2441,20 @@ return `
 		const form = refs.taskForm;
 		const taskName = form.elements.name.value;
 		const content = form.elements.new_comment.value.trim();
-		
+
 		if (!taskName || !content) return;
-		
+
 		const postButton = document.querySelector("[data-post-comment]");
 		if (postButton) postButton.disabled = true;
-		
+
 		try {
-			await apiCall("add_task_comment", { payload: JSON.stringify({ task: taskName, content: content }) }, "POST");
+			await apiCall(
+				"add_task_comment",
+				{ payload: JSON.stringify({ task: taskName, content: content }) },
+				"POST",
+			);
 			form.elements.new_comment.value = "";
-			
+
 			// Refresh comments
 			const details = await apiCall("get_task_details", { task: taskName });
 			if (details && details.comments) {
@@ -2251,23 +2470,25 @@ return `
 	function prettyDate(dateStr) {
 		const date = parseDateValue(dateStr);
 		if (!date) return "";
-		
-		const diff = (((new Date()).getTime() - date.getTime()) / 1000);
+
+		const diff = (new Date().getTime() - date.getTime()) / 1000;
 		const day_diff = Math.floor(diff / 86400);
 
 		if (isNaN(day_diff) || day_diff < 0) return "";
 
-		return day_diff == 0 && (
-			diff < 60 && "just now" ||
-			diff < 120 && "1 minute ago" ||
-			diff < 3600 && Math.floor(diff / 60) + " minutes ago" ||
-			diff < 7200 && "1 hour ago" ||
-			diff < 86400 && Math.floor(diff / 3600) + " hours ago") ||
-			day_diff == 1 && "Yesterday" ||
-			day_diff < 7 && day_diff + " days ago" ||
-			day_diff < 31 && Math.ceil(day_diff / 7) + " weeks ago" ||
-			day_diff < 365 && Math.ceil(day_diff / 30) + " months ago" ||
-			Math.ceil(day_diff / 365) + " years ago";
+		return (
+			(day_diff == 0 &&
+				((diff < 60 && "just now") ||
+					(diff < 120 && "1 minute ago") ||
+					(diff < 3600 && Math.floor(diff / 60) + " minutes ago") ||
+					(diff < 7200 && "1 hour ago") ||
+					(diff < 86400 && Math.floor(diff / 3600) + " hours ago"))) ||
+			(day_diff == 1 && "Yesterday") ||
+			(day_diff < 7 && day_diff + " days ago") ||
+			(day_diff < 31 && Math.ceil(day_diff / 7) + " weeks ago") ||
+			(day_diff < 365 && Math.ceil(day_diff / 30) + " months ago") ||
+			Math.ceil(day_diff / 365) + " years ago"
+		);
 	}
 
 	async function submitProjectForm(event) {
@@ -2300,7 +2521,7 @@ return `
 		const form = event.currentTarget;
 		if (form.dataset.saving === "1") return;
 		if (!validateTaskDates(form)) return;
-		
+
 		const submitBtn = form.querySelector('button[type="submit"]');
 		const originalText = submitBtn.textContent;
 		submitBtn.textContent = "Creating...";
@@ -2308,6 +2529,11 @@ return `
 
 		setFormSaving(form, true);
 		try {
+			// sync Quill content to hidden input (only for advanced task form)
+			if (window._taskDescEditor && form === refs.taskForm) {
+				const hiddenDesc = refs.taskForm.querySelector('input[name="description"]');
+				if (hiddenDesc) hiddenDesc.value = window._taskDescEditor.root.innerHTML;
+			}
 			const payload = getTaskFormPayload(form);
 			await saveTask(payload);
 			// Refresh list view after creation
@@ -2345,28 +2571,39 @@ return `
 		return true;
 	}
 
-		function getTaskFormPayload(form) {
-			console.log("Current checklist in payload:", state.currentChecklist);
-			return {
-				name: getFormValue(form, "name") || undefined,
-				project: getFormValue(form, "project") || (state.projectWorkspace && state.projectWorkspace.project ? state.projectWorkspace.project.name : ""),
-				team: getFormValue(form, "team") || (state.projectWorkspace && state.projectWorkspace.project ? state.projectWorkspace.project.team : ""),
-				task_title: getFormValue(form, "task_title"),
-				status: getFormValue(form, "status", "Open"),
-				priority: getFormValue(form, "priority", "Medium"),
-				task_type: getFormValue(form, "task_type", "Task"),
-				assigned_to: getFormValue(form, "assigned_to") || null,
-				start_date: normalizeDateForPayload(getFormValue(form, "start_date")),
-				due_date: normalizeDateForPayload(getFormValue(form, "due_date")),
-				estimated_completion_date: normalizeDateForPayload(getFormValue(form, "estimated_completion_date")),
-				estimated_hours: getFormValue(form, "estimated_hours", 0) || 0,
-				sequence: getFormValue(form, "sequence") || null,
-				description: getFormValue(form, "description", ""),
-				is_milestone: getFormChecked(form, "is_milestone") ? 1 : 0,
-				is_blocked: getFormChecked(form, "is_blocked") ? 1 : 0,
-				checklist: state.currentChecklist,
-			};
-		}
+	function getTaskFormPayload(form) {
+		console.log("Current checklist in payload:", state.currentChecklist);
+		// sync EditorJS content to hidden input synchronously (last saved value)
+		return {
+			name: getFormValue(form, "name") || undefined,
+			project:
+				getFormValue(form, "project") ||
+				(state.projectWorkspace && state.projectWorkspace.project
+					? state.projectWorkspace.project.name
+					: ""),
+			team:
+				getFormValue(form, "team") ||
+				(state.projectWorkspace && state.projectWorkspace.project
+					? state.projectWorkspace.project.team
+					: ""),
+			task_title: getFormValue(form, "task_title"),
+			status: getFormValue(form, "status", "Open"),
+			priority: getFormValue(form, "priority", "Medium"),
+			task_type: getFormValue(form, "task_type", "Task"),
+			assigned_to: getFormValue(form, "assigned_to") || null,
+			start_date: normalizeDateForPayload(getFormValue(form, "start_date")),
+			due_date: normalizeDateForPayload(getFormValue(form, "due_date")),
+			estimated_completion_date: normalizeDateForPayload(
+				getFormValue(form, "estimated_completion_date"),
+			),
+			estimated_hours: getFormValue(form, "estimated_hours", 0) || 0,
+			sequence: getFormValue(form, "sequence") || null,
+			description: getFormValue(form, "description", ""),
+			is_milestone: getFormChecked(form, "is_milestone") ? 1 : 0,
+			is_blocked: getFormChecked(form, "is_blocked") ? 1 : 0,
+			checklist: state.currentChecklist,
+		};
+	}
 
 	function triggerChecklistAutoSave(options = {}) {
 		const form = refs.taskForm;
@@ -2380,7 +2617,7 @@ return `
 			const statusEl = document.querySelector("[data-task-save-status]");
 			const textEl = document.querySelector("[data-task-save-text]");
 			const iconEl = document.querySelector("[data-task-save-icon]");
-			
+
 			if (statusEl) {
 				textEl.textContent = "Saving...";
 				iconEl.classList.add("taskflow-hidden");
@@ -2405,7 +2642,7 @@ return `
 				iconEl.textContent = "✓";
 				iconEl.classList.add("taskflow-save-icon-green");
 				iconEl.classList.remove("taskflow-hidden");
-				
+
 				setTimeout(() => {
 					statusEl.style.opacity = "0";
 				}, 2000);
@@ -2425,12 +2662,18 @@ return `
 			const statusEl = document.querySelector("[data-task-save-status]");
 			const textEl = document.querySelector("[data-task-save-text]");
 			const iconEl = document.querySelector("[data-task-save-icon]");
-			
+
 			if (statusEl) {
 				textEl.textContent = "Saving...";
 				iconEl.classList.add("taskflow-hidden");
 				iconEl.classList.remove("taskflow-save-icon-green");
 				statusEl.style.opacity = "1";
+			}
+
+			// sync Quill to hidden input
+			if (window._taskDescEditor && form === refs.taskForm) {
+				const hiddenDesc = refs.taskForm.querySelector('input[name="description"]');
+				if (hiddenDesc) hiddenDesc.value = window._taskDescEditor.root.innerHTML;
 			}
 
 			const payload = getTaskFormPayload(form);
@@ -2441,7 +2684,7 @@ return `
 				iconEl.textContent = "✓";
 				iconEl.classList.add("taskflow-save-icon-green");
 				iconEl.classList.remove("taskflow-hidden");
-				
+
 				setTimeout(() => {
 					statusEl.style.opacity = "0";
 				}, 2000);
@@ -2451,7 +2694,11 @@ return `
 
 	async function saveProject(payload) {
 		try {
-			const result = await apiCall("save_project", { payload: JSON.stringify(payload) }, "POST");
+			const result = await apiCall(
+				"save_project",
+				{ payload: JSON.stringify(payload) },
+				"POST",
+			);
 			closeModal("project");
 			await loadBootstrap((result && result.name) || payload.name || state.selectedProject);
 		} catch (error) {
@@ -2466,10 +2713,12 @@ return `
 			if (options.isAutoSave) {
 				console.log("[Taskflow Checklist] Auto-save success", {
 					task: payload.name || null,
-					checklistCount: Array.isArray(payload.checklist) ? payload.checklist.length : 0,
+					checklistCount: Array.isArray(payload.checklist)
+						? payload.checklist.length
+						: 0,
 				});
 			}
-			
+
 			if (!options.isAutoSave) {
 				closeModal("task");
 				closeModal("task-quick");
@@ -2499,10 +2748,16 @@ return `
 
 	async function saveTaskChecklist(payload) {
 		try {
-			const result = await apiCall("save_task_checklist", { payload: JSON.stringify(payload) }, "POST");
+			const result = await apiCall(
+				"save_task_checklist",
+				{ payload: JSON.stringify(payload) },
+				"POST",
+			);
 			if (result && result.task) {
 				replaceTaskInState(result.task);
-				state.currentChecklist = Array.isArray(result.task.checklist) ? result.task.checklist : state.currentChecklist;
+				state.currentChecklist = Array.isArray(result.task.checklist)
+					? result.task.checklist
+					: state.currentChecklist;
 				renderChecklist();
 				refreshView();
 			}
@@ -2524,10 +2779,16 @@ return `
 
 	async function saveTaskChecklistToggle(payload) {
 		try {
-			const result = await apiCall("toggle_task_checklist_item", { payload: JSON.stringify(payload) }, "POST");
+			const result = await apiCall(
+				"toggle_task_checklist_item",
+				{ payload: JSON.stringify(payload) },
+				"POST",
+			);
 			if (result && result.task) {
 				replaceTaskInState(result.task);
-				state.currentChecklist = Array.isArray(result.task.checklist) ? result.task.checklist : state.currentChecklist;
+				state.currentChecklist = Array.isArray(result.task.checklist)
+					? result.task.checklist
+					: state.currentChecklist;
 				renderChecklist();
 				refreshView();
 			}
@@ -2562,7 +2823,9 @@ return `
 		if (open) {
 			element.classList.add("open");
 			element.setAttribute("aria-hidden", "false");
-			const focusTarget = element.querySelector("input:not([type='hidden']), select, textarea, button");
+			const focusTarget = element.querySelector(
+				"input:not([type='hidden']), select, textarea, button",
+			);
 			focusTarget?.focus();
 		} else {
 			element.classList.remove("open");
@@ -2572,20 +2835,29 @@ return `
 
 	function buildTeamOptions(selected) {
 		return ((state.bootstrap && state.bootstrap.teams) || [])
-			.map((team) => `<option value="${escapeHtml(team.name)}" ${team.name === selected ? "selected" : ""}>${escapeHtml(team.team_name)} (${escapeHtml(team.team_code)})</option>`)
+			.map(
+				(team) =>
+					`<option value="${escapeHtml(team.name)}" ${team.name === selected ? "selected" : ""}>${escapeHtml(team.team_name)} (${escapeHtml(team.team_code)})</option>`,
+			)
 			.join("");
 	}
 
 	function buildMemberOptions(teamName, selected) {
-		const members = ((state.bootstrap && state.bootstrap.team_members) || []).filter((member) => member.team === teamName);
+		const members = ((state.bootstrap && state.bootstrap.team_members) || []).filter(
+			(member) => member.team === teamName,
+		);
 		const options = ['<option value="">Not set</option>'];
 		let selectedFound = !selected;
 		members.forEach((member) => {
 			if (member.employee === selected) selectedFound = true;
-			options.push(`<option value="${escapeHtml(member.employee || "")}" ${member.employee === selected ? "selected" : ""}>${escapeHtml(member.label)}</option>`);
+			options.push(
+				`<option value="${escapeHtml(member.employee || "")}" ${member.employee === selected ? "selected" : ""}>${escapeHtml(member.label)}</option>`,
+			);
 		});
 		if (!selectedFound) {
-			options.push(`<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)}</option>`);
+			options.push(
+				`<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)}</option>`,
+			);
 		}
 		return options.join("");
 	}
@@ -2628,8 +2900,9 @@ return `
 	function getCurrentUserEmployeeId() {
 		if (!state.bootstrap || !state.bootstrap.user) return null;
 		const currentUserEmail = state.bootstrap.user.user;
-		const member = ((state.bootstrap && state.bootstrap.team_members) || [])
-			.find(m => m.user === currentUserEmail);
+		const member = ((state.bootstrap && state.bootstrap.team_members) || []).find(
+			(m) => m.user === currentUserEmail,
+		);
 		return member ? member.employee : null;
 	}
 
@@ -2651,11 +2924,15 @@ return `
 	function getVisibleProjects(options = {}) {
 		let projects = (state.bootstrap && state.bootstrap.projects) || [];
 		if (state.selectedTeam && state.selectedTeam !== "all") {
-			projects = projects.filter(project => project.team === state.selectedTeam);
+			projects = projects.filter((project) => project.team === state.selectedTeam);
 		}
 		if (!options.ignoreQuery && state.projectQuery) {
 			const q = state.projectQuery.toLowerCase();
-			projects = projects.filter(project => String(project.project_name || "").toLowerCase().includes(q));
+			projects = projects.filter((project) =>
+				String(project.project_name || "")
+					.toLowerCase()
+					.includes(q),
+			);
 		}
 
 		// Sort by pending count (descending), then alphabetically (ascending)
@@ -2673,17 +2950,20 @@ return `
 
 	function getStatusColumns() {
 		const storedOrder = window.localStorage.getItem("taskflow_kanban_status_order");
-		let defaultStatuses = (state.bootstrap && state.bootstrap.status_options && state.bootstrap.status_options.length)
-			? state.bootstrap.status_options
-			: STATUS_COLUMNS;
+		let defaultStatuses =
+			state.bootstrap &&
+			state.bootstrap.status_options &&
+			state.bootstrap.status_options.length
+				? state.bootstrap.status_options
+				: STATUS_COLUMNS;
 
 		if (storedOrder) {
 			try {
 				const order = JSON.parse(storedOrder);
 				// Filter to ensure we only have valid statuses that still exist
-				const filteredOrder = order.filter(s => defaultStatuses.includes(s));
+				const filteredOrder = order.filter((s) => defaultStatuses.includes(s));
 				// Add any new statuses that weren't in the stored order
-				const newStatuses = defaultStatuses.filter(s => !order.includes(s));
+				const newStatuses = defaultStatuses.filter((s) => !order.includes(s));
 				return filteredOrder.concat(newStatuses);
 			} catch (e) {
 				console.error("Error parsing stored kanban order", e);
@@ -2710,7 +2990,7 @@ return `
 		const project = state.projectWorkspace && state.projectWorkspace.project;
 		if (!project) return false;
 		// Allow any project member to create tasks
-		return true; 
+		return true;
 	}
 
 	function canUpdateTaskStatus(task) {
@@ -2728,23 +3008,23 @@ return `
 		const workspaceTasks = (state.projectWorkspace && state.projectWorkspace.tasks) || [];
 		const bootstrapTasks = (state.bootstrap && state.bootstrap.tasks) || [];
 		const tasksMap = new Map();
-		bootstrapTasks.forEach(t => tasksMap.set(t.name, t));
-		workspaceTasks.forEach(t => tasksMap.set(t.name, t));
+		bootstrapTasks.forEach((t) => tasksMap.set(t.name, t));
+		workspaceTasks.forEach((t) => tasksMap.set(t.name, t));
 		const allTasks = Array.from(tasksMap.values());
 		const previousColumnTasks = allTasks
-			.filter(t => t.status === previousStatus && t.name !== taskName)
-			.sort((a, b) => (Number(a.sequence || 0) - Number(b.sequence || 0)));
+			.filter((t) => t.status === previousStatus && t.name !== taskName)
+			.sort((a, b) => Number(a.sequence || 0) - Number(b.sequence || 0));
 
 		// Optimistically update status
 		task.status = nextStatus;
 
 		// Get tasks in target column
 		let columnTasks = allTasks
-			.filter(t => t.status === nextStatus && t.name !== taskName)
-			.sort((a, b) => (Number(a.sequence || 0) - Number(b.sequence || 0)));
+			.filter((t) => t.status === nextStatus && t.name !== taskName)
+			.sort((a, b) => Number(a.sequence || 0) - Number(b.sequence || 0));
 
 		// Find insertion index
-		let targetIdx = columnTasks.findIndex(t => t.name === targetTaskName);
+		let targetIdx = columnTasks.findIndex((t) => t.name === targetTaskName);
 		if (targetIdx === -1) {
 			columnTasks.push(task);
 		} else {
@@ -2768,18 +3048,26 @@ return `
 
 		try {
 			if (previousStatus !== nextStatus) {
-				await apiCall("save_task", {
-					payload: JSON.stringify({
-						name: taskName,
-						status: nextStatus,
-						sequence: newSequences[taskName] || task.sequence,
-					})
-				}, "POST");
+				await apiCall(
+					"save_task",
+					{
+						payload: JSON.stringify({
+							name: taskName,
+							status: nextStatus,
+							sequence: newSequences[taskName] || task.sequence,
+						}),
+					},
+					"POST",
+				);
 			}
 
-			await apiCall("update_task_sequences", { 
-				sequences: JSON.stringify(newSequences) 
-			}, "POST");
+			await apiCall(
+				"update_task_sequences",
+				{
+					sequences: JSON.stringify(newSequences),
+				},
+				"POST",
+			);
 
 			updateTaskStatusInState(taskName, nextStatus);
 			await loadBootstrap(state.selectedProject, { updateUrl: false });
@@ -2850,7 +3138,14 @@ return `
 		}
 
 		const members = project.project_team_members || [];
-		const roles = ["Team Lead", "Project Manager", "Team Member", "Viewer", "Auditor", "Coordinator"];
+		const roles = [
+			"Team Lead",
+			"Project Manager",
+			"Team Member",
+			"Viewer",
+			"Auditor",
+			"Coordinator",
+		];
 
 		target.innerHTML = `
 			<div class="taskflow-settings-section">
@@ -2865,7 +3160,9 @@ return `
 							</tr>
 						</thead>
 						<tbody data-member-table-body>
-							${members.map((m, idx) => `
+							${members
+								.map(
+									(m, idx) => `
 								<tr style="border-bottom: 1px solid var(--taskflow-border);">
 									<td style="padding: 12px;">${escapeHtml(m.employee_name || m.employee)}</td>
 									<td style="padding: 12px;">${escapeHtml(m.team_role)}</td>
@@ -2873,7 +3170,9 @@ return `
 										<button class="taskflow-button secondary" type="button" data-remove-member="${idx}">Remove</button>
 									</td>
 								</tr>
-							`).join("")}
+							`,
+								)
+								.join("")}
 							<tr style="background: #f1f5f9;">
 								<td style="padding: 12px; position: relative;">
 									<input type="text" data-emp-search placeholder="Search Employee..." style="padding: 8px; width: 100%; border-radius: 4px; border: 1px solid var(--taskflow-border);">
@@ -2881,7 +3180,7 @@ return `
 								</td>
 								<td style="padding: 12px;">
 									<select data-new-member-role style="padding: 8px; width: 100%; border-radius: 4px; border: 1px solid var(--taskflow-border);">
-										${roles.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("")}
+										${roles.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("")}
 									</select>
 								</td>
 								<td style="padding: 12px;">
@@ -2894,30 +3193,38 @@ return `
 			</div>
 		`;
 
-		const searchInput = target.querySelector('[data-emp-search]');
-		const resultsDiv = target.querySelector('[data-emp-results]');
+		const searchInput = target.querySelector("[data-emp-search]");
+		const resultsDiv = target.querySelector("[data-emp-results]");
 		let selectedEmployeeId = null;
 
-		searchInput.addEventListener('input', async (e) => {
+		searchInput.addEventListener("input", async (e) => {
 			const val = e.target.value;
-			if (val.length < 2) { resultsDiv.innerHTML = ''; return; }
+			if (val.length < 2) {
+				resultsDiv.innerHTML = "";
+				return;
+			}
 			const results = await searchEmployees(val);
-			resultsDiv.innerHTML = results.map(r => `<div data-val="${r.value}" style="padding: 8px; cursor: pointer;">${escapeHtml(r.label)}</div>`).join('');
-			resultsDiv.querySelectorAll('div').forEach(div => {
+			resultsDiv.innerHTML = results
+				.map(
+					(r) =>
+						`<div data-val="${r.value}" style="padding: 8px; cursor: pointer;">${escapeHtml(r.label)}</div>`,
+				)
+				.join("");
+			resultsDiv.querySelectorAll("div").forEach((div) => {
 				div.onclick = () => {
 					searchInput.value = div.textContent;
 					selectedEmployeeId = div.dataset.val;
-					resultsDiv.innerHTML = '';
+					resultsDiv.innerHTML = "";
 				};
 			});
 		});
 
-		target.querySelectorAll('[data-remove-member]').forEach(btn => {
-			btn.addEventListener('click', () => removeMember(btn.dataset.removeMember));
+		target.querySelectorAll("[data-remove-member]").forEach((btn) => {
+			btn.addEventListener("click", () => removeMember(btn.dataset.removeMember));
 		});
 
-		target.querySelector('[data-save-new-member]').addEventListener('click', () => {
-			const team_role = target.querySelector('[data-new-member-role]').value;
+		target.querySelector("[data-save-new-member]").addEventListener("click", () => {
+			const team_role = target.querySelector("[data-new-member-role]").value;
 			if (selectedEmployeeId && team_role) {
 				addMember(selectedEmployeeId, team_role);
 			} else {
@@ -2937,7 +3244,6 @@ return `
 		project.project_team_members.push({ employee, team_role });
 		await saveProject(project);
 	}
-
 
 	function renderNavPlaceholder(mode) {
 		if (!refs.dashboardView) return;
@@ -3027,7 +3333,11 @@ return `
 				try {
 					payload = await response.json();
 				} catch (error) {
-					const requestError = new Error(response.ok ? "Invalid server response." : `Request failed (${response.status}).`);
+					const requestError = new Error(
+						response.ok
+							? "Invalid server response."
+							: `Request failed (${response.status}).`,
+					);
 					requestError.status = response.status;
 					requestError.responsePayload = null;
 					throw requestError;
@@ -3080,15 +3390,16 @@ return `
 	}
 
 	function formatDisplayDate(date) {
-		const d = String(date.getDate()).padStart(2, '0');
-		const m = String(date.getMonth() + 1).padStart(2, '0');
+		const d = String(date.getDate()).padStart(2, "0");
+		const m = String(date.getMonth() + 1).padStart(2, "0");
 		const y = date.getFullYear();
 		return `${d}-${m}-${y}`;
 	}
 
 	function dateInputValue(value) {
 		if (!value) return "";
-		if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+		if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value))
+			return value.slice(0, 10);
 		const date = parseDateValue(value);
 		return date ? formatLocalDate(date) : "";
 	}
@@ -3099,15 +3410,17 @@ return `
 			return value.replace(" ", "T").slice(0, 16);
 		}
 		const date = parseDateValue(value);
-		return date ? `${formatLocalDate(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}` : "";
+		return date
+			? `${formatLocalDate(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+			: "";
 	}
 
 	function capitalizeName(name) {
 		return name
 			.toLowerCase()
-			.split(' ')
-			.map(word => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(' ');
+			.split(" ")
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(" ");
 	}
 
 	function initials(value) {
@@ -3169,32 +3482,32 @@ return `
 		return String(value).padStart(2, "0");
 	}
 
-		function escapeHtml(value) {
-			return String(value ?? "")
-				.replace(/&/g, "&amp;")
-				.replace(/</g, "&lt;")
-				.replace(/>/g, "&gt;")
-				.replace(/"/g, "&quot;")
-				.replace(/'/g, "&#39;");
-		}
+	function escapeHtml(value) {
+		return String(value ?? "")
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#39;");
+	}
 
-		function getFormElement(form, name) {
-			return form && form.elements ? form.elements[name] : null;
-		}
+	function getFormElement(form, name) {
+		return form && form.elements ? form.elements[name] : null;
+	}
 
-		function getFormValue(form, name, fallback = "") {
-			const field = getFormElement(form, name);
-			return field ? field.value : fallback;
-		}
+	function getFormValue(form, name, fallback = "") {
+		const field = getFormElement(form, name);
+		return field ? field.value : fallback;
+	}
 
-		function getFormChecked(form, name) {
-			const field = getFormElement(form, name);
-			return Boolean(field && field.checked);
-		}
+	function getFormChecked(form, name) {
+		const field = getFormElement(form, name);
+		return Boolean(field && field.checked);
+	}
 
-		async function searchEmployees(query) {
-			try {
-				const results = await apiCall("search_employees", { q: query });
+	async function searchEmployees(query) {
+		try {
+			const results = await apiCall("search_employees", { q: query });
 			return results;
 		} catch (e) {
 			console.error(e);
