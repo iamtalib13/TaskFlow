@@ -262,6 +262,10 @@ async function submitTaskForm(payload) {
 
   try {
     await saveWorkspaceTask.submit(nextPayload)
+    // Show success alert using Frappe UI
+    if (typeof frappe !== 'undefined' && frappe.show_alert) {
+      frappe.show_alert({ message: __('Task saved successfully'), indicator: 'green' }, 5)
+    }
     taskFormOpen.value = false
     await loadWorkspace()
   } catch (error) {

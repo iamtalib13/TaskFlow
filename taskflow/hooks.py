@@ -158,23 +158,11 @@ has_permission = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"taskflow.tasks.all"
-# 	],
-# 	"daily": [
-# 		"taskflow.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"taskflow.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"taskflow.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"taskflow.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"daily": [
+		"taskflow.tasks.mark_overdue_tasks"
+	],
+}
 
 # Testing
 # -------

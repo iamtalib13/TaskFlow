@@ -1558,6 +1558,7 @@
 			"On Hold": "#ef4444",
 			Completed: "#10b981",
 			Cancelled: "#94a3b8",
+			Overdue: "#dc2626",
 		};
 		return colors[status] || "#cbd5e1";
 	}

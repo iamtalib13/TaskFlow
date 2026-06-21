@@ -1018,6 +1018,12 @@ textarea:focus-visible,
 	border-color: #fecaca;
 }
 
+.taskflow-status-capsule.status-overdue {
+	background-color: #fee2e2;
+	color: #dc2626;
+	border-color: #fca5a5;
+}
+
 .taskflow-status-capsule.status-draft {
 	background-color: #f3f4f6;
 	color: #374151;

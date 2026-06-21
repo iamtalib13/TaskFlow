@@ -815,6 +815,7 @@
 			const payload = getFormPayload();
 			await apiCall("save_task", { payload: JSON.stringify(payload) }, "POST");
 			showSaveIndicator();
+			if (window.frappe && typeof frappe.show_alert === 'function') { frappe.show_alert({ message: __('Task saved'), indicator: 'green' }, 5); }
 		} catch (error) {
 			console.error("Auto-save failed:", error);
 		}
@@ -828,6 +829,7 @@
 			const payload = getFormPayload();
 			const res = await apiCall("save_task", { payload: JSON.stringify(payload) }, "POST");
 			showSaveIndicator();
+			if (window.frappe && typeof frappe.show_alert === 'function') { frappe.show_alert({ message: __('Task saved'), indicator: 'green' }, 5); }
 			setTimeout(() => {
 				const params = new URLSearchParams(window.location.search);
 				if (res && res.name) {
