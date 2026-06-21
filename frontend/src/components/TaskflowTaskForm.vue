@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div v-if="modelValue" class="task-form-overlay" @click.self="close">
       <section class="task-form-card" role="dialog" aria-modal="true" :aria-label="dialogLabel">
-        <header class="task-form-card__header">
+        <header class="task-form-card__header" :style="headerStyle">
           <div>
             <div class="task-form-card__eyebrow">Task Form</div>
             <h3 class="task-form-card__title">{{ dialogTitle }}</h3>
@@ -163,7 +163,7 @@ const props = defineProps({
   },
   taskTypeOptions: {
     type: Array,
-    default: () => ['Task', 'Bug', 'Story', 'Approval', 'Research', 'Meeting'],
+    default: () => ['Task', 'Bug', 'Story', 'Approval', 'Research', 'Meeting', 'Customization Request'],
   },
   defaultTeam: {
     type: String,
@@ -206,6 +206,19 @@ const filteredAssignees = computed(() => {
 const dialogTitle = computed(() => (props.mode === 'edit' ? 'Update Task' : 'Create Task'))
 const dialogLabel = computed(() => `${dialogTitle.value} dialog`)
 const submitLabel = computed(() => (props.mode === 'edit' ? 'Update Task' : 'Save Task'))
+const headerStyle = computed(() => {
+  const type = form.task_type
+  const colors = {
+    Task: '#2563EB',
+    Bug: '#DC2626',
+    Story: '#10B981',
+    Approval: '#F59E0B',
+    Research: '#8B5CF6',
+    Meeting: '#D97706',
+    'Customization Request': '#FF69B4', // pink
+  }
+  return { background: colors[type] || 'var(--tf-surface)', color: '#fff' }
+})
 
 watch(
   () => props.modelValue,
