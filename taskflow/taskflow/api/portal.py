@@ -13,7 +13,7 @@ from taskflow.permissions import (
     has_taskflow_team_permission,
 )
 from taskflow.taskflow.service.team_hierarchy import can_manage_team, can_operate_team
-TASK_STATUSES = ["Open", "In Progress", "Review", "On Hold", "Completed", "Cancelled"]
+TASK_STATUSES = ["Open", "In Progress", "Review", "On Hold", "Completed", "Cancelled", "Overdue"]
 
 _TASK_FIELDS = [
     "name",
@@ -37,6 +37,15 @@ _TASK_FIELDS = [
     "is_blocked",
     "sequence",
     "description",
+    "pending_with",
+    "guided_by",
+    "ticket_date",
+    "ticket_id",
+    "ticket_raised_by",
+    "ticket_description",
+    "creation",
+    "owner",
+    "modified_by",
     "modified",
 ]
 
@@ -91,6 +100,12 @@ _ALLOWED_TASK_FIELDS = [
     "is_milestone",
     "is_blocked",
     "sequence",
+    "pending_with",
+    "guided_by",
+    "ticket_date",
+    "ticket_id",
+    "ticket_raised_by",
+    "ticket_description",
 ]
 
 
@@ -282,6 +297,23 @@ def _serialize_project(
     }
 
 
+_USER_DETAILS_CACHE = {}
+
+def _get_user_details(user_id: str) -> tuple[str, str | None]:
+    if not user_id:
+        return "", None
+    if user_id not in _USER_DETAILS_CACHE:
+        try:
+            row = frappe.db.get_value("User", user_id, ["full_name", "user_image"], as_dict=True)
+            if row:
+                _USER_DETAILS_CACHE[user_id] = (row.full_name or user_id, row.user_image)
+            else:
+                _USER_DETAILS_CACHE[user_id] = (user_id, None)
+        except Exception:
+            _USER_DETAILS_CACHE[user_id] = (user_id, None)
+    return _USER_DETAILS_CACHE[user_id]
+
+
 def _serialize_task(
     task,
     project_map: dict[str, str] | None = None,
@@ -304,6 +336,9 @@ def _serialize_task(
     assigned_to_name = (employee_name_map or {}).get(task.assigned_to)
     if not assigned_to_name and task.assigned_to:
         assigned_to_name = frappe.db.get_value("Employee", task.assigned_to, "employee_name")
+
+    owner_name, owner_image = _get_user_details(task.owner)
+    modified_by_name, modified_by_image = _get_user_details(task.modified_by)
 
     return {
         "name": task.name,
@@ -331,6 +366,19 @@ def _serialize_task(
         "sequence": task.sequence,
         "description": task.description,
         "modified": task.modified,
+        "creation": task.creation,
+        "owner": task.owner,
+        "owner_name": owner_name,
+        "owner_image": owner_image,
+        "modified_by": task.modified_by,
+        "modified_by_name": modified_by_name,
+        "modified_by_image": modified_by_image,
+        "pending_with": task.pending_with,
+        "guided_by": task.guided_by,
+        "ticket_date": task.ticket_date,
+        "ticket_id": task.ticket_id,
+        "ticket_raised_by": task.ticket_raised_by,
+        "ticket_description": task.ticket_description,
         "checklist": [
             {
                 "name": item.name,
@@ -433,7 +481,7 @@ def get_portal_bootstrap() -> dict:
         ],
         "status_options": TASK_STATUSES,
         "priority_options": ["Low", "Medium", "High", "Critical"],
-        "task_type_options": ["Task", "Bug", "Story", "Approval", "Research", "Meeting"],
+        "task_type_options": ["Task", "Bug", "Customization Request"],
         "can_create_project": bool(can_manage_team(frappe.session.user)),
     }
 
@@ -770,7 +818,17 @@ def get_task_details(task: str) -> dict:
         comment.author_name = (author.full_name if author else None) or comment.comment_by or comment.owner
         comment.author_image = author.user_image if author else None
 
-    return {"task": _serialize_task(doc), "comments": comments}
+    attachments = frappe.get_all(
+        "File",
+        filters={
+            "attached_to_doctype": "Taskflow Task",
+            "attached_to_name": task,
+        },
+        fields=["name", "file_name", "file_url", "is_private", "creation"],
+        order_by="creation desc",
+    )
+
+    return {"task": _serialize_task(doc), "comments": comments, "attachments": attachments}
 
 
 @frappe.whitelist()

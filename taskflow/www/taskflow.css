@@ -2827,3 +2827,7 @@ body.taskflow-dragging .taskflow-card-dragging {
 .taskflow-filter-sidebar.open {
 	right: 0;
 }
+
+.taskflow-modal:focus {
+	outline: none;
+}

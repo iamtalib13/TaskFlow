@@ -1,0 +1,1886 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Task Detail</title>
+		<!-- Flatpickr Date Picker CDN -->
+		<link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet" />
+		<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+		<!-- Quill Rich Text Editor -->
+		<link href="/assets/taskflow/css/quill.snow.css" rel="stylesheet" />
+		<script src="/assets/taskflow/js/quill.js"></script>
+		<style>
+			/* ── Design Tokens ─────────────────────────────────────────── */
+			:root {
+				--bg-base: #f5f6f8;
+				--bg-surface: #ffffff;
+				--bg-elevated: #f0f1f5;
+				--bg-hover: #eaecf2;
+				--bg-input: #f8f9fb;
+				--border: #e2e5ee;
+				--border-focus: #4f6ef7;
+
+				--text-primary: #111827;
+				--text-secondary: #4b5470;
+				--text-muted: #9aa0b8;
+
+				--accent: #4f6ef7;
+				--accent-hover: #3d5de8;
+				--accent-soft: rgba(79, 110, 247, 0.1);
+
+				--green: #22c55e;
+				--yellow: #f59e0b;
+				--red: #ef4444;
+				--purple: #a78bfa;
+				--orange: #fb923c;
+
+				--radius-sm: 6px;
+				--radius-md: 10px;
+				--radius-lg: 14px;
+
+				--font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+				--font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+				--transition: 150ms ease;
+				--sidebar-w: 256px;
+				--right-w: 280px;
+				--header-h: 52px;
+			}
+
+			/* ── Reset ──────────────────────────────────────────────────── */
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			html,
+			body {
+				height: 100%;
+				overflow: hidden;
+				background: var(--bg-base);
+				color: var(--text-primary);
+				font-family: var(--font);
+				font-size: 13px;
+				line-height: 1.5;
+			}
+
+			/* ── Scrollbar ───────────────────────────────────────────────── */
+			::-webkit-scrollbar {
+				width: 5px;
+				height: 5px;
+			}
+			::-webkit-scrollbar-track {
+				background: transparent;
+			}
+			::-webkit-scrollbar-thumb {
+				background: var(--border);
+				border-radius: 99px;
+			}
+
+			/* ── Layout Shell ────────────────────────────────────────────── */
+			.app {
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+			}
+
+			/* ── Top Header ──────────────────────────────────────────────── */
+			.header {
+				height: var(--header-h);
+				min-height: var(--header-h);
+				background: var(--bg-surface);
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				padding: 0 16px;
+				z-index: 10;
+			}
+			.header-back {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				color: var(--text-secondary);
+				font-size: 12px;
+				background: none;
+				border: none;
+				cursor: pointer;
+				padding: 5px 8px;
+				border-radius: var(--radius-sm);
+				transition:
+					background var(--transition),
+					color var(--transition);
+			}
+			.header-back:hover {
+				background: var(--bg-hover);
+				color: var(--text-primary);
+			}
+			.header-back svg {
+				flex-shrink: 0;
+			}
+
+			.header-divider {
+				width: 1px;
+				height: 18px;
+				background: var(--border);
+			}
+
+			.breadcrumbs {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				color: var(--text-secondary);
+				font-size: 12px;
+			}
+			.breadcrumbs .sep {
+				color: var(--text-muted);
+			}
+			.breadcrumbs .crumb {
+				color: var(--text-secondary);
+				cursor: pointer;
+				transition: color var(--transition);
+			}
+			.breadcrumbs .crumb:hover {
+				color: var(--text-primary);
+			}
+			.breadcrumbs .task-id {
+				color: var(--accent);
+				font-family: var(--font-mono);
+				font-size: 11px;
+				background: var(--accent-soft);
+				padding: 2px 7px;
+				border-radius: 4px;
+			}
+
+			.header-spacer {
+				flex: 1;
+			}
+
+			.header-actions {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			.save-indicator {
+				font-size: 11px;
+				color: var(--green);
+				display: flex;
+				align-items: center;
+				gap: 4px;
+				opacity: 0;
+				transition: opacity 0.3s;
+			}
+			.save-indicator.visible {
+				opacity: 1;
+			}
+
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				padding: 6px 14px;
+				border-radius: var(--radius-sm);
+				font-size: 12px;
+				font-weight: 500;
+				cursor: pointer;
+				border: 1px solid transparent;
+				transition: all var(--transition);
+				white-space: nowrap;
+			}
+			.btn-ghost {
+				background: none;
+				color: var(--text-secondary);
+				border-color: var(--border);
+			}
+			.btn-ghost:hover {
+				background: var(--bg-hover);
+				color: var(--text-primary);
+			}
+			.btn-primary {
+				background: var(--accent);
+				color: #fff;
+				border-color: var(--accent);
+			}
+			.btn-primary:hover {
+				background: var(--accent-hover);
+				border-color: var(--accent-hover);
+			}
+
+			.header-icon-btn {
+				width: 30px;
+				height: 30px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: none;
+				border: none;
+				color: var(--text-muted);
+				border-radius: var(--radius-sm);
+				cursor: pointer;
+				transition: all var(--transition);
+			}
+			.header-icon-btn:hover {
+				background: var(--bg-hover);
+				color: var(--text-primary);
+			}
+
+			/* ── Capsule dropdowns with label ───────────────────────────── */
+			.capsule-wrap {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 2px;
+			}
+			.capsule-label {
+				font-size: 9px;
+				font-weight: 600;
+				letter-spacing: 0.07em;
+				text-transform: uppercase;
+				color: var(--text-muted);
+				padding-left: 10px;
+			}
+
+			/* Task Type Capsule Styles */
+			.type-capsule {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				border-radius: 99px;
+				padding: 4px 12px 4px 9px;
+				border: 1.5px solid;
+				transition: all var(--transition);
+			}
+			.type-capsule select {
+				appearance: none;
+				background: transparent;
+				border: none;
+				font-size: 11px;
+				font-weight: 600;
+				cursor: pointer;
+				outline: none;
+				font-family: var(--font);
+				color: inherit;
+				background-image: none !important;
+			}
+			.type-capsule svg {
+				flex-shrink: 0;
+				stroke: currentColor;
+			}
+			.type-capsule.type-task {
+				background-color: #eef1fe;
+				color: #4f6ef7;
+				border-color: #c7d0fb;
+			}
+			.type-capsule.type-bug {
+				background-color: #fef2f2;
+				color: #dc2626;
+				border-color: #fca5a5;
+			}
+			.type-capsule.type-customization {
+				background-color: #fef8ec;
+				color: #d97706;
+				border-color: #fbd98a;
+			}
+
+			.capsule-select {
+				cursor: pointer;
+				font-family: var(--font);
+				font-size: 11px;
+				font-weight: 600;
+				border-radius: 99px;
+				padding: 4px 10px;
+				border: 1.5px solid;
+				transition: all var(--transition);
+				outline: none;
+				background-image: none !important;
+			}
+			.capsule-select option {
+				background-color: var(--bg-surface) !important;
+				color: var(--text-primary) !important;
+				background-image: none !important;
+			}
+			.capsule-select:focus {
+				box-shadow: 0 0 0 2px var(--accent-soft);
+			}
+
+			/* Inherit colours from chip classes */
+			.capsule-select.chip-todo {
+				background-color: #f1f2f6;
+				color: #6b7490;
+				border-color: #d8dbe8;
+				background-image: none !important;
+			}
+			.capsule-select.chip-inprog {
+				background-color: #eef1fe;
+				color: #4f6ef7;
+				border-color: #c7d0fb;
+			}
+			.capsule-select.chip-review {
+				background-color: #fef8ec;
+				color: #d97706;
+				border-color: #fbd98a;
+			}
+			.capsule-select.chip-done {
+				background-color: #edfaf4;
+				color: #16a34a;
+				border-color: #a3e6c1;
+			}
+			.capsule-select.chip-low {
+				background-color: #f1f2f6;
+				color: #6b7490;
+				border-color: #d8dbe8;
+			}
+			.capsule-select.chip-normal {
+				background-color: #eef1fe;
+				color: #4f6ef7;
+				border-color: #c7d0fb;
+			}
+			.capsule-select.chip-high {
+				background-color: #fef8ec;
+				color: #d97706;
+				border-color: #fbd98a;
+			}
+			.capsule-select.chip-critical {
+				background-color: #fef2f2;
+				color: #dc2626;
+				border-color: #fca5a5;
+			}
+
+			/* ── Status & Priority chips (used elsewhere) ────────────────── */
+			.chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				padding: 4px 10px;
+				border-radius: 99px;
+				font-size: 11px;
+				font-weight: 500;
+				border: 1px solid;
+				cursor: pointer;
+				transition: all var(--transition);
+			}
+			.chip-todo {
+				background: #f1f2f6;
+				color: #6b7490;
+				border-color: #d8dbe8;
+				background-image: none !important;
+			}
+			.chip-inprog {
+				background: #eef1fe;
+				color: #4f6ef7;
+				border-color: #c7d0fb;
+			}
+			.chip-review {
+				background: #fef8ec;
+				color: #d97706;
+				border-color: #fbd98a;
+			}
+			.chip-done {
+				background: #edfaf4;
+				color: #16a34a;
+				border-color: #a3e6c1;
+			}
+			.chip-low {
+				background: #f1f2f6;
+				color: #6b7490;
+				border-color: #d8dbe8;
+			}
+			.chip-normal {
+				background: #eef1fe;
+				color: #4f6ef7;
+				border-color: #c7d0fb;
+			}
+			.chip-high {
+				background: #fef8ec;
+				color: #d97706;
+				border-color: #fbd98a;
+			}
+			.chip-critical {
+				background: #fef2f2;
+				color: #dc2626;
+				border-color: #fca5a5;
+			}
+			.chip .dot {
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				background: currentColor;
+				flex-shrink: 0;
+			}
+
+			/* ── Body Three-Column Layout ────────────────────────────────── */
+			.body {
+				flex: 1;
+				display: flex;
+				overflow: hidden;
+			}
+
+			/* ── Left Sidebar ─────────────────────────────────────────────── */
+			.left-sidebar {
+				width: var(--sidebar-w);
+				min-width: var(--sidebar-w);
+				background: var(--bg-surface);
+				border-right: 1px solid var(--border);
+				overflow-y: auto;
+				padding: 0 0 24px;
+				display: flex;
+				flex-direction: column;
+			}
+
+			.sidebar-section {
+				padding: 14px 16px;
+				border-bottom: 1px solid var(--border);
+			}
+			.sidebar-section:last-child {
+				border-bottom: none;
+			}
+
+			.sidebar-section-title {
+				font-size: 10px;
+				font-weight: 600;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--text-muted);
+				margin-bottom: 12px;
+			}
+
+			.field-row {
+				margin-bottom: 10px;
+			}
+			.field-row:last-child {
+				margin-bottom: 0;
+			}
+
+			.field-label {
+				font-size: 11px;
+				color: var(--text-muted);
+				margin-bottom: 5px;
+				display: block;
+			}
+
+			.field-value {
+				font-size: 12px;
+				color: var(--text-secondary);
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+
+			.sidebar-select {
+				width: 100%;
+				background: var(--bg-input);
+				border: 1px solid var(--border);
+				color: var(--text-primary);
+				padding: 6px 10px;
+				border-radius: var(--radius-sm);
+				font-size: 12px;
+				font-family: var(--font);
+				cursor: pointer;
+				transition: border-color var(--transition);
+				appearance: none;
+				background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238b95b0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+				background-repeat: no-repeat;
+				background-position: right 9px center;
+				padding-right: 28px;
+			}
+			.sidebar-select:focus {
+				outline: none;
+				border-color: var(--border-focus);
+			}
+
+			.sidebar-input {
+				width: 100%;
+				background: var(--bg-input);
+				border: 1px solid var(--border);
+				color: var(--text-primary);
+				padding: 6px 10px;
+				border-radius: var(--radius-sm);
+				font-size: 12px;
+				font-family: var(--font);
+				transition: border-color var(--transition);
+			}
+			.sidebar-input:focus {
+				outline: none;
+				border-color: var(--border-focus);
+			}
+			.sidebar-input::placeholder {
+				color: var(--text-muted);
+			}
+
+			/* Assignee row */
+			.assignee-row {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+			.avatar {
+				width: 26px;
+				height: 26px;
+				border-radius: 50%;
+				background: linear-gradient(135deg, #4f6ef7, #a78bfa);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 10px;
+				font-weight: 600;
+				color: #fff;
+				flex-shrink: 0;
+				overflow: hidden;
+			}
+			.avatar img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+
+			/* Date rows */
+			.date-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				padding: 5px 9px;
+				border-radius: var(--radius-sm);
+				background: var(--bg-input);
+				border: 1px solid var(--border);
+				font-size: 12px;
+				color: var(--text-primary);
+				cursor: pointer;
+				width: 100%;
+				transition: border-color var(--transition);
+			}
+			.date-badge:hover {
+				border-color: var(--border-focus);
+			}
+			.date-badge.overdue {
+				border-color: rgba(239, 68, 68, 0.4);
+				color: var(--red);
+				background: rgba(239, 68, 68, 0.06);
+			}
+			.date-badge svg {
+				color: var(--text-muted);
+				flex-shrink: 0;
+			}
+			.date-badge.overdue svg {
+				color: var(--red);
+			}
+			.overdue-tag {
+				margin-left: auto;
+				font-size: 10px;
+				font-weight: 600;
+				color: var(--red);
+				letter-spacing: 0.04em;
+			}
+
+			/* Checkbox rows */
+			.check-row {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				margin-bottom: 8px;
+			}
+			.check-row:last-child {
+				margin-bottom: 0;
+			}
+			.check-row input[type="checkbox"] {
+				accent-color: var(--accent);
+				width: 14px;
+				height: 14px;
+				cursor: pointer;
+			}
+			.check-row label {
+				font-size: 12px;
+				color: var(--text-secondary);
+				cursor: pointer;
+			}
+
+			/* ── Main Content ─────────────────────────────────────────────── */
+			.main-content {
+				flex: 1;
+				overflow-y: auto;
+				background: var(--bg-base);
+				padding: 0;
+			}
+
+			.main-inner {
+				max-width: 740px;
+				margin: 0 auto;
+				padding: 32px 40px 60px;
+			}
+
+			/* Task ID line */
+			.task-meta-line {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				margin-bottom: 16px;
+				flex-wrap: wrap;
+			}
+			.task-id-label {
+				font-family: var(--font-mono);
+				font-size: 11px;
+				color: var(--text-muted);
+				background: var(--bg-elevated);
+				padding: 2px 8px;
+				border-radius: 4px;
+				border: 1px solid var(--border);
+			}
+
+			/* Title */
+			.task-title-input {
+				width: 100%;
+				background: none;
+				border: none;
+				color: var(--text-primary);
+				font-size: 22px;
+				font-weight: 600;
+				line-height: 1.3;
+				margin-bottom: 20px;
+				resize: none;
+				outline: none;
+				font-family: var(--font);
+			}
+			.task-title-input::placeholder {
+				color: var(--text-muted);
+			}
+
+			/* Section blocks */
+			.section-block {
+				margin-bottom: 6px;
+				border: 1px solid var(--border);
+				border-radius: var(--radius-md);
+				overflow: hidden;
+				background: var(--bg-surface);
+			}
+
+			.section-toggle {
+				width: 100%;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 11px 14px;
+				background: none;
+				border: none;
+				cursor: pointer;
+				color: var(--text-secondary);
+				font-size: 12px;
+				font-weight: 500;
+				font-family: var(--font);
+				text-align: left;
+				transition: background var(--transition);
+			}
+			.section-toggle:hover {
+				background: var(--bg-hover);
+			}
+			.section-toggle .section-icon {
+				font-size: 13px;
+			}
+			.section-toggle .section-label {
+				flex: 1;
+			}
+			.section-toggle .section-meta {
+				font-size: 11px;
+				color: var(--text-muted);
+			}
+			.section-chevron {
+				transition: transform var(--transition);
+			}
+			.section-chevron.open {
+				transform: rotate(180deg);
+			}
+
+			.section-body {
+				padding: 0 14px 14px;
+			}
+
+			/* Description editor */
+			.desc-editor-wrapper .ql-toolbar {
+				border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+				border: 1px solid var(--border) !important;
+				border-bottom: none !important;
+				background: var(--bg-input);
+			}
+			.desc-editor-wrapper .ql-container {
+				border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+				border: 1px solid var(--border) !important;
+				font-size: 13px;
+				min-height: 160px;
+				font-family: var(--font);
+				background: var(--bg-surface);
+			}
+			.desc-editor-wrapper .ql-editor {
+				min-height: 160px;
+				line-height: 1.6;
+				color: var(--text-primary);
+			}
+			.desc-editor-wrapper .ql-editor.ql-blank::before {
+				font-style: normal;
+				color: var(--text-muted);
+			}
+
+			/* Checklist */
+			.checklist-add-row {
+				display: flex;
+				gap: 8px;
+				margin-bottom: 10px;
+			}
+			.checklist-input-field {
+				flex: 1;
+				background: var(--bg-input);
+				border: 1px solid var(--border);
+				color: var(--text-primary);
+				padding: 7px 10px;
+				border-radius: var(--radius-sm);
+				font-size: 12px;
+				font-family: var(--font);
+				transition: border-color var(--transition);
+			}
+			.checklist-input-field:focus {
+				outline: none;
+				border-color: var(--border-focus);
+			}
+			.checklist-input-field::placeholder {
+				color: var(--text-muted);
+			}
+
+			.btn-sm {
+				padding: 5px 12px;
+				font-size: 11px;
+			}
+
+			.checklist-items {
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+			}
+			.checklist-item {
+				display: flex;
+				align-items: center;
+				gap: 9px;
+				padding: 7px 9px;
+				border-radius: var(--radius-sm);
+				background: var(--bg-input);
+				border: 1px solid transparent;
+				transition: border-color var(--transition);
+				group: true;
+			}
+			.checklist-item:hover {
+				border-color: var(--border);
+			}
+			.checklist-item input[type="checkbox"] {
+				accent-color: var(--accent);
+				width: 14px;
+				height: 14px;
+				cursor: pointer;
+				flex-shrink: 0;
+			}
+			.checklist-item-text {
+				flex: 1;
+				font-size: 12px;
+				color: var(--text-secondary);
+			}
+			.checklist-item-text.done {
+				text-decoration: line-through;
+				color: var(--text-muted);
+			}
+			.checklist-item-del {
+				background: none;
+				border: none;
+				cursor: pointer;
+				color: var(--text-muted);
+				padding: 2px 4px;
+				border-radius: 4px;
+				font-size: 14px;
+				line-height: 1;
+				opacity: 0;
+				transition: opacity var(--transition);
+			}
+			.checklist-item:hover .checklist-item-del {
+				opacity: 1;
+			}
+			.checklist-item-del:hover {
+				color: var(--red);
+			}
+
+			/* Progress bar */
+			.checklist-progress {
+				margin-bottom: 10px;
+				display: flex;
+				align-items: center;
+				gap: 9px;
+			}
+			.progress-bar {
+				flex: 1;
+				height: 4px;
+				background: var(--border);
+				border-radius: 99px;
+				overflow: hidden;
+			}
+			.progress-fill {
+				height: 100%;
+				background: var(--green);
+				border-radius: 99px;
+				transition: width 0.3s;
+			}
+			.progress-label {
+				font-size: 11px;
+				color: var(--text-muted);
+				white-space: nowrap;
+			}
+
+			/* Attachments */
+			.attachments-dropzone {
+				border: 1.5px dashed var(--border);
+				border-radius: var(--radius-md);
+				padding: 24px 16px;
+				text-align: center;
+				cursor: pointer;
+				transition:
+					border-color var(--transition),
+					background var(--transition);
+			}
+			.attachments-dropzone:hover {
+				border-color: var(--accent);
+				background: var(--accent-soft);
+			}
+			.attachments-dropzone p {
+				color: var(--text-muted);
+				font-size: 12px;
+				margin-top: 4px;
+			}
+
+			/* Recent Activity */
+			.activity-list {
+				display: flex;
+				flex-direction: column;
+				gap: 0;
+			}
+			.activity-item {
+				display: flex;
+				gap: 10px;
+				padding: 10px 0;
+				border-bottom: 1px solid var(--border);
+			}
+			.activity-item:last-child {
+				border-bottom: none;
+			}
+			.activity-avatar {
+				width: 26px;
+				height: 26px;
+				border-radius: 50%;
+				flex-shrink: 0;
+			}
+			.activity-body {
+				flex: 1;
+			}
+			.activity-text {
+				font-size: 12px;
+				color: var(--text-secondary);
+				line-height: 1.5;
+			}
+			.activity-text strong {
+				color: var(--text-primary);
+				font-weight: 500;
+			}
+			.activity-text .activity-highlight {
+				font-family: var(--font-mono);
+				font-size: 11px;
+				background: var(--bg-elevated);
+				padding: 1px 5px;
+				border-radius: 3px;
+				color: var(--text-secondary);
+			}
+			.activity-time {
+				font-size: 11px;
+				color: var(--text-muted);
+				margin-top: 2px;
+			}
+			.activity-log-btn {
+				display: flex;
+				align-items: center;
+				gap: 5px;
+				margin-left: auto;
+				background: none;
+				border: 1px solid var(--border);
+				border-radius: var(--radius-sm);
+				color: var(--text-secondary);
+				font-size: 11px;
+				padding: 4px 10px;
+				cursor: pointer;
+				transition: all var(--transition);
+			}
+			.activity-log-btn:hover {
+				background: var(--bg-hover);
+				color: var(--text-primary);
+			}
+
+			/* ── Right Sidebar ─────────────────────────────────────────────── */
+			.right-sidebar {
+				width: var(--right-w);
+				min-width: var(--right-w);
+				background: var(--bg-surface);
+				border-left: 1px solid var(--border);
+				display: flex;
+				flex-direction: column;
+				overflow: hidden;
+			}
+
+			/* Column Resizers */
+			.resizer {
+				width: 6px;
+				cursor: col-resize;
+				background: transparent;
+				position: relative;
+				flex-shrink: 0;
+				z-index: 10;
+				transition: background 150ms ease;
+			}
+			.resizer::after {
+				content: '';
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				left: 2px;
+				width: 2px;
+				background: transparent;
+				transition: background 150ms ease;
+			}
+			.resizer:hover::after,
+			.resizer.active::after {
+				background: var(--accent);
+			}
+			.resizer:hover,
+			.resizer.active {
+				background: rgba(79, 110, 247, 0.05);
+			}
+
+			/* Tab nav */
+			.tab-nav {
+				display: flex;
+				border-bottom: 1px solid var(--border);
+				flex-wrap: wrap;
+			}
+			.tab-btn {
+				flex: 1;
+				padding: 11px 6px;
+				background: none;
+				border: none;
+				color: var(--text-muted);
+				font-size: 11px;
+				font-weight: 500;
+				cursor: pointer;
+				border-bottom: 2px solid transparent;
+				transition: all var(--transition);
+				white-space: nowrap;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 4px;
+			}
+			.tab-btn:hover {
+				color: var(--text-secondary);
+			}
+			.tab-btn.active {
+				color: var(--text-primary);
+				border-bottom-color: var(--accent);
+			}
+
+			.tab-content {
+				flex: 1;
+				overflow-y: auto;
+				display: none;
+			}
+			.tab-content.active {
+				display: flex;
+				flex-direction: column;
+			}
+
+			/* Comments */
+			.comment-list {
+				flex: 1;
+				padding: 12px 14px;
+				display: flex;
+				flex-direction: column;
+				gap: 14px;
+				overflow-y: auto;
+			}
+
+			.comment-empty {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				padding: 32px 20px;
+				text-align: center;
+				color: var(--text-muted);
+			}
+			.comment-empty svg {
+				margin-bottom: 10px;
+				opacity: 0.4;
+			}
+			.comment-empty p {
+				font-size: 12px;
+			}
+			.comment-empty p + p {
+				font-size: 11px;
+				margin-top: 4px;
+				color: var(--text-muted);
+			}
+
+			.comment-item {
+				display: flex;
+				gap: 9px;
+			}
+			.comment-body {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+			}
+			.comment-header {
+				display: flex;
+				align-items: baseline;
+				gap: 6px;
+				margin-bottom: 4px;
+			}
+			.comment-author {
+				font-size: 12px;
+				font-weight: 500;
+				color: var(--text-primary);
+			}
+			.comment-ts {
+				font-size: 10px;
+				color: var(--text-muted);
+			}
+			.comment-text {
+				font-size: 12px;
+				color: var(--text-secondary);
+				line-height: 1.6;
+				background: var(--bg-elevated);
+				padding: 9px 11px;
+				border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
+				border: 1px solid var(--border);
+				display: inline-block;
+				max-width: 100%;
+				word-break: break-word;
+			}
+
+			.comment-item.current-user {
+				flex-direction: row-reverse;
+			}
+			.comment-item.current-user .comment-body {
+				align-items: flex-end;
+			}
+			.comment-item.current-user .comment-text {
+				border-radius: var(--radius-md) 0 var(--radius-md) var(--radius-md);
+				background: var(--accent-soft);
+				border-color: rgba(79, 110, 247, 0.2);
+			}
+
+			.comment-compose {
+				padding: 12px 14px;
+				border-top: 1px solid var(--border);
+				background: var(--bg-surface);
+			}
+			.comment-compose-input {
+				width: 100%;
+				background: var(--bg-input);
+				border: 1px solid var(--border);
+				color: var(--text-primary);
+				padding: 9px 11px;
+				border-radius: var(--radius-md);
+				font-size: 12px;
+				font-family: var(--font);
+				resize: none;
+				transition: border-color var(--transition);
+				min-height: 72px;
+			}
+			.comment-compose-input:focus {
+				outline: none;
+				border-color: var(--border-focus);
+			}
+			.comment-compose-input::placeholder {
+				color: var(--text-muted);
+			}
+			.comment-compose-actions {
+				display: flex;
+				justify-content: flex-end;
+				margin-top: 8px;
+				gap: 6px;
+			}
+
+			/* Subtasks tab */
+			.subtask-list {
+				padding: 12px 14px;
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+			}
+			.subtask-item {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 8px 10px;
+				background: var(--bg-elevated);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-sm);
+				font-size: 12px;
+				color: var(--text-secondary);
+				cursor: pointer;
+				transition: border-color var(--transition);
+			}
+			.subtask-item:hover {
+				border-color: var(--accent);
+			}
+			.subtask-dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				flex-shrink: 0;
+			}
+			.subtask-id {
+				font-family: var(--font-mono);
+				font-size: 10px;
+				color: var(--text-muted);
+			}
+
+			/* Relations / Pages tabs empty */
+			.tab-empty {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				padding: 32px 20px;
+				text-align: center;
+				color: var(--text-muted);
+			}
+			.tab-empty svg {
+				margin-bottom: 10px;
+				opacity: 0.35;
+			}
+			.tab-empty p {
+				font-size: 12px;
+			}
+
+			/* ── Tooltip ─────────────────────────────────────────────────── */
+			[title] {
+				position: relative;
+			}
+
+			/* ── Utility ─────────────────────────────────────────────────── */
+			.hidden {
+				display: none !important;
+			}
+			.text-muted {
+				color: var(--text-muted);
+			}
+			.flex {
+				display: flex;
+			}
+			.items-center {
+				align-items: center;
+			}
+			.gap-2 {
+				gap: 8px;
+			}
+			.ml-auto {
+				margin-left: auto;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="app">
+			<!-- ── Header ─────────────────────────────────────────────── -->
+			<header class="header">
+				<button class="header-back" onclick="history.back()">
+					<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+						<path
+							d="M10 12L6 8l4-4"
+							stroke="currentColor"
+							stroke-width="1.6"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</svg>
+					Back
+				</button>
+
+				<div class="header-divider"></div>
+
+				<nav class="breadcrumbs">
+					<span class="crumb">AXE-1 Axessio (AG)</span>
+					<span class="sep">›</span>
+					<span class="crumb">AXE-1 Feature Request</span>
+					<span class="sep">›</span>
+					<span class="task-id">FEA-39</span>
+				</nav>
+
+				<div class="header-spacer"></div>
+
+				<div class="header-actions">
+					<!-- Status capsule -->
+					<div class="capsule-wrap">
+						<span class="capsule-label">Status</span>
+						<select
+							id="statusSelect"
+							class="capsule-select chip-todo"
+							onchange="updateStatusChip(this)"
+						>
+							<option value="Open">Open</option>
+							<option value="In Progress">In Progress</option>
+							<option value="Review">Review</option>
+							<option value="On Hold">On Hold</option>
+							<option value="Completed">Completed</option>
+							<option value="Cancelled">Cancelled</option>
+							<option value="Overdue">Overdue</option>
+						</select>
+					</div>
+
+					<!-- Priority capsule -->
+					<div class="capsule-wrap">
+						<span class="capsule-label">Priority</span>
+						<select
+							id="prioritySelect"
+							class="capsule-select chip-normal"
+							onchange="updatePriorityChip(this)"
+						>
+							<option value="Low">Low</option>
+							<option value="Medium">Medium</option>
+							<option value="High">High</option>
+							<option value="Critical">Critical</option>
+						</select>
+					</div>
+
+					<div class="header-divider"></div>
+
+					<div class="save-indicator" id="saveIndicator">
+						<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+							<path
+								d="M3 8.5L6.5 12L13 5"
+								stroke="#22c55e"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+						Saved
+					</div>
+
+					<button class="btn btn-ghost" id="cancelBtn">Cancel</button>
+					<button class="btn btn-primary" id="saveBtn">
+						<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+							<path
+								d="M3 8.5L6.5 12L13 5"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+						Save Task
+					</button>
+				</div>
+			</header>
+
+			<!-- ── Body ───────────────────────────────────────────────── -->
+			<div class="body">
+				<!-- ── Left Sidebar ─────────────────────────────────── -->
+				<aside class="left-sidebar" id="leftSidebar">
+					<!-- Assignment -->
+					<div class="sidebar-section">
+						<div class="sidebar-section-title">Assignment</div>
+						<div class="field-row">
+							<span class="field-label">Assigned to</span>
+							<div class="assignee-row">
+								<div class="avatar">
+									<img
+										src="https://api.dicebear.com/7.x/avataaars/svg?seed=talib"
+										alt="TS"
+										onerror="this.style.display = 'none'"
+									/>
+								</div>
+								<select class="sidebar-select" style="flex: 1" id="assignedToSelect" name="assigned_to">
+									<option value="">Not set</option>
+								</select>
+							</div>
+						</div>
+
+						<div class="field-row">
+							<span class="field-label">Pending With</span>
+							<div class="assignee-row">
+								<div
+									class="avatar"
+									style="background: linear-gradient(135deg, #f59e0b, #fb923c)"
+								>
+									P
+								</div>
+								<select class="sidebar-select" style="flex: 1" id="pendingWithSelect" name="pending_with">
+									<option value="">Not set</option>
+								</select>
+							</div>
+						</div>
+
+						<div class="field-row">
+							<span class="field-label">Guided By</span>
+							<div class="assignee-row">
+								<div
+									class="avatar"
+									style="background: linear-gradient(135deg, #a78bfa, #7c3aed)"
+								>
+									G
+								</div>
+								<select class="sidebar-select" style="flex: 1" id="guidedBySelect" name="guided_by">
+									<option value="">Not set</option>
+								</select>
+							</div>
+						</div>
+					</div>
+
+					<!-- Schedule -->
+					<div class="sidebar-section">
+						<div class="sidebar-section-title">Schedule</div>
+
+						<div class="field-row">
+							<span class="field-label">Start Date</span>
+							<input type="text" name="start_date" id="startDateInput" class="sidebar-input" placeholder="DD-MM-YYYY" style="cursor: pointer;" />
+						</div>
+
+						<div class="field-row">
+							<span class="field-label" style="display: flex; align-items: center; justify-content: space-between;">
+								<span>Due Date</span>
+								<span id="dueDateStatusBadge" style="display: none; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; text-transform: uppercase;"></span>
+							</span>
+							<input type="text" name="due_date" id="dueDateInput" class="sidebar-input" placeholder="DD-MM-YYYY" style="cursor: pointer;" />
+						</div>
+
+						<div class="field-row">
+							<span class="field-label">Est. Completion</span>
+							<input type="text" name="estimated_completion_date" id="estimatedCompletionDateInput" class="sidebar-input" placeholder="DD-MM-YYYY" style="cursor: pointer;" />
+						</div>
+
+						<div class="field-row">
+							<span class="field-label">Time Estimate</span>
+							<input
+								type="number"
+								id="estimatedHoursInput"
+								class="sidebar-input"
+								placeholder="0.00 hrs"
+								step="0.5"
+							/>
+						</div>
+					</div>
+
+					<!-- Ticket -->
+					<div class="sidebar-section">
+						<div class="sidebar-section-title">🎫 Ticket</div>
+
+						<div class="field-row">
+							<span class="field-label">Ticket Date</span>
+							<input type="text" name="ticket_date" id="ticketDateInput" class="sidebar-input" placeholder="DD-MM-YYYY" style="cursor: pointer;" />
+						</div>
+
+						<div class="field-row">
+							<span class="field-label">Ticket ID</span>
+							<input
+								type="text"
+								name="ticket_id"
+								id="ticketIdInput"
+								class="sidebar-input"
+								placeholder="e.g. TKT-001"
+							/>
+						</div>
+
+						<div class="field-row">
+							<span class="field-label">Raised By</span>
+							<input
+								type="text"
+								name="ticket_raised_by"
+								id="ticketRaisedByInput"
+								class="sidebar-input"
+								placeholder="Name or email"
+							/>
+						</div>
+
+						<div class="field-row">
+							<span class="field-label">Ticket Description</span>
+							<textarea
+								name="ticket_description"
+								id="ticketDescriptionInput"
+								class="sidebar-input"
+								rows="3"
+								placeholder="Brief description of the ticket..."
+								style="resize: vertical; line-height: 1.5"
+							></textarea>
+						</div>
+					</div>
+
+					<!-- Flags -->
+					<div class="sidebar-section">
+						<div class="sidebar-section-title">Flags</div>
+						<div class="check-row">
+							<input type="checkbox" name="is_milestone" id="isMilestoneInput" />
+							<label for="isMilestoneInput">Milestone</label>
+						</div>
+
+					</div>
+				</aside>
+
+				<!-- Resizer 1 (Left to Main) -->
+				<div class="resizer" id="leftResizer"></div>
+
+				<!-- ── Main Content ──────────────────────────────────── -->
+				<main class="main-content">
+					<div class="main-inner">
+
+						<!-- Project & Task Type capsules -->
+						<div
+							style="
+								display: flex;
+								align-items: flex-end;
+								gap: 8px;
+								margin-bottom: 14px;
+								flex-wrap: wrap;
+							"
+						>
+							<div class="capsule-wrap">
+								<span class="capsule-label">Project</span>
+								<div
+									style="
+										display: flex;
+										align-items: center;
+										gap: 6px;
+										background: #eef1fe;
+										border: 1.5px solid #c7d0fb;
+										border-radius: 99px;
+										padding: 4px 12px 4px 9px;
+									"
+								>
+									<svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+										<rect
+											x="2"
+											y="2"
+											width="12"
+											height="12"
+											rx="2"
+											stroke="#4f6ef7"
+											stroke-width="1.5"
+										/>
+										<path
+											d="M5 8h6M5 5h6M5 11h4"
+											stroke="#4f6ef7"
+											stroke-width="1.5"
+											stroke-linecap="round"
+										/>
+									</svg>
+									<select
+										id="projectCapsule"
+										style="
+											appearance: none;
+											background: transparent;
+											border: none;
+											color: #4f6ef7;
+											font-size: 11px;
+											font-weight: 600;
+											cursor: pointer;
+											outline: none;
+											font-family: var(--font);
+										"
+									>
+										<option>AXE-1 Axessio (AG)</option>
+										<option>Project Beta</option>
+									</select>
+								</div>
+							</div>
+
+							<svg
+								width="10"
+								height="10"
+								viewBox="0 0 10 10"
+								fill="none"
+								style="color: var(--text-muted); flex-shrink: 0; margin-bottom: 8px;"
+							>
+								<path
+									d="M3 5h4M5 3l2 2-2 2"
+									stroke="currentColor"
+									stroke-width="1.3"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+
+							<div class="capsule-wrap">
+								<span class="capsule-label">Type</span>
+								<div id="taskTypeWrapper" class="type-capsule type-task">
+									<svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+										<circle
+											cx="8"
+											cy="8"
+											r="6"
+											stroke="currentColor"
+											stroke-width="1.5"
+										/>
+										<path
+											d="M8 5v3l2 2"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+										/>
+									</svg>
+									<select
+										id="taskTypeCapsule"
+										onchange="updateTypeCapsule(this)"
+									>
+										<option value="Task">Task</option>
+										<option value="Bug">Bug</option>
+										<option value="Customization Request">Customization Request</option>
+									</select>
+								</div>
+							</div>
+						</div>
+
+						<!-- Title -->
+						<textarea
+							class="task-title-input"
+							id="taskTitleInput"
+							rows="2"
+							placeholder="Task name..."
+							oninput="autoResize(this)"
+						></textarea>
+
+						<!-- Description -->
+						<div class="section-block">
+							<button class="section-toggle" onclick="toggleSection(this)">
+								<span class="section-icon">📝</span>
+								<span class="section-label">Description</span>
+								<svg
+									class="section-chevron open"
+									width="12"
+									height="12"
+									viewBox="0 0 12 12"
+									fill="none"
+								>
+									<path
+										d="M2 4l4 4 4-4"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+							</button>
+							<div class="section-body">
+								<div class="desc-editor-wrapper">
+									<div id="descEditor"></div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Attachments -->
+						<div class="section-block">
+							<button class="section-toggle" onclick="toggleSection(this)">
+								<span class="section-icon">📎</span>
+								<span class="section-label">Attachments</span>
+								<span class="section-meta">No files</span>
+								<svg
+									class="section-chevron open"
+									width="12"
+									height="12"
+									viewBox="0 0 12 12"
+									fill="none"
+								>
+									<path
+										d="M2 4l4 4 4-4"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+							</button>
+							<div class="section-body">
+								<div
+									class="attachments-dropzone"
+									onclick="document.getElementById('fileInput').click()"
+								>
+									<svg
+										width="22"
+										height="22"
+										viewBox="0 0 24 24"
+										fill="none"
+										style="
+											margin: 0 auto 6px;
+											display: block;
+											color: var(--text-muted);
+										"
+									>
+										<path
+											d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										/>
+									</svg>
+									<p style="color: var(--text-secondary); font-size: 12px">
+										Drop files here or
+										<span style="color: var(--accent)">browse</span>
+									</p>
+									<p>Any file type up to 25 MB</p>
+								</div>
+								<input type="file" id="fileInput" style="display: none" multiple />
+							</div>
+						</div>
+
+						<!-- Checklist -->
+						<div class="section-block">
+							<button class="section-toggle" onclick="toggleSection(this)">
+								<span class="section-icon">☑</span>
+								<span class="section-label">Quick Checklist</span>
+								<span class="section-meta" id="checklistCount">0 items</span>
+								<svg
+									class="section-chevron open"
+									width="12"
+									height="12"
+									viewBox="0 0 12 12"
+									fill="none"
+								>
+									<path
+										d="M2 4l4 4 4-4"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+							</button>
+							<div class="section-body">
+								<div
+									class="checklist-progress"
+									id="checklistProgress"
+									style="display: none"
+								>
+									<div class="progress-bar">
+										<div
+											class="progress-fill"
+											id="progressFill"
+											style="width: 0%"
+										></div>
+									</div>
+									<span class="progress-label" id="progressLabel">0 / 0</span>
+								</div>
+								<div class="checklist-add-row">
+									<input
+										type="text"
+										class="checklist-input-field"
+										placeholder="Add a checklist item..."
+										id="checklistInput"
+										onkeydown="if (event.key === 'Enter') addChecklistItem();"
+									/>
+									<button
+										class="btn btn-primary btn-sm"
+										onclick="addChecklistItem()"
+									>
+										Add
+									</button>
+								</div>
+								<div class="checklist-items" id="checklistItems"></div>
+							</div>
+						</div>
+
+						<!-- Recent Activity -->
+						<div class="section-block">
+							<button class="section-toggle" onclick="toggleSection(this)">
+								<svg
+									width="13"
+									height="13"
+									viewBox="0 0 16 16"
+									fill="none"
+									style="color: var(--text-muted)"
+								>
+									<polyline
+										points="22 12 18 12 15 21 9 3 6 12 2 12"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+								<span class="section-label">Recent Activity</span>
+								<svg
+									class="section-chevron open"
+									width="12"
+									height="12"
+									viewBox="0 0 12 12"
+									fill="none"
+								>
+									<path
+										d="M2 4l4 4 4-4"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+							</button>
+							<div class="section-body" style="padding-top: 0">
+								<div class="activity-list" id="activityList">
+									<!-- Dynamic activities will be loaded here -->
+								</div>
+							</div>
+						</div>
+					</div>
+				</main>
+
+				<!-- Resizer 2 (Main to Right) -->
+				<div class="resizer" id="rightResizer"></div>
+
+				<!-- ── Right Sidebar ──────────────────────────────────── -->
+				<aside class="right-sidebar" id="rightSidebar">
+					<div
+						style="
+							padding: 12px 16px;
+							border-bottom: 1px solid var(--border);
+							display: flex;
+							align-items: center;
+							gap: 7px;
+						"
+					>
+						<svg
+							width="13"
+							height="13"
+							viewBox="0 0 16 16"
+							fill="none"
+							style="color: var(--text-muted)"
+						>
+							<path
+								d="M14 2H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3l3 3 3-3h3a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linejoin="round"
+							/>
+						</svg>
+						<span style="font-size: 12px; font-weight: 600; color: var(--text-primary)"
+							>Comments</span
+						>
+					</div>
+
+					<!-- Comments -->
+					<div class="tab-content active" id="tab-comments">
+						<div class="comment-list" id="commentList">
+							<div class="comment-empty" id="commentEmpty">
+								<svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+									<path
+										d="M28 4H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6l6 6 6-6h6a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linejoin="round"
+									/>
+								</svg>
+								<p>No comments yet</p>
+								<p>Start the conversation by adding a comment.</p>
+							</div>
+						</div>
+						<div class="comment-compose">
+							<textarea
+								class="comment-compose-input"
+								id="commentInput"
+								placeholder="Add a comment..."
+								rows="3"
+							></textarea>
+							<div class="comment-compose-actions">
+								<button
+									class="btn btn-ghost btn-sm"
+									onclick="document.getElementById('commentInput').value = ''"
+								>
+									Clear
+								</button>
+								<button class="btn btn-primary btn-sm" onclick="postComment()">
+									Submit
+								</button>
+							</div>
+						</div>
+					</div>
+				</aside>
+			</div>
+		</div>
+
+		<!-- UI control scripts & Taskform JS link -->
+		<script>
+			// ── Tab switching ──────────────────────────────────────────────
+			function switchTab(btn, tabId) {
+				document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+				document
+					.querySelectorAll(".tab-content")
+					.forEach((c) => c.classList.remove("active"));
+				btn.classList.add("active");
+				document.getElementById("tab-" + tabId).classList.add("active");
+			}
+
+			// ── Section toggle ─────────────────────────────────────────────
+			function toggleSection(btn) {
+				const body = btn.nextElementSibling;
+				const chevron = btn.querySelector(".section-chevron");
+				if (body.style.display === "none") {
+					body.style.display = "";
+					chevron.classList.add("open");
+				} else {
+					body.style.display = "none";
+					chevron.classList.remove("open");
+				}
+			}
+
+			// ── Status chip update ─────────────────────────────────────────
+			const statusClasses = {
+				"Open": "chip-todo",
+				"In Progress": "chip-inprog",
+				"Review": "chip-review",
+				"Completed": "chip-done",
+				"On Hold": "chip-todo",
+				"Cancelled": "chip-todo",
+				"Overdue": "chip-critical",
+			};
+			function updateStatusChip(sel) {
+				sel.className = "capsule-select " + (statusClasses[sel.value] || "chip-todo");
+			}
+
+			const priClasses = {
+				"Low": "chip-low",
+				"Medium": "chip-normal",
+				"High": "chip-high",
+				"Critical": "chip-critical",
+			};
+			function updatePriorityChip(sel) {
+				sel.className = "capsule-select " + (priClasses[sel.value] || "chip-normal");
+			}
+
+			const typeClasses = {
+				"Task": "type-task",
+				"Bug": "type-bug",
+				"Customization Request": "type-customization",
+			};
+			function updateTypeCapsule(sel) {
+				const wrapper = document.getElementById("taskTypeWrapper");
+				if (!wrapper) return;
+				wrapper.className = "type-capsule " + (typeClasses[sel.value] || "type-task");
+			}
+
+			// ── Textarea auto resize ───────────────────────────────────────
+			function autoResize(el) {
+				el.style.height = "auto";
+				el.style.height = el.scrollHeight + "px";
+			}
+			document.querySelectorAll(".task-title-input").forEach((el) => {
+				el.style.height = "auto";
+				el.style.height = el.scrollHeight + "px";
+			});
+
+			window.csrf_token = window.csrf_token || "{{ csrf_token }}";
+		</script>
+		<script src="/taskform.js"></script>
+	</body>
+</html>

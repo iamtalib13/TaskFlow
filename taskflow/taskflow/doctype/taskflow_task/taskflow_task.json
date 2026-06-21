@@ -279,7 +279,7 @@
   },
   {
    "fieldname": "ticket_raised_by",
-   "fieldtype": "Select",
+   "fieldtype": "Data",
    "label": "Ticket Raised By"
   },
   {

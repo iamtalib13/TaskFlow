@@ -1,6 +1,6 @@
 (function () {
 	const METHOD_BASE = "/api/method/taskflow.taskflow.api.portal";
-	const STATUS_COLUMNS = ["Open", "In Progress", "Review", "On Hold", "Completed", "Cancelled"];
+	const STATUS_COLUMNS = ["Open", "In Progress", "Review", "On Hold", "Completed", "Cancelled", "Overdue"];
 	const TASK_VIEWS = ["list", "kanban", "dashboard", "timeline", "files", "settings"];
 	const NAV_MODES = ["dashboard", "my-tasks", "calendar", "reports", "team", "settings"];
 	const NAV_PLACEHOLDER_MODES = ["calendar", "reports", "settings"];
@@ -485,13 +485,19 @@
 			renderTeamView();
 		});
 
-		refs.projectForm.addEventListener("submit", submitProjectForm);
-		refs.taskForm.addEventListener("submit", submitTaskForm);
-		refs.taskFormQuick.addEventListener("submit", submitTaskForm);
+		if (refs.projectForm) {
+			refs.projectForm.addEventListener("submit", submitProjectForm);
+		}
+		if (refs.taskForm) {
+			refs.taskForm.addEventListener("submit", submitTaskForm);
+		}
+		if (refs.taskFormQuick) {
+			refs.taskFormQuick.addEventListener("submit", submitTaskForm);
+		}
 
 		// Robust click handler for task save button
-		const taskSaveBtn = refs.taskForm.querySelector('button[type="submit"]');
-		if (taskSaveBtn) {
+		const taskSaveBtn = refs.taskForm?.querySelector('button[type="submit"]');
+		if (taskSaveBtn && refs.taskForm) {
 			taskSaveBtn.addEventListener("click", (e) => {
 				if (refs.taskForm.checkValidity && !refs.taskForm.checkValidity()) {
 					// Let the browser show validation errors
@@ -506,26 +512,28 @@
 		}
 
 		// Auto-save listeners for task form
-		refs.taskForm.querySelectorAll("input, select, textarea").forEach((el) => {
-			if (el.name === "new_comment") return; // Skip comment input
-			if (
-				el.hasAttribute("data-new-checklist-item") ||
-				el.hasAttribute("data-toggle-checklist-item") ||
-				el.hasAttribute("data-edit-checklist-item") ||
-				el.closest("[data-checklist-wrapper]")
-			)
-				return;
+		if (refs.taskForm) {
+			refs.taskForm.querySelectorAll("input, select, textarea").forEach((el) => {
+				if (el.name === "new_comment") return; // Skip comment input
+				if (
+					el.hasAttribute("data-new-checklist-item") ||
+					el.hasAttribute("data-toggle-checklist-item") ||
+					el.hasAttribute("data-edit-checklist-item") ||
+					el.closest("[data-checklist-wrapper]")
+				)
+					return;
 
-			const eventType =
-				(el.tagName === "INPUT" && (el.type === "text" || el.type === "number")) ||
-				el.tagName === "TEXTAREA"
-					? "input"
-					: "change";
+				const eventType =
+					(el.tagName === "INPUT" && (el.type === "text" || el.type === "number")) ||
+					el.tagName === "TEXTAREA"
+						? "input"
+						: "change";
 
-			el.addEventListener(eventType, () => {
-				triggerAutoSave();
+				el.addEventListener(eventType, () => {
+					triggerAutoSave();
+				});
 			});
-		});
+		}
 
 		refs.projectForm.elements.team.addEventListener("change", (event) => {
 			const projectLead = refs.projectForm.elements.project_lead;
@@ -1587,14 +1595,9 @@
 
 		refs.board.querySelectorAll("[data-add-task-inline]").forEach((button) => {
 			button.addEventListener("click", () => {
-				openTaskModal();
 				const column = button.closest(".taskflow-column");
 				const status = column ? column.dataset.status : null;
-				if (status) {
-					setTimeout(() => {
-						refs.taskForm.elements.status.value = status;
-					}, 100);
-				}
+				openTaskModal(null, status);
 			});
 		});
 
@@ -2146,62 +2149,30 @@
 		toggleModal(refs.projectModal, true);
 	}
 
-	async function openTaskModal(task) {
+	async function openTaskModal(task, status = "") {
 		const currentProject = state.projectWorkspace && state.projectWorkspace.project;
-		if (!currentProject && !task) return;
-
-		if (!task) {
-			// Quick Create for new tasks
-			state.taskModalMode = "create";
-			const form = refs.taskFormQuick;
-			if (!form) return;
-			form.reset();
-
-			const projectField = getFormElement(form, "project");
-			if (projectField) {
-				projectField.value = currentProject.name;
-			}
-			const projectDisplayField = getFormElement(form, "project_display");
-			if (projectDisplayField) {
-				projectDisplayField.value = currentProject.project_name || currentProject.name;
-			}
-
-			getFormElement(form, "team").value = currentProject.team;
-			getFormElement(form, "status").value = "Open";
-			getFormElement(form, "assigned_to").innerHTML = buildMemberOptions(
-				currentProject.team,
-				"",
-			);
-			getFormElement(form, "priority").value = "Medium";
-			getFormElement(form, "task_type").value = "Task";
-			syncTaskDatepickers(form);
-
-			toggleModal(refs.taskModalQuick, true);
-		} else {
-			// Advanced View for existing tasks
-			state.taskModalMode = "edit";
-			state.activeTaskName = task.name;
-			updateUrlState();
-			const form = refs.taskForm;
-			if (!form) return; // Safety check
-			form.reset();
-
-			// Fetch fresh details to include comments
-			try {
-				const fullTask = await apiCall("get_task_details", { task: task.name });
-				if (fullTask.task) {
-					fullTask.task.comments = fullTask.comments;
-					_populateAdvancedTaskForm(fullTask.task, currentProject);
-				} else {
-					_populateAdvancedTaskForm(task, currentProject);
-				}
-			} catch (e) {
-				console.error("Failed to fetch task details", e);
-				_populateAdvancedTaskForm(task, currentProject);
-			}
-
-			toggleModal(refs.taskModal, true);
+		
+		let url = "/taskform";
+		const params = new URLSearchParams();
+		
+		if (task) {
+			params.set("task", task.name);
 		}
+		if (currentProject) {
+			params.set("project", currentProject.name);
+		}
+		if (status) {
+			params.set("status", status);
+		}
+		if (state.navMode) {
+			params.set("return_mode", state.navMode);
+		}
+		if (state.taskView) {
+			params.set("return_view", state.taskView);
+		}
+		
+		url += "?" + params.toString();
+		window.location.href = url;
 	}
 	function updateAvatar(employeeId) {
 		const avatarContainer = document.querySelector("[data-assigned-avatar-large]");
@@ -2215,6 +2186,7 @@
 	}
 
 	function _populateAdvancedTaskForm(task, currentProject) {
+		state.isPopulatingTaskForm = true;
 		const form = refs.taskForm;
 		const team = task.team || (currentProject ? currentProject.team : "");
 
@@ -2257,6 +2229,16 @@
 				triggerAutoSave({ immediate: true });
 			});
 		}
+		if (form.elements.task_type) {
+			form.elements.task_type.addEventListener("change", (e) => {
+				const typeBreadcrumb = document.querySelector("[data-task-type-breadcrumb]");
+				if (typeBreadcrumb) {
+					const val = e.target.value || "Task";
+					typeBreadcrumb.textContent = val;
+					typeBreadcrumb.style.display = val ? "inline-flex" : "none";
+				}
+			});
+		}
 
 		const idLabel = document.querySelector("[data-task-id-label]");
 		if (idLabel)
@@ -2267,15 +2249,26 @@
 
 		const projectBreadcrumb = document.querySelector("[data-task-project-breadcrumb]");
 		const typeBreadcrumb = document.querySelector("[data-task-type-breadcrumb]");
-		if (projectBreadcrumb)
-			projectBreadcrumb.textContent = task.project_title || task.project || "";
-		if (typeBreadcrumb) typeBreadcrumb.textContent = task.task_type || "Task";
+		if (projectBreadcrumb) {
+			const projectText = task.project_title || task.project || "";
+			projectBreadcrumb.textContent = projectText;
+			projectBreadcrumb.style.display = projectText ? "inline-flex" : "none";
+		}
+		if (typeBreadcrumb) {
+			const typeText = task.task_type || "Task";
+			typeBreadcrumb.textContent = typeText;
+			typeBreadcrumb.style.display = typeText ? "inline-flex" : "none";
+		}
 
 		state.currentChecklist = task.checklist || [];
 		renderChecklist();
 		renderComments(Array.isArray(task.comments) ? task.comments : []);
 		// Re-fetch details logic should be triggered here if needed
 		toggleModal(refs.taskModal, true);
+
+		setTimeout(() => {
+			state.isPopulatingTaskForm = false;
+		}, 100);
 	}
 
 	function renderChecklist() {
@@ -2606,6 +2599,7 @@
 	}
 
 	function triggerChecklistAutoSave(options = {}) {
+		if (state.isPopulatingTaskForm) return;
 		const form = refs.taskForm;
 		if (!form || !form.elements.name.value) return;
 
@@ -2651,6 +2645,7 @@
 	}
 
 	function triggerAutoSave(options = {}) {
+		if (state.isPopulatingTaskForm) return;
 		const form = refs.taskForm;
 		if (!form || !form.elements.name.value) return;
 
@@ -2823,9 +2818,14 @@
 		if (open) {
 			element.classList.add("open");
 			element.setAttribute("aria-hidden", "false");
-			const focusTarget = element.querySelector(
-				"input:not([type='hidden']), select, textarea, button",
-			);
+			let focusTarget;
+			if (element === refs.taskModal) {
+				focusTarget = element.querySelector(".taskflow-modal");
+			} else {
+				focusTarget = element.querySelector(
+					"input:not([type='hidden']), select, textarea, button",
+				);
+			}
 			focusTarget?.focus();
 		} else {
 			element.classList.remove("open");

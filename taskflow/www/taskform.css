@@ -1,0 +1,571 @@
+/* Standalone Task Form Stylesheet (3-Column Layout) */
+
+:root {
+	--taskflow-primary: #3b82f6;
+	--taskflow-primary-hover: #2563eb;
+	--taskflow-bg: #f8fafc;
+	--taskform-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+	--taskflow-sidebar-bg: #ffffff;
+	--taskflow-border: #e2e8f0;
+	--taskflow-text: #1e293b;
+	--taskflow-text-muted: #64748b;
+	--taskflow-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+	--taskflow-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+	--taskflow-accent-bg: rgba(59, 130, 246, 0.05);
+	--border-radius-sm: 6px;
+	--border-radius-md: 10px;
+	--border-radius-lg: 16px;
+}
+
+body.taskform-page {
+	margin: 0;
+	padding: 0;
+	background: var(--taskform-bg-gradient);
+	font-family: "Inter", system-ui, -apple-system, sans-serif;
+	color: var(--taskflow-text);
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.taskform-container {
+	max-width: 1400px;
+	width: 100%;
+	margin: 0 auto;
+	padding: 24px;
+	box-sizing: border-box;
+}
+
+/* Header Section */
+.taskform-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px 24px;
+	background: rgba(255, 255, 255, 0.85);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	border: 1px solid rgba(255, 255, 255, 0.5);
+	border-radius: var(--border-radius-lg);
+	box-shadow: var(--taskflow-shadow);
+	margin-bottom: 24px;
+	z-index: 10;
+}
+
+.taskform-header-left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	min-width: 0;
+}
+
+.taskform-btn-back {
+	background: none;
+	border: 1px solid var(--taskflow-border);
+	padding: 8px 16px;
+	border-radius: var(--border-radius-md);
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--taskflow-text);
+	cursor: pointer;
+	transition: all 0.2s ease;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.taskform-btn-back:hover {
+	background: rgba(0, 0, 0, 0.03);
+	transform: translateX(-2px);
+}
+
+.taskform-breadcrumbs {
+	font-size: 15px;
+	font-weight: 500;
+	color: var(--taskflow-text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.taskform-task-id {
+	color: var(--taskflow-text);
+	font-weight: 700;
+}
+
+.taskform-header-right {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.taskform-save-status {
+	font-size: 13px;
+	color: var(--taskflow-text-muted);
+	opacity: 0;
+	transition: opacity 0.3s ease;
+	margin-right: 8px;
+}
+
+.taskform-save-status.visible {
+	opacity: 1;
+}
+
+.taskform-hidden {
+	display: none !important;
+}
+
+/* Form Buttons */
+.taskform-btn-primary {
+	background-color: var(--taskflow-primary);
+	color: white;
+	border: none;
+	padding: 10px 20px;
+	border-radius: var(--border-radius-md);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.taskform-btn-primary:hover {
+	background-color: var(--taskflow-primary-hover);
+	box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.taskform-btn-primary.small-btn {
+	padding: 6px 12px;
+	font-size: 12px;
+	border-radius: var(--border-radius-sm);
+}
+
+.taskform-btn-secondary {
+	background: transparent;
+	color: var(--taskflow-text);
+	border: 1px solid var(--taskflow-border);
+	padding: 10px 20px;
+	border-radius: var(--border-radius-md);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.taskform-btn-secondary:hover {
+	background-color: rgba(0, 0, 0, 0.02);
+	border-color: #cbd5e1;
+}
+
+/* 3-Column Layout Body */
+.taskform-body-layout {
+	display: grid;
+	grid-template-columns: 280px 1fr 340px;
+	gap: 24px;
+	align-items: start;
+}
+
+@media (max-width: 1200px) {
+	.taskform-body-layout {
+		grid-template-columns: 1fr 340px;
+	}
+	.left-sidebar {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		gap: 16px;
+	}
+	.checkbox-section {
+		grid-column: 1 / -1;
+	}
+}
+
+@media (max-width: 900px) {
+	.taskform-body-layout {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* Sidebars (Attributes & Activity) */
+.taskform-sidebar {
+	background: white;
+	border: 1px solid var(--taskflow-border);
+	border-radius: var(--border-radius-lg);
+	padding: 24px;
+	box-shadow: var(--taskflow-shadow);
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.taskform-sidebar-title {
+	font-size: 14px;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: var(--taskflow-text);
+	margin-top: 0;
+	margin-bottom: 8px;
+	border-bottom: 1px solid var(--taskflow-border);
+	padding-bottom: 8px;
+}
+
+.taskform-sidebar-section {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.taskform-field-label {
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--taskflow-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.taskform-select,
+.taskform-input {
+	width: 100%;
+	padding: 10px 12px;
+	border-radius: var(--border-radius-md);
+	border: 1px solid var(--taskflow-border);
+	background-color: #f8fafc;
+	color: var(--taskflow-text);
+	font-size: 14px;
+	font-weight: 500;
+	outline: none;
+	transition: border-color 0.2s ease, background-color 0.2s ease;
+	box-sizing: border-box;
+}
+
+.taskform-select:focus,
+.taskform-input:focus {
+	border-color: var(--taskflow-primary);
+	background-color: #ffffff;
+}
+
+/* Avatar Assignee styling */
+.taskform-assignee-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.taskform-avatar {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background: #3b82f6;
+	color: white;
+	font-weight: 700;
+	font-size: 13px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	overflow: hidden;
+}
+
+.taskform-avatar img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+/* Checkbox alignment */
+.checkbox-section {
+	flex-direction: row !important;
+	gap: 24px !important;
+	padding: 8px 0;
+}
+
+.taskform-checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.taskform-checkbox-label input {
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+}
+
+/* Middle Main Content */
+.taskform-main-content {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+}
+
+.taskform-section {
+	background: white;
+	border: 1px solid var(--taskflow-border);
+	border-radius: var(--border-radius-lg);
+	padding: 24px;
+	box-shadow: var(--taskflow-shadow);
+}
+
+.taskform-section-header {
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--taskflow-text);
+	margin-bottom: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+/* Title Field */
+.title-section {
+	padding: 16px 24px;
+}
+
+.taskform-title-input {
+	width: 100%;
+	border: none;
+	outline: none;
+	font-size: 22px;
+	font-weight: 800;
+	color: var(--taskflow-text);
+	padding: 4px 0;
+	background: transparent;
+}
+
+.taskform-title-input::placeholder {
+	color: #cbd5e1;
+}
+
+/* Rich Editor Wrapper */
+.taskform-editor-wrapper {
+	min-height: 250px;
+	border: 1px solid var(--taskflow-border);
+	border-radius: var(--border-radius-md);
+	overflow: hidden;
+}
+
+.ql-toolbar.ql-snow {
+	border: none !important;
+	border-bottom: 1px solid var(--taskflow-border) !important;
+	background: #f8fafc;
+	padding: 8px 12px !important;
+}
+
+.ql-container.ql-snow {
+	border: none !important;
+	min-height: 200px;
+	font-size: 14px;
+}
+
+.ql-editor {
+	padding: 16px !important;
+	min-height: 200px;
+}
+
+/* Checklist Section */
+.taskform-checklist-container {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.taskform-checklist-add-row {
+	display: flex;
+	gap: 12px;
+}
+
+.taskform-checklist-input {
+	flex: 1;
+	border: 1px solid var(--taskflow-border);
+	border-radius: var(--border-radius-md);
+	padding: 8px 14px;
+	font-size: 13px;
+	outline: none;
+	transition: border-color 0.2s ease;
+}
+
+.taskform-checklist-input:focus {
+	border-color: var(--taskflow-primary);
+}
+
+.taskform-checklist-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.taskform-checklist-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 12px;
+	border-radius: var(--border-radius-sm);
+	background: #f8fafc;
+	border: 1px solid var(--taskflow-border);
+	transition: all 0.2s ease;
+}
+
+.taskform-checklist-item:hover {
+	background: #f1f5f9;
+}
+
+.taskform-checklist-item-left {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	flex: 1;
+}
+
+.taskform-checklist-checkbox {
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+}
+
+.taskform-checklist-text.completed {
+	text-decoration: line-through;
+	color: var(--taskflow-text-muted);
+}
+
+.taskform-btn-delete {
+	background: none;
+	border: none;
+	color: #ef4444;
+	font-size: 16px;
+	cursor: pointer;
+	padding: 2px 6px;
+	border-radius: 4px;
+	transition: background 0.2s;
+}
+
+.taskform-btn-delete:hover {
+	background: rgba(239, 68, 68, 0.1);
+}
+
+/* Discussion & Comments (Right Sidebar) */
+.taskform-comments-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.taskform-comment-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-bottom: 20px;
+	max-height: 480px;
+	overflow-y: auto;
+	padding-right: 8px;
+}
+
+.taskform-comment-item {
+	display: flex;
+	gap: 12px;
+	padding: 12px;
+	border-radius: var(--border-radius-md);
+	background: #f8fafc;
+	border: 1px solid var(--taskflow-border);
+}
+
+.taskform-comment-right {
+	flex: 1;
+}
+
+.taskform-comment-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	margin-bottom: 4px;
+}
+
+.taskform-comment-user {
+	font-weight: 700;
+	font-size: 13px;
+	color: var(--taskflow-text);
+}
+
+.taskform-comment-time {
+	font-size: 11px;
+	color: var(--taskflow-text-muted);
+}
+
+.taskform-comment-content {
+	font-size: 13px;
+	line-height: 1.5;
+	color: var(--taskflow-text);
+	white-space: pre-line;
+}
+
+.taskform-comment-form {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	border-top: 1px solid var(--taskflow-border);
+	padding-top: 16px;
+}
+
+.taskform-comment-textarea {
+	width: 100%;
+	border: 1px solid var(--taskflow-border);
+	border-radius: var(--border-radius-md);
+	padding: 12px;
+	font-size: 13px;
+	outline: none;
+	resize: vertical;
+	box-sizing: border-box;
+}
+
+.taskform-comment-textarea:focus {
+	border-color: var(--taskflow-primary);
+}
+
+.taskform-comment-actions {
+	display: flex;
+	justify-content: flex-end;
+}
+
+/* Activity Fallback Styling */
+.taskform-activity-fallback {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 48px 24px;
+	background: #f8fafc;
+	border: 1px dashed var(--taskflow-border);
+	border-radius: var(--border-radius-md);
+}
+
+.taskform-activity-fallback-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+}
+
+.fallback-icon {
+	font-size: 40px;
+	opacity: 0.3;
+}
+
+.fallback-title {
+	font-weight: 700;
+	font-size: 15px;
+	margin: 0;
+	color: var(--taskflow-text);
+}
+
+.fallback-desc {
+	font-size: 13px;
+	margin: 0;
+	color: var(--taskflow-text-muted);
+	line-height: 1.4;
+}
