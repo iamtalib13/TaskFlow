@@ -87,3 +87,35 @@ class TaskflowTask(Document):
 			and not can_manage_team(user, self.team)
 		):
 			frappe.throw(_("Only a team manager can assign tasks to other users."))
+
+	def on_update(self):
+		self._sync_assign_to_todo()
+
+	def _sync_assign_to_todo(self):
+		from frappe.desk.form.assign_to import add, remove
+		user = self.assigned_to_user
+
+		existing_assignees = []
+		if self.get("_assign"):
+			try:
+				existing_assignees = frappe.parse_json(self._assign)
+			except Exception:
+				pass
+
+		if user and user not in existing_assignees:
+			try:
+				add({
+					"doctype": "Taskflow Task",
+					"name": self.name,
+					"assign_to": [user],
+					"ignore_permissions": True
+				})
+			except Exception:
+				pass
+
+		for old_user in existing_assignees:
+			if old_user != user:
+				try:
+					remove("Taskflow Task", self.name, old_user)
+				except Exception:
+					pass

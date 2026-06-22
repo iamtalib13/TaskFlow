@@ -5,3 +5,4 @@
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
 taskflow.patches.custom_fields.add_fields_for_project_user
+taskflow.patches.sync_assigned_to_user_to_assign
