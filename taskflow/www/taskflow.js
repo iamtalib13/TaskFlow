@@ -1137,11 +1137,22 @@
 		}
 
 		if (refs.myTasksCount && state.bootstrap) {
-			const myTasks = (state.bootstrap.tasks || []).filter(
-				(t) =>
+			const myTasks = (state.bootstrap.tasks || []).filter((t) => {
+				let assignees = [];
+				if (t._assign) {
+					try {
+						assignees = typeof t._assign === "string" ? JSON.parse(t._assign) : t._assign;
+					} catch (e) {
+						assignees = [];
+					}
+				}
+				if (!Array.isArray(assignees)) assignees = [];
+				return (
+					assignees.includes(state.bootstrap.user.user) ||
 					t.assigned_to_user === state.bootstrap.user.user ||
-					t.assigned_to === state.bootstrap.user.full_name,
-			);
+					t.assigned_to === state.bootstrap.user.full_name
+				);
+			});
 			refs.myTasksCount.textContent = myTasks.length;
 		}
 
@@ -1242,9 +1253,25 @@
 			}
 
 			const activeEmployee = state.selectedMember;
-			const myTasks = (state.bootstrap.tasks || []).filter(
-				(t) => t.assigned_to === activeEmployee,
-			);
+			const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(m => m.employee === activeEmployee);
+			const activeUser = memberObj ? memberObj.user : null;
+
+			const myTasks = (state.bootstrap.tasks || []).filter((t) => {
+				let assignees = [];
+				if (t._assign) {
+					try {
+						assignees = typeof t._assign === "string" ? JSON.parse(t._assign) : t._assign;
+					} catch (e) {
+						assignees = [];
+					}
+				}
+				if (!Array.isArray(assignees)) assignees = [];
+				return (
+					t.assigned_to === activeEmployee ||
+					t.assigned_to_user === activeUser ||
+					(activeUser && assignees.includes(activeUser))
+				);
+			});
 			renderTaskArea(myTasks);
 			return;
 		}
@@ -1493,7 +1520,25 @@
 		let tasks = [];
 		if (state.navMode === "my-tasks") {
 			const activeEmployee = state.selectedMember || getCurrentUserEmployeeId();
-			tasks = (state.bootstrap.tasks || []).filter((t) => t.assigned_to === activeEmployee);
+			const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(m => m.employee === activeEmployee);
+			const activeUser = memberObj ? memberObj.user : null;
+
+			tasks = (state.bootstrap.tasks || []).filter((t) => {
+				let assignees = [];
+				if (t._assign) {
+					try {
+						assignees = typeof t._assign === "string" ? JSON.parse(t._assign) : t._assign;
+					} catch (e) {
+						assignees = [];
+					}
+				}
+				if (!Array.isArray(assignees)) assignees = [];
+				return (
+					t.assigned_to === activeEmployee ||
+					t.assigned_to_user === activeUser ||
+					(activeUser && assignees.includes(activeUser))
+				);
+			});
 		} else if (state.projectWorkspace) {
 			tasks = state.projectWorkspace.tasks || [];
 		} else if (state.navMode === "dashboard") {
@@ -1538,9 +1583,22 @@
 		const members = (state.projectWorkspace && state.projectWorkspace.team_members) || [];
 		const performanceCardsHtml = members
 			.map((m) => {
-				const memberTasks = tasks.filter(
-					(t) => t.assigned_to === m.employee || t.assigned_to_user === m.user,
-				);
+				const memberTasks = tasks.filter((t) => {
+					let assignees = [];
+					if (t._assign) {
+						try {
+							assignees = typeof t._assign === "string" ? JSON.parse(t._assign) : t._assign;
+						} catch (e) {
+							assignees = [];
+						}
+					}
+					if (!Array.isArray(assignees)) assignees = [];
+					return (
+						t.assigned_to === m.employee ||
+						t.assigned_to_user === m.user ||
+						assignees.includes(m.user)
+					);
+				});
 				const done = memberTasks.filter((t) => t.status === "Completed").length;
 				const pending = memberTasks.filter(
 					(t) => !["Completed", "Cancelled"].includes(t.status),
