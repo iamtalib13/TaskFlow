@@ -566,6 +566,10 @@
 						</select>
 					</label>
 					<label
+						>Start Date
+						<input type="date" name="start_date" />
+					</label>
+					<label
 						>Due Date
 						<input type="date" name="due_date" />
 					</label>
@@ -577,6 +581,11 @@
 							<option value="Customization Request">Customization Request</option>
 						</select>
 					</label>
+					<div style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
+						<span style="font-size: 13px; font-weight: 500; color: var(--taskflow-text-muted);">Description</span>
+						<div id="quick-task-desc-editor" style="min-height: 120px; border: 1px solid var(--taskflow-border); border-radius: 8px; background: #fff;"></div>
+						<input type="hidden" name="description" />
+					</div>
 				</div>
 			</div>
 		</form>

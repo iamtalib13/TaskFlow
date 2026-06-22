@@ -245,8 +245,9 @@
 		refs.memberSelector = document.querySelector("[data-member-selector]");
 
 		// Initialize Quill for description
-		if (document.getElementById("taskflow-desc-editor") && window.Quill) {
-			window._taskDescEditor = new Quill("#taskflow-desc-editor", {
+		const editorEl = document.getElementById("taskflow-desc-editor") || document.getElementById("quick-task-desc-editor");
+		if (editorEl && window.Quill) {
+			window._taskDescEditor = new Quill(editorEl, {
 				theme: "snow",
 				placeholder: "Add a more detailed description...",
 				modules: {
@@ -260,9 +261,10 @@
 			});
 			// Keep hidden input in sync on every change
 			window._taskDescEditor.on("text-change", () => {
-				const hiddenDesc = refs.taskForm && refs.taskForm.querySelector('input[name="description"]');
+				const form = refs.taskForm || refs.taskFormQuick;
+				const hiddenDesc = form && form.querySelector('input[name="description"]');
 				if (hiddenDesc) hiddenDesc.value = window._taskDescEditor.root.innerHTML;
-				triggerAutoSave();
+				if (typeof triggerAutoSave === "function") triggerAutoSave();
 			});
 		}
 	}
@@ -2568,9 +2570,9 @@
 
 		setFormSaving(form, true);
 		try {
-			// sync Quill content to hidden input (only for advanced task form)
-			if (window._taskDescEditor && form === refs.taskForm) {
-				const hiddenDesc = refs.taskForm.querySelector('input[name="description"]');
+			// sync Quill content to hidden input
+			if (window._taskDescEditor && (form === refs.taskForm || form === refs.taskFormQuick)) {
+				const hiddenDesc = form.querySelector('input[name="description"]');
 				if (hiddenDesc) hiddenDesc.value = window._taskDescEditor.root.innerHTML;
 			}
 			const payload = getTaskFormPayload(form);
