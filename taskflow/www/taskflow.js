@@ -1253,7 +1253,7 @@
 			}
 
 			const activeEmployee = state.selectedMember;
-			const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(m => m.employee === activeEmployee);
+			const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(m => String(m.employee) === String(activeEmployee));
 			const activeUser = memberObj ? memberObj.user : null;
 
 			const myTasks = (state.bootstrap.tasks || []).filter((t) => {
@@ -1520,7 +1520,7 @@
 		let tasks = [];
 		if (state.navMode === "my-tasks") {
 			const activeEmployee = state.selectedMember || getCurrentUserEmployeeId();
-			const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(m => m.employee === activeEmployee);
+			const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(m => String(m.employee) === String(activeEmployee));
 			const activeUser = memberObj ? memberObj.user : null;
 
 			tasks = (state.bootstrap.tasks || []).filter((t) => {
