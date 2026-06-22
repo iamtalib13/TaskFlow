@@ -341,6 +341,7 @@ def _serialize_task(
 
     owner_name, owner_image = _get_user_details(task.owner)
     modified_by_name, modified_by_image = _get_user_details(task.modified_by)
+    guided_by_name, guided_by_image = _get_user_details(task.guided_by)
 
     return {
         "name": task.name,
@@ -378,6 +379,7 @@ def _serialize_task(
         "modified_by_image": modified_by_image,
         "pending_with": task.pending_with,
         "guided_by": task.guided_by,
+        "guided_by_name": guided_by_name,
         "ticket_date": task.ticket_date,
         "ticket_id": task.ticket_id,
         "ticket_raised_by": task.ticket_raised_by,

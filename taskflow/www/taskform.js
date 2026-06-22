@@ -398,6 +398,35 @@
 
 	function populateAssigneeDropdowns() {
 		updateAssigneeOptions();
+		updateGuidedByOptions();
+	}
+	
+	function updateGuidedByOptions() {
+		if (!refs.guidedBySelect || !state.bootstrap) return;
+		const members = state.bootstrap.team_members || [];
+		const currentVal = state.activeTask ? state.activeTask.guided_by : "";
+		const currentName = state.activeTask ? state.activeTask.guided_by_name : "";
+
+		const uniqueMembersMap = {};
+		members.forEach(m => {
+			if (m.user && !uniqueMembersMap[m.user]) {
+				uniqueMembersMap[m.user] = m.label || m.user;
+			}
+		});
+
+		if (currentVal && !uniqueMembersMap[currentVal]) {
+			uniqueMembersMap[currentVal] = currentName || currentVal;
+		}
+
+		let html = '<option value="">Guided by...</option>';
+		for (const [user, label] of Object.entries(uniqueMembersMap)) {
+			html += `<option value="${escapeHtml(user)}">${escapeHtml(label)}</option>`;
+		}
+
+		refs.guidedBySelect.innerHTML = html;
+		if (currentVal) {
+			refs.guidedBySelect.value = currentVal;
+		}
 	}
 
 	function updateAssigneeOptions() {
@@ -539,6 +568,7 @@
 				// Assignees
 				state.activeTaskAssignees = task._assign || [];
 				updateAssigneeOptions();
+				updateGuidedByOptions();
 				if (refs.pendingWithSelect) refs.pendingWithSelect.value = task.pending_with || "";
 				if (refs.guidedBySelect) refs.guidedBySelect.value = task.guided_by || "";
 

@@ -263,7 +263,7 @@
    "fieldname": "guided_by",
    "fieldtype": "Link",
    "label": "Guided By",
-   "options": "Employee"
+   "options": "User"
   },
   {
    "fieldname": "ticket_details_section",
@@ -313,7 +313,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-22 14:21:07.851116",
+ "modified": "2026-06-22 15:28:03.884953",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",
