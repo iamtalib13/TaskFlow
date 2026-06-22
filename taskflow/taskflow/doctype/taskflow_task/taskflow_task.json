@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "format:TFT-{#####}",
  "creation": "2026-05-07 00:00:00",
@@ -301,7 +302,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-22 10:08:40.808181",
+ "modified": "2026-06-22 10:18:48.247821",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",
