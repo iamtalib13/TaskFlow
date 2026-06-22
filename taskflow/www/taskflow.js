@@ -1660,6 +1660,19 @@
 			} else {
 				tasks = [];
 			}
+
+			// Update title: "My Tasks — Member Name  X / Y"
+			if (refs.projectTitle) {
+				const memberName = memberObj ? memberObj.label : "My Tasks";
+				const total = tasks.length;
+				const pending = tasks.filter(t => !["Completed", "Cancelled"].includes(t.status)).length;
+				refs.projectTitle.innerHTML = `
+					My Tasks &nbsp;<span style="font-size:13px; font-weight:500; color:var(--taskflow-text-muted);">— ${escapeHtml(memberName)}</span>
+					<span style="font-size:18px; font-weight:800; margin-left:12px;">
+						<span style="color:#ef4444;">${pending}</span> / ${total}
+					</span>
+				`;
+			}
 		} else if (state.projectWorkspace) {
 			tasks = state.projectWorkspace.tasks || [];
 		} else if (state.navMode === "dashboard") {
