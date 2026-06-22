@@ -125,6 +125,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
    "options": "\nOpen\nIn Progress\nReview\nOn Hold\nCompleted\nCancelled\nOverdue",
    "reqd": 1
@@ -300,7 +301,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-20 13:41:11.538519",
+ "modified": "2026-06-22 10:08:40.808181",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",
