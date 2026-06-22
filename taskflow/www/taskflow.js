@@ -1497,13 +1497,9 @@
 			
 			const isToday = cell.day === today.getDate() && cell.month === today.getMonth() && cell.year === today.getFullYear();
 			
-			// Filter tasks for this day
+			// Filter tasks for this day: show on start_date and/or due_date, but not in between
 			const dayTasks = tasks.filter((t) => {
-				const start = t.start_date || t.due_date;
-				const due = t.due_date || t.start_date;
-				if (!start) return false;
-				
-				return cellDateString >= start && cellDateString <= due;
+				return t.start_date === cellDateString || t.due_date === cellDateString;
 			});
 
 			const cellClass = `taskflow-calendar-day-cell ${cell.isOtherMonth ? "other-month" : ""} ${isToday ? "today" : ""}`;
