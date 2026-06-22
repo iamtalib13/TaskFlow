@@ -509,8 +509,88 @@
 	data-task-modal-quick
 	aria-hidden="true"
 >
+	<style>
+		/* Quick Create Task Modal styles */
+		.quick-task-modal {
+			width: 90vw !important;
+			max-width: 850px !important;
+			border-radius: 12px !important;
+			background: #ffffff !important;
+			box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+			border: 1px solid var(--taskflow-border) !important;
+		}
+
+		.quick-task-layout {
+			display: grid;
+			grid-template-columns: 1.2fr 1fr;
+			gap: 24px;
+			padding: 4px 0;
+		}
+
+		@media (max-width: 768px) {
+			.quick-task-layout {
+				grid-template-columns: 1fr;
+				gap: 16px;
+			}
+		}
+
+		.quick-task-section {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+
+		.quick-task-section-title {
+			font-size: 13px;
+			font-weight: 700;
+			color: var(--taskflow-text);
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			border-bottom: 1px solid var(--taskflow-border);
+			padding-bottom: 6px;
+			margin-bottom: 4px;
+		}
+
+		.quick-task-field-group {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 14px;
+		}
+		
+		.quick-task-field-full {
+			grid-column: 1 / -1;
+		}
+
+		.quick-task-layout label {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			font-size: 12px;
+			font-weight: 600;
+			color: var(--taskflow-text-muted);
+		}
+
+		.quick-task-layout input,
+		.quick-task-layout select {
+			padding: 9px 12px;
+			border-radius: 8px;
+			border: 1px solid var(--taskflow-border);
+			background-color: #f8fafc;
+			font-size: 13px;
+			color: var(--taskflow-text);
+			outline: none;
+			transition: all 0.2s ease;
+		}
+
+		.quick-task-layout input:focus,
+		.quick-task-layout select:focus {
+			border-color: var(--taskflow-primary);
+			background-color: #ffffff;
+			box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+		}
+	</style>
 	<div
-		class="taskflow-modal"
+		class="taskflow-modal quick-task-modal"
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="taskflow-task-quick-title"
@@ -531,61 +611,75 @@
 			</div>
 			<div class="taskflow-modal-main-content">
 				<input type="hidden" name="name" />
-				<div class="taskflow-form-grid two-columns">
-					<label style="grid-column: 1 / -1"
-						>Task Title
-						<input type="text" name="task_title" required placeholder="Enter task title..." />
-					</label>
-					<label
-						>Project
-						<select name="project" required id="quickTaskProjectSelect"></select>
-					</label>
-					<label
-						>Assignee
-						<select name="assigned_to" id="quickTaskAssignedToSelect">
-							<option value="">Not set</option>
-						</select>
-					</label>
-					<label
-						>Priority
-						<select name="priority">
-							<option value="Low">Low</option>
-							<option selected value="Medium">Medium</option>
-							<option value="High">High</option>
-							<option value="Critical">Critical</option>
-						</select>
-					</label>
-					<label
-						>Status
-						<select name="status">
-							<option selected value="Open">Open</option>
-							<option value="In Progress">In Progress</option>
-							<option value="Review">Review</option>
-							<option value="On Hold">On Hold</option>
-							<option value="Completed">Completed</option>
-						</select>
-					</label>
-					<label
-						>Start Date
-						<input type="date" name="start_date" />
-					</label>
-					<label
-						>Due Date
-						<input type="date" name="due_date" />
-					</label>
-					<label
-						>Task Type
-						<select name="task_type">
-							<option selected value="Task">Task</option>
-							<option value="Bug">Bug</option>
-							<option value="Customization Request">Customization Request</option>
-						</select>
-					</label>
-					<div style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
-						<span style="font-size: 13px; font-weight: 500; color: var(--taskflow-text-muted);">Description</span>
-						<div id="quick-task-desc-editor" style="min-height: 120px; border: 1px solid var(--taskflow-border); border-radius: 8px; background: #fff;"></div>
-						<input type="hidden" name="description" />
+				<div class="quick-task-layout">
+					
+					<!-- Left Section: Main Info -->
+					<div class="quick-task-section">
+						<div class="quick-task-section-title">Task Details</div>
+						
+						<label class="quick-task-field-full">Task Title *
+							<input type="text" name="task_title" required placeholder="What needs to be done?" />
+						</label>
+
+						<div class="quick-task-field-full" style="display: flex; flex-direction: column; gap: 6px;">
+							<span style="font-size: 12px; font-weight: 600; color: var(--taskflow-text-muted);">Description</span>
+							<div id="quick-task-desc-editor" style="min-height: 180px; border: 1px solid var(--taskflow-border); border-radius: 8px; background: #fff;"></div>
+							<input type="hidden" name="description" />
+						</div>
 					</div>
+
+					<!-- Right Section: Attributes & Meta -->
+					<div class="quick-task-section">
+						<div class="quick-task-section-title">Planning & Meta</div>
+						
+						<div class="quick-task-field-group">
+							<label class="quick-task-field-full">Project *
+								<select name="project" required id="quickTaskProjectSelect"></select>
+							</label>
+
+							<label class="quick-task-field-full">Assignee
+								<select name="assigned_to" id="quickTaskAssignedToSelect">
+									<option value="">Not set</option>
+								</select>
+							</label>
+
+							<label>Start Date
+								<input type="date" name="start_date" />
+							</label>
+
+							<label>Due Date
+								<input type="date" name="due_date" />
+							</label>
+
+							<label>Priority
+								<select name="priority">
+									<option value="Low">Low</option>
+									<option selected value="Medium">Medium</option>
+									<option value="High">High</option>
+									<option value="Critical">Critical</option>
+								</select>
+							</label>
+
+							<label>Status
+								<select name="status">
+									<option selected value="Open">Open</option>
+									<option value="In Progress">In Progress</option>
+									<option value="Review">Review</option>
+									<option value="On Hold">On Hold</option>
+									<option value="Completed">Completed</option>
+								</select>
+							</label>
+
+							<label class="quick-task-field-full">Task Type
+								<select name="task_type">
+									<option selected value="Task">Task</option>
+									<option value="Bug">Bug</option>
+									<option value="Customization Request">Customization Request</option>
+								</select>
+							</label>
+						</div>
+					</div>
+
 				</div>
 			</div>
 		</form>
