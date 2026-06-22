@@ -3,7 +3,7 @@
 	const STATUS_COLUMNS = ["Open", "In Progress", "Review", "On Hold", "Completed", "Cancelled", "Overdue"];
 	const TASK_VIEWS = ["list", "kanban", "dashboard", "timeline", "files", "settings"];
 	const NAV_MODES = ["dashboard", "my-tasks", "calendar", "reports", "team", "settings"];
-	const NAV_PLACEHOLDER_MODES = ["calendar", "reports", "settings"];
+	const NAV_PLACEHOLDER_MODES = ["reports", "settings"];
 	const LIST_ROW_HEIGHT = 48;
 	const LIST_BUFFER_ROWS = 8;
 	const LIST_COLUMN_COUNT = 12;
@@ -42,6 +42,8 @@
 		listTable: null,
 		quickTaskAssignees: [],
 		calendarDate: new Date(),
+		calendarProject: "",
+		calendarMember: "",
 	};
 
 	const refs = {};
@@ -62,11 +64,17 @@
 		const mode = normalizeNavMode(params.get("mode"));
 		const project = params.get("project");
 		const team = params.get("team");
+		const member = params.get("member");
+		const calendarProject = params.get("calendar_project");
+		const calendarMember = params.get("calendar_member");
 		const view = params.get("view");
 
 		if (mode) state.navMode = mode;
 		if (project) state.selectedProject = project;
 		state.selectedTeam = team || "all";
+		state.selectedMember = member || null;
+		state.calendarProject = calendarProject || "";
+		state.calendarMember = calendarMember || "";
 		if (view) state.taskView = normalizeTaskView(view);
 		syncTaskTabs();
 	}
@@ -151,6 +159,12 @@
 			params.set("project", state.selectedProject);
 		if (state.selectedTeam && state.selectedTeam !== "all")
 			params.set("team", state.selectedTeam);
+		if (state.navMode === "my-tasks" && state.selectedMember)
+			params.set("member", state.selectedMember);
+		if (state.navMode === "calendar") {
+			if (state.calendarProject) params.set("calendar_project", state.calendarProject);
+			if (state.calendarMember) params.set("calendar_member", state.calendarMember);
+		}
 		if (state.taskView) params.set("view", state.taskView);
 		if (state.selectedStatuses && state.selectedStatuses.length)
 			params.set("statuses", state.selectedStatuses.join(","));
@@ -176,6 +190,9 @@
 		const mode = urlMode || "my-tasks";
 		const project = params.get("project");
 		const team = params.get("team");
+		const member = params.get("member");
+		const calendarProject = params.get("calendar_project");
+		const calendarMember = params.get("calendar_member");
 		const view = params.get("view");
 		const statuses = params.get("statuses");
 		const assignees = params.get("assignees");
@@ -183,6 +200,9 @@
 
 		if (view) state.taskView = normalizeTaskView(view);
 		state.selectedTeam = team || "all";
+		state.selectedMember = member || null;
+		state.calendarProject = calendarProject || "";
+		state.calendarMember = calendarMember || "";
 		state.selectedStatuses = statuses
 			? statuses.split(",")
 			: JSON.parse(localStorage.getItem("taskflow_filter_statuses") || "[]");
@@ -269,6 +289,11 @@
 		refs.userAvatarContainer = document.querySelector("[data-user-avatar-container]");
 		refs.memberSelectorWrapper = document.querySelector("[data-member-selector-wrapper]");
 		refs.memberSelector = document.querySelector("[data-member-selector]");
+		refs.calendarTitle = document.querySelector("[data-calendar-title]");
+		refs.calendarFilters = document.querySelector("[data-calendar-filters]");
+		refs.calendarTeamFilter = document.querySelector("[data-calendar-team-filter]");
+		refs.calendarProjectFilter = document.querySelector("[data-calendar-project-filter]");
+		refs.calendarMemberFilter = document.querySelector("[data-calendar-member-filter]");
 
 		// Initialize Quill for description
 		const editorEl = document.getElementById("taskflow-desc-editor") || document.getElementById("quick-task-desc-editor");
@@ -493,6 +518,36 @@
 		if (refs.memberSelector) {
 			refs.memberSelector.addEventListener("change", (e) => {
 				state.selectedMember = e.target.value;
+				updateUrlState();
+				refreshView();
+			});
+		}
+
+		if (refs.calendarTeamFilter) {
+			refs.calendarTeamFilter.addEventListener("change", (e) => {
+				state.selectedTeam = e.target.value || "all";
+				state.calendarProject = "";
+				state.calendarMember = "";
+				if (refs.teamSwitcher) refs.teamSwitcher.value = state.selectedTeam;
+				renderProjectList();
+				updateUrlState();
+				refreshView();
+			});
+		}
+
+		if (refs.calendarProjectFilter) {
+			refs.calendarProjectFilter.addEventListener("change", (e) => {
+				state.calendarProject = e.target.value || "";
+				state.calendarMember = "";
+				updateUrlState();
+				refreshView();
+			});
+		}
+
+		if (refs.calendarMemberFilter) {
+			refs.calendarMemberFilter.addEventListener("change", (e) => {
+				state.calendarMember = e.target.value || "";
+				updateUrlState();
 				refreshView();
 			});
 		}
@@ -501,6 +556,8 @@
 			refs.teamSwitcher.addEventListener("change", async (e) => {
 				state.selectedTeam = e.target.value;
 				state.selectedMember = null; // Reset selected member when team changes
+				state.calendarProject = "";
+				state.calendarMember = "";
 				renderProjectList();
 				if (state.navMode === "dashboard" && state.selectedProject) {
 					const projects = getVisibleProjects({ ignoreQuery: true });
@@ -857,7 +914,20 @@
 		const breadcrumb = document.querySelector("[data-project-breadcrumb]");
 		const isPlaceholderMode = NAV_PLACEHOLDER_MODES.includes(mode);
 
-		if (mode === "team") {
+		if (mode === "calendar") {
+			state.selectedProject = null;
+			state.projectWorkspace = null;
+			toolbar?.classList.remove("taskflow-hidden");
+			tabs?.classList.add("taskflow-hidden");
+			if (refs.projectTitle) refs.projectTitle.textContent = "Calendar";
+			if (refs.projectKpis) refs.projectKpis.innerHTML = "";
+			if (breadcrumb) breadcrumb.textContent = "Calendar";
+			if (refs.newTaskButton) refs.newTaskButton.disabled = false;
+
+			updateNavActive();
+			renderProjectList();
+			renderCalendarWorkspace();
+		} else if (mode === "team") {
 			// SHOW TEAM UI
 			state.selectedProject = null;
 			state.projectWorkspace = null;
@@ -1347,6 +1417,11 @@
 				);
 
 				const defaultEmployee = getCurrentUserEmployeeId();
+				const memberExists = members.some((m) => String(m.employee) === String(state.selectedMember));
+				if (!memberExists) {
+					const defaultMember = members.find((m) => String(m.employee) === String(defaultEmployee));
+					state.selectedMember = defaultMember?.employee || members[0]?.employee || null;
+				}
 
 				const options = members
 					.map(
@@ -1356,9 +1431,6 @@
 					.join("");
 
 				refs.memberSelector.innerHTML = options;
-				if (!state.selectedMember) {
-					state.selectedMember = refs.memberSelector.value;
-				}
 			}
 
 			refreshView();
@@ -1407,6 +1479,135 @@
 			project.permissions.can_manage_team || project.permissions.can_operate_team
 		);
 		renderTaskArea(tasks);
+	}
+
+
+	function renderCalendarWorkspace() {
+		if (!state.bootstrap) return;
+
+		if (refs.root) refs.root.classList.remove("is-kanban");
+
+		[
+			refs.listView,
+			document.querySelector(".taskflow-board-wrapper"),
+			refs.dashboardView,
+			refs.filesView,
+			refs.settingsView,
+		].forEach((el) => el && el.classList.add("taskflow-hidden"));
+
+		if (refs.timelineView) refs.timelineView.classList.remove("taskflow-hidden");
+		const contentArea = document.querySelector(".taskflow-content");
+		if (contentArea) contentArea.classList.remove("full-width");
+
+		if (refs.calendarFilters) refs.calendarFilters.style.display = "flex";
+		renderCalendarFilters();
+		renderTimeline(getCalendarTasks());
+	}
+
+	function renderCalendarFilters() {
+		const teams = (state.bootstrap && state.bootstrap.teams) || [];
+		const projects = getCalendarProjects();
+		const members = getCalendarMembers();
+
+		if (refs.calendarTeamFilter) {
+			refs.calendarTeamFilter.innerHTML = [
+				`<option value="all">All Teams</option>`,
+				...teams.map((team) => (
+					`<option value="${escapeHtml(team.name)}">${escapeHtml(team.team_name || team.name)}</option>`
+				)),
+			].join("");
+			refs.calendarTeamFilter.value = state.selectedTeam || "all";
+		}
+
+		if (!projects.some((project) => project.name === state.calendarProject)) {
+			state.calendarProject = "";
+		}
+		if (!members.some((member) => String(member.employee) === String(state.calendarMember))) {
+			state.calendarMember = "";
+		}
+
+		if (refs.calendarProjectFilter) {
+			refs.calendarProjectFilter.innerHTML = [
+				`<option value="">All Projects</option>`,
+				...projects.map((project) => (
+					`<option value="${escapeHtml(project.name)}">${escapeHtml(project.project_name || project.name)}</option>`
+				)),
+			].join("");
+			refs.calendarProjectFilter.value = state.calendarProject || "";
+		}
+
+		if (refs.calendarMemberFilter) {
+			refs.calendarMemberFilter.innerHTML = [
+				`<option value="">All Team Members</option>`,
+				...members.map((member) => (
+					`<option value="${escapeHtml(member.employee)}">${escapeHtml(member.label || member.employee)}</option>`
+				)),
+			].join("");
+			refs.calendarMemberFilter.value = state.calendarMember || "";
+		}
+
+		if (refs.calendarTitle) {
+			const titleParts = ["Calendar"];
+			if (state.selectedTeam && state.selectedTeam !== "all") titleParts.push(getSelectedTeamName());
+			if (state.calendarProject) {
+				const project = projects.find((item) => item.name === state.calendarProject);
+				if (project) titleParts.push(project.project_name || project.name);
+			}
+			if (state.calendarMember) {
+				const member = members.find((item) => String(item.employee) === String(state.calendarMember));
+				if (member) titleParts.push(member.label || member.employee);
+			}
+			refs.calendarTitle.textContent = titleParts.join(" / ");
+		}
+	}
+
+	function getCalendarProjects() {
+		let projects = (state.bootstrap && state.bootstrap.projects) || [];
+		if (state.selectedTeam && state.selectedTeam !== "all") {
+			projects = projects.filter((project) => project.team === state.selectedTeam);
+		}
+		return projects;
+	}
+
+	function getCalendarMembers() {
+		let members = (state.bootstrap && state.bootstrap.team_members) || [];
+		if (state.selectedTeam && state.selectedTeam !== "all") {
+			members = members.filter((member) => member.team === state.selectedTeam);
+		}
+
+		if (state.calendarProject) {
+			const project = ((state.bootstrap && state.bootstrap.projects) || []).find(
+				(item) => item.name === state.calendarProject,
+			);
+			const projectMemberIds = new Set(
+				((project && project.project_team_members) || [])
+					.map((member) => member.employee)
+					.filter(Boolean),
+			);
+			((state.bootstrap && state.bootstrap.tasks) || [])
+				.filter((task) => task.project === state.calendarProject && task.assigned_to)
+				.forEach((task) => projectMemberIds.add(task.assigned_to));
+
+			if (projectMemberIds.size) {
+				members = members.filter((member) => projectMemberIds.has(member.employee));
+			}
+		}
+
+		return members;
+	}
+
+	function getCalendarTasks() {
+		let tasks = (state.bootstrap && state.bootstrap.tasks) || [];
+		if (state.selectedTeam && state.selectedTeam !== "all") {
+			tasks = tasks.filter((task) => task.team === state.selectedTeam);
+		}
+		if (state.calendarProject) {
+			tasks = tasks.filter((task) => task.project === state.calendarProject);
+		}
+		if (state.calendarMember) {
+			tasks = tasks.filter((task) => String(task.assigned_to) === String(state.calendarMember));
+		}
+		return filterTasks(tasks);
 	}
 
 	function renderTimeline(tasks) {
@@ -1718,6 +1919,8 @@
 		} else if (state.taskView === "dashboard") {
 			renderDashboard(visibleTasks);
 		} else if (state.taskView === "timeline") {
+			if (refs.calendarFilters) refs.calendarFilters.style.display = "none";
+			if (refs.calendarTitle) refs.calendarTitle.textContent = "Project Calendar";
 			renderTimeline(visibleTasks);
 		} else if (state.taskView === "files") {
 			renderStaticTaskView(state.taskView);
@@ -1747,6 +1950,10 @@
 		if (state.navMode === "team") return;
 		if (NAV_PLACEHOLDER_MODES.includes(state.navMode)) {
 			renderNavPlaceholder(state.navMode);
+			return;
+		}
+		if (state.navMode === "calendar") {
+			renderCalendarWorkspace();
 			return;
 		}
 
@@ -3645,6 +3852,9 @@
 			navMode: state.navMode,
 			selectedProject: state.selectedProject,
 			selectedTeam: state.selectedTeam,
+			selectedMember: state.selectedMember,
+			calendarProject: state.calendarProject,
+			calendarMember: state.calendarMember,
 			taskView: state.taskView,
 		};
 	}

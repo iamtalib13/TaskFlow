@@ -378,7 +378,12 @@
 				data-timeline-view
 			>
 				<div class="taskflow-calendar-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--taskflow-border); background: #ffffff; gap: 16px; flex-wrap: wrap;">
-					<h3 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--taskflow-text);">Project Calendar</h3>
+					<h3 data-calendar-title style="margin: 0; font-size: 18px; font-weight: 700; color: var(--taskflow-text);">Calendar</h3>
+					<div class="taskflow-calendar-filters" data-calendar-filters style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+						<select data-calendar-team-filter aria-label="Filter calendar by team" style="padding: 7px 9px; border-radius: 8px; border: 1px solid var(--taskflow-border); font-size: 13px; min-width: 150px;"></select>
+						<select data-calendar-project-filter aria-label="Filter calendar by project" style="padding: 7px 9px; border-radius: 8px; border: 1px solid var(--taskflow-border); font-size: 13px; min-width: 170px;"></select>
+						<select data-calendar-member-filter aria-label="Filter calendar by team member" style="padding: 7px 9px; border-radius: 8px; border: 1px solid var(--taskflow-border); font-size: 13px; min-width: 170px;"></select>
+					</div>
 					<div class="taskflow-calendar-kpis" data-calendar-kpis style="display: flex; align-items: center; gap: 16px; font-size: 13px;"></div>
 					<div class="taskflow-calendar-controls" style="display: flex; align-items: center; gap: 12px;">
 						<button class="taskflow-button secondary" type="button" data-calendar-prev style="padding: 6px 12px; font-size: 13px;">&larr; Prev</button>

@@ -44,6 +44,7 @@
   "checklist",
   "dependency_section",
   "dependencies",
+  "temp_emp",
   "ticket_details_tab",
   "ticket_details_section",
   "ticket_date",
@@ -297,11 +298,16 @@
    "fieldname": "task_details_tab",
    "fieldtype": "Tab Break",
    "label": "Task Details"
+  },
+  {
+   "fieldname": "temp_emp",
+   "fieldtype": "Data",
+   "label": "Temp Emp"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-22 10:54:49.296066",
+ "modified": "2026-06-22 14:00:17.787563",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",
