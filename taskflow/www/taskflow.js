@@ -1326,28 +1326,7 @@
 				}
 			}
 
-			const activeEmployee = state.selectedMember;
-			const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(m => String(m.employee) === String(activeEmployee));
-			const activeUser = memberObj ? memberObj.user : null;
-
-			const myTasks = (state.bootstrap.tasks || []).filter((t) => {
-				let assignees = [];
-				if (t._assign) {
-					try {
-						assignees = typeof t._assign === "string" ? JSON.parse(t._assign) : t._assign;
-					} catch (e) {
-						assignees = [];
-					}
-				}
-				if (!Array.isArray(assignees)) assignees = [];
-				return (
-					t.assigned_to === activeEmployee ||
-					t.assigned_to_user === activeUser ||
-					(activeUser && assignees.includes(activeUser))
-				);
-			});
-			renderKpiCards(myTasks);
-			renderTaskArea(myTasks);
+			refreshView();
 			return;
 		}
 
@@ -1613,7 +1592,7 @@
 		return filterTasks(filtered);
 	}
 
-	function refreshView() {
+	async function refreshView() {
 		if (!state.bootstrap) return;
 		if (state.navMode === "team") return;
 		if (NAV_PLACEHOLDER_MODES.includes(state.navMode)) {
@@ -1627,22 +1606,19 @@
 			const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(m => String(m.employee) === String(activeEmployee));
 			const activeUser = memberObj ? memberObj.user : null;
 
-			tasks = (state.bootstrap.tasks || []).filter((t) => {
-				let assignees = [];
-				if (t._assign) {
-					try {
-						assignees = typeof t._assign === "string" ? JSON.parse(t._assign) : t._assign;
-					} catch (e) {
-						assignees = [];
-					}
+			if (activeUser) {
+				setLoading(true);
+				try {
+					tasks = await apiCall("get_assigned_tasks", { user_id: activeUser });
+				} catch (e) {
+					console.error("Failed to load assigned tasks:", e);
+					tasks = [];
+				} finally {
+					setLoading(false);
 				}
-				if (!Array.isArray(assignees)) assignees = [];
-				return (
-					t.assigned_to === activeEmployee ||
-					t.assigned_to_user === activeUser ||
-					(activeUser && assignees.includes(activeUser))
-				);
-			});
+			} else {
+				tasks = [];
+			}
 		} else if (state.projectWorkspace) {
 			tasks = state.projectWorkspace.tasks || [];
 		} else if (state.navMode === "dashboard") {

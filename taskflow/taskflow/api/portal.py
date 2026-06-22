@@ -1039,3 +1039,44 @@ def _sync_assignments(doc, new_assignees):
             })
         except Exception:
             pass
+
+
+@frappe.whitelist()
+def get_assigned_tasks(user_id: str) -> list[dict]:
+    """Return all Taskflow Task records assigned to the given user_id."""
+    _require_login()
+    if not user_id:
+        frappe.throw(_("user_id is required"), frappe.ValidationError)
+
+    task_names = frappe.get_all(
+        "ToDo",
+        filters={
+            "allocated_to": user_id,
+            "reference_type": "Taskflow Task",
+            "status": ["!=", "Cancelled"],
+        },
+        pluck="reference_name",
+    )
+
+    if not task_names:
+        return []
+
+    tasks = frappe.get_list(
+        "Taskflow Task",
+        fields=_TASK_FIELDS,
+        filters={"name": ["in", task_names]},
+        order_by="modified desc",
+    )
+
+    task_docs = [frappe.get_doc("Taskflow Task", task.name) for task in tasks]
+    
+    projects = frappe.get_list("Taskflow Project", fields=["name", "project_name"])
+    project_map = {p.name: p.project_name for p in projects}
+    
+    task_employee_name_map = _bulk_employee_names([task.assigned_to for task in tasks if task.assigned_to])
+    task_user_image_map = _bulk_user_images([task.assigned_to_user for task in tasks if task.assigned_to_user])
+
+    return [
+        _serialize_task(task_doc, project_map, task_user_image_map, task_employee_name_map)
+        for task_doc in task_docs
+    ]
