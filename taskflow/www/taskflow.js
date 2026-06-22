@@ -1697,10 +1697,15 @@
 			);
 			const assigneeName = member ? member.label : oldest.assigned_to || "Unassigned";
 
-			alertContainer.innerHTML = `<span class="taskflow-oldest-task-alert" style="cursor: pointer;" data-oldest-task-id="${escapeHtml(oldest.name)}">⚠️ ${escapeHtml(assigneeName)} (${days} days pending)</span>`;
-			alertContainer
-				.querySelector(".taskflow-oldest-task-alert")
-				.addEventListener("click", () => openTaskModal(oldest));
+			if (days === 0) {
+				// Task started today — On Time
+				alertContainer.innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:#dcfce7; color:#16a34a; border-radius:20px; font-size:13px; font-weight:600;">✅ On Time</span>`;
+			} else {
+				alertContainer.innerHTML = `<span class="taskflow-oldest-task-alert" style="cursor: pointer;" data-oldest-task-id="${escapeHtml(oldest.name)}">⚠️ ${escapeHtml(assigneeName)} (${days} days pending)</span>`;
+				alertContainer
+					.querySelector(".taskflow-oldest-task-alert")
+					.addEventListener("click", () => openTaskModal(oldest));
+			}
 		} else {
 			alertContainer.innerHTML = "";
 		}
