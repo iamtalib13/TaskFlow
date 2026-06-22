@@ -694,6 +694,16 @@
 		window.addEventListener("popstate", () => {
 			loadStateFromUrl({ updateUrl: false });
 		});
+		window.addEventListener("pageshow", async (event) => {
+			const isBackForward = event.persisted || 
+				(window.performance && window.performance.navigation && window.performance.navigation.type === 2) ||
+				(window.performance && window.performance.getEntriesByType && window.performance.getEntriesByType("navigation")[0] && window.performance.getEntriesByType("navigation")[0].type === "back_forward");
+
+			if (isBackForward) {
+				await loadBootstrap(state.selectedProject, { updateUrl: false });
+				await loadStateFromUrl({ updateUrl: false });
+			}
+		});
 	}
 
 	async function loadBootstrap(preferredProject, options = {}) {
@@ -3624,6 +3634,7 @@
 				"X-Frappe-CSRF-Token": window.csrf_token || "",
 			},
 			credentials: "same-origin",
+			cache: "no-store",
 		};
 
 		if (requestMethod === "GET") {
