@@ -3048,16 +3048,9 @@
 				if (hiddenDesc) hiddenDesc.value = window._taskDescEditor.root.innerHTML;
 			}
 			const payload = getTaskFormPayload(form);
+			// saveTask handles: closing modal, loadBootstrap, and setNavMode(returnMode)
+			// so My Tasks view is automatically re-rendered after save
 			await saveTask(payload);
-
-			// If in My Tasks mode, close modal and refresh the member's task list
-			if (state.navMode === "my-tasks") {
-				toggleModal(refs.taskModalQuick, false);
-				await refreshView();
-			} else {
-				// Refresh list view after creation
-				await loadBootstrap(payload.project || state.selectedProject);
-			}
 		} finally {
 			submitBtn.textContent = originalText;
 			submitBtn.disabled = false;
