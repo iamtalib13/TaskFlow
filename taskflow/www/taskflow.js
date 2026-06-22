@@ -41,6 +41,7 @@
 		autoSaveTimer: null,
 		listTable: null,
 		quickTaskAssignees: [],
+		calendarDate: new Date(),
 	};
 
 	const refs = {};
@@ -708,6 +709,16 @@
 				}
 			});
 		}
+
+		document.addEventListener("click", (e) => {
+			if (e.target.matches("[data-calendar-prev]")) {
+				state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
+				refreshView();
+			} else if (e.target.matches("[data-calendar-next]")) {
+				state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
+				refreshView();
+			}
+		});
 
 		window.addEventListener("popstate", () => {
 			loadStateFromUrl({ updateUrl: false });
@@ -1404,51 +1415,131 @@
 	}
 
 	function renderTimeline(tasks) {
-		const grid = document.querySelector("[data-timeline-grid]");
-		if (!grid || !tasks.length) {
-			if (grid) {
-				grid.style.minHeight = "";
-				grid.innerHTML = '<div class="taskflow-empty">No tasks with schedule data.</div>';
-			}
-			return;
+		const grid = document.querySelector("[data-calendar-grid]");
+		const monthTitle = document.querySelector("[data-calendar-month]");
+		if (!grid) return;
+
+		if (!state.calendarDate) {
+			state.calendarDate = new Date();
 		}
 
-		// Filter tasks with dates
-		const scheduledTasks = tasks.filter(
-			(t) => parseDateValue(t.start_date) && parseDateValue(t.due_date),
-		);
-		if (!scheduledTasks.length) {
-			grid.style.minHeight = "";
-			grid.innerHTML = '<div class="taskflow-empty">No tasks with schedule data.</div>';
-			return;
+		const year = state.calendarDate.getFullYear();
+		const month = state.calendarDate.getMonth();
+
+		// Update month/year title
+		if (monthTitle) {
+			const monthNames = [
+				"January", "February", "March", "April", "May", "June",
+				"July", "August", "September", "October", "November", "December"
+			];
+			monthTitle.textContent = `${monthNames[month]} ${year}`;
 		}
 
-		const startDates = scheduledTasks.map((t) => parseDateValue(t.start_date).getTime());
-		const endDates = scheduledTasks.map((t) => parseDateValue(t.due_date).getTime());
-		const minDate = Math.min(...startDates);
-		const maxDate = Math.max(...endDates);
-		const duration = maxDate - minDate || 1;
-		grid.style.minHeight = `${Math.max(300, 80 + scheduledTasks.length * 50)}px`;
+		// Get first day of month (0 = Sunday, ..., 6 = Saturday)
+		const firstDayIndex = new Date(year, month, 1).getDay();
+		// Get total days in month
+		const totalDays = new Date(year, month + 1, 0).getDate();
+		// Get total days in previous month
+		const prevTotalDays = new Date(year, month, 0).getDate();
 
-		grid.innerHTML = `
-			<div class="taskflow-timeline-header-row">
-				<span>${new Date(minDate).toLocaleDateString()}</span>
-				<span>${new Date(maxDate).toLocaleDateString()}</span>
-			</div>
-			${scheduledTasks
-				.map((t, index) => {
-					const start = parseDateValue(t.start_date).getTime();
-					const end = parseDateValue(t.due_date).getTime();
-					const left = ((start - minDate) / duration) * 100;
-					const width = Math.max(((end - start) / duration) * 100, 5);
-					return `
-					<div class="taskflow-timeline-task" style="left: ${left}%; width: ${width}%; top: ${50 + index * 50}px;">
+		let html = `<div class="taskflow-calendar-grid-container">`;
+		const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+		
+		// Render day headers
+		for (let i = 0; i < 7; i++) {
+			html += `<div class="taskflow-calendar-day-header">${dayNames[i]}</div>`;
+		}
+
+		const today = new Date();
+		
+		// Prepare all 42 calendar cells
+		let cells = [];
+		
+		// Previous month days
+		for (let i = firstDayIndex - 1; i >= 0; i--) {
+			cells.push({
+				day: prevTotalDays - i,
+				month: month === 0 ? 11 : month - 1,
+				year: month === 0 ? year - 1 : year,
+				isOtherMonth: true
+			});
+		}
+		
+		// Current month days
+		for (let i = 1; i <= totalDays; i++) {
+			cells.push({
+				day: i,
+				month: month,
+				year: year,
+				isOtherMonth: false
+			});
+		}
+		
+		// Next month days
+		const remaining = 42 - cells.length;
+		for (let i = 1; i <= remaining; i++) {
+			cells.push({
+				day: i,
+				month: month === 11 ? 0 : month + 1,
+				year: month === 11 ? year + 1 : year,
+				isOtherMonth: true
+			});
+		}
+
+		// Render day cells
+		cells.forEach((cell) => {
+			const cellDate = new Date(cell.year, cell.month, cell.day);
+			// Format date as local date string in YYYY-MM-DD
+			const cellYear = cellDate.getFullYear();
+			const cellMonth = String(cellDate.getMonth() + 1).padStart(2, '0');
+			const cellDay = String(cellDate.getDate()).padStart(2, '0');
+			const cellDateString = `${cellYear}-${cellMonth}-${cellDay}`;
+			
+			const isToday = cell.day === today.getDate() && cell.month === today.getMonth() && cell.year === today.getFullYear();
+			
+			// Filter tasks for this day
+			const dayTasks = tasks.filter((t) => {
+				const start = t.start_date || t.due_date;
+				const due = t.due_date || t.start_date;
+				if (!start) return false;
+				
+				return cellDateString >= start && cellDateString <= due;
+			});
+
+			const cellClass = `taskflow-calendar-day-cell ${cell.isOtherMonth ? "other-month" : ""} ${isToday ? "today" : ""}`;
+			
+			html += `<div class="${cellClass}">
+				<div class="taskflow-calendar-day-number">${cell.day}</div>`;
+				
+			dayTasks.slice(0, 4).forEach((t) => {
+				const priorityClass = `priority-${(t.priority || "Medium").toLowerCase()}`;
+				html += `
+					<div class="taskflow-calendar-task-badge ${priorityClass}" 
+						data-task-name="${escapeHtml(t.name)}" 
+						title="${escapeHtml(t.task_title)}">
 						${escapeHtml(t.task_title)}
-					</div>
-				`;
-				})
-				.join("")}
-		`;
+					</div>`;
+			});
+			
+			if (dayTasks.length > 4) {
+				html += `<div style="font-size: 10px; color: var(--taskflow-text-muted); font-weight: 600; text-align: center;">+${dayTasks.length - 4} more</div>`;
+			}
+			
+			html += `</div>`;
+		});
+
+		html += `</div>`;
+		grid.innerHTML = html;
+
+		// Attach click listeners to task badges
+		grid.querySelectorAll(".taskflow-calendar-task-badge").forEach((badge) => {
+			badge.addEventListener("click", (e) => {
+				e.stopPropagation();
+				const taskName = badge.dataset.taskName;
+				const task = tasks.find((t) => t.name === taskName);
+				if (task) openTaskModal(task);
+			});
+		});
 	}
 
 	function renderTaskArea(tasks, emptyMessage) {
@@ -3527,7 +3618,7 @@
 		if (state.taskView === "kanban" && refs.board) {
 			refs.board.innerHTML = emptyHtml;
 		} else if (state.taskView === "timeline") {
-			const grid = document.querySelector("[data-timeline-grid]");
+			const grid = document.querySelector("[data-calendar-grid]");
 			if (grid) grid.innerHTML = emptyHtml;
 		} else if (state.taskView === "list" && refs.listView) {
 			refs.listView.innerHTML = emptyHtml;

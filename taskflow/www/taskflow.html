@@ -362,16 +362,20 @@
 				data-dashboard-view
 			></div>
 
-			<!-- Timeline View -->
+			<!-- Timeline (Calendar) View -->
 			<div
 				class="taskflow-timeline-wrapper taskflow-view-content taskflow-hidden"
 				data-timeline-view
 			>
-				<div class="taskflow-timeline-header">
-					<h3>Project Timeline</h3>
-					<p>Your schedule at a glance.</p>
+				<div class="taskflow-calendar-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--taskflow-border); background: #ffffff;">
+					<h3 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--taskflow-text);">Project Calendar</h3>
+					<div class="taskflow-calendar-controls" style="display: flex; align-items: center; gap: 12px;">
+						<button class="taskflow-button secondary" type="button" data-calendar-prev style="padding: 6px 12px; font-size: 13px;">&larr; Prev</button>
+						<span data-calendar-month style="font-size: 15px; font-weight: 600; min-width: 120px; text-align: center; color: var(--taskflow-text);"></span>
+						<button class="taskflow-button secondary" type="button" data-calendar-next style="padding: 6px 12px; font-size: 13px;">Next &rarr;</button>
+					</div>
 				</div>
-				<div class="taskflow-timeline-grid" data-timeline-grid></div>
+				<div class="taskflow-calendar-grid" data-calendar-grid></div>
 			</div>
 
 			<!-- Files View -->
@@ -517,6 +521,82 @@
 	aria-hidden="true"
 >
 	<style>
+		/* Project Calendar View Styles */
+		.taskflow-calendar-grid-container {
+			display: grid;
+			grid-template-columns: repeat(7, 1fr);
+			border-top: 1px solid var(--taskflow-border);
+			border-left: 1px solid var(--taskflow-border);
+			border-radius: 8px;
+			overflow: hidden;
+			background: #ffffff;
+		}
+		.taskflow-calendar-day-header {
+			background: #f8fafc;
+			padding: 10px;
+			text-align: center;
+			font-weight: 600;
+			font-size: 12px;
+			color: var(--taskflow-text-muted);
+			border-right: 1px solid var(--taskflow-border);
+			border-bottom: 1px solid var(--taskflow-border);
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+		}
+		.taskflow-calendar-day-cell {
+			min-height: 100px;
+			padding: 8px;
+			background: #ffffff;
+			border-right: 1px solid var(--taskflow-border);
+			border-bottom: 1px solid var(--taskflow-border);
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+			position: relative;
+		}
+		.taskflow-calendar-day-cell.other-month {
+			background: #f1f5f9;
+		}
+		.taskflow-calendar-day-cell.today {
+			background: #eff6ff;
+		}
+		.taskflow-calendar-day-number {
+			font-size: 12px;
+			font-weight: 700;
+			color: var(--taskflow-text);
+			margin-bottom: 4px;
+		}
+		.taskflow-calendar-day-cell.today .taskflow-calendar-day-number {
+			color: var(--taskflow-primary);
+			display: inline-block;
+			background: #dbeafe;
+			border-radius: 50%;
+			width: 20px;
+			height: 20px;
+			text-align: center;
+			line-height: 20px;
+		}
+		.taskflow-calendar-task-badge {
+			font-size: 11px;
+			font-weight: 600;
+			padding: 3px 6px;
+			border-radius: 4px;
+			color: #1e293b;
+			cursor: pointer;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			transition: transform 0.1s ease;
+		}
+		.taskflow-calendar-task-badge:hover {
+			transform: translateY(-1px);
+			filter: brightness(0.95);
+		}
+		.taskflow-calendar-task-badge.priority-critical { background: #fee2e2; border-left: 3px solid #ef4444; }
+		.taskflow-calendar-task-badge.priority-high { background: #ffedd5; border-left: 3px solid #f97316; }
+		.taskflow-calendar-task-badge.priority-medium { background: #fef9c3; border-left: 3px solid #eab308; }
+		.taskflow-calendar-task-badge.priority-low { background: #ecfdf5; border-left: 3px solid #10b981; }
+
 		/* Quick Create Project Modal styles */
 		.quick-project-modal {
 			width: 90vw !important;
