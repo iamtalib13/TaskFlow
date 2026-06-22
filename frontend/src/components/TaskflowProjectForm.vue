@@ -165,6 +165,18 @@ watch(
   { deep: true },
 )
 
+watch(
+  () => form.project_name,
+  (newName) => {
+    if (props.mode === 'create') {
+      form.project_code = newName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+    }
+  },
+)
+
 function makeInitialForm() {
   return {
     name: '',

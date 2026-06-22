@@ -575,6 +575,16 @@
 			const projectLead = refs.projectForm.elements.project_lead;
 			projectLead.innerHTML = buildMemberOptions(event.target.value, "");
 		});
+		refs.projectForm.elements.project_name.addEventListener("input", (event) => {
+			if (state.projectModalMode === "create") {
+				const name = event.target.value;
+				const code = name
+					.toLowerCase()
+					.replace(/[^a-z0-9]+/g, "-")
+					.replace(/^-+|-+$/g, "");
+				refs.projectForm.elements.project_code.value = code;
+			}
+		});
 		document.querySelectorAll("[data-close-modal]").forEach((button) => {
 			button.addEventListener("click", () => closeModal(button.dataset.closeModal));
 		});
