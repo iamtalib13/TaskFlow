@@ -2449,7 +2449,11 @@
 		if (!task || !task.start_date) return 0;
 		const startDate = parseDateValue(task.start_date);
 		if (!startDate) return 0;
-		return Math.floor(Math.abs(new Date() - startDate) / (1000 * 60 * 60 * 24));
+		// Use local midnight for today so we compare at the same boundary
+		const today = new Date();
+		const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+		const diff = todayMidnight - startDate;
+		return diff < 0 ? 0 : Math.floor(diff / (1000 * 60 * 60 * 24));
 	}
 
 	function getListSortValue(task, sortKey) {
@@ -4039,6 +4043,8 @@
 		if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
 
 		const trimmed = String(value).trim();
+
+		// DD-MM-YYYY format
 		const dmyMatch = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})$/);
 		if (dmyMatch) {
 			const [, day, month, year] = dmyMatch;
@@ -4046,6 +4052,15 @@
 			return Number.isNaN(date.getTime()) ? null : date;
 		}
 
+		// YYYY-MM-DD (date only) — parse as LOCAL midnight to avoid UTC timezone shift
+		const ymdMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+		if (ymdMatch) {
+			const [, year, month, day] = ymdMatch;
+			const date = new Date(Number(year), Number(month) - 1, Number(day));
+			return Number.isNaN(date.getTime()) ? null : date;
+		}
+
+		// Datetime string — normalize space to T
 		const normalized = trimmed.replace(" ", "T");
 		const date = new Date(normalized);
 		return Number.isNaN(date.getTime()) ? null : date;
