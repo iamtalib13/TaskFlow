@@ -775,13 +775,74 @@ textarea:focus-visible,
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	cursor: default;
+	cursor: pointer;
+	position: relative;
+	border-radius: 8px;
+	padding: 4px 8px;
+	transition: background 0.15s ease;
+}
+.taskflow-user-profile:hover {
+	background: rgba(0, 0, 0, 0.05);
 }
 
 .taskflow-user-name {
 	font-size: 14px;
 	font-weight: 600;
 	color: var(--taskflow-text);
+}
+
+/* Dropdown */
+.taskflow-user-dropdown {
+	position: absolute;
+	top: calc(100% + 8px);
+	right: 0;
+	min-width: 190px;
+	background: #ffffff;
+	border: 1px solid var(--taskflow-border);
+	border-radius: 10px;
+	box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
+	z-index: 9999;
+	overflow: hidden;
+	opacity: 0;
+	transform: translateY(-6px);
+	pointer-events: none;
+	transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.taskflow-user-dropdown.open {
+	opacity: 1;
+	transform: translateY(0);
+	pointer-events: auto;
+}
+.taskflow-user-dropdown-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 10px 16px;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--taskflow-text);
+	background: none;
+	border: none;
+	text-decoration: none;
+	cursor: pointer;
+	transition: background 0.12s ease;
+	text-align: left;
+	box-sizing: border-box;
+}
+.taskflow-user-dropdown-item:hover {
+	background: #f1f5f9;
+}
+.taskflow-user-dropdown-logout {
+	color: #dc2626;
+}
+.taskflow-user-dropdown-logout:hover {
+	background: #fff1f2;
+}
+.taskflow-user-dropdown-divider {
+	height: 1px;
+	background: var(--taskflow-border);
+	margin: 2px 0;
 }
 
 /* Toolbar */

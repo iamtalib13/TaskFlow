@@ -163,10 +163,20 @@
 				>
 					🔔
 				</button>
-				<div class="taskflow-user-profile">
+				<div class="taskflow-user-profile" id="userProfileDropdownWrapper">
 					<span class="taskflow-user-name" data-user-name>User</span>
 					<div class="taskflow-user-avatar" data-user-avatar-container>
 						<img src="/assets/taskflow/favicon.png" alt="User" data-user-image />
+					</div>
+					<!-- Dropdown Menu -->
+					<div class="taskflow-user-dropdown" id="userProfileDropdown" aria-hidden="true">
+						<a class="taskflow-user-dropdown-item" href="/app/sahayog-home/">
+							<span>🏠</span> Sahayog Home
+						</a>
+						<div class="taskflow-user-dropdown-divider"></div>
+						<button class="taskflow-user-dropdown-item taskflow-user-dropdown-logout" id="userLogoutBtn" type="button">
+							<span>🚪</span> Logout
+						</button>
 					</div>
 				</div>
 			</div>

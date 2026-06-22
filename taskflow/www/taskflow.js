@@ -300,6 +300,39 @@
 			button.addEventListener("click", () => openProjectModal());
 		});
 
+		// ── User Profile Dropdown ──────────────────────────────────────
+		const userProfileWrapper = document.getElementById("userProfileDropdownWrapper");
+		const userDropdown = document.getElementById("userProfileDropdown");
+		const logoutBtn = document.getElementById("userLogoutBtn");
+
+		if (userProfileWrapper && userDropdown) {
+			// Toggle dropdown on profile click
+			userProfileWrapper.addEventListener("click", (e) => {
+				e.stopPropagation();
+				const isOpen = userDropdown.classList.contains("open");
+				userDropdown.classList.toggle("open", !isOpen);
+				userDropdown.setAttribute("aria-hidden", isOpen ? "true" : "false");
+			});
+
+			// Close on outside click
+			document.addEventListener("click", (e) => {
+				if (!userProfileWrapper.contains(e.target)) {
+					userDropdown.classList.remove("open");
+					userDropdown.setAttribute("aria-hidden", "true");
+				}
+			});
+		}
+
+		if (logoutBtn) {
+			logoutBtn.addEventListener("click", async () => {
+				try {
+					await fetch("/api/method/logout", { method: "POST", headers: { "X-Frappe-CSRF-Token": frappe?.csrf_token || "" } });
+				} catch (_) { /* ignore */ }
+				window.location.href = "/login";
+			});
+		}
+		// ──────────────────────────────────────────────────────────────
+
 		const clearDraggingMode = () => {
 			if (!document.body.classList.contains("taskflow-dragging")) return;
 			document.body.classList.remove("taskflow-dragging");
