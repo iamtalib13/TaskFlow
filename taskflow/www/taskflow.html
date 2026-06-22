@@ -503,6 +503,86 @@
 </div>
 
 <!-- Quick Create Modal -->
+<div
+	class="taskflow-modal-backdrop"
+	data-modal-name="task-quick"
+	data-task-modal-quick
+	aria-hidden="true"
+>
+	<div
+		class="taskflow-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="taskflow-task-quick-title"
+	>
+		<form class="taskflow-form" data-task-form-quick>
+			<div class="taskflow-modal-header">
+				<h3 id="taskflow-task-quick-title">Quick Create Task</h3>
+				<div class="taskflow-modal-header-actions">
+					<button
+						class="taskflow-button secondary"
+						type="button"
+						data-close-modal="task-quick"
+					>
+						Close
+					</button>
+					<button class="taskflow-button primary" type="submit">Create Task</button>
+				</div>
+			</div>
+			<div class="taskflow-modal-main-content">
+				<input type="hidden" name="name" />
+				<div class="taskflow-form-grid two-columns">
+					<label style="grid-column: 1 / -1"
+						>Task Title
+						<input type="text" name="task_title" required placeholder="Enter task title..." />
+					</label>
+					<label
+						>Project
+						<select name="project" required id="quickTaskProjectSelect"></select>
+					</label>
+					<label
+						>Assignee
+						<select name="assigned_to" id="quickTaskAssignedToSelect">
+							<option value="">Not set</option>
+						</select>
+					</label>
+					<label
+						>Priority
+						<select name="priority">
+							<option value="Low">Low</option>
+							<option selected value="Medium">Medium</option>
+							<option value="High">High</option>
+							<option value="Critical">Critical</option>
+						</select>
+					</label>
+					<label
+						>Status
+						<select name="status">
+							<option selected value="Open">Open</option>
+							<option value="In Progress">In Progress</option>
+							<option value="Review">Review</option>
+							<option value="On Hold">On Hold</option>
+							<option value="Completed">Completed</option>
+						</select>
+					</label>
+					<label
+						>Due Date
+						<input type="date" name="due_date" />
+					</label>
+					<label
+						>Task Type
+						<select name="task_type">
+							<option selected value="Task">Task</option>
+							<option value="Bug">Bug</option>
+							<option value="Customization Request">Customization Request</option>
+						</select>
+					</label>
+				</div>
+			</div>
+		</form>
+	</div>
+</div>
+
 <!-- Status Filter Sidebar -->
 <div class="taskflow-filter-sidebar" data-filter-sidebar aria-hidden="true">
 	<div style="padding: 24px">
@@ -554,9 +634,6 @@
 	</div>
 </div>
 
-		</form>
-	</div>
-</div>
 
 <script>
 	window.csrf_token = window.csrf_token || "{{ csrf_token }}";

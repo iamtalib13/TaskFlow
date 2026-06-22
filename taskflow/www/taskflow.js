@@ -2151,6 +2151,33 @@
 	}
 
 	async function openTaskModal(task, status = "") {
+		if (!task) {
+			const projSelect = document.getElementById("quickTaskProjectSelect");
+			if (projSelect && state.bootstrap && state.bootstrap.projects) {
+				const currentProjName = state.projectWorkspace && state.projectWorkspace.project ? state.projectWorkspace.project.name : "";
+				projSelect.innerHTML = state.bootstrap.projects.map(p => 
+					`<option value="${p.name}" ${p.name === currentProjName ? 'selected' : ''}>${p.project_name}</option>`
+				).join("");
+				
+				populateQuickTaskAssignees();
+				
+				if (!projSelect.dataset.listenerBound) {
+					projSelect.addEventListener("change", populateQuickTaskAssignees);
+					projSelect.dataset.listenerBound = "1";
+				}
+			}
+
+			const form = refs.taskFormQuick;
+			if (form) {
+				form.reset();
+				if (form.elements.name) form.elements.name.value = "";
+				if (form.elements.status) form.elements.status.value = status || "Open";
+			}
+
+			toggleModal(refs.taskModalQuick, true);
+			return;
+		}
+
 		const currentProject = state.projectWorkspace && state.projectWorkspace.project;
 		
 		let url = "/taskform";
@@ -2174,6 +2201,24 @@
 		
 		url += "?" + params.toString();
 		window.location.href = url;
+	}
+
+	function populateQuickTaskAssignees() {
+		const projSelect = document.getElementById("quickTaskProjectSelect");
+		const assigneeSelect = document.getElementById("quickTaskAssignedToSelect");
+		if (!projSelect || !assigneeSelect || !state.bootstrap) return;
+
+		const selectedProjName = projSelect.value;
+		const projectObj = (state.bootstrap.projects || []).find(p => p.name === selectedProjName);
+		const teamName = projectObj ? projectObj.team : "";
+
+		const members = (state.bootstrap.team_members || []).filter(
+			m => m.team === teamName
+		);
+
+		assigneeSelect.innerHTML = '<option value="">Not set</option>' + members.map(m => 
+			`<option value="${m.employee || ""}">${m.label}</option>`
+		).join("");
 	}
 	function updateAvatar(employeeId) {
 		const avatarContainer = document.querySelector("[data-assigned-avatar-large]");
