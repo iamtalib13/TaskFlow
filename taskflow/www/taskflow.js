@@ -1424,8 +1424,8 @@
 		const breadcrumb = document.querySelector("[data-project-breadcrumb]");
 
 		if (state.navMode === "my-tasks") {
-			refs.projectTitle.textContent = "My Tasks";
-			if (breadcrumb) breadcrumb.textContent = "My Tasks";
+			refs.projectTitle.textContent = "Tasks";
+			if (breadcrumb) breadcrumb.textContent = "Tasks";
 			refs.newTaskButton.disabled = false;
 
 			// Handle Member Selector for My Tasks
@@ -2030,7 +2030,7 @@
 				const total = tasks.length;
 				const pending = tasks.filter(t => !["Completed", "Cancelled"].includes(t.status)).length;
 				refs.projectTitle.innerHTML = `
-					My Tasks
+					Tasks
 					<span style="font-size:18px; font-weight:800; margin-left:12px;">
 						<span style="color:#ef4444;">${pending}</span> / ${total}
 					</span>
@@ -4249,7 +4249,7 @@
 			reports: "Reports",
 			settings: "Settings",
 			team: "Team",
-			"my-tasks": "My Tasks",
+			"my-tasks": "Tasks",
 			dashboard: "Dashboard",
 		};
 		return labels[mode] || "Taskflow";
