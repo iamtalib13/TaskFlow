@@ -28,6 +28,7 @@
   "start_date",
   "due_date",
   "estimated_completion_date",
+  "completed_date",
   "timeline_column",
   "completed_on",
   "sequence",
@@ -303,11 +304,16 @@
    "fieldname": "temp_emp",
    "fieldtype": "Data",
    "label": "Temp Emp"
+  },
+  {
+   "fieldname": "completed_date",
+   "fieldtype": "Date",
+   "label": "Completed Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-22 14:00:17.787563",
+ "modified": "2026-06-22 14:21:07.851116",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",

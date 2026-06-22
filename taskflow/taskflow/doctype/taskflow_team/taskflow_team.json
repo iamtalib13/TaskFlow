@@ -1,14 +1,13 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:team_code",
- "creation": "2026-05-07 00:00:00.000000",
+ "autoname": "field:team_name",
+ "creation": "2026-05-07 00:00:00",
  "doctype": "DocType",
  "document_type": "Setup",
  "engine": "InnoDB",
  "field_order": [
   "team_name",
-  "team_code",
   "company",
   "is_active",
   "parent_team",
@@ -25,14 +24,6 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Team Name",
-   "reqd": 1
-  },
-  {
-   "fieldname": "team_code",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Team Code",
    "reqd": 1,
    "unique": 1
   },
@@ -93,7 +84,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-07 00:00:00.000000",
+ "modified": "2026-06-22 14:51:23.302355",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Team",

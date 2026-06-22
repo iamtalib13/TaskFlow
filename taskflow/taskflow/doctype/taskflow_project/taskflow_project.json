@@ -1,8 +1,8 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:project_code",
- "creation": "2026-05-07 00:00:00.000000",
+ "autoname": "field:project_name",
+ "creation": "2026-05-07 00:00:00",
  "description": "Metadata-driven project master for Taskflow.",
  "doctype": "DocType",
  "document_type": "Setup",
@@ -10,7 +10,6 @@
  "field_order": [
   "project_identity_section",
   "project_name",
-  "project_code",
   "project_identity_column",
   "team",
   "parent_project",
@@ -45,14 +44,6 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Project Name",
-   "reqd": 1
-  },
-  {
-   "fieldname": "project_code",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Project Code",
    "reqd": 1,
    "unique": 1
   },
@@ -183,7 +174,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-07 00:00:00.000000",
+ "modified": "2026-06-22 14:50:03.305504",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Project",
@@ -243,7 +234,8 @@
    "share": 1
   }
  ],
- "search_fields": "project_name,project_code,team",
+ "row_format": "Dynamic",
+ "search_fields": "project_name,team",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
