@@ -1436,14 +1436,16 @@
 		}
 
 		// Get first day of month (0 = Sunday, ..., 6 = Saturday)
-		const firstDayIndex = new Date(year, month, 1).getDay();
+		const firstDayIndexRaw = new Date(year, month, 1).getDay();
+		// Shift so 0 = Monday, ..., 6 = Sunday
+		const firstDayIndex = firstDayIndexRaw === 0 ? 6 : firstDayIndexRaw - 1;
 		// Get total days in month
 		const totalDays = new Date(year, month + 1, 0).getDate();
 		// Get total days in previous month
 		const prevTotalDays = new Date(year, month, 0).getDate();
 
 		let html = `<div class="taskflow-calendar-grid-container">`;
-		const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+		const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 		
 		// Render day headers
 		for (let i = 0; i < 7; i++) {
