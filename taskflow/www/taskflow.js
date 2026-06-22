@@ -1353,32 +1353,9 @@
 		const project = workspace.project;
 		const tasks = workspace.tasks || [];
 
-		// Calculate oldest pending task
-		const alertContainer = document.querySelector("[data-oldest-task-alert]");
-		const pendingTasks = tasks.filter(
-			(t) => !["Completed", "Cancelled"].includes(t.status) && t.start_date,
-		);
-		if (pendingTasks.length > 0) {
-			pendingTasks.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
-			const oldest = pendingTasks[0];
-			const days = Math.floor(
-				Math.abs(new Date() - new Date(oldest.start_date)) / (1000 * 60 * 60 * 24),
-			);
-
-			const member = (state.bootstrap.team_members || []).find(
-				(m) => m.employee === oldest.assigned_to,
-			);
-			const assigneeName = member ? member.label : oldest.assigned_to || "Unassigned";
-
-			alertContainer.innerHTML = `<span class="taskflow-oldest-task-alert" style="cursor: pointer;" data-oldest-task-id="${escapeHtml(oldest.name)}">⚠️ ${escapeHtml(assigneeName)} (${days} days pending)</span>`;
-			alertContainer
-				.querySelector(".taskflow-oldest-task-alert")
-				.addEventListener("click", () => {
-					openTaskModal(oldest);
-				});
-		} else {
-			alertContainer.innerHTML = "";
-		}
+		// Calculate oldest pending task — filtered by selected member if one is active
+		const alertEmployee = state.selectedMember || null;
+		renderOldestTaskAlert(tasks, alertEmployee);
 
 		const totalTasks = tasks.length;
 		const completedTasks = tasks.filter((t) => t.status === "Completed").length;
@@ -1681,9 +1658,52 @@
 			tasks = state.bootstrap.tasks || [];
 		}
 
+		// Show oldest task alert filtered to the selected member in My Tasks
+		if (state.navMode === "my-tasks") {
+			const activeEmployee = state.selectedMember || getCurrentUserEmployeeId();
+			renderOldestTaskAlert(tasks, activeEmployee);
+		}
+
 		renderTaskArea(tasks);
 		renderKpiCards(tasks);
 		updateKpiHighlights();
+	}
+
+	// Renders the ⚠️ oldest pending task alert.
+	// Pass filterEmployee to restrict to a specific team member (employee ID).
+	function renderOldestTaskAlert(tasks, filterEmployee = null) {
+		const alertContainer = document.querySelector("[data-oldest-task-alert]");
+		if (!alertContainer) return;
+
+		let pendingTasks = (tasks || []).filter(
+			(t) => !["Completed", "Cancelled"].includes(t.status) && t.start_date,
+		);
+
+		// Filter to selected member if specified
+		if (filterEmployee) {
+			pendingTasks = pendingTasks.filter(
+				(t) => String(t.assigned_to) === String(filterEmployee),
+			);
+		}
+
+		if (pendingTasks.length > 0) {
+			pendingTasks.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+			const oldest = pendingTasks[0];
+			const days = Math.floor(
+				Math.abs(new Date() - new Date(oldest.start_date)) / (1000 * 60 * 60 * 24),
+			);
+			const member = (state.bootstrap.team_members || []).find(
+				(m) => m.employee === oldest.assigned_to,
+			);
+			const assigneeName = member ? member.label : oldest.assigned_to || "Unassigned";
+
+			alertContainer.innerHTML = `<span class="taskflow-oldest-task-alert" style="cursor: pointer;" data-oldest-task-id="${escapeHtml(oldest.name)}">⚠️ ${escapeHtml(assigneeName)} (${days} days pending)</span>`;
+			alertContainer
+				.querySelector(".taskflow-oldest-task-alert")
+				.addEventListener("click", () => openTaskModal(oldest));
+		} else {
+			alertContainer.innerHTML = "";
+		}
 	}
 
 	function renderDashboard(tasks) {
