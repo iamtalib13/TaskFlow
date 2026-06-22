@@ -171,7 +171,9 @@
 
 	async function loadStateFromUrl(options = {}) {
 		const params = new URLSearchParams(window.location.search);
-		const mode = normalizeNavMode(params.get("mode")) || "dashboard";
+		const urlMode = normalizeNavMode(params.get("mode"));
+		// Default to "my-tasks" when no explicit mode is in the URL
+		const mode = urlMode || "my-tasks";
 		const project = params.get("project");
 		const team = params.get("team");
 		const view = params.get("view");
