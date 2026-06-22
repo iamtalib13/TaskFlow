@@ -25,6 +25,7 @@
           :workspace-title="workspaceTitle"
           :pending-task-count="selectedProjectTaskStats.pending"
           :total-task-count="selectedProjectTaskStats.total"
+          :status-counts="statusCounts"
         />
 
         <TaskflowTeamCards v-if="tableSection === 'team'" :teams="teams" />
@@ -39,21 +40,33 @@
         </main>
 
         <TaskflowTaskForm
-        v-model="taskFormOpen"
-        :mode="taskFormMode"
-        :initial-task="selectedTask"
-        :teams="teams"
-        :projects="projects"
-        :assignee-options="taskAssigneeOptions"
-        :status-options="statusOptions"
-        :priority-options="priorityOptions"
-        :task-type-options="taskTypeOptions"
-        :default-team="selectedTeam"
-        :default-project="selectedProject"
-        :saving="taskSaveLoading"
-        :error-message="taskFormError"
-        @submit="submitTaskForm"
-        @cancel="clearTaskFormState"
+          v-model="taskFormOpen"
+          :mode="taskFormMode"
+          :initial-task="selectedTask"
+          :teams="teams"
+          :projects="projects"
+          :assignee-options="taskAssigneeOptions"
+          :status-options="statusOptions"
+          :priority-options="priorityOptions"
+          :task-type-options="taskTypeOptions"
+          :default-team="selectedTeam"
+          :default-project="selectedProject"
+          :saving="taskSaveLoading"
+          :error-message="taskFormError"
+          @submit="submitTaskForm"
+          @cancel="clearTaskFormState"
+        />
+
+        <TaskflowProjectForm
+          v-model="projectFormOpen"
+          :mode="projectFormMode"
+          :initial-project="selectedProjectObj"
+          :teams="teams"
+          :lead-options="taskAssigneeOptions"
+          :saving="projectSaveLoading"
+          :error-message="projectFormError"
+          @submit="submitProjectForm"
+          @cancel="clearProjectFormState"
         />
 
   </div>
@@ -64,11 +77,12 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TaskflowSidebar from '@/components/TaskflowSidebar.vue'
 import TaskflowTaskForm from '@/components/TaskflowTaskForm.vue'
+import TaskflowProjectForm from '@/components/TaskflowProjectForm.vue'
 import TaskflowTeamCards from '@/components/TaskflowTeamCards.vue'
 import TaskflowWorkspaceHeader from '@/components/TaskflowWorkspaceHeader.vue'
 import TaskflowWorkspaceList from '@/components/TaskflowWorkspaceList.vue'
 import TaskflowWorkspaceToolbar from '@/components/TaskflowWorkspaceToolbar.vue'
-import { saveWorkspaceTask, workspaceBootstrap } from '@/data/workspace'
+import { saveWorkspaceTask, saveWorkspaceProject, workspaceBootstrap } from '@/data/workspace'
 
 const route = useRoute()
 const router = useRouter()
@@ -84,6 +98,11 @@ const taskFormError = ref('')
 const selectedTask = ref(null)
 const taskFormMode = ref('create')
 
+const projectFormOpen = ref(false)
+const projectFormError = ref('')
+const selectedProjectObj = ref(null)
+const projectFormMode = ref('create')
+
 const workspaceData = computed(() => workspaceBootstrap.data || {})
 const teams = computed(() => workspaceData.value.teams || [])
 const projects = computed(() => workspaceData.value.projects || [])
@@ -98,6 +117,7 @@ const currentUserName = computed(
 const currentUserImage = computed(() => workspaceData.value.current_user?.user_image || '')
 const workspaceLoading = computed(() => Boolean(workspaceBootstrap.loading && !workspaceBootstrap.fetched))
 const taskSaveLoading = computed(() => Boolean(saveWorkspaceTask.loading))
+const projectSaveLoading = computed(() => Boolean(saveWorkspaceProject.loading))
 
 const projectNameById = computed(() =>
   Object.fromEntries(projects.value.map((project) => [project.name, project.project_name || project.name])),
@@ -116,6 +136,29 @@ const selectedProjectTaskStats = computed(() => ({
   total: selectedProjectTaskRows.value.length,
   pending: selectedProjectTaskRows.value.filter((task) => !['Completed', 'Cancelled'].includes(task.status)).length,
 }))
+
+const statusCounts = computed(() => {
+  const currentTasks = tableSection.value === 'task' ? selectedProjectTaskRows.value : tasks.value
+  const counts = {
+    'Open': 0,
+    'In Progress': 0,
+    'Review': 0,
+    'On Hold': 0,
+    'Completed': 0,
+    'Cancelled': 0,
+    'Overdue': 0
+  }
+  currentTasks.forEach(task => {
+    const status = task.status || 'Open'
+    if (status in counts) {
+      counts[status]++
+    } else {
+      counts[status] = (counts[status] || 0) + 1
+    }
+  })
+  return counts
+})
+
 
 const workspaceTitle = computed(() => selectedProjectLabel.value || 'All Projects')
 
@@ -136,6 +179,7 @@ const visibleRows = computed(() => {
 const primaryActionLabel = computed(() => {
   if (tableSection.value === 'team') return 'New Team'
   if (tableSection.value === 'mom') return 'New Meeting'
+  if (tableSection.value === 'overview') return 'New Project +'
   return 'New Task +'
 })
 
@@ -235,21 +279,53 @@ function syncQueryToRoute() {
 }
 
 function handlePrimaryAction() {
-  taskFormMode.value = 'create'
-  selectedTask.value = null
-  taskFormError.value = ''
-  taskFormOpen.value = true
+  if (tableSection.value === 'overview') {
+    projectFormMode.value = 'create'
+    selectedProjectObj.value = null
+    projectFormError.value = ''
+    projectFormOpen.value = true
+  } else {
+    taskFormMode.value = 'create'
+    selectedTask.value = null
+    taskFormError.value = ''
+    taskFormOpen.value = true
+  }
 }
 
-function openTask(task) {
-  taskFormMode.value = 'edit'
-  selectedTask.value = task
-  taskFormError.value = ''
-  taskFormOpen.value = true
+function openTask(row) {
+  if (tableSection.value === 'overview') {
+    projectFormMode.value = 'edit'
+    selectedProjectObj.value = row
+    projectFormError.value = ''
+    projectFormOpen.value = true
+  } else {
+    taskFormMode.value = 'edit'
+    selectedTask.value = row
+    taskFormError.value = ''
+    taskFormOpen.value = true
+  }
 }
 
 function clearTaskFormState() {
   taskFormError.value = ''
+}
+
+function clearProjectFormState() {
+  projectFormError.value = ''
+}
+
+async function submitProjectForm(payload) {
+  projectFormError.value = ''
+  try {
+    await saveWorkspaceProject.submit(payload)
+    if (typeof frappe !== 'undefined' && frappe.show_alert) {
+      frappe.show_alert({ message: __('Project saved successfully'), indicator: 'green' }, 5)
+    }
+    projectFormOpen.value = false
+    await loadWorkspace()
+  } catch (error) {
+    projectFormError.value = extractErrorMessage(error)
+  }
 }
 
 async function submitTaskForm(payload) {

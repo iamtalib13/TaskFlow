@@ -15,6 +15,7 @@
 		autoSaveTimer: null,
 		isPopulating: false,
 		activeTask: null,
+		activeTaskAssignees: [],
 	};
 
 	const refs = {
@@ -106,8 +107,8 @@
 		refs.projectSelect = document.getElementById("projectCapsule");
 		refs.taskTypeSelect = document.getElementById("taskTypeCapsule");
 		refs.assignedToSelect = document.getElementById("assignedToSelect");
-		refs.pendingWithSelect = document.getElementById("pendingWithSelect");
-		refs.guidedBySelect = document.getElementById("guidedBySelect");
+		refs.pendingWithSelect = document.getElementById("pendingWithInput");
+		refs.guidedBySelect = document.getElementById("guidedByInput");
 
 		refs.startDateInput = document.getElementById("startDateInput");
 		refs.dueDateInput = document.getElementById("dueDateInput");
@@ -286,11 +287,18 @@
 
 		// Assignee changes -> Update avatars and trigger save
 		refs.assignedToSelect?.addEventListener("change", (e) => {
-			updateAvatar(e.target.value, document.querySelector(".assignee-row .avatar"));
-			triggerAutoSave();
+			const email = e.target.value;
+			if (email) {
+				if (!state.activeTaskAssignees) state.activeTaskAssignees = [];
+				if (!state.activeTaskAssignees.includes(email)) {
+					state.activeTaskAssignees.push(email);
+				}
+				renderAssigneeWidget();
+				triggerAutoSave();
+			}
 		});
-		refs.pendingWithSelect?.addEventListener("change", () => triggerAutoSave());
-		refs.guidedBySelect?.addEventListener("change", () => triggerAutoSave());
+		refs.pendingWithSelect?.addEventListener("input", () => triggerAutoSave());
+		refs.guidedBySelect?.addEventListener("input", () => triggerAutoSave());
 
 		// Basic inputs trigger auto-save
 		[
@@ -384,30 +392,57 @@
 			member => member.team === teamName
 		);
 
-		const optionsHtml = ['<option value="">Not set</option>'] +
-			members.map(member =>
-				`<option value="${escapeHtml(member.employee || "")}">${escapeHtml(member.label)}</option>`
-			).join("");
+		renderAssigneeWidget();
+	}
 
-		// Set inner options
-		if (refs.assignedToSelect) {
-			const currentVal = refs.assignedToSelect.value;
-			refs.assignedToSelect.innerHTML = optionsHtml;
-			refs.assignedToSelect.value = currentVal || "";
-			updateAvatar(refs.assignedToSelect.value, document.querySelector(".assignee-row .avatar"));
-		}
+	function renderAssigneeWidget() {
+		const badgesContainer = document.getElementById("assigneeBadges");
+		const selectEl = document.getElementById("assignedToSelect");
+		if (!badgesContainer || !selectEl || !state.bootstrap) return;
 
-		if (refs.pendingWithSelect) {
-			const currentVal = refs.pendingWithSelect.value;
-			refs.pendingWithSelect.innerHTML = optionsHtml;
-			refs.pendingWithSelect.value = currentVal || "";
-		}
+		const project = (state.bootstrap.projects || []).find(p => p.name === state.selectedProject);
+		const teamName = project ? project.team : "";
+		const members = (state.bootstrap.team_members || []).filter(
+			member => member.team === teamName
+		);
 
-		if (refs.guidedBySelect) {
-			const currentVal = refs.guidedBySelect.value;
-			refs.guidedBySelect.innerHTML = optionsHtml;
-			refs.guidedBySelect.value = currentVal || "";
-		}
+		// 1. Render currently selected assignees as badges
+		badgesContainer.innerHTML = "";
+		if (!state.activeTaskAssignees) state.activeTaskAssignees = [];
+		state.activeTaskAssignees.forEach(email => {
+			const member = members.find(m => m.user === email);
+			const label = member ? member.label : email;
+			const userImage = member ? member.user_image : null;
+			const initialsText = initials(label);
+			
+			const badge = document.createElement("div");
+			badge.className = "assignee-badge-item";
+			badge.innerHTML = `
+				<div class="avatar" style="width: 22px; height: 22px; font-size: 8px; border-radius: 50%; background: linear-gradient(135deg, #4f6ef7, #a78bfa); display: flex; align-items: center; justify-content: center; color: #fff; overflow: hidden; flex-shrink: 0;">
+					${userImage ? `<img src="${userImage}" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">` : initialsText}
+				</div>
+				<span class="assignee-badge-name" style="font-size: 12px; font-weight: 500; color: #334155; flex: 1;">${escapeHtml(label)}</span>
+				<button class="assignee-badge-remove" type="button" data-email="${escapeHtml(email)}" style="background: none; border: none; color: #94a3b8; font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
+			`;
+			badgesContainer.appendChild(badge);
+		});
+
+		// Add event listeners to remove buttons
+		badgesContainer.querySelectorAll(".assignee-badge-remove").forEach(btn => {
+			btn.addEventListener("click", () => {
+				const email = btn.dataset.email;
+				state.activeTaskAssignees = state.activeTaskAssignees.filter(e => e !== email);
+				renderAssigneeWidget();
+				triggerAutoSave();
+			});
+		});
+
+		// 2. Populate dropdown with team members NOT already selected
+		const unselectedMembers = members.filter(m => !state.activeTaskAssignees.includes(m.user));
+		selectEl.innerHTML = '<option value="">Add Assignee...</option>' + unselectedMembers.map(m =>
+			`<option value="${escapeHtml(m.user || "")}">${escapeHtml(m.label)}</option>`
+		).join("");
+		selectEl.value = "";
 	}
 
 	function updateAvatar(employeeId, avatarEl) {
@@ -486,11 +521,8 @@
 				}
 
 				// Assignees
+				state.activeTaskAssignees = task._assign || [];
 				updateAssigneeOptions();
-				if (refs.assignedToSelect) {
-					refs.assignedToSelect.value = task.assigned_to || "";
-					updateAvatar(task.assigned_to, document.querySelector(".assignee-row .avatar"));
-				}
 				if (refs.pendingWithSelect) refs.pendingWithSelect.value = task.pending_with || "";
 				if (refs.guidedBySelect) refs.guidedBySelect.value = task.guided_by || "";
 
@@ -902,7 +934,14 @@
 			status: refs.statusSelect?.value || "Open",
 			priority: refs.prioritySelect?.value || "Medium",
 			task_type: refs.taskTypeSelect?.value || "Task",
-			assigned_to: refs.assignedToSelect?.value || null,
+			assigned_to: (() => {
+				if (state.activeTaskAssignees && state.activeTaskAssignees.length > 0) {
+					const firstMember = (state.bootstrap?.team_members || []).find(m => m.user === state.activeTaskAssignees[0]);
+					return firstMember ? firstMember.employee : null;
+				}
+				return null;
+			})(),
+			_assign: state.activeTaskAssignees || [],
 			pending_with: refs.pendingWithSelect?.value || null,
 			guided_by: refs.guidedBySelect?.value || null,
 			start_date: normalizeDateForPayload(refs.startDateInput?.value),

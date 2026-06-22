@@ -23,6 +23,7 @@ _TASK_FIELDS = [
     "assigned_by",
     "assigned_to",
     "assigned_to_user",
+    "_assign",
     "status",
     "priority",
     "task_type",
@@ -87,6 +88,7 @@ _ALLOWED_TASK_FIELDS = [
     "parent_task",
     "team",
     "assigned_to",
+    "_assign",
     "status",
     "priority",
     "task_type",
@@ -351,6 +353,7 @@ def _serialize_task(
         "assigned_to_name": assigned_to_name,
         "assigned_to_user": task.assigned_to_user,
         "assigned_to_image": assigned_to_image,
+        "_assign": frappe.parse_json(task._assign) if getattr(task, "_assign", None) else [],
         "status": task.status,
         "priority": task.priority,
         "task_type": task.task_type,
@@ -678,7 +681,8 @@ def save_task(payload: str) -> dict:
 
         for fieldname in _ALLOWED_TASK_FIELDS:
             if fieldname in data:
-                doc.set(fieldname, data.get(fieldname))
+                if fieldname != "_assign":
+                    doc.set(fieldname, data.get(fieldname))
 
         if "checklist" in data:
             checklist_items = data.get("checklist") or []
@@ -691,6 +695,10 @@ def save_task(payload: str) -> dict:
             _append_checklist_to_doc(doc, checklist_items)
 
         doc.save(ignore_permissions=False)
+        
+        if "_assign" in data:
+            _sync_assignments(doc, data.get("_assign"))
+
         return {"name": doc.name}
     except Exception as error:
         _log_save_task_error(data if isinstance(data, dict) else {}, error)
@@ -997,3 +1005,37 @@ def toggle_team_member_assignment(employee: str, project: str) -> str:
 
     doc.save(ignore_permissions=False)
     return "ok"
+
+
+def _sync_assignments(doc, new_assignees):
+    if new_assignees is None:
+        return
+    if isinstance(new_assignees, str):
+        new_assignees = frappe.parse_json(new_assignees)
+    
+    current_assignees = frappe.parse_json(doc._assign) if getattr(doc, "_assign", None) else []
+    
+    current_assignees = [u for u in current_assignees if u]
+    new_assignees = [u for u in new_assignees if u]
+    
+    users_to_add = [u for u in new_assignees if u not in current_assignees]
+    users_to_remove = [u for u in current_assignees if u not in new_assignees]
+    
+    from frappe.desk.form.assign_to import add as assign_to_add, remove as assign_to_remove
+    
+    for user in users_to_remove:
+        try:
+            assign_to_remove(doc.doctype, doc.name, user)
+        except Exception:
+            pass
+            
+    for user in users_to_add:
+        try:
+            assign_to_add({
+                "assign_to": [user],
+                "doctype": doc.doctype,
+                "name": doc.name,
+                "description": doc.task_title or doc.name,
+            })
+        except Exception:
+            pass

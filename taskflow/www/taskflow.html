@@ -173,62 +173,52 @@
 		</header>
 
 		<!-- Project Toolbar -->
-		<div class="taskflow-toolbar">
-			<div class="taskflow-project-info">
-				<h1 class="taskflow-project-title" data-project-title>&nbsp;</h1>
-				<div
-					class="taskflow-member-selector-container taskflow-hidden"
-					data-member-selector-wrapper
-					style="margin-left: 12px"
-				>
-					<select
-						class="taskflow-member-selector"
-						data-member-selector
-						aria-label="Select member"
-						style="
-							padding: 4px 8px;
-							border-radius: 6px;
-							border: 1px solid var(--taskflow-border);
-							font-size: 14px;
-							font-weight: 600;
-						"
-					></select>
-				</div>
-				<button class="taskflow-btn-star" type="button" aria-label="Star project" disabled>
-					★
-				</button>
-				<button
-					class="taskflow-btn-more"
-					type="button"
-					aria-label="More project actions"
-					disabled
-				>
-					⋯
-				</button>
-			</div>
-			<div class="taskflow-toolbar-actions">
-				<div data-oldest-task-alert></div>
-				<button class="taskflow-btn-toolbar" type="button" data-filter-button>
-					<span class="taskflow-icon">⏳</span> Filter
-				</button>
-				<button class="taskflow-btn-toolbar" type="button">
-					<span class="taskflow-icon">▤</span> View
-				</button>
-
-				<div class="taskflow-btn-group">
-					<button class="taskflow-btn-primary" type="button" data-new-task>
-						+ Add Task
-					</button>
-					<button
-						class="taskflow-btn-primary-dropdown"
-						type="button"
-						aria-label="More task actions"
-						disabled
+		<div class="taskflow-toolbar" style="display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 32px 32px 16px;">
+			<div style="display: flex; width: 100%; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+				<div class="taskflow-project-info">
+					<h1 class="taskflow-project-title" data-project-title>&nbsp;</h1>
+					<div
+						class="taskflow-member-selector-container taskflow-hidden"
+						data-member-selector-wrapper
+						style="margin-left: 12px"
 					>
-						⌵
+						<select
+							class="taskflow-member-selector"
+							data-member-selector
+							aria-label="Select member"
+							style="
+								padding: 4px 8px;
+								border-radius: 6px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 14px;
+								font-weight: 600;
+							"
+						></select>
+					</div>
+				</div>
+				<div class="taskflow-toolbar-actions">
+					<div data-oldest-task-alert></div>
+					<button class="taskflow-btn-toolbar" type="button" data-filter-button>
+						<span class="taskflow-icon">⏳</span> Filter
 					</button>
+
+					<div class="taskflow-btn-group">
+						<button class="taskflow-btn-primary" type="button" data-new-task>
+							+ Add Task
+						</button>
+						<button
+							class="taskflow-btn-primary-dropdown"
+							type="button"
+							aria-label="More task actions"
+							disabled
+						>
+							⌵
+						</button>
+					</div>
 				</div>
 			</div>
+			<!-- KPI cards container right under Project Info -->
+			<div class="taskflow-project-kpis" data-project-kpis style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; width: 100%;"></div>
 		</div>
 
 		<!-- View Navigation Tabs -->
@@ -659,10 +649,13 @@
 								<select name="project" required id="quickTaskProjectSelect"></select>
 							</label>
 
-							<label class="quick-task-field-full">Assignee *
-								<select name="assigned_to" required id="quickTaskAssignedToSelect">
-									<option value="">Not set</option>
-								</select>
+							<label class="quick-task-field-full">Assignee
+								<div class="taskflow-assignee-widget" style="width: 100%; margin-top: 6px;">
+									<div class="assignee-badges" id="quickAssigneeBadges" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;"></div>
+									<select class="sidebar-select" style="width: 100%;" id="quickTaskAssignedToSelect">
+										<option value="">Add Assignee...</option>
+									</select>
+								</div>
 							</label>
 
 							<label>Start Date *

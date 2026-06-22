@@ -537,6 +537,39 @@
 				object-fit: cover;
 			}
 
+			.assignee-badge-item {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 6px 10px;
+				border-radius: 8px;
+				background: #f1f5f9;
+				border: 1px solid #e2e8f0;
+				transition: all 0.2s ease;
+			}
+			.assignee-badge-item:hover {
+				background: #e2e8f0;
+			}
+			.assignee-badge-name {
+				font-size: 12px;
+				font-weight: 500;
+				color: #334155;
+				flex: 1;
+			}
+			.assignee-badge-remove {
+				background: none;
+				border: none;
+				color: #94a3b8;
+				font-size: 14px;
+				cursor: pointer;
+				padding: 0 4px;
+				line-height: 1;
+				transition: color 0.2s ease;
+			}
+			.assignee-badge-remove:hover {
+				color: #ef4444;
+			}
+
 			/* Date rows */
 			.date-badge {
 				display: inline-flex;
@@ -1378,48 +1411,22 @@
 						<div class="sidebar-section-title">Assignment</div>
 						<div class="field-row">
 							<span class="field-label">Assigned to</span>
-							<div class="assignee-row">
-								<div class="avatar">
-									<img
-										src="https://api.dicebear.com/7.x/avataaars/svg?seed=talib"
-										alt="TS"
-										onerror="this.style.display = 'none'"
-									/>
-								</div>
-								<select class="sidebar-select" style="flex: 1" id="assignedToSelect" name="assigned_to">
-									<option value="">Not set</option>
+							<div class="taskflow-assignee-widget" style="width: 100%;">
+								<div class="assignee-badges" id="assigneeBadges" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;"></div>
+								<select class="sidebar-select" style="width: 100%;" id="assignedToSelect">
+									<option value="">Add Assignee...</option>
 								</select>
 							</div>
 						</div>
 
 						<div class="field-row">
 							<span class="field-label">Pending With</span>
-							<div class="assignee-row">
-								<div
-									class="avatar"
-									style="background: linear-gradient(135deg, #f59e0b, #fb923c)"
-								>
-									P
-								</div>
-								<select class="sidebar-select" style="flex: 1" id="pendingWithSelect" name="pending_with">
-									<option value="">Not set</option>
-								</select>
-							</div>
+							<input type="text" class="sidebar-input" id="pendingWithInput" name="pending_with" placeholder="Pending with..." />
 						</div>
 
 						<div class="field-row">
 							<span class="field-label">Guided By</span>
-							<div class="assignee-row">
-								<div
-									class="avatar"
-									style="background: linear-gradient(135deg, #a78bfa, #7c3aed)"
-								>
-									G
-								</div>
-								<select class="sidebar-select" style="flex: 1" id="guidedBySelect" name="guided_by">
-									<option value="">Not set</option>
-								</select>
-							</div>
+							<input type="text" class="sidebar-input" id="guidedByInput" name="guided_by" placeholder="Guided by..." />
 						</div>
 					</div>
 

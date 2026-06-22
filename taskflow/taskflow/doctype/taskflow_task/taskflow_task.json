@@ -254,9 +254,8 @@
   },
   {
    "fieldname": "pending_with",
-   "fieldtype": "Link",
-   "label": "Pending With",
-   "options": "Taskflow Team"
+   "fieldtype": "Data",
+   "label": "Pending With"
   },
   {
    "fieldname": "guided_by",
@@ -302,7 +301,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-22 10:18:48.247821",
+ "modified": "2026-06-22 10:54:49.296066",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",

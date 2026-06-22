@@ -18,3 +18,16 @@ export const saveWorkspaceTask = createResource({
     }
   },
 })
+
+export const saveWorkspaceProject = createResource({
+  url: 'taskflow.taskflow.api.workspace.save_project',
+  method: 'POST',
+  auto: false,
+  resourceFetcher: frappeRequest,
+  makeParams(values) {
+    return {
+      payload: JSON.stringify(values),
+    }
+  },
+})
+

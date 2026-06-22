@@ -73,6 +73,7 @@ TASK_FIELDS = [
     "team",
     "assigned_to",
     "assigned_to_user",
+    "_assign",
     "status",
     "priority",
     "task_type",
@@ -98,6 +99,7 @@ TASK_WRITE_FIELDS = {
     "parent_task",
     "assigned_by",
     "assigned_to",
+    "_assign",
     "status",
     "priority",
     "task_type",
@@ -304,6 +306,7 @@ def _serialize_task(
         "assigned_to_name": assigned_to_name,
         "assigned_to_user": assigned_to_user,
         "assigned_to_image": assigned_to_image,
+        "_assign": frappe.parse_json(row.get("_assign")) if row.get("_assign") else [],
         "status": row.get("status"),
         "priority": row.get("priority"),
         "task_type": row.get("task_type"),
@@ -376,7 +379,8 @@ def _build_project_filters(team: str | None, project: str | None, search: str | 
 def _apply_fields(doc, payload: dict[str, Any], allowed_fields: set[str]) -> None:
     for field in allowed_fields:
         if field in payload:
-            setattr(doc, field, payload[field])
+            if field != "_assign":
+                setattr(doc, field, payload[field])
 
 
 def _current_user_info() -> dict[str, Any]:
@@ -584,4 +588,62 @@ def save_task(payload: str) -> dict[str, Any]:
         doc.insert(ignore_permissions=False)
     else:
         doc.save(ignore_permissions=False)
+        
+    if "_assign" in data:
+        _sync_assignments(doc, data.get("_assign"))
+
     return {"name": doc.name}
+
+
+@frappe.whitelist(methods=["POST"])
+def save_project(payload: str) -> dict[str, Any]:
+    _require_login()
+    data = _parse_payload(payload)
+    name = _as_text(data.get("name"))
+    if name:
+        doc = frappe.get_doc("Taskflow Project", name)
+        doc.check_permission("write")
+    else:
+        doc = frappe.new_doc("Taskflow Project")
+
+    _apply_fields(doc, data, PROJECT_WRITE_FIELDS)
+    if doc.is_new():
+        doc.insert(ignore_permissions=False)
+    else:
+        doc.save(ignore_permissions=False)
+    return {"name": doc.name}
+
+
+def _sync_assignments(doc, new_assignees):
+    if new_assignees is None:
+        return
+    if isinstance(new_assignees, str):
+        new_assignees = frappe.parse_json(new_assignees)
+    
+    current_assignees = frappe.parse_json(doc._assign) if getattr(doc, "_assign", None) else []
+    
+    current_assignees = [u for u in current_assignees if u]
+    new_assignees = [u for u in new_assignees if u]
+    
+    users_to_add = [u for u in new_assignees if u not in current_assignees]
+    users_to_remove = [u for u in current_assignees if u not in new_assignees]
+    
+    from frappe.desk.form.assign_to import add as assign_to_add, remove as assign_to_remove
+    
+    for user in users_to_remove:
+        try:
+            assign_to_remove(doc.doctype, doc.name, user)
+        except Exception:
+            pass
+            
+    for user in users_to_add:
+        try:
+            assign_to_add({
+                "assign_to": [user],
+                "doctype": doc.doctype,
+                "name": doc.name,
+                "description": doc.task_title or doc.name,
+            })
+        except Exception:
+            pass
+

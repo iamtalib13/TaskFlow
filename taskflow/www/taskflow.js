@@ -40,6 +40,7 @@
 		currentChecklist: [],
 		autoSaveTimer: null,
 		listTable: null,
+		quickTaskAssignees: [],
 	};
 
 	const refs = {};
@@ -217,6 +218,7 @@
 		refs.filesView = document.querySelector("[data-files-view]");
 		refs.settingsView = document.querySelector("[data-settings-view]");
 		refs.projectTitle = document.querySelector("[data-project-title]");
+		refs.projectKpis = document.querySelector("[data-project-kpis]");
 		refs.viewToggle = document.querySelector("[data-task-view-toggle]");
 		refs.taskSearch = document.querySelector(".taskflow-search-bar input");
 		refs.newProjectButtons = document.querySelectorAll("[data-new-project]");
@@ -496,6 +498,17 @@
 		if (refs.taskFormQuick) {
 			refs.taskFormQuick.addEventListener("submit", submitTaskForm);
 		}
+
+		document.getElementById("quickTaskAssignedToSelect")?.addEventListener("change", (e) => {
+			const email = e.target.value;
+			if (email) {
+				if (!state.quickTaskAssignees) state.quickTaskAssignees = [];
+				if (!state.quickTaskAssignees.includes(email)) {
+					state.quickTaskAssignees.push(email);
+				}
+				renderQuickAssigneeWidget();
+			}
+		});
 
 		// Robust click handler for task save button
 		const taskSaveBtn = refs.taskForm?.querySelector('button[type="submit"]');
@@ -1184,6 +1197,7 @@
 		const workspace = state.projectWorkspace;
 		if (!workspace || !workspace.project) {
 			refs.projectTitle.textContent = "Select Project";
+			if (refs.projectKpis) refs.projectKpis.innerHTML = "";
 			if (breadcrumb) breadcrumb.textContent = "None";
 			refs.newTaskButton.disabled = true;
 
@@ -1234,6 +1248,67 @@
 				<span style="color: #ef4444;">${pendingCount}</span> / ${totalTasks}
 			</span>
 		`;
+
+		if (refs.projectKpis) {
+			const statusList = ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue'];
+			const counts = {};
+			statusList.forEach(s => counts[s] = 0);
+			tasks.forEach(t => {
+				const status = t.status || 'Open';
+				counts[status] = (counts[status] || 0) + 1;
+			});
+			const statusColors = {
+				'Completed': '#10b981',
+				'In Progress': '#3b82f6',
+				'Review': '#8b5cf6',
+				'On Hold': '#f59e0b',
+				'Open': '#ef4444',
+				'Cancelled': '#6b7280',
+				'Overdue': '#b91c1c'
+			};
+			refs.projectKpis.innerHTML = statusList.map(status => {
+				const color = statusColors[status] || '#6b7280';
+				const count = counts[status] || 0;
+				return `
+					<div class="taskflow-kpi-card" data-kpi-status="${escapeHtml(status)}" style="
+						display: inline-flex;
+						align-items: center;
+						gap: 6px;
+						padding: 4px 10px;
+						border-radius: 8px;
+						font-size: 12px;
+						color: #334155;
+						font-weight: 500;
+						transition: all 0.2s ease;
+						cursor: pointer;
+						user-select: none;
+					">
+						<span style="width: 6px; height: 6px; border-radius: 50%; background-color: ${color}; display: inline-block;"></span>
+						<span style="color: #64748b;">${escapeHtml(status)}</span>
+						<strong style="color: #0f172a; font-weight: 700; margin-left: 2px;">${count}</strong>
+					</div>
+				`;
+			}).join("");
+
+			// Add click event listeners to KPI cards
+			refs.projectKpis.querySelectorAll("[data-kpi-status]").forEach(card => {
+				card.addEventListener("click", () => {
+					const status = card.dataset.kpiStatus;
+					if (!state.selectedStatuses) state.selectedStatuses = [];
+					if (state.selectedStatuses.includes(status)) {
+						state.selectedStatuses = state.selectedStatuses.filter(s => s !== status);
+					} else {
+						state.selectedStatuses.push(status);
+					}
+					localStorage.setItem("taskflow_filter_statuses", JSON.stringify(state.selectedStatuses));
+					updateUrlState();
+					updateKpiHighlights();
+					refreshView();
+				});
+			});
+
+			updateKpiHighlights();
+		}
 
 		if (breadcrumb) breadcrumb.textContent = project.project_name;
 		refs.newTaskButton.disabled = !(
@@ -1368,6 +1443,7 @@
 		}
 
 		renderTaskArea(tasks);
+		updateKpiHighlights();
 	}
 
 	function renderDashboard(tasks) {
@@ -1946,6 +2022,65 @@
 		});
 	}
 
+	function updateKpiHighlights() {
+		if (!refs.projectKpis) return;
+		const hasActiveFilter = state.selectedStatuses && state.selectedStatuses.length > 0;
+		
+		// Remove existing clear button if any
+		const existingClear = refs.projectKpis.querySelector(".taskflow-kpi-clear");
+		if (existingClear) existingClear.remove();
+
+		const statusColors = {
+			'Completed': '#10b981',
+			'In Progress': '#3b82f6',
+			'Review': '#8b5cf6',
+			'On Hold': '#f59e0b',
+			'Open': '#ef4444',
+			'Cancelled': '#6b7280',
+			'Overdue': '#b91c1c'
+		};
+
+		refs.projectKpis.querySelectorAll("[data-kpi-status]").forEach(card => {
+			const status = card.dataset.kpiStatus;
+			const isActive = state.selectedStatuses && state.selectedStatuses.includes(status);
+			const color = statusColors[status] || '#6b7280';
+			
+			card.style.opacity = hasActiveFilter ? (isActive ? '1' : '0.5') : '1';
+			card.style.border = isActive ? `2px solid ${color}` : '1px solid var(--taskflow-border, #e2e8f0)';
+			card.style.background = isActive ? '#ffffff' : '#f8fafc';
+			card.style.boxShadow = isActive ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : 'none';
+		});
+
+		// Add clear button if needed
+		if (hasActiveFilter) {
+			const clearBtn = document.createElement("button");
+			clearBtn.className = "taskflow-kpi-clear";
+			clearBtn.type = "button";
+			clearBtn.style.cssText = `
+				display: inline-flex;
+				align-items: center;
+				padding: 4px 10px;
+				border-radius: 8px;
+				border: 1px dashed #ef4444;
+				background: #fef2f2;
+				color: #ef4444;
+				font-size: 12px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: all 0.2s ease;
+				margin-left: auto;
+			`;
+			clearBtn.innerHTML = "Clear filter ✕";
+			clearBtn.addEventListener("click", () => {
+				state.selectedStatuses = [];
+				localStorage.removeItem("taskflow_filter_statuses");
+				updateKpiHighlights();
+				refreshView();
+			});
+			refs.projectKpis.appendChild(clearBtn);
+		}
+	}
+
 	function renderListSpacerRow(height) {
 		return `<tr class="taskflow-super-spacer" aria-hidden="true"><td colspan="${LIST_COLUMN_COUNT}" style="height:${height}px; padding:0; border:none;"></td></tr>`;
 	}
@@ -1953,12 +2088,43 @@
 	function renderListRow(task, index) {
 		const taskName = task.task_title || "";
 		const projectTitle = task.project_title || task.project || "No Project";
-		const assigneeName = capitalizeName(task.assigned_to_name || "Unassigned");
-		const assigneeImage = task.assigned_to_image;
 		const age = getTaskAgeDays(task);
 		const priority = task.priority || "Medium";
 		const modified = prettyDate(task.modified) || "Just now";
 		const rowLabel = `${taskName || "Task"}${projectTitle ? `, ${projectTitle}` : ""}`;
+
+		const assignees = task._assign || [];
+		let assigneeHtml = "";
+		if (assignees.length > 0) {
+			assigneeHtml = `
+				<div class="taskflow-super-avatars-group" style="display: flex; align-items: center;">
+					${assignees.map((email, idx) => {
+						const member = (state.bootstrap?.team_members || []).find(m => m.user === email);
+						const name = member ? member.label : email;
+						const img = member ? member.user_image : null;
+						const initialsText = initials(name);
+						const offset = idx > 0 ? 'margin-left: -8px;' : '';
+						return `
+							<span class="taskflow-super-avatar" title="${escapeHtml(name)}" style="${offset} width: 24px; height: 24px; font-size: 8px; border: 1.5px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #4f6ef7, #a78bfa); color: #fff; overflow: hidden; flex-shrink: 0;">
+								${img ? `<img src="${escapeHtml(img)}" alt="" style="width: 100%; height: 100%; object-fit: cover;" />` : escapeHtml(initialsText)}
+							</span>
+						`;
+					}).join("")}
+				</div>
+			`;
+		} else {
+			const name = capitalizeName(task.assigned_to_name || "Unassigned");
+			const img = task.assigned_to_image;
+			const initialsText = initials(name);
+			assigneeHtml = `
+				<div class="taskflow-super-assignee">
+					<span class="taskflow-super-avatar" title="${escapeHtml(name)}" style="width: 24px; height: 24px; font-size: 8px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #4f6ef7, #a78bfa); color: #fff; overflow: hidden; flex-shrink: 0;">
+						${img ? `<img src="${escapeHtml(img)}" alt="" style="width: 100%; height: 100%; object-fit: cover;" />` : escapeHtml(initialsText)}
+					</span>
+				</div>
+			`;
+		}
+
 		return `
 			<tr class="taskflow-super-row" data-task-row="${escapeHtml(task.name)}" tabindex="0" role="button" aria-label="${escapeHtml(`Open ${rowLabel}`)}">
 				<td class="taskflow-super-cell taskflow-super-cell--center taskflow-super-cell--index">${escapeHtml(String(index + 1))}</td>
@@ -1970,12 +2136,7 @@
 				</td>
 				<td class="taskflow-super-cell">${escapeHtml(projectTitle)}</td>
 				<td class="taskflow-super-cell">
-					<div class="taskflow-super-assignee">
-						<span class="taskflow-super-avatar">
-							${assigneeImage ? `<img src="${escapeHtml(assigneeImage)}" alt="" />` : escapeHtml(initials(assigneeName))}
-						</span>
-						<span>${escapeHtml(assigneeName)}</span>
-					</div>
+					${assigneeHtml}
 				</td>
 				<td class="taskflow-super-cell taskflow-super-cell--center">${getStatusBadge(task.status)}</td>
 				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(formatDate(task.start_date))}</td>
@@ -2184,6 +2345,8 @@
 			}
 
 			toggleModal(refs.taskModalQuick, true);
+			state.quickTaskAssignees = [];
+			renderQuickAssigneeWidget();
 			return;
 		}
 
@@ -2213,11 +2376,17 @@
 	}
 
 	function populateQuickTaskAssignees() {
-		const projSelect = document.getElementById("quickTaskProjectSelect");
-		const assigneeSelect = document.getElementById("quickTaskAssignedToSelect");
-		if (!projSelect || !assigneeSelect || !state.bootstrap) return;
+		state.quickTaskAssignees = [];
+		renderQuickAssigneeWidget();
+	}
 
-		const selectedProjName = projSelect.value;
+	function renderQuickAssigneeWidget() {
+		const badgesContainer = document.getElementById("quickAssigneeBadges");
+		const selectEl = document.getElementById("quickTaskAssignedToSelect");
+		if (!badgesContainer || !selectEl || !state.bootstrap) return;
+
+		const projSelect = document.getElementById("quickTaskProjectSelect");
+		const selectedProjName = projSelect ? projSelect.value : "";
 		const projectObj = (state.bootstrap.projects || []).find(p => p.name === selectedProjName);
 		const teamName = projectObj ? projectObj.team : "";
 
@@ -2225,9 +2394,43 @@
 			m => m.team === teamName
 		);
 
-		assigneeSelect.innerHTML = '<option value="">Not set</option>' + members.map(m => 
-			`<option value="${m.employee || ""}">${m.label}</option>`
+		// 1. Render currently selected assignees as badges
+		badgesContainer.innerHTML = "";
+		if (!state.quickTaskAssignees) state.quickTaskAssignees = [];
+		state.quickTaskAssignees.forEach(email => {
+			const member = members.find(m => m.user === email);
+			const label = member ? member.label : email;
+			const userImage = member ? member.user_image : null;
+			const initialsText = initials(label);
+			
+			const badge = document.createElement("div");
+			badge.className = "assignee-badge-item";
+			badge.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: #f1f5f9; border: 1px solid #e2e8f0; margin-bottom: 4px;";
+			badge.innerHTML = `
+				<div class="avatar" style="width: 22px; height: 22px; font-size: 8px; border-radius: 50%; background: linear-gradient(135deg, #4f6ef7, #a78bfa); display: flex; align-items: center; justify-content: center; color: #fff; overflow: hidden; flex-shrink: 0;">
+					${userImage ? `<img src="${userImage}" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">` : initialsText}
+				</div>
+				<span class="assignee-badge-name" style="font-size: 12px; font-weight: 500; color: #334155; flex: 1;">${escapeHtml(label)}</span>
+				<button class="assignee-badge-remove" type="button" data-email="${escapeHtml(email)}" style="background: none; border: none; color: #94a3b8; font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
+			`;
+			badgesContainer.appendChild(badge);
+		});
+
+		// Add event listeners to remove buttons
+		badgesContainer.querySelectorAll(".assignee-badge-remove").forEach(btn => {
+			btn.addEventListener("click", () => {
+				const email = btn.dataset.email;
+				state.quickTaskAssignees = state.quickTaskAssignees.filter(e => e !== email);
+				renderQuickAssigneeWidget();
+			});
+		});
+
+		// 2. Populate dropdown with team members NOT already selected
+		const unselectedMembers = members.filter(m => !state.quickTaskAssignees.includes(m.user));
+		selectEl.innerHTML = '<option value="">Add Assignee...</option>' + unselectedMembers.map(m =>
+			`<option value="${escapeHtml(m.user || "")}">${escapeHtml(m.label)}</option>`
 		).join("");
+		selectEl.value = "";
 	}
 	function updateAvatar(employeeId) {
 		const avatarContainer = document.querySelector("[data-assigned-avatar-large]");
@@ -2618,10 +2821,20 @@
 
 		return true;
 	}
-
 	function getTaskFormPayload(form) {
-		console.log("Current checklist in payload:", state.currentChecklist);
-		// sync EditorJS content to hidden input synchronously (last saved value)
+		const assignSelect = form.querySelector('#quickTaskAssignedToSelect');
+		let assignList = [];
+		let primaryEmployee = null;
+		if (assignSelect) {
+			assignList = Array.from(assignSelect.selectedOptions).map(opt => opt.value).filter(Boolean);
+			if (assignList.length > 0) {
+				const firstMember = (state.bootstrap.team_members || []).find(m => m.user === assignList[0]);
+				if (firstMember) {
+					primaryEmployee = firstMember.employee;
+				}
+			}
+		}
+
 		return {
 			name: getFormValue(form, "name") || undefined,
 			project:
@@ -2638,7 +2851,14 @@
 			status: getFormValue(form, "status", "Open"),
 			priority: getFormValue(form, "priority", "Medium"),
 			task_type: getFormValue(form, "task_type", "Task"),
-			assigned_to: getFormValue(form, "assigned_to") || null,
+			assigned_to: (() => {
+				if (state.quickTaskAssignees && state.quickTaskAssignees.length > 0) {
+					const firstMember = (state.bootstrap?.team_members || []).find(m => m.user === state.quickTaskAssignees[0]);
+					return firstMember ? firstMember.employee : null;
+				}
+				return null;
+			})(),
+			_assign: state.quickTaskAssignees || [],
 			start_date: normalizeDateForPayload(getFormValue(form, "start_date")),
 			due_date: normalizeDateForPayload(getFormValue(form, "due_date")),
 			estimated_completion_date: normalizeDateForPayload(
