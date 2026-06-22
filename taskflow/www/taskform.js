@@ -55,6 +55,22 @@
 	document.addEventListener("DOMContentLoaded", init);
 
 	async function init() {
+		if (window.parent && window.parent !== window && window.parent.closeIframeModal) {
+			document.body.classList.add("iframe-mode");
+			const backBtn = document.querySelector(".header-back");
+			if (backBtn) {
+				backBtn.removeAttribute("onclick");
+				backBtn.addEventListener("click", (e) => {
+					e.preventDefault();
+					window.parent.closeIframeModal();
+				});
+			}
+			document.addEventListener("keydown", (event) => {
+				if (event.key === "Escape") {
+					window.parent.closeIframeModal();
+				}
+			});
+		}
 		cacheDom();
 		initDatepickers();
 		initQuill();
@@ -996,6 +1012,10 @@
 	}
 
 	function redirectToDashboard() {
+		if (window.parent && window.parent !== window && window.parent.closeIframeModal) {
+			window.parent.closeIframeModal();
+			return;
+		}
 		const project = refs.projectSelect?.value || state.selectedProject || "";
 		let url = `/taskflow?mode=${state.returnMode}`;
 		if (project) url += `&project=${encodeURIComponent(project)}`;

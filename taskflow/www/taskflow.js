@@ -685,12 +685,30 @@
 				}
 			}
 			if (event.key !== "Escape") return;
+			closeIframeModal();
 			closeModal("project");
 			closeModal("task");
 			closeModal("task-quick");
 			closeMemberDetail();
 			closeSidebars();
 		});
+
+		const iframeCloseBtn = document.querySelector("[data-close-iframe-modal]");
+		if (iframeCloseBtn) {
+			iframeCloseBtn.addEventListener("click", () => {
+				closeIframeModal();
+			});
+		}
+
+		const iframeModal = document.querySelector("[data-task-detail-iframe-backdrop]");
+		if (iframeModal) {
+			iframeModal.addEventListener("click", (e) => {
+				if (e.target === iframeModal) {
+					closeIframeModal();
+				}
+			});
+		}
+
 		window.addEventListener("popstate", () => {
 			loadStateFromUrl({ updateUrl: false });
 		});
@@ -2414,7 +2432,14 @@
 		}
 		
 		url += "?" + params.toString();
-		window.location.href = url;
+		const iframeModal = document.querySelector("[data-task-detail-iframe-backdrop]");
+		const iframe = document.getElementById("taskDetailIframe");
+		if (iframeModal && iframe) {
+			iframe.src = url;
+			toggleModal(iframeModal, true);
+		} else {
+			window.location.href = url;
+		}
 	}
 
 	function populateQuickTaskAssignees() {
@@ -3129,6 +3154,18 @@
 		if (name === "task") closeTaskModal();
 		if (name === "task-quick") toggleModal(refs.taskModalQuick, false);
 	}
+
+	async function closeIframeModal() {
+		const iframeModal = document.querySelector("[data-task-detail-iframe-backdrop]");
+		if (iframeModal && iframeModal.classList.contains("open")) {
+			toggleModal(iframeModal, false);
+			const iframe = document.getElementById("taskDetailIframe");
+			if (iframe) iframe.src = "about:blank";
+			await loadBootstrap(state.selectedProject, { updateUrl: false });
+			await loadStateFromUrl({ updateUrl: false });
+		}
+	}
+	window.closeIframeModal = closeIframeModal;
 
 	function toggleModal(element, open) {
 		if (!element) return;

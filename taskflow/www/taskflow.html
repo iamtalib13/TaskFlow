@@ -880,6 +880,80 @@
 	</div>
 </div>
 
+<!-- Task Detail Iframe Modal -->
+<div
+	class="taskflow-modal-backdrop"
+	data-task-detail-iframe-backdrop
+	aria-hidden="true"
+>
+	<style>
+		.task-detail-iframe-modal {
+			width: 95vw !important;
+			max-width: 1200px !important;
+			height: 90vh !important;
+			border-radius: 16px !important;
+			background: #ffffff !important;
+			box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+			border: 1px solid var(--taskflow-border) !important;
+			display: flex !important;
+			flex-direction: column !important;
+			overflow: hidden !important;
+		}
+
+		.task-detail-iframe-modal .taskflow-modal-header {
+			display: flex !important;
+			justify-content: space-between !important;
+			align-items: center !important;
+			padding: 14px 20px !important;
+			border-bottom: 1px solid var(--taskflow-border) !important;
+			background: #ffffff !important;
+			flex-shrink: 0 !important;
+		}
+
+		.task-detail-iframe-modal .taskflow-modal-header h3 {
+			margin: 0 !important;
+			font-size: 16px !important;
+			font-weight: 600 !important;
+			color: var(--taskflow-text) !important;
+		}
+
+		.task-detail-iframe-container {
+			flex: 1 !important;
+			width: 100% !important;
+			height: 100% !important;
+			position: relative !important;
+			background: #ffffff !important;
+		}
+
+		.task-detail-iframe-container iframe {
+			width: 100% !important;
+			height: 100% !important;
+			border: none !important;
+		}
+	</style>
+	<div
+		class="taskflow-modal task-detail-iframe-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="task-detail-iframe-title"
+	>
+		<div class="taskflow-modal-header">
+			<h3 id="task-detail-iframe-title">Task Details</h3>
+			<div class="taskflow-modal-header-actions">
+				<button
+					class="taskflow-button secondary"
+					type="button"
+					data-close-iframe-modal
+				>
+					Close
+				</button>
+			</div>
+		</div>
+		<div class="task-detail-iframe-container">
+			<iframe id="taskDetailIframe" src="about:blank"></iframe>
+		</div>
+	</div>
+</div>
 
 <script>
 	window.csrf_token = window.csrf_token || "{{ csrf_token }}";
