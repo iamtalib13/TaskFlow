@@ -79,6 +79,8 @@
 			'form[data-task-form] input[name="start_date"]',
 			'form[data-task-form] input[name="due_date"]',
 			'form[data-task-form] input[name="estimated_completion_date"]',
+			'form[data-project-form] input[name="start_date"]',
+			'form[data-project-form] input[name="end_date"]',
 		];
 
 		document.querySelectorAll(selectors.join(",")).forEach((input) => {
@@ -107,6 +109,25 @@
 		if (!form?.elements) return;
 
 		["start_date", "due_date", "estimated_completion_date"].forEach((fieldname) => {
+			const input = form.elements[fieldname];
+			if (!input?._flatpickr) return;
+
+			if (input.value) {
+				input._flatpickr.setDate(input.value, false, "Y-m-d");
+			} else {
+				input._flatpickr.clear();
+			}
+
+			if (input._flatpickr.altInput) {
+				input._flatpickr.altInput.placeholder = "DD-MM-YYYY";
+			}
+		});
+	}
+
+	function syncProjectDatepickers(form) {
+		if (!form?.elements) return;
+
+		["start_date", "end_date"].forEach((fieldname) => {
 			const input = form.elements[fieldname];
 			if (!input?._flatpickr) return;
 
@@ -2310,6 +2331,7 @@
 			project ? project.project_lead : "",
 		);
 		form.elements.description.value = project ? stripHtml(project.description || "") : "";
+		syncProjectDatepickers(form);
 		toggleModal(refs.projectModal, true);
 	}
 

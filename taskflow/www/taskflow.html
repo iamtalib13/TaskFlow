@@ -401,7 +401,7 @@
 	aria-hidden="true"
 >
 	<div
-		class="taskflow-modal"
+		class="taskflow-modal quick-project-modal"
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="taskflow-project-modal-title"
@@ -422,65 +422,82 @@
 			</div>
 			<div class="taskflow-modal-main-content">
 				<input type="hidden" name="name" />
-				<div class="taskflow-form-grid three-columns">
-					<label
-						>Project Name
-						<input type="text" name="project_name" required />
-					</label>
-					<label
-						>Project Code
-						<input type="text" name="project_code" required />
-					</label>
-					<label
-						>Team
-						<select name="team" required></select>
-					</label>
-					<label
-						>Project Lead
-						<select name="project_lead"></select>
-					</label>
-					<label
-						>Status
-						<select name="status">
-							<option>Draft</option>
-							<option>Planning</option>
-							<option>Active</option>
-							<option>On Hold</option>
-							<option>Completed</option>
-							<option>Archived</option>
-						</select>
-					</label>
-					<label
-						>Priority
-						<select name="priority">
-							<option>Low</option>
-							<option selected>Medium</option>
-							<option>High</option>
-							<option>Critical</option>
-						</select>
-					</label>
-					<label
-						>Start Date
-						<input type="date" name="start_date" />
-					</label>
-					<label
-						>End Date
-						<input type="date" name="end_date" />
-					</label>
-					<label
-						>Expected Hours
-						<input type="number" step="0.01" name="expected_hours" />
-					</label>
-					<label
-						>Completion %
-						<input
-							type="number"
-							min="0"
-							max="100"
-							name="completion_percent"
-							value="0"
-						/>
-					</label>
+				<div class="quick-project-layout">
+					
+					<!-- Left Section: Basic Info & Description -->
+					<div class="quick-project-section">
+						<div class="quick-project-section-title">Project Details</div>
+						
+						<label class="quick-project-field-full">Project Name *
+							<input type="text" name="project_name" required placeholder="Enter project name" />
+						</label>
+						
+						<label class="quick-project-field-full">Project Code *
+							<input type="text" name="project_code" required placeholder="e.g. PROJ" />
+						</label>
+
+						<label class="quick-project-field-full">Description
+							<textarea name="description" rows="6" placeholder="Project objectives, notes, or requirements..." style="resize: vertical; min-height: 120px;"></textarea>
+						</label>
+					</div>
+
+					<!-- Right Section: Attributes & Meta -->
+					<div class="quick-project-section">
+						<div class="quick-project-section-title">Planning & Meta</div>
+						
+						<div class="quick-project-field-group">
+							<label class="quick-project-field-full">Team *
+								<select name="team" required></select>
+							</label>
+
+							<label class="quick-project-field-full">Project Lead
+								<select name="project_lead"></select>
+							</label>
+
+							<label>Start Date
+								<input type="date" name="start_date" />
+							</label>
+
+							<label>End Date
+								<input type="date" name="end_date" />
+							</label>
+
+							<label>Status
+								<select name="status">
+									<option>Draft</option>
+									<option>Planning</option>
+									<option>Active</option>
+									<option>On Hold</option>
+									<option>Completed</option>
+									<option>Archived</option>
+								</select>
+							</label>
+
+							<label>Priority
+								<select name="priority">
+									<option>Low</option>
+									<option selected>Medium</option>
+									<option>High</option>
+									<option>Critical</option>
+								</select>
+							</label>
+
+							<label>Expected Hours
+								<input type="number" step="0.01" name="expected_hours" placeholder="0.00" />
+							</label>
+
+							<label>Completion %
+								<input
+									type="number"
+									min="0"
+									max="100"
+									name="completion_percent"
+									value="0"
+								/>
+							</label>
+						</div>
+					</div>
+
 				</div>
 				<div class="taskflow-rail-row" style="margin-top: 16px">
 					<span class="taskflow-muted"
@@ -500,6 +517,87 @@
 	aria-hidden="true"
 >
 	<style>
+		/* Quick Create Project Modal styles */
+		.quick-project-modal {
+			width: 90vw !important;
+			max-width: 850px !important;
+			border-radius: 12px !important;
+			background: #ffffff !important;
+			box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+			border: 1px solid var(--taskflow-border) !important;
+		}
+
+		.quick-project-layout {
+			display: grid;
+			grid-template-columns: 1.2fr 1fr;
+			gap: 24px;
+			padding: 4px 0;
+		}
+
+		@media (max-width: 768px) {
+			.quick-project-layout {
+				grid-template-columns: 1fr;
+				gap: 16px;
+			}
+		}
+
+		.quick-project-section {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+
+		.quick-project-section-title {
+			font-size: 13px;
+			font-weight: 700;
+			color: var(--taskflow-text);
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			border-bottom: 1px solid var(--taskflow-border);
+			padding-bottom: 6px;
+			margin-bottom: 4px;
+		}
+
+		.quick-project-field-group {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 14px;
+		}
+		
+		.quick-project-field-full {
+			grid-column: 1 / -1;
+		}
+
+		.quick-project-layout label {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			font-size: 12px;
+			font-weight: 600;
+			color: var(--taskflow-text-muted);
+		}
+
+		.quick-project-layout input,
+		.quick-project-layout select,
+		.quick-project-layout textarea {
+			padding: 9px 12px;
+			border-radius: 8px;
+			border: 1px solid var(--taskflow-border);
+			background-color: #f8fafc;
+			font-size: 13px;
+			color: var(--taskflow-text);
+			outline: none;
+			transition: all 0.2s ease;
+		}
+
+		.quick-project-layout input:focus,
+		.quick-project-layout select:focus,
+		.quick-project-layout textarea:focus {
+			border-color: var(--taskflow-primary);
+			background-color: #ffffff;
+			box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+		}
+
 		/* Quick Create Task Modal styles */
 		.quick-task-modal {
 			width: 90vw !important;
