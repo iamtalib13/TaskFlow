@@ -1510,9 +1510,10 @@
 				<div class="taskflow-calendar-day-number">${cell.day}</div>`;
 				
 			dayTasks.slice(0, 4).forEach((t) => {
-				const priorityClass = `priority-${(t.priority || "Medium").toLowerCase()}`;
+				const statusLower = (t.status || "Open").toLowerCase().replace(/\s+/g, "-");
+				const statusClass = `status-${statusLower}`;
 				html += `
-					<div class="taskflow-calendar-task-badge ${priorityClass}" 
+					<div class="taskflow-calendar-task-badge ${statusClass}" 
 						data-task-name="${escapeHtml(t.name)}" 
 						title="${escapeHtml(t.task_title)}">
 						${escapeHtml(t.task_title)}
