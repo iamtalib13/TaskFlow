@@ -1301,7 +1301,7 @@
 		if (state.navMode === "my-tasks") {
 			refs.projectTitle.textContent = "My Tasks";
 			if (breadcrumb) breadcrumb.textContent = "My Tasks";
-			refs.newTaskButton.disabled = true;
+			refs.newTaskButton.disabled = false;
 
 			// Handle Member Selector for My Tasks
 			if (refs.memberSelectorWrapper && refs.memberSelector) {
@@ -2585,7 +2585,22 @@
 			}
 
 			toggleModal(refs.taskModalQuick, true);
-			state.quickTaskAssignees = [];
+
+			// Pre-assign selected member when in My Tasks mode
+			if (state.navMode === "my-tasks") {
+				const activeEmployee = state.selectedMember || getCurrentUserEmployeeId();
+				const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(
+					m => String(m.employee) === String(activeEmployee)
+				);
+				if (memberObj && memberObj.user) {
+					state.quickTaskAssignees = [memberObj.user];
+				} else {
+					state.quickTaskAssignees = [];
+				}
+			} else {
+				state.quickTaskAssignees = [];
+			}
+
 			renderQuickAssigneeWidget();
 			return;
 		}
@@ -3034,8 +3049,15 @@
 			}
 			const payload = getTaskFormPayload(form);
 			await saveTask(payload);
-			// Refresh list view after creation
-			await loadBootstrap(payload.project || state.selectedProject);
+
+			// If in My Tasks mode, close modal and refresh the member's task list
+			if (state.navMode === "my-tasks") {
+				toggleModal(refs.taskModalQuick, false);
+				await refreshView();
+			} else {
+				// Refresh list view after creation
+				await loadBootstrap(payload.project || state.selectedProject);
+			}
 		} finally {
 			submitBtn.textContent = originalText;
 			submitBtn.disabled = false;
