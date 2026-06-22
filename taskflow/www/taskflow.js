@@ -1232,6 +1232,69 @@
 		});
 	}
 
+	function renderKpiCards(tasks) {
+		if (refs.projectKpis) {
+			const statusList = ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue'];
+			const counts = {};
+			statusList.forEach(s => counts[s] = 0);
+			(tasks || []).forEach(t => {
+				const status = t.status || 'Open';
+				counts[status] = (counts[status] || 0) + 1;
+			});
+			const statusColors = {
+				'Completed': '#10b981',
+				'In Progress': '#3b82f6',
+				'Review': '#8b5cf6',
+				'On Hold': '#f59e0b',
+				'Open': '#ef4444',
+				'Cancelled': '#6b7280',
+				'Overdue': '#b91c1c'
+			};
+			refs.projectKpis.innerHTML = statusList.map(status => {
+				const color = statusColors[status] || '#6b7280';
+				const count = counts[status] || 0;
+				return `
+					<div class="taskflow-kpi-card" data-kpi-status="${escapeHtml(status)}" style="
+						display: inline-flex;
+						align-items: center;
+						gap: 6px;
+						padding: 4px 10px;
+						border-radius: 8px;
+						font-size: 12px;
+						color: #334155;
+						font-weight: 500;
+						transition: all 0.2s ease;
+						cursor: pointer;
+						user-select: none;
+					">
+						<span style="width: 6px; height: 6px; border-radius: 50%; background-color: ${color}; display: inline-block;"></span>
+						<span style="color: #64748b;">${escapeHtml(status)}</span>
+						<strong style="color: #0f172a; font-weight: 700; margin-left: 2px;">${count}</strong>
+					</div>
+				`;
+			}).join("");
+
+			// Add click event listeners to KPI cards
+			refs.projectKpis.querySelectorAll("[data-kpi-status]").forEach(card => {
+				card.addEventListener("click", () => {
+					const status = card.dataset.kpiStatus;
+					if (!state.selectedStatuses) state.selectedStatuses = [];
+					if (state.selectedStatuses.includes(status)) {
+						state.selectedStatuses = state.selectedStatuses.filter(s => s !== status);
+					} else {
+						state.selectedStatuses.push(status);
+					}
+					localStorage.setItem("taskflow_filter_statuses", JSON.stringify(state.selectedStatuses));
+					updateUrlState();
+					updateKpiHighlights();
+					refreshView();
+				});
+			});
+
+			updateKpiHighlights();
+		}
+	}
+
 	function renderProjectWorkspace() {
 		const breadcrumb = document.querySelector("[data-project-breadcrumb]");
 
@@ -1283,6 +1346,7 @@
 					(activeUser && assignees.includes(activeUser))
 				);
 			});
+			renderKpiCards(myTasks);
 			renderTaskArea(myTasks);
 			return;
 		}
@@ -1346,67 +1410,7 @@
 			</span>
 		`;
 
-		if (refs.projectKpis) {
-			const statusList = ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue'];
-			const counts = {};
-			statusList.forEach(s => counts[s] = 0);
-			tasks.forEach(t => {
-				const status = t.status || 'Open';
-				counts[status] = (counts[status] || 0) + 1;
-			});
-			const statusColors = {
-				'Completed': '#10b981',
-				'In Progress': '#3b82f6',
-				'Review': '#8b5cf6',
-				'On Hold': '#f59e0b',
-				'Open': '#ef4444',
-				'Cancelled': '#6b7280',
-				'Overdue': '#b91c1c'
-			};
-			refs.projectKpis.innerHTML = statusList.map(status => {
-				const color = statusColors[status] || '#6b7280';
-				const count = counts[status] || 0;
-				return `
-					<div class="taskflow-kpi-card" data-kpi-status="${escapeHtml(status)}" style="
-						display: inline-flex;
-						align-items: center;
-						gap: 6px;
-						padding: 4px 10px;
-						border-radius: 8px;
-						font-size: 12px;
-						color: #334155;
-						font-weight: 500;
-						transition: all 0.2s ease;
-						cursor: pointer;
-						user-select: none;
-					">
-						<span style="width: 6px; height: 6px; border-radius: 50%; background-color: ${color}; display: inline-block;"></span>
-						<span style="color: #64748b;">${escapeHtml(status)}</span>
-						<strong style="color: #0f172a; font-weight: 700; margin-left: 2px;">${count}</strong>
-					</div>
-				`;
-			}).join("");
-
-			// Add click event listeners to KPI cards
-			refs.projectKpis.querySelectorAll("[data-kpi-status]").forEach(card => {
-				card.addEventListener("click", () => {
-					const status = card.dataset.kpiStatus;
-					if (!state.selectedStatuses) state.selectedStatuses = [];
-					if (state.selectedStatuses.includes(status)) {
-						state.selectedStatuses = state.selectedStatuses.filter(s => s !== status);
-					} else {
-						state.selectedStatuses.push(status);
-					}
-					localStorage.setItem("taskflow_filter_statuses", JSON.stringify(state.selectedStatuses));
-					updateUrlState();
-					updateKpiHighlights();
-					refreshView();
-				});
-			});
-
-			updateKpiHighlights();
-		}
-
+		renderKpiCards(tasks);
 		if (breadcrumb) breadcrumb.textContent = project.project_name;
 		refs.newTaskButton.disabled = !(
 			project.permissions.can_manage_team || project.permissions.can_operate_team
@@ -1647,6 +1651,7 @@
 		}
 
 		renderTaskArea(tasks);
+		renderKpiCards(tasks);
 		updateKpiHighlights();
 	}
 
