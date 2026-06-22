@@ -18,6 +18,8 @@ class TaskflowTask(Document):
 	def before_save(self):
 		if not self.start_date:
 			self.start_date = frappe.utils.today()
+		if not self.due_date:
+			self.due_date = frappe.utils.today()
 
 	def _sync_project_and_team_context(self):
 		if self.project and not self.team:
