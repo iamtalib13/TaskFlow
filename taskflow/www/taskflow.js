@@ -2174,6 +2174,13 @@
 				form.reset();
 				if (form.elements.name) form.elements.name.value = "";
 				if (form.elements.status) form.elements.status.value = status || "Open";
+				if (form.elements.start_date) {
+					const today = new Date();
+					const yyyy = today.getFullYear();
+					const mm = String(today.getMonth() + 1).padStart(2, '0');
+					const dd = String(today.getDate()).padStart(2, '0');
+					form.elements.start_date.value = `${yyyy}-${mm}-${dd}`;
+				}
 			}
 
 			toggleModal(refs.taskModalQuick, true);
