@@ -28,7 +28,7 @@
 		guidedBySelect: null,
 		startDateInput: null,
 		dueDateInput: null,
-		estimatedCompletionDateInput: null,
+		completedOnInput: null,
 		estimatedHoursInput: null,
 		ticketDateInput: null,
 		ticketIdInput: null,
@@ -128,10 +128,10 @@
 
 		refs.startDateInput = document.getElementById("startDateInput");
 		refs.dueDateInput = document.getElementById("dueDateInput");
-		refs.estimatedCompletionDateInput = document.getElementById("estimatedCompletionDateInput");
+		refs.completedOnInput = document.getElementById("completedOnInput");
 		refs.estimatedHoursInput = document.getElementById("estimatedHoursInput");
-
 		refs.ticketDateInput = document.getElementById("ticketDateInput");
+
 		refs.ticketIdInput = document.getElementById("ticketIdInput");
 		refs.ticketRaisedByInput = document.getElementById("ticketRaisedByInput");
 		refs.ticketDescriptionInput = document.getElementById("ticketDescriptionInput");
@@ -165,7 +165,7 @@
 		const inputs = [
 			refs.startDateInput,
 			refs.dueDateInput,
-			refs.estimatedCompletionDateInput,
+			refs.completedOnInput,
 			refs.ticketDateInput,
 		];
 
@@ -279,7 +279,7 @@
 		[
 			refs.startDateInput,
 			refs.dueDateInput,
-			refs.estimatedCompletionDateInput,
+			refs.completedOnInput,
 			refs.ticketDateInput,
 		].forEach((input) => {
 			if (input && input._flatpickr) {
@@ -580,7 +580,7 @@
 				// Dates
 				if (refs.startDateInput) refs.startDateInput.value = dateInputValue(task.start_date);
 				if (refs.dueDateInput) refs.dueDateInput.value = dateInputValue(task.due_date);
-				if (refs.estimatedCompletionDateInput) refs.estimatedCompletionDateInput.value = dateInputValue(task.estimated_completion_date);
+				if (refs.completedOnInput) refs.completedOnInput.value = dateInputValue(task.completed_date);
 				if (refs.ticketDateInput) refs.ticketDateInput.value = dateInputValue(task.ticket_date);
 				syncDatepickers();
 				updateDueDateStatusBadge();
@@ -992,7 +992,7 @@
 			guided_by: refs.guidedBySelect?.value || null,
 			start_date: normalizeDateForPayload(refs.startDateInput?.value),
 			due_date: normalizeDateForPayload(refs.dueDateInput?.value),
-			estimated_completion_date: normalizeDateForPayload(refs.estimatedCompletionDateInput?.value),
+			completed_date: normalizeDateForPayload(refs.completedOnInput?.value),
 			ticket_date: normalizeDateForPayload(refs.ticketDateInput?.value),
 			estimated_hours: parseFloat(refs.estimatedHoursInput?.value) || 0,
 			ticket_id: refs.ticketIdInput?.value || "",
@@ -1008,7 +1008,13 @@
 	function validateDates() {
 		const startDate = refs.startDateInput?.value;
 		const dueDate = refs.dueDateInput?.value;
-		const estimatedCompletionDate = refs.estimatedCompletionDateInput?.value;
+		const completedOnDate = refs.completedOnInput?.value;
+		const status = refs.statusSelect?.value;
+
+		if (status === "Completed" && !completedOnDate) {
+			showMessage("Completed Date is mandatory when marking a task as Completed.");
+			return false;
+		}
 
 		if (startDate && dueDate) {
 			const start = parseDateValue(startDate);
@@ -1019,11 +1025,11 @@
 			}
 		}
 
-		if (startDate && estimatedCompletionDate) {
+		if (startDate && completedOnDate) {
 			const start = parseDateValue(startDate);
-			const estimated = parseDateValue(estimatedCompletionDate);
-			if (start && estimated && estimated < start) {
-				showMessage("Estimated Completion Date cannot be earlier than Start Date.");
+			const completed = parseDateValue(completedOnDate);
+			if (start && completed && completed < start) {
+				showMessage("Completed On Date cannot be earlier than Start Date.");
 				return false;
 			}
 		}

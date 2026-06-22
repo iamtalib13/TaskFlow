@@ -15,7 +15,7 @@
 		{ key: "status", label: "Status" },
 		{ key: "start_date", label: "Start Date" },
 		{ key: "due_date", label: "Due Date" },
-		{ key: "estimated_completion_date", label: "Est. Date" },
+		{ key: "completed_date", label: "Completed On" },
 		{ key: "age", label: "Age" },
 		{ key: "priority", label: "Priority" },
 		{ key: "modified", label: "Last Modified" },
@@ -89,7 +89,7 @@
 			'form[data-task-form-quick] input[name="due_date"]',
 			'form[data-task-form] input[name="start_date"]',
 			'form[data-task-form] input[name="due_date"]',
-			'form[data-task-form] input[name="estimated_completion_date"]',
+			'form[data-task-form] input[name="completed_date"]',
 			'form[data-project-form] input[name="start_date"]',
 			'form[data-project-form] input[name="end_date"]',
 		];
@@ -119,7 +119,7 @@
 	function syncTaskDatepickers(form) {
 		if (!form?.elements) return;
 
-		["start_date", "due_date", "estimated_completion_date"].forEach((fieldname) => {
+		["start_date", "due_date", "completed_date"].forEach((fieldname) => {
 			const input = form.elements[fieldname];
 			if (!input?._flatpickr) return;
 
@@ -2182,7 +2182,6 @@
 				</div>
 				<div class="taskflow-perf-user-info">
 					<div class="taskflow-perf-name-row">
-...
 									<span class="taskflow-perf-name">${escapeHtml(m.label)}</span>
 									<span class="taskflow-load-badge ${loadClass}">${loadLabel}</span>
 								</div>
@@ -2613,8 +2612,14 @@
 		renderList(state.currentTasks || []);
 	}
 
+	function isDateSort(key) {
+		return ["modified", "start_date", "due_date", "completed_date", "age"].includes(
+			key,
+		);
+	}
+
 	function getDefaultListSortDirection(sortKey) {
-		return ["modified", "start_date", "due_date", "estimated_completion_date", "age"].includes(
+		return ["modified", "start_date", "due_date", "completed_date", "age"].includes(
 			sortKey,
 		)
 			? "desc"
@@ -2816,7 +2821,7 @@
 				<td class="taskflow-super-cell taskflow-super-cell--center">${getStatusBadge(task.status)}</td>
 				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(formatDate(task.start_date))}</td>
 				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(formatDate(task.due_date))}</td>
-				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(formatDate(task.estimated_completion_date))}</td>
+				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(formatDate(task.completed_date))}</td>
 				<td class="taskflow-super-cell taskflow-super-cell--center">${escapeHtml(String(age))}</td>
 				<td class="taskflow-super-cell taskflow-super-cell--center"><span class="taskflow-super-pill priority-${slugify(priority)}">${escapeHtml(priority)}</span></td>
 				<td class="taskflow-super-cell taskflow-super-cell--muted">${escapeHtml(modified)}</td>
@@ -2869,8 +2874,8 @@
 				return parseDateValue(task.start_date)?.getTime() || 0;
 			case "due_date":
 				return parseDateValue(task.due_date)?.getTime() || 0;
-			case "estimated_completion_date":
-				return parseDateValue(task.estimated_completion_date)?.getTime() || 0;
+			case "completed_date":
+				return parseDateValue(task.completed_date)?.getTime() || 0;
 			case "age":
 				return getTaskAgeDays(task);
 			case "priority": {
@@ -3168,7 +3173,7 @@
 
 		setVal("start_date", dateInputValue(task.start_date));
 		setVal("due_date", dateInputValue(task.due_date));
-		setVal("estimated_completion_date", dateInputValue(task.estimated_completion_date));
+		setVal("completed_date", dateInputValue(task.completed_date));
 		setVal("estimated_hours", task.estimated_hours || "");
 		syncTaskDatepickers(form);
 		setVal("description", stripHtml(task.description || ""));
@@ -3501,7 +3506,13 @@
 	function validateTaskDates(form) {
 		const startDate = getFormValue(form, "start_date");
 		const dueDate = getFormValue(form, "due_date");
-		const estimatedCompletionDate = getFormValue(form, "estimated_completion_date");
+		const completedDate = getFormValue(form, "completed_date");
+		const status = getFormValue(form, "status");
+
+		if (status === "Completed" && !completedDate) {
+			showMessage("Completed Date is mandatory when marking a task as Completed.");
+			return false;
+		}
 
 		if (startDate && dueDate) {
 			const start = parseDateValue(startDate);
@@ -3512,11 +3523,11 @@
 			}
 		}
 
-		if (startDate && estimatedCompletionDate) {
+		if (startDate && completedDate) {
 			const start = parseDateValue(startDate);
-			const estimated = parseDateValue(estimatedCompletionDate);
-			if (start && estimated && estimated < start) {
-				showMessage("Estimated Completion Date cannot be earlier than Start Date.");
+			const completed = parseDateValue(completedDate);
+			if (start && completed && completed < start) {
+				showMessage("Completed Date cannot be earlier than Start Date.");
 				return false;
 			}
 		}
@@ -3563,8 +3574,8 @@
 			_assign: state.quickTaskAssignees || [],
 			start_date: normalizeDateForPayload(getFormValue(form, "start_date")),
 			due_date: normalizeDateForPayload(getFormValue(form, "due_date")),
-			estimated_completion_date: normalizeDateForPayload(
-				getFormValue(form, "estimated_completion_date"),
+			completed_date: normalizeDateForPayload(
+				getFormValue(form, "completed_date"),
 			),
 			estimated_hours: getFormValue(form, "estimated_hours", 0) || 0,
 			sequence: getFormValue(form, "sequence") || null,
