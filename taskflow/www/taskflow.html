@@ -611,6 +611,40 @@
 		.taskflow-calendar-task-badge.status-completed { background: #dcfce7; border-left: 3px solid #22c55e; }
 		.taskflow-calendar-task-badge.status-overdue { background: #fee2e2; border-left: 3px solid #ef4444; }
 
+		.taskflow-calendar-more-btn {
+			display: block;
+			width: 100%;
+			background: none;
+			border: none;
+			font-size: 10px;
+			font-weight: 700;
+			color: var(--taskflow-primary, #6366f1);
+			text-align: center;
+			cursor: pointer;
+			padding: 2px 4px;
+			border-radius: 4px;
+			transition: background 0.12s;
+		}
+		.taskflow-calendar-more-btn:hover {
+			background: #ede9fe;
+			color: #4f46e5;
+		}
+		.cal-day-popup-task {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			padding: 10px 10px;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: background 0.12s;
+			border: 1px solid transparent;
+		}
+		.cal-day-popup-task:hover {
+			background: #f8fafc;
+			border-color: #e2e8f0;
+		}
+
 		/* Quick Create Project Modal styles */
 		.quick-project-modal {
 			width: 90vw !important;

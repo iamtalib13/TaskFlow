@@ -1567,7 +1567,13 @@
 			});
 			
 			if (dayTasks.length > 4) {
-				html += `<div style="font-size: 10px; color: var(--taskflow-text-muted); font-weight: 600; text-align: center;">+${dayTasks.length - 4} more</div>`;
+				const moreTaskNames = dayTasks.map(t => t.name).join(",");
+				html += `<button 
+					class="taskflow-calendar-more-btn" 
+					data-calendar-more 
+					data-date="${cellDateString}"
+					data-tasks="${escapeHtml(moreTaskNames)}"
+				>+${dayTasks.length - 4} more</button>`;
 			}
 			
 			html += `</div>`;
@@ -1583,6 +1589,86 @@
 				const taskName = badge.dataset.taskName;
 				const task = tasks.find((t) => t.name === taskName);
 				if (task) openTaskModal(task);
+			});
+		});
+
+		// Attach click listeners to "+N more" buttons
+		grid.querySelectorAll("[data-calendar-more]").forEach((btn) => {
+			btn.addEventListener("click", (e) => {
+				e.stopPropagation();
+				const dateStr = btn.dataset.date;
+				const dayTasks = tasks.filter(t => t.start_date === dateStr || t.due_date === dateStr);
+				openCalendarDayPopup(dateStr, dayTasks);
+			});
+		});
+	}
+
+	function openCalendarDayPopup(dateStr, dayTasks) {
+		const existing = document.getElementById("calendarDayPopup");
+		if (existing) existing.remove();
+
+		// Format date nicely
+		const dateObj = parseDateValue(dateStr);
+		const displayDate = dateObj ? dateObj.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : dateStr;
+
+		const taskRows = dayTasks.map(t => {
+			const isStart = t.start_date === dateStr;
+			const isDue = t.due_date === dateStr;
+			let badge = "";
+			if (isStart && isDue) badge = `<span style="font-size:10px;font-weight:700;background:#e2e8f0;padding:2px 6px;border-radius:4px;">Start/Due</span>`;
+			else if (isStart) badge = `<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;">Start</span>`;
+			else if (isDue) badge = `<span style="font-size:10px;font-weight:700;background:#fef2f2;color:#991b1b;padding:2px 6px;border-radius:4px;">Due</span>`;
+
+			const statusColors = { "Open": "#f97316", "In Progress": "#3b82f6", "Review": "#8b5cf6", "On Hold": "#f59e0b", "Completed": "#10b981", "Overdue": "#ef4444" };
+			const statusColor = statusColors[t.status] || "#64748b";
+
+			return `
+				<div class="cal-day-popup-task" data-popup-task="${escapeHtml(t.name)}">
+					<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+						<span style="width:8px;height:8px;border-radius:50%;background:${statusColor};flex-shrink:0;"></span>
+						<span style="font-size:13px;font-weight:500;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(t.task_title || "")}</span>
+					</div>
+					<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+						${badge}
+						<span style="font-size:11px;color:${statusColor};font-weight:600;">${escapeHtml(t.status || "")}</span>
+					</div>
+				</div>`;
+		}).join("");
+
+		const popup = document.createElement("div");
+		popup.id = "calendarDayPopup";
+		popup.innerHTML = `
+			<div id="calendarDayPopupBackdrop" style="position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.4);backdrop-filter:blur(4px);">
+				<div style="background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.2);width:90vw;max-width:480px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+					<!-- Header -->
+					<div style="padding:18px 20px 14px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+						<div>
+							<div style="font-size:16px;font-weight:700;color:#0f172a;">${escapeHtml(displayDate)}</div>
+							<div style="font-size:12px;color:#64748b;margin-top:2px;">${dayTasks.length} task${dayTasks.length !== 1 ? "s" : ""}</div>
+						</div>
+						<button id="calendarDayPopupClose" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;line-height:1;padding:4px;">✕</button>
+					</div>
+					<!-- Task List -->
+					<div style="overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:4px;">
+						${taskRows}
+					</div>
+				</div>
+			</div>`;
+
+		document.body.appendChild(popup);
+
+		// Close on backdrop or X button
+		const backdrop = popup.querySelector("#calendarDayPopupBackdrop");
+		const closeBtn = popup.querySelector("#calendarDayPopupClose");
+		const closePopup = () => popup.remove();
+		closeBtn.addEventListener("click", closePopup);
+		backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closePopup(); });
+
+		// Click task row → open task modal
+		popup.querySelectorAll("[data-popup-task]").forEach(row => {
+			row.addEventListener("click", () => {
+				const task = dayTasks.find(t => t.name === row.dataset.popupTask);
+				if (task) { closePopup(); openTaskModal(task); }
 			});
 		});
 	}
