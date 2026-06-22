@@ -1691,10 +1691,16 @@
 			tasks = state.bootstrap.tasks || [];
 		}
 
-		// Show oldest task alert filtered to the selected member in My Tasks
+		// Show oldest task alert for My Tasks
+		// Tasks from get_assigned_tasks are already the selected member's —
+		// no need to re-filter by assigned_to; pass member name directly.
 		if (state.navMode === "my-tasks") {
 			const activeEmployee = state.selectedMember || getCurrentUserEmployeeId();
-			renderOldestTaskAlert(tasks, activeEmployee);
+			const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(
+				m => String(m.employee) === String(activeEmployee)
+			);
+			const memberLabel = memberObj ? memberObj.label : null;
+			renderOldestTaskAlert(tasks, null, memberLabel);
 		}
 
 		renderTaskArea(tasks);
@@ -1703,8 +1709,9 @@
 	}
 
 	// Renders the ⚠️ oldest pending task alert.
-	// Pass filterEmployee to restrict to a specific team member (employee ID).
-	function renderOldestTaskAlert(tasks, filterEmployee = null) {
+	// filterEmployee: employee ID to filter tasks by (for project view).
+	// forceMemberName: if provided, skip assigned_to lookup and use this name directly (for My Tasks).
+	function renderOldestTaskAlert(tasks, filterEmployee = null, forceMemberName = null) {
 		const alertContainer = document.querySelector("[data-oldest-task-alert]");
 		if (!alertContainer) return;
 
@@ -1712,7 +1719,7 @@
 			(t) => !["Completed", "Cancelled"].includes(t.status) && t.start_date,
 		);
 
-		// Filter to selected member if specified
+		// Filter by employee only in project view (not My Tasks — tasks are pre-filtered)
 		if (filterEmployee) {
 			pendingTasks = pendingTasks.filter(
 				(t) => String(t.assigned_to) === String(filterEmployee),
@@ -1722,16 +1729,21 @@
 		if (pendingTasks.length > 0) {
 			pendingTasks.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 			const oldest = pendingTasks[0];
-			const days = Math.floor(
-				Math.abs(new Date() - new Date(oldest.start_date)) / (1000 * 60 * 60 * 24),
-			);
-			const member = (state.bootstrap.team_members || []).find(
-				(m) => m.employee === oldest.assigned_to,
-			);
-			const assigneeName = member ? member.label : oldest.assigned_to || "Unassigned";
+			const today = new Date();
+			const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+			const startDate = parseDateValue(oldest.start_date);
+			const days = startDate ? Math.max(0, Math.floor((todayMidnight - startDate) / (1000 * 60 * 60 * 24))) : 0;
+
+			// Use forced name (My Tasks) or look up from team_members (Project view)
+			let assigneeName = forceMemberName;
+			if (!assigneeName) {
+				const member = (state.bootstrap.team_members || []).find(
+					(m) => m.employee === oldest.assigned_to,
+				);
+				assigneeName = member ? member.label : oldest.assigned_to || "Unassigned";
+			}
 
 			if (days === 0) {
-				// Task started today — On Time
 				alertContainer.innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:#dcfce7; color:#16a34a; border-radius:20px; font-size:13px; font-weight:600;">✅ On Time</span>`;
 			} else {
 				alertContainer.innerHTML = `<span class="taskflow-oldest-task-alert" style="cursor: pointer;" data-oldest-task-id="${escapeHtml(oldest.name)}">⚠️ ${escapeHtml(assigneeName)} (${days} days pending)</span>`;
