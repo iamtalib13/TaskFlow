@@ -1417,7 +1417,48 @@
 			];
 			monthTitle.textContent = `${monthNames[month]} ${year}`;
 		}
+		// Compute Calendar KPIs
+		let totalStarted = 0;
+		let totalDue = 0;
+		const seenUniqueNames = new Set();
+		(tasks || []).forEach(t => {
+			let counted = false;
+			if (t.start_date) {
+				const start = new Date(t.start_date);
+				if (start.getFullYear() === year && start.getMonth() === month) {
+					totalStarted++;
+					counted = true;
+				}
+			}
+			if (t.due_date) {
+				const due = new Date(t.due_date);
+				if (due.getFullYear() === year && due.getMonth() === month) {
+					totalDue++;
+					counted = true;
+				}
+			}
+			if (counted) seenUniqueNames.add(t.name);
+		});
+		const totalBoth = seenUniqueNames.size;
 
+		const kpisContainer = document.querySelector("[data-calendar-kpis]");
+		if (kpisContainer) {
+			kpisContainer.innerHTML = `
+				<div style="display: flex; gap: 16px; align-items: center;">
+					<span style="color: #64748b; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+						<span style="width: 8px; height: 8px; border-radius: 50%; background-color: #3b82f6; display: inline-block;"></span>
+						Total Started: <strong style="color: #1e40af; font-weight: 700;">${totalStarted}</strong>
+					</span>
+					<span style="color: #64748b; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+						<span style="width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; display: inline-block;"></span>
+						Total Due: <strong style="color: #991b1b; font-weight: 700;">${totalDue}</strong>
+					</span>
+					<span style="color: #64748b; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--taskflow-border);">
+						Total: <strong style="color: #0f172a; font-weight: 700;">${totalBoth}</strong>
+					</span>
+				</div>
+			`;
+		}
 		// Get first day of month (0 = Sunday, ..., 6 = Saturday)
 		const firstDayIndexRaw = new Date(year, month, 1).getDay();
 		// Shift so 0 = Monday, ..., 6 = Sunday
