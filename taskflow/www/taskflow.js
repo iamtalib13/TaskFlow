@@ -30,6 +30,8 @@
 		taskView: normalizeTaskView(window.localStorage.getItem("taskflow_task_view")),
 		taskQuery: "",
 		projectQuery: "",
+		myTasksProject: "all",
+		myTasksTeam: "all",
 		selectedTeam: "all",
 		selectedMember: null,
 		projectModalMode: "create",
@@ -283,6 +285,8 @@
 		refs.teamSwitcher = document.querySelector("[data-team-switcher]");
 		refs.projectSearch = document.querySelector("[data-project-search]");
 		refs.myTasksCount = document.querySelector("[data-my-tasks-count]");
+		refs.myTasksTeamSelector = document.querySelector("[data-my-tasks-team-selector]");
+		refs.myTasksProjectSelector = document.querySelector("[data-my-tasks-project-selector]");
 		refs.projectCount = document.querySelector("[data-project-count]");
 		refs.userName = document.querySelector("[data-user-name]");
 		refs.userImage = document.querySelector("[data-user-image]");
@@ -519,6 +523,22 @@
 			refs.memberSelector.addEventListener("change", (e) => {
 				state.selectedMember = e.target.value;
 				updateUrlState();
+				refreshView();
+			});
+		}
+
+		if (refs.myTasksTeamSelector) {
+			refs.myTasksTeamSelector.addEventListener("change", (e) => {
+				state.myTasksTeam = e.target.value;
+				state.myTasksProject = "all";
+				state.selectedMember = null;
+				renderProjectWorkspace();
+			});
+		}
+
+		if (refs.myTasksProjectSelector) {
+			refs.myTasksProjectSelector.addEventListener("change", (e) => {
+				state.myTasksProject = e.target.value;
 				refreshView();
 			});
 		}
@@ -1411,22 +1431,39 @@
 			// Handle Member Selector for My Tasks
 			if (refs.memberSelectorWrapper && refs.memberSelector) {
 				refs.memberSelectorWrapper.classList.remove("taskflow-hidden");
-				const currentTeam = state.selectedTeam;
+
+				if (refs.myTasksTeamSelector && state.bootstrap) {
+					const teams = state.bootstrap.teams || [];
+					const teamOptions = `<option value="all">All Teams</option>` + teams.map(t => `<option value="${escapeHtml(t.name)}" ${t.name === state.myTasksTeam ? "selected" : ""}>${escapeHtml(t.team_name || t.name)}</option>`).join("");
+					refs.myTasksTeamSelector.innerHTML = teamOptions;
+				}
+
+				if (refs.myTasksProjectSelector && state.bootstrap) {
+					const projects = state.bootstrap.projects || [];
+					const filteredProjects = state.myTasksTeam === "all" ? projects : projects.filter(p => p.team === state.myTasksTeam);
+					const projOptions = `<option value="all">All Projects</option>` + filteredProjects.map(p => `<option value="${escapeHtml(p.name)}" ${p.name === state.myTasksProject ? "selected" : ""}>${escapeHtml(p.project_name)}</option>`).join("");
+					refs.myTasksProjectSelector.innerHTML = projOptions;
+				}
+
+				const currentTeam = state.myTasksTeam;
 				const members = ((state.bootstrap && state.bootstrap.team_members) || []).filter(
 					(m) => currentTeam === "all" || m.team === currentTeam,
 				);
 
 				const defaultEmployee = getCurrentUserEmployeeId();
-				const memberExists = members.some((m) => String(m.employee) === String(state.selectedMember));
-				if (!memberExists) {
-					const defaultMember = members.find((m) => String(m.employee) === String(defaultEmployee));
-					state.selectedMember = defaultMember?.employee || members[0]?.employee || null;
+				if (state.selectedMember !== "all") {
+					const memberExists = members.some((m) => String(m.employee) === String(state.selectedMember));
+					if (!memberExists) {
+						const defaultMember = members.find((m) => String(m.employee) === String(defaultEmployee));
+						state.selectedMember = defaultMember?.employee || members[0]?.employee || "all";
+					}
 				}
 
-				const options = members
+				const activeMem = state.selectedMember !== null ? state.selectedMember : defaultEmployee;
+				const options = `<option value="all" ${activeMem === "all" ? "selected" : ""}>All Members</option>` + members
 					.map(
 						(m) =>
-							`<option value="${escapeHtml(m.employee)}" ${m.employee === (state.selectedMember || defaultEmployee) ? "selected" : ""}>${escapeHtml(m.label)}</option>`,
+							`<option value="${escapeHtml(m.employee)}" ${String(m.employee) === String(activeMem) ? "selected" : ""}>${escapeHtml(m.label)}</option>`,
 					)
 					.join("");
 
@@ -1961,17 +1998,28 @@
 		if (state.navMode === "my-tasks") {
 			const activeEmployee = state.selectedMember || getCurrentUserEmployeeId();
 			const memberObj = ((state.bootstrap && state.bootstrap.team_members) || []).find(m => String(m.employee) === String(activeEmployee));
-			const activeUser = memberObj ? memberObj.user : null;
+			const activeUser = memberObj ? memberObj.user : (activeEmployee === "all" ? "all" : null);
 
 			if (activeUser) {
 				setLoading(true);
 				try {
-					tasks = await apiCall("get_assigned_tasks", { user_id: activeUser });
+					tasks = await apiCall("get_assigned_tasks", { 
+						user_id: activeUser,
+						project: state.myTasksProject,
+						team: state.myTasksTeam
+					});
 				} catch (e) {
 					console.error("Failed to load assigned tasks:", e);
 					tasks = [];
 				} finally {
 					setLoading(false);
+				}
+
+				if (state.myTasksProject !== "all") {
+					tasks = tasks.filter(t => t.project === state.myTasksProject);
+				}
+				if (state.myTasksTeam !== "all") {
+					tasks = tasks.filter(t => t.team === state.myTasksTeam);
 				}
 			} else {
 				tasks = [];

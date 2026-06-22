@@ -190,19 +190,29 @@
 					<div
 						class="taskflow-member-selector-container taskflow-hidden"
 						data-member-selector-wrapper
-						style="margin-left: 12px"
+						style="margin-left: 12px; display: flex; gap: 8px;"
 					>
+						<select
+							class="taskflow-member-selector"
+							data-my-tasks-team-selector
+							aria-label="Select team"
+							style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--taskflow-border); font-size: 14px; font-weight: 600;"
+						>
+							<option value="all">All Teams</option>
+						</select>
+						<select
+							class="taskflow-member-selector"
+							data-my-tasks-project-selector
+							aria-label="Select project"
+							style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--taskflow-border); font-size: 14px; font-weight: 600;"
+						>
+							<option value="all">All Projects</option>
+						</select>
 						<select
 							class="taskflow-member-selector"
 							data-member-selector
 							aria-label="Select member"
-							style="
-								padding: 4px 8px;
-								border-radius: 6px;
-								border: 1px solid var(--taskflow-border);
-								font-size: 14px;
-								font-weight: 600;
-							"
+							style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--taskflow-border); font-size: 14px; font-weight: 600;"
 						></select>
 					</div>
 				</div>

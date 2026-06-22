@@ -1044,30 +1044,46 @@ def _sync_assignments(doc, new_assignees):
 
 
 @frappe.whitelist()
-def get_assigned_tasks(user_id: str) -> list[dict]:
-    """Return all Taskflow Task records assigned to the given user_id."""
+def get_assigned_tasks(user_id: str | None = None, project: str | None = None, team: str | None = None) -> list[dict]:
+    """Return Taskflow Task records assigned to the user or filtered by project/team."""
     _require_login()
-    if not user_id:
-        frappe.throw(_("user_id is required"), frappe.ValidationError)
 
-    task_names = frappe.get_all(
-        "ToDo",
-        filters={
-            "allocated_to": user_id,
-            "reference_type": "Taskflow Task",
-            "status": ["!=", "Cancelled"],
-        },
-        pluck="reference_name",
-    )
+    filters = {}
+    if user_id and user_id != "all":
+        task_names = frappe.get_all(
+            "ToDo",
+            filters={
+                "allocated_to": user_id,
+                "reference_type": "Taskflow Task",
+                "status": ["!=", "Cancelled"],
+            },
+            pluck="reference_name",
+        )
+        if not task_names:
+            return []
+        filters["name"] = ["in", task_names]
 
-    if not task_names:
-        return []
+    if project and project != "all":
+        filters["project"] = project
+    if team and team != "all":
+        filters["team"] = team
+
+    if not filters:
+        # If no filters at all, limit to accessible projects
+        teams = _get_accessible_teams()
+        team_names = [t["name"] for t in teams]
+        projects = frappe.get_all("Taskflow Project", fields=["name"], filters={"team": ["in", team_names]})
+        if projects:
+            filters["project"] = ["in", [p.name for p in projects]]
+        else:
+            return []
 
     tasks = frappe.get_list(
         "Taskflow Task",
         fields=_TASK_FIELDS,
-        filters={"name": ["in", task_names]},
+        filters=filters,
         order_by="modified desc",
+        limit_page_length=200,
     )
 
     task_docs = [frappe.get_doc("Taskflow Task", task.name) for task in tasks]
