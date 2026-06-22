@@ -1512,11 +1512,21 @@
 			dayTasks.slice(0, 4).forEach((t) => {
 				const statusLower = (t.status || "Open").toLowerCase().replace(/\s+/g, "-");
 				const statusClass = `status-${statusLower}`;
+				
+				let tagText = "";
+				if (t.start_date === cellDateString && t.due_date === cellDateString) {
+					tagText = '<span style="font-size: 8px; font-weight: 800; text-transform: uppercase; background: #e2e8f0; padding: 1px 3px; border-radius: 3px; margin-right: 4px;">Start/Due</span>';
+				} else if (t.start_date === cellDateString) {
+					tagText = '<span style="font-size: 8px; font-weight: 800; text-transform: uppercase; background: #dbeafe; color: #1e40af; padding: 1px 3px; border-radius: 3px; margin-right: 4px;">Start</span>';
+				} else if (t.due_date === cellDateString) {
+					tagText = '<span style="font-size: 8px; font-weight: 800; text-transform: uppercase; background: #fef2f2; color: #991b1b; padding: 1px 3px; border-radius: 3px; margin-right: 4px;">Due</span>';
+				}
+
 				html += `
 					<div class="taskflow-calendar-task-badge ${statusClass}" 
 						data-task-name="${escapeHtml(t.name)}" 
 						title="${escapeHtml(t.task_title)}">
-						${escapeHtml(t.task_title)}
+						${tagText}${escapeHtml(t.task_title)}
 					</div>`;
 			});
 			
