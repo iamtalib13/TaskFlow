@@ -339,6 +339,29 @@
 		clearCommentBtn?.addEventListener("click", () => {
 			if (refs.commentInput) refs.commentInput.value = "";
 		});
+
+		// File upload input change
+		const fileInput = document.getElementById("fileInput");
+		fileInput?.addEventListener("change", handleFileSelect);
+
+		// Drag & Drop events
+		const dropzone = document.getElementById("attachmentsDropzone");
+		if (dropzone) {
+			dropzone.addEventListener("dragover", (e) => {
+				e.preventDefault();
+				dropzone.classList.add("dragover");
+			});
+			dropzone.addEventListener("dragleave", () => {
+				dropzone.classList.remove("dragover");
+			});
+			dropzone.addEventListener("drop", (e) => {
+				e.preventDefault();
+				dropzone.classList.remove("dragover");
+				if (e.dataTransfer.files.length) {
+					handleFiles(e.dataTransfer.files);
+				}
+			});
+		}
 	}
 
 	function populateProjectSelect() {
@@ -490,7 +513,9 @@
 
 				// Checklist & Comments
 				state.currentChecklist = task.checklist || [];
+				state.activeTaskAttachments = details.attachments || [];
 				renderChecklist();
+				renderAttachments();
 				renderComments(details.comments || []);
 				renderRecentActivity(task);
 
@@ -828,12 +853,28 @@
 		try {
 			const payload = getFormPayload();
 			const res = await apiCall("save_task", { payload: JSON.stringify(payload) }, "POST");
+			
+			const taskName = res && res.name;
+			if (taskName && state.pendingFiles && state.pendingFiles.length) {
+				if (window.frappe && typeof frappe.show_alert === 'function') {
+					frappe.show_alert({ message: 'Uploading attachments...', indicator: 'blue' }, 5);
+				}
+				for (const file of state.pendingFiles) {
+					try {
+						await uploadFile(file, taskName);
+					} catch (uploadErr) {
+						console.error("Failed to upload pending file", file.name, uploadErr);
+					}
+				}
+				state.pendingFiles = [];
+			}
+
 			showSaveIndicator();
-			if (window.frappe && typeof frappe.show_alert === 'function') { frappe.show_alert({ message: __('Task saved'), indicator: 'green' }, 5); }
+			if (window.frappe && typeof frappe.show_alert === 'function') { frappe.show_alert({ message: 'Task saved', indicator: 'green' }, 5); }
 			setTimeout(() => {
 				const params = new URLSearchParams(window.location.search);
-				if (res && res.name) {
-					params.set("task", res.name);
+				if (taskName) {
+					params.set("task", taskName);
 				}
 				const targetSearch = `?${params.toString()}`;
 				if (window.location.search === targetSearch) {
@@ -925,7 +966,8 @@
 
 	/* Helper Utilities */
 	function apiCall(method, args = {}, requestMethod = "GET") {
-		const url = new URL(`${METHOD_BASE}.${method}`, window.location.origin);
+		const path = method.startsWith("frappe.") ? `/api/method/${method}` : `${METHOD_BASE}.${method}`;
+		const url = new URL(path, window.location.origin);
 		const options = {
 			method: requestMethod,
 			headers: {
@@ -1064,6 +1106,145 @@
 			.replace(/"/g, "&quot;")
 			.replace(/'/g, "&#39;");
 	}
+
+	function handleFileSelect(e) {
+		if (e.target.files && e.target.files.length) {
+			handleFiles(e.target.files);
+		}
+	}
+
+	async function handleFiles(files) {
+		if (state.activeTaskName) {
+			for (const file of files) {
+				try {
+					await uploadFile(file, state.activeTaskName);
+				} catch (error) {
+					showMessage(`Failed to upload ${file.name}: ${error.message}`);
+				}
+			}
+			await loadTaskDetails(state.activeTaskName);
+		} else {
+			if (!state.pendingFiles) state.pendingFiles = [];
+			for (const file of files) {
+				state.pendingFiles.push(file);
+			}
+			renderAttachments();
+		}
+	}
+
+	async function uploadFile(file, docname) {
+		const formData = new FormData();
+		formData.append("file", file);
+		formData.append("doctype", "Taskflow Task");
+		formData.append("docname", docname);
+		formData.append("is_private", 0);
+		formData.append("folder", "Home");
+
+		const response = await fetch("/api/method/upload_file", {
+			method: "POST",
+			headers: {
+				"X-Frappe-CSRF-Token": window.csrf_token || "",
+			},
+			body: formData,
+		});
+		if (!response.ok) {
+			const errData = await response.json().catch(() => ({}));
+			throw new Error(errData.message || "Upload failed");
+		}
+		return await response.json();
+	}
+
+	function renderAttachments() {
+		const listEl = document.getElementById("attachmentsList");
+		const countEl = document.getElementById("attachmentsCount");
+		if (!listEl) return;
+
+		listEl.innerHTML = "";
+		const attachments = state.activeTaskAttachments || [];
+		const pending = state.pendingFiles || [];
+		const total = attachments.length + pending.length;
+
+		if (countEl) {
+			countEl.textContent = total === 0 ? "No files" : `${total} file${total === 1 ? "" : "s"}`;
+		}
+
+		attachments.forEach((file) => {
+			const div = document.createElement("div");
+			div.className = "attachment-card";
+			
+			const ext = file.file_name.split('.').pop().toLowerCase();
+			let thumbContent = "";
+			const isImage = ["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(ext);
+			if (isImage) {
+				thumbContent = `<img src="${file.file_url}" alt="" />`;
+			} else {
+				let icon = "📄";
+				if (["pdf"].includes(ext)) icon = "📕";
+				else if (["zip", "rar", "tar", "gz"].includes(ext)) icon = "📦";
+				thumbContent = `<span style="font-size: 24px;">${icon}</span>`;
+			}
+
+			div.innerHTML = `
+				<button type="button" class="attachment-delete" onclick="deleteAttachment('${file.name}'); event.stopPropagation();">×</button>
+				<div class="attachment-thumb" onclick="window.open('${file.file_url}', '_blank')">
+					${thumbContent}
+				</div>
+				<a href="${file.file_url}" target="_blank" class="attachment-name" title="${escapeHtml(file.file_name)}">${escapeHtml(file.file_name)}</a>
+			`;
+			listEl.appendChild(div);
+		});
+
+		pending.forEach((file, idx) => {
+			const div = document.createElement("div");
+			div.className = "attachment-card pending";
+			div.style.opacity = "0.8";
+			
+			const ext = file.name.split('.').pop().toLowerCase();
+			let thumbContent = "";
+			const isImage = ["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(ext);
+			if (isImage) {
+				try {
+					const objectUrl = URL.createObjectURL(file);
+					thumbContent = `<img src="${objectUrl}" alt="" />`;
+				} catch (e) {
+					thumbContent = `<span style="font-size: 24px;">🖼️</span>`;
+				}
+			} else {
+				let icon = "📄";
+				if (["pdf"].includes(ext)) icon = "📕";
+				else if (["zip", "rar", "tar", "gz"].includes(ext)) icon = "📦";
+				thumbContent = `<span style="font-size: 24px;">${icon}</span>`;
+			}
+
+			div.innerHTML = `
+				<button type="button" class="attachment-delete" onclick="removePendingFile(${idx}); event.stopPropagation();">×</button>
+				<div class="attachment-thumb">
+					${thumbContent}
+				</div>
+				<span class="attachment-name" title="${escapeHtml(file.name)} (Pending)" style="color: var(--text-secondary); font-style: italic;">${escapeHtml(file.name)}</span>
+			`;
+			listEl.appendChild(div);
+		});
+	}
+
+	window.removePendingFile = function(idx) {
+		if (state.pendingFiles && state.pendingFiles[idx]) {
+			state.pendingFiles.splice(idx, 1);
+			renderAttachments();
+		}
+	};
+
+	window.deleteAttachment = async function(fileName) {
+		if (!confirm("Are you sure you want to delete this attachment?")) return;
+		try {
+			await apiCall("frappe.client.delete", { doctype: "File", name: fileName }, "POST");
+			if (state.activeTaskName) {
+				await loadTaskDetails(state.activeTaskName);
+			}
+		} catch (error) {
+			showMessage(error.message || "Failed to delete attachment.");
+		}
+	};
 
 	function showMessage(message) {
 		window.frappe?.show_alert?.({ message, indicator: "red" }) || window.alert(message);
