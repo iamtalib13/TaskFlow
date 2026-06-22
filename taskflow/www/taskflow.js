@@ -1432,7 +1432,7 @@
 		// Compute Calendar KPIs
 		let totalStarted = 0;
 		let totalDue = 0;
-		const seenUniqueNames = new Set();
+		const monthlyTasksByName = new Map();
 		(tasks || []).forEach(t => {
 			let counted = false;
 			if (t.start_date) {
@@ -1449,14 +1449,17 @@
 					counted = true;
 				}
 			}
-			if (counted) seenUniqueNames.add(t.name);
+			if (counted) monthlyTasksByName.set(t.name, t);
 		});
-		const totalBoth = seenUniqueNames.size;
+		const monthlyTasks = Array.from(monthlyTasksByName.values());
+		const totalPending = monthlyTasks.filter(t => !["Completed", "Cancelled"].includes(t.status)).length;
+		const totalCompleted = monthlyTasks.filter(t => t.status === "Completed").length;
+		const totalBoth = monthlyTasks.length;
 
 		const kpisContainer = document.querySelector("[data-calendar-kpis]");
 		if (kpisContainer) {
 			kpisContainer.innerHTML = `
-				<div style="display: flex; gap: 16px; align-items: center;">
+				<div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
 					<span style="color: #64748b; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
 						<span style="width: 8px; height: 8px; border-radius: 50%; background-color: #3b82f6; display: inline-block;"></span>
 						Total Started: <strong style="color: #1e40af; font-weight: 700;">${totalStarted}</strong>
@@ -1464,6 +1467,14 @@
 					<span style="color: #64748b; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
 						<span style="width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; display: inline-block;"></span>
 						Total Due: <strong style="color: #991b1b; font-weight: 700;">${totalDue}</strong>
+					</span>
+					<span style="color: #64748b; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+						<span style="width: 8px; height: 8px; border-radius: 50%; background-color: #f97316; display: inline-block;"></span>
+						Total Pending: <strong style="color: #9a3412; font-weight: 700;">${totalPending}</strong>
+					</span>
+					<span style="color: #64748b; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+						<span style="width: 8px; height: 8px; border-radius: 50%; background-color: #10b981; display: inline-block;"></span>
+						Total Completed: <strong style="color: #047857; font-weight: 700;">${totalCompleted}</strong>
 					</span>
 					<span style="color: #64748b; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--taskflow-border);">
 						Total: <strong style="color: #0f172a; font-weight: 700;">${totalBoth}</strong>
