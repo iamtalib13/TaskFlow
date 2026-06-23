@@ -269,7 +269,7 @@ def _serialize_project(
     return {
         "name": project.name,
         "project_name": project.project_name,
-        "project_code": project.project_code,
+        "project_code": getattr(project, "project_code", None),
         "team": project.team,
         "status": project.status,
         "priority": project.priority,
