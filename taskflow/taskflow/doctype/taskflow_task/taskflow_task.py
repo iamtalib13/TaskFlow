@@ -12,7 +12,6 @@ from taskflow.taskflow.service.team_hierarchy import can_manage_team, can_operat
 class TaskflowTask(Document):
 	def validate(self):
 		self._sync_project_and_team_context()
-		self._sync_assigned_to_user()
 		self._validate_dates()
 		self._validate_progress_rules()
 		self._validate_user_access_rules()
@@ -27,12 +26,6 @@ class TaskflowTask(Document):
 	def _sync_project_and_team_context(self):
 		if self.project and not self.team:
 			self.team = frappe.db.get_value("Taskflow Project", self.project, "team")
-
-	def _sync_assigned_to_user(self):
-		if self.assigned_to:
-			self.assigned_to_user = frappe.db.get_value("Employee", self.assigned_to, "user_id")
-		else:
-			self.assigned_to_user = None
 
 	def _sync_temp_emp_assignments(self):
 		if not self.temp_emp:
@@ -121,47 +114,10 @@ class TaskflowTask(Document):
 		if not (can_manage_team(user, self.team) or can_operate_team(user, self.team)):
 			frappe.throw(_("You can only create or update tasks for teams you belong to."))
 
-		previous_doc = self.get_doc_before_save() if not self.is_new() else None
-		assigned_to_changed = self.is_new() or (
-			previous_doc and previous_doc.assigned_to != self.assigned_to
-		)
-
-		if (
-			assigned_to_changed
-			and self.assigned_to_user
-			and self.assigned_to_user != user
-			and not can_manage_team(user, self.team)
-		):
-			frappe.throw(_("Only a team manager can assign tasks to other users."))
-
-	def on_update(self):
-		self._sync_assign_to_todo()
-
-	def _sync_assign_to_todo(self):
-		from frappe.desk.form.assign_to import add, remove
-		user = self.assigned_to_user
-
-		existing_assignees = []
-		if self.get("_assign"):
-			try:
-				existing_assignees = frappe.parse_json(self._assign)
-			except Exception:
-				pass
-
-		if user and user not in existing_assignees:
-			try:
-				add({
-					"doctype": "Taskflow Task",
-					"name": self.name,
-					"assign_to": [user],
-					"ignore_permissions": True
-				})
-			except Exception:
-				pass
-
-		for old_user in existing_assignees:
-			if old_user != user:
-				try:
-					remove("Taskflow Task", self.name, old_user)
-				except Exception:
-					pass
+		# Check if new assignees are being added by a non-manager
+		new_assignees = [row.user_id for row in self.get("table_gqbl", []) if row.user_id]
+		if new_assignees and not can_manage_team(user, self.team):
+			user_employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+			non_self = [e for e in new_assignees if e != user_employee]
+			if non_self:
+				frappe.throw(_("Only a team manager can assign tasks to other users."))

@@ -683,23 +683,42 @@ def save_task(payload: str) -> dict:
 
         for fieldname in _ALLOWED_TASK_FIELDS:
             if fieldname in data:
-                if fieldname != "_assign":
-                    doc.set(fieldname, data.get(fieldname))
+                doc.set(fieldname, data.get(fieldname))
+
+        # Sync _assign (user emails) into table_gqbl — insert only new rows
+        if "_assign" in data:
+            assignee_emails = data.get("_assign") or []
+            if isinstance(assignee_emails, str):
+                assignee_emails = frappe.parse_json(assignee_emails)
+            assignee_emails = [u for u in assignee_emails if u]
+
+            employee_rows = frappe.get_all(
+                "Employee",
+                filters={"user_id": ["in", assignee_emails]} if assignee_emails else {"name": "__missing__"},
+                fields=["name", "user_id"],
+            )
+            email_to_employee = {row.user_id: row.name for row in employee_rows}
+            existing_user_ids = {row.user_id for row in doc.get("table_gqbl", [])}
+            current_user_employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+
+            for email in assignee_emails:
+                employee_id = email_to_employee.get(email)
+                if employee_id and employee_id not in existing_user_ids:
+                    row = {"user_id": employee_id}
+                    if current_user_employee:
+                        row["assigned_by"] = current_user_employee
+                    doc.append("table_gqbl", row)
 
         if "checklist" in data:
             checklist_items = data.get("checklist") or []
             new_status = data.get("status") or doc.status
-            # Only validate checklist if marking as completed for the first time or if already completed and checklist changed
             if new_status == "Completed" and (is_new or doc.status != "Completed"):
                 pending_items = [item for item in checklist_items if not item.get("is_completed")]
                 if pending_items:
                     frappe.throw(_("Cannot complete task while checklist items are pending."))
             _append_checklist_to_doc(doc, checklist_items)
 
-        doc.save(ignore_permissions=False)
-        
-        if "_assign" in data:
-            _sync_assignments(doc, data.get("_assign"))
+        doc.save(ignore_permissions=False, ignore_version=not is_new)
 
         return {"name": doc.name}
     except Exception as error:

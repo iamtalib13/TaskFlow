@@ -95,7 +95,16 @@ def has_taskflow_task_permission(doc, user=None, permission_type=None):
 
 		return (
 			can_operate_team(user, doc.team)
-			and (doc.assigned_to_user in (None, "", user) or doc.assigned_by == user or doc.owner == user)
+			and (
+				not doc.get("table_gqbl")
+				or any(
+					frappe.db.get_value("Employee", row.user_id, "user_id") == user
+					for row in doc.get("table_gqbl", [])
+					if row.user_id
+				)
+				or doc.assigned_by == user
+				or doc.owner == user
+			)
 		)
 
 	return False
