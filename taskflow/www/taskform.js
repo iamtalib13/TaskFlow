@@ -303,11 +303,14 @@
 
 		// Assignee changes -> Update avatars and trigger save
 		refs.assignedToSelect?.addEventListener("change", (e) => {
-			const email = e.target.value;
-			if (email) {
+			const userId = e.target.value;
+			if (userId) {
 				if (!state.activeTaskAssignees) state.activeTaskAssignees = [];
-				if (!state.activeTaskAssignees.includes(email)) {
-					state.activeTaskAssignees.push(email);
+				if (!state.activeTaskAssignees.includes(userId)) {
+					state.activeTaskAssignees.push(userId);
+					const selectedOption = e.target.options[e.target.selectedIndex];
+					if (!state.assigneeLabels) state.assigneeLabels = {};
+					state.assigneeLabels[userId] = selectedOption.text;
 				}
 				renderAssigneeWidget();
 				triggerAutoSave();
