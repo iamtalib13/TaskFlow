@@ -16,10 +16,10 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "User ID",
-   "options": "Employee"
+   "options": "User"
   },
   {
-   "fetch_from": "user_id.employee_name",
+   "fetch_from": "user_id.full_name",
    "fieldname": "employee_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -37,7 +37,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-06-23 13:57:46.151789",
+ "modified": "2026-06-23 16:54:59.011851",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Task Assignment",
