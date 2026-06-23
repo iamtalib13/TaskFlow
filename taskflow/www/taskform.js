@@ -454,9 +454,9 @@
 		// 1. Render currently selected assignees as badges
 		badgesContainer.innerHTML = "";
 		if (!state.activeTaskAssignees) state.activeTaskAssignees = [];
-		state.activeTaskAssignees.forEach(email => {
-			const member = members.find(m => m.user === email);
-			const label = member ? member.label : email;
+		state.activeTaskAssignees.forEach(userId => {
+			const member = members.find(m => m.user === userId);
+			const label = (state.assigneeLabels && state.assigneeLabels[userId]) || (member ? member.label : userId);
 			const userImage = member ? member.user_image : null;
 			const initialsText = initials(label);
 			
@@ -467,7 +467,7 @@
 					${userImage ? `<img src="${userImage}" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">` : initialsText}
 				</div>
 				<span class="assignee-badge-name" style="font-size: 12px; font-weight: 500; color: #334155; flex: 1;">${escapeHtml(label)}</span>
-				<button class="assignee-badge-remove" type="button" data-email="${escapeHtml(email)}" style="background: none; border: none; color: #94a3b8; font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
+				<button class="assignee-badge-remove" type="button" data-email="${escapeHtml(userId)}" style="background: none; border: none; color: #94a3b8; font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
 			`;
 			badgesContainer.appendChild(badge);
 		});
@@ -475,8 +475,9 @@
 		// Add event listeners to remove buttons
 		badgesContainer.querySelectorAll(".assignee-badge-remove").forEach(btn => {
 			btn.addEventListener("click", () => {
-				const email = btn.dataset.email;
-				state.activeTaskAssignees = state.activeTaskAssignees.filter(e => e !== email);
+				const userId = btn.dataset.email;
+				state.activeTaskAssignees = state.activeTaskAssignees.filter(e => e !== userId);
+				if (state.assigneeLabels) delete state.assigneeLabels[userId];
 				renderAssigneeWidget();
 				triggerAutoSave();
 			});
@@ -567,6 +568,8 @@
 
 				// Assignees
 				state.activeTaskAssignees = task._assign || [];
+				state.assigneeLabels = {};
+				(task.assignees || []).forEach(a => { state.assigneeLabels[a.user] = a.label; });
 				updateAssigneeOptions();
 				updateGuidedByOptions();
 				if (refs.pendingWithSelect) refs.pendingWithSelect.value = task.pending_with || "";

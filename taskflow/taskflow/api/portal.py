@@ -354,7 +354,12 @@ def _serialize_task(
         "assigned_to_name": assigned_to_name,
         "assigned_to_user": task.assigned_to_user,
         "assigned_to_image": assigned_to_image,
-        "_assign": frappe.parse_json(task._assign) if getattr(task, "_assign", None) else [],
+        "_assign": [row.user_id for row in task.get("table_gqbl", []) if row.user_id],
+        "assignees": [
+            {"user": row.user_id, "label": row.employee_name or row.user_id}
+            for row in task.get("table_gqbl", [])
+            if row.user_id
+        ],
         "status": task.status,
         "priority": task.priority,
         "task_type": task.task_type,
