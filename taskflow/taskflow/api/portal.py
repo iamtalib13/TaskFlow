@@ -721,6 +721,29 @@ def save_task(payload: str) -> dict:
 
 
 @frappe.whitelist()
+def remove_task_assignee(payload: str) -> dict:
+    """Remove a user from table_gqbl of a Taskflow Task."""
+    _require_login()
+    data = frappe.parse_json(payload)
+    task_name = data.get("task")
+    user_id = data.get("user_id")
+
+    if not task_name or not user_id:
+        frappe.throw(_("Task and user_id are required."))
+
+    doc = frappe.get_doc("Taskflow Task", task_name)
+    doc.check_permission("write")
+
+    original_len = len(doc.get("table_gqbl", []))
+    doc.set("table_gqbl", [row for row in doc.get("table_gqbl", []) if row.user_id != user_id])
+
+    if len(doc.get("table_gqbl", [])) < original_len:
+        doc.save(ignore_permissions=False, ignore_version=True)
+
+    return {"name": doc.name}
+
+
+@frappe.whitelist()
 def save_task_checklist(payload: str) -> dict:
     """Save only the checklist child table for an existing task."""
     _require_login()

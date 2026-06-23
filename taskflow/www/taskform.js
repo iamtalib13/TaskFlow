@@ -477,12 +477,20 @@
 
 		// Add event listeners to remove buttons
 		badgesContainer.querySelectorAll(".assignee-badge-remove").forEach(btn => {
-			btn.addEventListener("click", () => {
+			btn.addEventListener("click", async () => {
 				const userId = btn.dataset.email;
 				state.activeTaskAssignees = state.activeTaskAssignees.filter(e => e !== userId);
 				if (state.assigneeLabels) delete state.assigneeLabels[userId];
 				renderAssigneeWidget();
-				triggerAutoSave();
+				if (state.activeTaskName) {
+					try {
+						await apiCall("remove_task_assignee", {
+							payload: JSON.stringify({ task: state.activeTaskName, user_id: userId })
+						}, "POST");
+					} catch (err) {
+						showMessage(err.message || "Failed to remove assignee.");
+					}
+				}
 			});
 		});
 
