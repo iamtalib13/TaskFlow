@@ -15,7 +15,6 @@
   "team",
   "parent_task",
   "assignment_section",
-  "assigned_by",
   "assigned_to",
   "assigned_to_user",
   "assignment_column",
@@ -24,6 +23,8 @@
   "guided_by",
   "priority",
   "task_type",
+  "task_assignment_section",
+  "table_gqbl",
   "timeline_section",
   "start_date",
   "due_date",
@@ -95,14 +96,7 @@
   {
    "fieldname": "assignment_section",
    "fieldtype": "Section Break",
-   "label": "Assignment & Status"
-  },
-  {
-   "default": ":User",
-   "fieldname": "assigned_by",
-   "fieldtype": "Link",
-   "label": "Assigned By",
-   "options": "User"
+   "label": "TaskStatus"
   },
   {
    "fieldname": "assigned_to",
@@ -309,11 +303,21 @@
    "fieldname": "completed_date",
    "fieldtype": "Date",
    "label": "Completed Date"
+  },
+  {
+   "fieldname": "task_assignment_section",
+   "fieldtype": "Section Break",
+   "label": "Task Assignment"
+  },
+  {
+   "fieldname": "table_gqbl",
+   "fieldtype": "Table",
+   "options": "Task Assignment"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-22 15:28:03.884953",
+ "modified": "2026-06-24 12:10:13.324805",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",
