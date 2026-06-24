@@ -40,7 +40,13 @@ def get_task_permission_condition(user: str) -> str:
 		if project_names:
 			conditions.append(build_name_filter_condition("Taskflow Task", "project", set(project_names)))
 
-	conditions.append(f"`tabTaskflow Task`.`assigned_to_user` = {frappe.db.escape(user)}")
+	user_employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+	if user_employee:
+		conditions.append(
+			f"`tabTaskflow Task`.`name` IN ("
+			f"SELECT `parent` FROM `tabTask Assignment` WHERE `user_id` = {frappe.db.escape(user_employee)}"
+			f")"
+		)
 	conditions.append(f"`tabTaskflow Task`.`assigned_by` = {frappe.db.escape(user)}")
 	conditions.append(f"`tabTaskflow Task`.`owner` = {frappe.db.escape(user)}")
 	return " or ".join(f"({condition})" for condition in conditions if condition) or "1=0"

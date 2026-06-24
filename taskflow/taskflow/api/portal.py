@@ -269,7 +269,7 @@ def _serialize_project(
     return {
         "name": project.name,
         "project_name": project.project_name,
-        "project_code": project.project_code,
+        "project_code": getattr(project, "project_code", None),
         "team": project.team,
         "status": project.status,
         "priority": project.priority,
@@ -354,7 +354,12 @@ def _serialize_task(
         "assigned_to_name": assigned_to_name,
         "assigned_to_user": task.assigned_to_user,
         "assigned_to_image": assigned_to_image,
-        "_assign": frappe.parse_json(task._assign) if getattr(task, "_assign", None) else [],
+        "_assign": [row.user_id for row in task.get("table_gqbl", []) if row.user_id],
+        "assignees": [
+            {"user": row.user_id, "label": row.employee_name or row.user_id}
+            for row in task.get("table_gqbl", [])
+            if row.user_id
+        ],
         "status": task.status,
         "priority": task.priority,
         "task_type": task.task_type,
@@ -683,28 +688,59 @@ def save_task(payload: str) -> dict:
 
         for fieldname in _ALLOWED_TASK_FIELDS:
             if fieldname in data:
-                if fieldname != "_assign":
-                    doc.set(fieldname, data.get(fieldname))
+                doc.set(fieldname, data.get(fieldname))
+
+        # Sync _assign (user IDs/emails) into table_gqbl — insert only new rows
+        if "_assign" in data:
+            assignee_users = data.get("_assign") or []
+            if isinstance(assignee_users, str):
+                assignee_users = frappe.parse_json(assignee_users)
+            assignee_users = [u for u in assignee_users if u]
+
+            existing_user_ids = {row.user_id for row in doc.get("table_gqbl", [])}
+
+            for user_id in assignee_users:
+                if user_id not in existing_user_ids:
+                    doc.append("table_gqbl", {"user_id": user_id})
 
         if "checklist" in data:
             checklist_items = data.get("checklist") or []
             new_status = data.get("status") or doc.status
-            # Only validate checklist if marking as completed for the first time or if already completed and checklist changed
             if new_status == "Completed" and (is_new or doc.status != "Completed"):
                 pending_items = [item for item in checklist_items if not item.get("is_completed")]
                 if pending_items:
                     frappe.throw(_("Cannot complete task while checklist items are pending."))
             _append_checklist_to_doc(doc, checklist_items)
 
-        doc.save(ignore_permissions=False)
-        
-        if "_assign" in data:
-            _sync_assignments(doc, data.get("_assign"))
+        doc.save(ignore_permissions=False, ignore_version=not is_new)
 
         return {"name": doc.name}
     except Exception as error:
         _log_save_task_error(data if isinstance(data, dict) else {}, error)
         raise
+
+
+@frappe.whitelist()
+def remove_task_assignee(payload: str) -> dict:
+    """Remove a user from table_gqbl of a Taskflow Task."""
+    _require_login()
+    data = frappe.parse_json(payload)
+    task_name = data.get("task")
+    user_id = data.get("user_id")
+
+    if not task_name or not user_id:
+        frappe.throw(_("Task and user_id are required."))
+
+    doc = frappe.get_doc("Taskflow Task", task_name)
+    doc.check_permission("write")
+
+    original_len = len(doc.get("table_gqbl", []))
+    doc.set("table_gqbl", [row for row in doc.get("table_gqbl", []) if row.user_id != user_id])
+
+    if len(doc.get("table_gqbl", [])) < original_len:
+        doc.save(ignore_permissions=False, ignore_version=True)
+
+    return {"name": doc.name}
 
 
 @frappe.whitelist()
