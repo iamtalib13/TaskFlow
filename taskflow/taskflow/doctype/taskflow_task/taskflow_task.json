@@ -29,9 +29,8 @@
   "start_date",
   "due_date",
   "estimated_completion_date",
-  "completed_date",
-  "timeline_column",
   "completed_on",
+  "timeline_column",
   "sequence",
   "effort_section",
   "progress_percent",
@@ -170,7 +169,7 @@
    "depends_on": "eval:doc.status=='Completed'",
    "fieldname": "completed_on",
    "fieldtype": "Datetime",
-   "label": "Completed On",
+   "label": "Completed Date",
    "read_only": 1
   },
   {
@@ -300,11 +299,6 @@
    "label": "Temp Emp"
   },
   {
-   "fieldname": "completed_date",
-   "fieldtype": "Date",
-   "label": "Completed Date"
-  },
-  {
    "fieldname": "task_assignment_section",
    "fieldtype": "Section Break",
    "label": "Task Assignment"
@@ -317,7 +311,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-24 12:10:13.324805",
+ "modified": "2026-06-24 14:04:16.872145",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",

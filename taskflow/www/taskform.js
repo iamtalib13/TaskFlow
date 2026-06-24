@@ -318,6 +318,7 @@
 		});
 		refs.pendingWithSelect?.addEventListener("input", () => triggerAutoSave());
 		refs.guidedBySelect?.addEventListener("input", () => triggerAutoSave());
+		refs.completedOnInput?.addEventListener("change", () => triggerAutoSave());
 
 		// Basic inputs trigger auto-save
 		[
