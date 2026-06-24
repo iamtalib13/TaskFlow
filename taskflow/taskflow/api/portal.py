@@ -95,6 +95,7 @@ _ALLOWED_TASK_FIELDS = [
     "start_date",
     "due_date",
     "estimated_completion_date",
+    "completed_on",
     "progress_percent",
     "estimated_hours",
     "actual_hours",
@@ -367,6 +368,7 @@ def _serialize_task(
         "due_date": task.due_date,
         "estimated_completion_date": task.estimated_completion_date,
         "completed_on": task.completed_on,
+        "completed_date": task.completed_on,
         "progress_percent": task.progress_percent,
         "estimated_hours": task.estimated_hours,
         "actual_hours": task.actual_hours,
@@ -685,6 +687,9 @@ def save_task(payload: str) -> dict:
         doc = frappe.new_doc("Taskflow Task") if is_new else frappe.get_doc("Taskflow Task", name)
         if not is_new:
             doc.check_permission("write")
+
+        if "completed_date" in data and "completed_on" not in data:
+            data["completed_on"] = data["completed_date"]
 
         for fieldname in _ALLOWED_TASK_FIELDS:
             if fieldname in data:

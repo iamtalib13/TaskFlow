@@ -646,6 +646,11 @@
 		}
 		if (refs.taskFormQuick) {
 			refs.taskFormQuick.addEventListener("submit", submitTaskForm);
+
+			refs.taskFormQuick.querySelector("[name='status']")?.addEventListener("change", (e) => {
+				const label = document.getElementById("quickCompletedDateLabel");
+				if (label) label.style.display = e.target.value === "Completed" ? "" : "none";
+			});
 		}
 
 		document.getElementById("quickTaskAssignedToSelect")?.addEventListener("change", (e) => {
