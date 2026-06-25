@@ -183,9 +183,11 @@
 		if (state.activeTaskName) params.set("task", state.activeTaskName);
 
 		const query = params.toString();
-		const newUrl = `${window.location.pathname}${query ? `?${query}` : ""}`;
+		const basePath = window.location.pathname.replace(/^\/+/, "/");
+		const newUrl = `${basePath}${query ? `?${query}` : ""}`;
+		const currentUrl = `${window.location.pathname}${window.location.search}`;
 		const historyState = getHistoryState();
-		if (`${window.location.pathname}${window.location.search}` === newUrl) {
+		if (currentUrl === newUrl) {
 			window.history.replaceState(historyState, "", newUrl);
 			return;
 		}

@@ -114,10 +114,4 @@ class TaskflowTask(Document):
 		if not (can_manage_team(user, self.team) or can_operate_team(user, self.team)):
 			frappe.throw(_("You can only create or update tasks for teams you belong to."))
 
-		# Check if new assignees are being added by a non-manager
-		new_assignees = [row.user_id for row in self.get("table_gqbl", []) if row.user_id]
-		if new_assignees and not can_manage_team(user, self.team):
-			user_employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
-			non_self = [e for e in new_assignees if e != user_employee]
-			if non_self:
-				frappe.throw(_("Only a team manager can assign tasks to other users."))
+
