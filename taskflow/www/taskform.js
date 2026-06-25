@@ -973,7 +973,7 @@
 				if (window.location.search === targetSearch) {
 					window.location.reload();
 				} else {
-					window.location.href = `${window.location.pathname}${targetSearch}`;
+					window.location.href = `${window.location.pathname.replace(/^\/+/, "/")}${targetSearch}`;
 				}
 			}, 800);
 		} catch (error) {
