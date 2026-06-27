@@ -280,6 +280,7 @@ def _serialize_project(
         "completion_percent": project.completion_percent,
         "project_lead": project.project_lead,
         "project_lead_user": project.project_lead_user,
+        "description": project.description,
         "project_team_members": [
             {
                 "employee": member.employee,
