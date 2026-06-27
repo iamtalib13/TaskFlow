@@ -2082,7 +2082,7 @@
 			if (refs.calendarTitle) refs.calendarTitle.textContent = "Project Calendar";
 			renderTimeline(visibleTasks);
 		} else if (state.taskView === "files") {
-			renderStaticTaskView(state.taskView);
+			renderProjectCommentsView();
 		} else if (state.taskView === "settings") {
 			renderSettingsView();
 		}
@@ -4308,7 +4308,49 @@
 			"Coordinator",
 		];
 
+		const description = project.description || "";
+		const projectName = project.name || "";
+
 		target.innerHTML = `
+			<div class="taskflow-settings-section" data-attachment-section>
+				<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+					<h3 style="margin: 0;">Attachment</h3>
+					<button class="taskflow-button secondary" type="button" data-edit-attachment>Edit</button>
+				</div>
+				<div data-attachment-display style="background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 16px;">
+					<p style="margin: 0; color: #64748b; font-size: 13px;">Click Edit to manage project attachments.</p>
+				</div>
+				<div data-attachment-edit style="display: none;">
+					<div id="projectAttachmentDropzone" style="border: 2px dashed var(--taskflow-border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; margin-bottom: 12px;">
+						<p style="margin: 0; color: #64748b; font-size: 13px;">Drop files here or <span style="color: var(--taskflow-primary);">browse</span></p>
+						<p style="margin: 4px 0 0; color: #94a3b8; font-size: 11px;">Any file type up to 25 MB</p>
+					</div>
+					<input type="file" id="projectFileInput" style="display: none;" multiple />
+					<div id="projectAttachmentsList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;"></div>
+					<div style="display: flex; gap: 8px; justify-content: flex-end;">
+						<button class="taskflow-button secondary" type="button" data-cancel-attachment>Cancel</button>
+						<button class="taskflow-button primary" type="button" data-save-attachment>Save</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="taskflow-settings-section" data-description-section>
+				<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+					<h3 style="margin: 0;">Description</h3>
+					<button class="taskflow-button secondary" type="button" data-edit-description>Edit</button>
+				</div>
+				<div data-description-display style="background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 16px;">
+					<div style="color: #334155; font-size: 13px; line-height: 1.6;">${description || '<span style="color: #94a3b8;">No description yet.</span>'}</div>
+				</div>
+				<div data-description-edit style="display: none;">
+					<div id="projectDescriptionEditor" style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; min-height: 150px; margin-bottom: 12px;"></div>
+					<div style="display: flex; gap: 8px; justify-content: flex-end;">
+						<button class="taskflow-button secondary" type="button" data-cancel-description>Cancel</button>
+						<button class="taskflow-button primary" type="button" data-save-description>Save</button>
+					</div>
+				</div>
+			</div>
+
 			<div class="taskflow-settings-section">
 				<h3>Team Members</h3>
 				<div class="taskflow-list-view">
@@ -4354,6 +4396,114 @@
 			</div>
 		`;
 
+		// Attachment Edit Toggle
+		const attachmentDisplay = target.querySelector("[data-attachment-display]");
+		const attachmentEdit = target.querySelector("[data-attachment-edit]");
+		const editAttachmentBtn = target.querySelector("[data-edit-attachment]");
+		const cancelAttachmentBtn = target.querySelector("[data-cancel-attachment]");
+		const saveAttachmentBtn = target.querySelector("[data-save-attachment]");
+
+		editAttachmentBtn.addEventListener("click", async () => {
+			attachmentDisplay.style.display = "none";
+			attachmentEdit.style.display = "block";
+			await loadProjectAttachments(projectName);
+		});
+
+		cancelAttachmentBtn.addEventListener("click", () => {
+			attachmentDisplay.style.display = "block";
+			attachmentEdit.style.display = "none";
+		});
+
+		saveAttachmentBtn.addEventListener("click", async () => {
+			attachmentDisplay.style.display = "block";
+			attachmentEdit.style.display = "none";
+			showMessage("Attachments saved successfully.");
+		});
+
+		// File Upload Handlers
+		const dropzone = target.querySelector("#projectAttachmentDropzone");
+		const fileInput = target.querySelector("#projectFileInput");
+
+		if (dropzone && fileInput) {
+			dropzone.addEventListener("click", () => fileInput.click());
+
+			dropzone.addEventListener("dragover", (e) => {
+				e.preventDefault();
+				dropzone.style.borderColor = "var(--taskflow-primary)";
+				dropzone.style.background = "rgba(59, 130, 246, 0.05)";
+			});
+
+			dropzone.addEventListener("dragleave", () => {
+				dropzone.style.borderColor = "var(--taskflow-border)";
+				dropzone.style.background = "transparent";
+			});
+
+			dropzone.addEventListener("drop", (e) => {
+				e.preventDefault();
+				dropzone.style.borderColor = "var(--taskflow-border)";
+				dropzone.style.background = "transparent";
+				if (e.dataTransfer.files.length) {
+					handleProjectFileUpload(e.dataTransfer.files, projectName);
+				}
+			});
+
+			fileInput.addEventListener("change", (e) => {
+				if (e.target.files.length) {
+					handleProjectFileUpload(e.target.files, projectName);
+				}
+			});
+		}
+
+		// Description Edit Toggle
+		const descriptionDisplay = target.querySelector("[data-description-display]");
+		const descriptionEdit = target.querySelector("[data-description-edit]");
+		const editDescriptionBtn = target.querySelector("[data-edit-description]");
+		const cancelDescriptionBtn = target.querySelector("[data-cancel-description]");
+		const saveDescriptionBtn = target.querySelector("[data-save-description]");
+
+		let quillEditor = null;
+
+		editDescriptionBtn.addEventListener("click", () => {
+			descriptionDisplay.style.display = "none";
+			descriptionEdit.style.display = "block";
+
+			if (!quillEditor && window.Quill) {
+				quillEditor = new Quill("#projectDescriptionEditor", {
+					theme: "snow",
+					placeholder: "Enter project description...",
+					modules: {
+						toolbar: [
+							[{ header: [1, 2, 3, false] }],
+							["bold", "italic", "underline"],
+							["link"],
+							[{ list: "ordered" }, { list: "bullet" }],
+							["clean"]
+						],
+					},
+				});
+				if (description) {
+					quillEditor.root.innerHTML = description;
+				}
+			}
+		});
+
+		cancelDescriptionBtn.addEventListener("click", () => {
+			descriptionDisplay.style.display = "block";
+			descriptionEdit.style.display = "none";
+		});
+
+		saveDescriptionBtn.addEventListener("click", async () => {
+			if (quillEditor) {
+				project.description = quillEditor.root.innerHTML;
+				await saveProject(project);
+				descriptionDisplay.innerHTML = `<div style="color: #334155; font-size: 13px; line-height: 1.6;">${project.description || '<span style="color: #94a3b8;">No description yet.</span>'}</div>`;
+			}
+			descriptionDisplay.style.display = "block";
+			descriptionEdit.style.display = "none";
+			showMessage("Description saved successfully.");
+		});
+
+		// Employee search
 		const searchInput = target.querySelector("[data-emp-search]");
 		const resultsDiv = target.querySelector("[data-emp-results]");
 		let selectedEmployeeId = null;
@@ -4380,10 +4530,12 @@
 			});
 		});
 
+		// Remove member buttons
 		target.querySelectorAll("[data-remove-member]").forEach((btn) => {
 			btn.addEventListener("click", () => removeMember(btn.dataset.removeMember));
 		});
 
+		// Add new member
 		target.querySelector("[data-save-new-member]").addEventListener("click", () => {
 			const team_role = target.querySelector("[data-new-member-role]").value;
 			if (selectedEmployeeId && team_role) {
@@ -4392,6 +4544,166 @@
 				showMessage("Please select a valid Employee from the list.");
 			}
 		});
+	}
+
+	async function loadProjectAttachments(projectName) {
+		try {
+			const result = await apiCall("frappe.client.get_list", {
+				doctype: "File",
+				filters: JSON.stringify({ attached_to_name: projectName }),
+				fields: JSON.stringify(["name", "file_name", "file_url"]),
+				limit_page_length: 50,
+			}, "POST");
+
+			const listEl = document.getElementById("projectAttachmentsList");
+			if (!listEl) return;
+
+			listEl.innerHTML = "";
+			if (!result || result.length === 0) {
+				listEl.innerHTML = '<p style="color: #94a3b8; font-size: 12px;">No attachments yet.</p>';
+				return;
+			}
+
+			result.forEach(file => {
+				const div = document.createElement("div");
+				div.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border: 1px solid var(--taskflow-border); border-radius: 6px;";
+				div.innerHTML = `
+					<span style="flex: 1; font-size: 12px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(file.file_name)}</span>
+					<button class="taskflow-button secondary" type="button" data-delete-file="${file.name}" style="padding: 2px 8px; font-size: 11px;">×</button>
+				`;
+				listEl.appendChild(div);
+			});
+
+			listEl.querySelectorAll("[data-delete-file]").forEach(btn => {
+				btn.addEventListener("click", async () => {
+					try {
+						await apiCall("frappe.client.delete", { doctype: "File", name: btn.dataset.deleteFile }, "POST");
+						await loadProjectAttachments(projectName);
+					} catch (err) {
+						showMessage("Failed to delete file.");
+					}
+				});
+			});
+		} catch (err) {
+			console.error("Failed to load attachments:", err);
+		}
+	}
+
+	async function handleProjectFileUpload(files, projectName) {
+		for (const file of files) {
+			try {
+				const formData = new FormData();
+				formData.append("file", file);
+				formData.append("doctype", "Taskflow Project");
+				formData.append("docname", projectName);
+				formData.append("is_private", 0);
+				formData.append("folder", "Home");
+
+				const response = await fetch("/api/method/upload_file", {
+					method: "POST",
+					headers: {
+						"X-Frappe-CSRF-Token": window.csrf_token || "",
+					},
+					body: formData,
+				});
+
+				if (!response.ok) {
+					throw new Error("Upload failed");
+				}
+			} catch (err) {
+				console.error("Failed to upload file:", err);
+				showMessage(`Failed to upload ${file.name}`);
+			}
+		}
+		await loadProjectAttachments(projectName);
+	}
+
+	async function renderProjectCommentsView() {
+		const target = refs.filesView;
+		if (!target) return;
+		const project = state.projectWorkspace && state.projectWorkspace.project;
+		if (!project) {
+			target.innerHTML = `<div class="taskflow-empty">Select a project to view comments.</div>`;
+			return;
+		}
+
+		const projectName = project.name;
+
+		target.innerHTML = `
+			<div style="max-width: 700px; margin: 0 auto; padding: 24px;">
+				<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Comments</h3>
+				<div id="projectCommentsList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+					<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">Loading comments...</div>
+				</div>
+				<div style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 12px;">
+					<textarea id="projectCommentInput" placeholder="Add a comment..." style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
+					<div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+						<button class="taskflow-button primary" type="button" data-post-project-comment>Submit</button>
+					</div>
+				</div>
+			</div>
+		`;
+
+		await loadProjectComments(projectName);
+
+		target.querySelector("[data-post-project-comment]").addEventListener("click", async () => {
+			const input = target.querySelector("#projectCommentInput");
+			const content = input.value.trim();
+			if (!content) {
+				showMessage("Please enter a comment.");
+				return;
+			}
+
+			try {
+				await apiCall("add_project_comment", {
+					payload: JSON.stringify({ project: projectName, content })
+				}, "POST");
+				input.value = "";
+				await loadProjectComments(projectName);
+				showMessage("Comment added successfully.");
+			} catch (err) {
+				showMessage(err.message || "Failed to add comment.");
+			}
+		});
+	}
+
+	async function loadProjectComments(projectName) {
+		const listEl = document.getElementById("projectCommentsList");
+		if (!listEl) return;
+
+		try {
+			const result = await apiCall("get_project_comments", { project: projectName });
+			const comments = result.comments || [];
+
+			if (comments.length === 0) {
+				listEl.innerHTML = `<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">No comments yet. Start the conversation.</div>`;
+				return;
+			}
+
+			listEl.innerHTML = "";
+			comments.forEach(c => {
+				const div = document.createElement("div");
+				div.style.cssText = "display: flex; gap: 10px; padding: 12px; background: white; border: 1px solid var(--taskflow-border); border-radius: 8px;";
+				const avatarContent = c.author_image
+					? `<img src="${c.author_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
+					: initials(c.author_name);
+				div.innerHTML = `
+					<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600; flex-shrink: 0; overflow: hidden;">
+						${avatarContent}
+					</div>
+					<div style="flex: 1;">
+						<div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px;">
+							<span style="font-size: 13px; font-weight: 500; color: #1e293b;">${escapeHtml(c.author_name)}</span>
+							<span style="font-size: 11px; color: #94a3b8;">${prettyDate(c.creation)}</span>
+						</div>
+						<div style="font-size: 13px; color: #475569; line-height: 1.5; background: #f8fafc; padding: 10px 12px; border-radius: 0 8px 8px 8px; border: 1px solid #e2e8f0;">${c.content}</div>
+					</div>
+				`;
+				listEl.appendChild(div);
+			});
+		} catch (err) {
+			listEl.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444; font-size: 13px;">Failed to load comments.</div>`;
+		}
 	}
 
 	async function removeMember(index) {
