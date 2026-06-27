@@ -4696,7 +4696,7 @@
 							<span style="font-size: 13px; font-weight: 500; color: #1e293b;">${escapeHtml(c.author_name)}</span>
 							<span style="font-size: 11px; color: #94a3b8;">${prettyDate(c.creation)}</span>
 						</div>
-						<div style="font-size: 13px; color: #475569; line-height: 1.5; background: #f8fafc; padding: 10px 12px; border-radius: 0 8px 8px 8px; border: 1px solid #e2e8f0;">${escapeHtml(c.content)}</div>
+						<div style="font-size: 13px; color: #475569; line-height: 1.5; background: #f8fafc; padding: 10px 12px; border-radius: 0 8px 8px 8px; border: 1px solid #e2e8f0;">${c.content}</div>
 					</div>
 				`;
 				listEl.appendChild(div);
