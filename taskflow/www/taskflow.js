@@ -2082,7 +2082,7 @@
 			if (refs.calendarTitle) refs.calendarTitle.textContent = "Project Calendar";
 			renderTimeline(visibleTasks);
 		} else if (state.taskView === "files") {
-			renderStaticTaskView(state.taskView);
+			renderProjectCommentsView();
 		} else if (state.taskView === "settings") {
 			renderSettingsView();
 		}
@@ -4616,6 +4616,94 @@
 			}
 		}
 		await loadProjectAttachments(projectName);
+	}
+
+	async function renderProjectCommentsView() {
+		const target = refs.filesView;
+		if (!target) return;
+		const project = state.projectWorkspace && state.projectWorkspace.project;
+		if (!project) {
+			target.innerHTML = `<div class="taskflow-empty">Select a project to view comments.</div>`;
+			return;
+		}
+
+		const projectName = project.name;
+
+		target.innerHTML = `
+			<div style="max-width: 700px; margin: 0 auto; padding: 24px;">
+				<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Comments</h3>
+				<div id="projectCommentsList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+					<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">Loading comments...</div>
+				</div>
+				<div style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 12px;">
+					<textarea id="projectCommentInput" placeholder="Add a comment..." style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
+					<div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+						<button class="taskflow-button primary" type="button" data-post-project-comment>Submit</button>
+					</div>
+				</div>
+			</div>
+		`;
+
+		await loadProjectComments(projectName);
+
+		target.querySelector("[data-post-project-comment]").addEventListener("click", async () => {
+			const input = target.querySelector("#projectCommentInput");
+			const content = input.value.trim();
+			if (!content) {
+				showMessage("Please enter a comment.");
+				return;
+			}
+
+			try {
+				await apiCall("add_project_comment", {
+					payload: JSON.stringify({ project: projectName, content })
+				}, "POST");
+				input.value = "";
+				await loadProjectComments(projectName);
+				showMessage("Comment added successfully.");
+			} catch (err) {
+				showMessage(err.message || "Failed to add comment.");
+			}
+		});
+	}
+
+	async function loadProjectComments(projectName) {
+		const listEl = document.getElementById("projectCommentsList");
+		if (!listEl) return;
+
+		try {
+			const result = await apiCall("get_project_comments", { project: projectName });
+			const comments = result.comments || [];
+
+			if (comments.length === 0) {
+				listEl.innerHTML = `<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">No comments yet. Start the conversation.</div>`;
+				return;
+			}
+
+			listEl.innerHTML = "";
+			comments.forEach(c => {
+				const div = document.createElement("div");
+				div.style.cssText = "display: flex; gap: 10px; padding: 12px; background: white; border: 1px solid var(--taskflow-border); border-radius: 8px;";
+				const avatarContent = c.author_image
+					? `<img src="${c.author_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
+					: initials(c.author_name);
+				div.innerHTML = `
+					<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600; flex-shrink: 0; overflow: hidden;">
+						${avatarContent}
+					</div>
+					<div style="flex: 1;">
+						<div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px;">
+							<span style="font-size: 13px; font-weight: 500; color: #1e293b;">${escapeHtml(c.author_name)}</span>
+							<span style="font-size: 11px; color: #94a3b8;">${prettyDate(c.creation)}</span>
+						</div>
+						<div style="font-size: 13px; color: #475569; line-height: 1.5; background: #f8fafc; padding: 10px 12px; border-radius: 0 8px 8px 8px; border: 1px solid #e2e8f0;">${escapeHtml(c.content)}</div>
+					</div>
+				`;
+				listEl.appendChild(div);
+			});
+		} catch (err) {
+			listEl.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444; font-size: 13px;">Failed to load comments.</div>`;
+		}
 	}
 
 	async function removeMember(index) {

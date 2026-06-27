@@ -928,6 +928,84 @@ def add_task_comment(payload: str) -> dict:
 
 
 @frappe.whitelist()
+def get_project_comments(project: str) -> dict:
+    """Return comments for a Taskflow Project."""
+    _require_login()
+    if not isinstance(project, str):
+        frappe.throw(_("Invalid project identifier"), frappe.ValidationError)
+
+    comments = frappe.get_all(
+        "Comment",
+        filters={
+            "reference_doctype": "Taskflow Project",
+            "reference_name": project,
+            "comment_type": "Comment",
+        },
+        fields=["name", "content", "owner", "comment_by", "creation"],
+        order_by="creation desc",
+        limit_page_length=100,
+    )
+
+    author_map = {}
+    for comment in comments:
+        if comment.owner and comment.owner not in author_map:
+            author_map[comment.owner] = _get_user_details(comment.owner)
+
+    for comment in comments:
+        author_details = author_map.get(comment.owner)
+        if author_details:
+            full_name, user_image = author_details
+            comment.author_name = full_name or comment.comment_by or comment.owner
+            comment.author_image = user_image
+        else:
+            comment.author_name = comment.comment_by or comment.owner
+            comment.author_image = None
+
+    return {"comments": comments}
+
+
+@frappe.whitelist()
+def add_project_comment(payload: str) -> dict:
+    """Add a comment to a Taskflow Project."""
+    _require_login()
+    data = json.loads(payload) if isinstance(payload, str) else payload
+    project_name = data.get("project")
+    content = (data.get("content") or "").strip()
+
+    if not project_name:
+        frappe.throw(_("Project name is required"))
+    if not content:
+        frappe.throw(_("Comment content is required"))
+
+    doc = frappe.get_doc("Taskflow Project", project_name)
+    doc.check_permission("write")
+
+    comment = frappe.get_doc(
+        {
+            "doctype": "Comment",
+            "comment_type": "Comment",
+            "reference_doctype": "Taskflow Project",
+            "reference_name": project_name,
+            "content": content,
+            "comment_by": frappe.session.user,
+        }
+    )
+    comment.insert(ignore_permissions=True)
+    frappe.db.commit()
+
+    user_details = _get_user_details(frappe.session.user)
+
+    return {
+        "name": comment.name,
+        "content": comment.content,
+        "owner": comment.owner,
+        "author_name": (user_details and user_details.full_name) or frappe.session.user,
+        "author_image": user_details and user_details.user_image,
+        "creation": comment.creation,
+    }
+
+
+@frappe.whitelist()
 def get_team_workload_planner(team: str | None = None) -> dict:
     """Return per-member workload across project assignments."""
     _require_login()
