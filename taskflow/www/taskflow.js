@@ -4654,12 +4654,12 @@
 		const members = (state.projectWorkspace && state.projectWorkspace.team_members) || [];
 
 		target.innerHTML = `
-			<div style="max-width: 700px; margin: 0 auto; padding: 24px;">
+			<div style="max-width: 700px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; height: calc(100vh - 120px);">
 				<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Comments</h3>
-				<div id="projectCommentsList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+				<div id="projectCommentsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
 					<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">Loading comments...</div>
 				</div>
-				<div style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 12px; position: relative;">
+				<div style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 12px; position: relative; flex-shrink: 0;">
 					<textarea id="projectCommentInput" placeholder="Add a comment... Type @ to mention" style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
 					<div id="mentionDropdown" style="display: none; position: absolute; left: 12px; bottom: 60px; background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 180px; overflow-y: auto; z-index: 100; min-width: 200px;"></div>
 					<div style="display: flex; justify-content: flex-end; margin-top: 8px;">
@@ -4839,6 +4839,7 @@
 				`;
 				listEl.appendChild(div);
 			});
+			listEl.scrollTop = listEl.scrollHeight;
 		} catch (err) {
 			listEl.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444; font-size: 13px;">Failed to load comments.</div>`;
 		}

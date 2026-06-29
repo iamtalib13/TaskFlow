@@ -944,7 +944,7 @@ def get_project_comments(project: str) -> dict:
             "comment_type": "Comment",
         },
         fields=["name", "content", "owner", "comment_by", "creation"],
-        order_by="creation desc",
+        order_by="creation asc",
         limit_page_length=100,
     )
 
