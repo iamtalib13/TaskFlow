@@ -4575,9 +4575,27 @@
 				return;
 			}
 
-			displayEl.innerHTML = result.map(file =>
-				`<a href="${escapeHtml(file.file_url)}" target="_blank" style="display: block; padding: 6px 0; color: var(--taskflow-primary); font-size: 13px; text-decoration: none;">${escapeHtml(file.file_name)}</a>`
-			).join("");
+			const imageExts = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"];
+			displayEl.innerHTML = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;">${
+				result.map(file => {
+					const ext = (file.file_name || "").split(".").pop().toLowerCase();
+					const isImage = imageExts.includes(ext);
+					if (isImage) {
+						return `<a href="${escapeHtml(file.file_url)}" target="_blank" style="display: block; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden; background: white; text-decoration: none; transition: box-shadow 0.15s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+							<div style="width: 100%; aspect-ratio: 1; overflow: hidden; background: #f1f5f9;">
+								<img src="${escapeHtml(file.file_url)}" alt="${escapeHtml(file.file_name)}" style="width: 100%; height: 100%; object-fit: cover;">
+							</div>
+							<div style="padding: 8px 10px;">
+								<span style="font-size: 12px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">${escapeHtml(file.file_name)}</span>
+							</div>
+						</a>`;
+					}
+					return `<a href="${escapeHtml(file.file_url)}" target="_blank" style="display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; background: white; text-decoration: none; transition: box-shadow 0.15s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+						<span style="font-size: 20px;">&#128196;</span>
+						<span style="font-size: 13px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(file.file_name)}</span>
+					</a>`;
+				}).join("")
+			}</div>`;
 		} catch (err) {
 			if (displayEl) displayEl.innerHTML = '<p style="margin: 0; color: #94a3b8; font-size: 13px;">No attachment yet.</p>';
 		}
