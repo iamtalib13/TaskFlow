@@ -4651,6 +4651,7 @@
 		}
 
 		const projectName = project.name;
+		const members = (state.projectWorkspace && state.projectWorkspace.team_members) || [];
 
 		target.innerHTML = `
 			<div style="max-width: 700px; margin: 0 auto; padding: 24px;">
@@ -4658,8 +4659,9 @@
 				<div id="projectCommentsList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
 					<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">Loading comments...</div>
 				</div>
-				<div style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 12px;">
-					<textarea id="projectCommentInput" placeholder="Add a comment..." style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
+				<div style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 12px; position: relative;">
+					<textarea id="projectCommentInput" placeholder="Add a comment... Type @ to mention" style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
+					<div id="mentionDropdown" style="display: none; position: absolute; left: 12px; bottom: 60px; background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 180px; overflow-y: auto; z-index: 100; min-width: 200px;"></div>
 					<div style="display: flex; justify-content: flex-end; margin-top: 8px;">
 						<button class="taskflow-button primary" type="button" data-post-project-comment>Submit</button>
 					</div>
@@ -4669,9 +4671,116 @@
 
 		await loadProjectComments(projectName);
 
+		const commentInput = target.querySelector("#projectCommentInput");
+		const mentionDropdown = target.querySelector("#mentionDropdown");
+		let mentionActive = false;
+		let mentionQuery = "";
+		let mentionStartPos = 0;
+
+		function showMentionList(query) {
+			const filtered = members.filter(m => {
+				const label = (m.label || "").toLowerCase();
+				const user = (m.user || "").toLowerCase();
+				const q = query.toLowerCase();
+				return label.includes(q) || user.includes(q);
+			});
+
+			if (filtered.length === 0) {
+				mentionDropdown.style.display = "none";
+				mentionActive = false;
+				return;
+			}
+
+			mentionDropdown.innerHTML = filtered.map(m => {
+				const avatarContent = m.user_image
+					? `<img src="${m.user_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
+					: initials(m.label);
+				return `
+					<div class="mention-item" data-user="${escapeHtml(m.user)}" data-label="${escapeHtml(m.label)}" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.15s;">
+						<div style="width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 9px; font-weight: 600; flex-shrink: 0; overflow: hidden;">
+							${avatarContent}
+						</div>
+						<div>
+							<div style="font-size: 12px; font-weight: 500; color: #1e293b;">${escapeHtml(m.label)}</div>
+							<div style="font-size: 10px; color: #94a3b8;">${escapeHtml(m.user)}</div>
+						</div>
+					</div>
+				`;
+			}).join("");
+
+			mentionDropdown.querySelectorAll(".mention-item").forEach(item => {
+				item.addEventListener("mouseenter", () => {
+					item.style.background = "#f1f5f9";
+				});
+				item.addEventListener("mouseleave", () => {
+					item.style.background = "transparent";
+				});
+				item.addEventListener("click", () => {
+					const label = item.dataset.label;
+					const before = commentInput.value.substring(0, mentionStartPos);
+					const after = commentInput.value.substring(commentInput.selectionStart);
+					commentInput.value = before + "@" + label + " " + after;
+					commentInput.focus();
+					mentionDropdown.style.display = "none";
+					mentionActive = false;
+				});
+			});
+
+			mentionDropdown.style.display = "block";
+		}
+
+		commentInput.addEventListener("input", () => {
+			const val = commentInput.value;
+			const cursorPos = commentInput.selectionStart;
+			const textBefore = val.substring(0, cursorPos);
+			const atIndex = textBefore.lastIndexOf("@");
+
+			if (atIndex >= 0 && (atIndex === 0 || textBefore[atIndex - 1] === " " || textBefore[atIndex - 1] === "\n")) {
+				mentionQuery = textBefore.substring(atIndex + 1);
+				if (!mentionQuery.includes(" ")) {
+					mentionActive = true;
+					mentionStartPos = atIndex;
+					showMentionList(mentionQuery);
+					return;
+				}
+			}
+			mentionDropdown.style.display = "none";
+			mentionActive = false;
+		});
+
+		commentInput.addEventListener("keydown", (e) => {
+			if (mentionActive && mentionDropdown.style.display === "block") {
+				const items = mentionDropdown.querySelectorAll(".mention-item");
+				const highlighted = mentionDropdown.querySelector(".mention-item[style*='background: #f1f5f9']");
+				let idx = Array.from(items).indexOf(highlighted);
+
+				if (e.key === "ArrowDown") {
+					e.preventDefault();
+					if (idx < items.length - 1) idx++;
+					items.forEach((item, i) => item.style.background = i === idx ? "#f1f5f9" : "transparent");
+				} else if (e.key === "ArrowUp") {
+					e.preventDefault();
+					if (idx > 0) idx--;
+					items.forEach((item, i) => item.style.background = i === idx ? "#f1f5f9" : "transparent");
+				} else if (e.key === "Enter" && idx >= 0) {
+					e.preventDefault();
+					items[idx].click();
+				} else if (e.key === "Escape") {
+					mentionDropdown.style.display = "none";
+					mentionActive = false;
+				}
+			}
+		});
+
+		document.addEventListener("click", (e) => {
+			if (!mentionDropdown.contains(e.target) && e.target !== commentInput) {
+				mentionDropdown.style.display = "none";
+				mentionActive = false;
+			}
+		});
+
 		target.querySelector("[data-post-project-comment]").addEventListener("click", async () => {
-			const input = target.querySelector("#projectCommentInput");
-			const content = input.value.trim();
+			const content = commentInput.value.trim();
 			if (!content) {
 				showMessage("Please enter a comment.");
 				return;
@@ -4681,7 +4790,7 @@
 				await apiCall("add_project_comment", {
 					payload: JSON.stringify({ project: projectName, content })
 				}, "POST");
-				input.value = "";
+				commentInput.value = "";
 				await loadProjectComments(projectName);
 				showMessage("Comment added successfully.");
 			} catch (err) {
