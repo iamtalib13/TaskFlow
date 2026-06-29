@@ -1015,8 +1015,8 @@ def _send_mention_emails(project_name: str, content: str, sender_name: str, send
     """Parse @mentions from content and send emails to mentioned team members."""
     import re
 
-    mentioned_names = re.findall(r"@([\w\s]+?)(?=\s@|\s|$|[.,!?;:])", content)
-    if not mentioned_names:
+    mentioned_raw = re.findall(r"@(\w+(?:\s+\w+)*)", content)
+    if not mentioned_raw:
         return
 
     project_doc = frappe.get_doc("Taskflow Project", project_name)
@@ -1036,14 +1036,20 @@ def _send_mention_emails(project_name: str, content: str, sender_name: str, send
             label_to_email[label.lower().strip()] = email
 
     emailed = set()
-    for name in mentioned_names:
-        name_lower = name.lower().strip()
-        email = label_to_email.get(name_lower)
-        if email and email not in emailed and email != sender_email:
-            emailed.add(email)
+    for raw in mentioned_raw:
+        raw_lower = raw.lower().strip()
+        # Check for exact match first, then check if any known name is contained in the raw text
+        matched_email = label_to_email.get(raw_lower)
+        if not matched_email:
+            for label, email in label_to_email.items():
+                if label in raw_lower or raw_lower in label:
+                    matched_email = email
+                    break
+        if matched_email and matched_email not in emailed and matched_email != sender_email:
+            emailed.add(matched_email)
             try:
                 frappe.sendmail(
-                    recipients=[email],
+                    recipients=[matched_email],
                     subject=f"Comment on Project: {project_name}",
                     message=f"""
                         <p><strong>{frappe.utils.escape_html(sender_name)}</strong> mentioned you in a comment on project <strong>{frappe.utils.escape_html(project_name)}</strong>:</p>
