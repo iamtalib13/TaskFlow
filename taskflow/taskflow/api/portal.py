@@ -134,7 +134,7 @@ def _bulk_employee_names(employee_ids: list[str]) -> dict[str, str]:
 
 
 def _bulk_employee_details(employee_ids: list[str]) -> dict[str, dict]:
-    """Return {employee_id: {employee_name, user_id}} map."""
+    """Return {employee_id: {employee_name, user_id, company_email}} map."""
     employee_ids = [employee_id for employee_id in employee_ids if employee_id]
     if not employee_ids:
         return {}
@@ -142,10 +142,10 @@ def _bulk_employee_details(employee_ids: list[str]) -> dict[str, dict]:
     rows = frappe.get_all(
         "Employee",
         filters={"name": ["in", list(dict.fromkeys(employee_ids))]},
-        fields=["name", "employee_name", "user_id"],
+        fields=["name", "employee_name", "user_id", "company_email"],
     )
     return {
-        row.name: {"employee_name": row.employee_name, "user_id": row.user_id}
+        row.name: {"employee_name": row.employee_name, "user_id": row.user_id, "company_email": row.company_email}
         for row in rows
     }
 
@@ -1027,23 +1027,23 @@ def _send_mention_emails(project_name: str, content: str, sender_name: str, send
     employee_ids = [m.employee for m in members if m.employee]
     employee_details = _bulk_employee_details(employee_ids)
 
-    # Build label -> user_id map
-    label_to_user = {}
+    # Build label -> company_email map
+    label_to_email = {}
     for emp_id, details in employee_details.items():
         label = details.get("employee_name") or emp_id
-        user_id = details.get("user_id")
-        if user_id:
-            label_to_user[label.lower().strip()] = user_id
+        email = details.get("company_email") or details.get("user_id")
+        if email:
+            label_to_email[label.lower().strip()] = email
 
     emailed = set()
     for name in mentioned_names:
         name_lower = name.lower().strip()
-        user_id = label_to_user.get(name_lower)
-        if user_id and user_id not in emailed and user_id != sender_email:
-            emailed.add(user_id)
+        email = label_to_email.get(name_lower)
+        if email and email not in emailed and email != sender_email:
+            emailed.add(email)
             try:
                 frappe.sendmail(
-                    recipients=[user_id],
+                    recipients=[email],
                     subject=f"Comment on Project: {project_name}",
                     message=f"""
                         <p><strong>{frappe.utils.escape_html(sender_name)}</strong> mentioned you in a comment on project <strong>{frappe.utils.escape_html(project_name)}</strong>:</p>
