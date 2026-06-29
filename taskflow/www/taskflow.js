@@ -4318,7 +4318,7 @@
 					<button class="taskflow-button secondary" type="button" data-edit-attachment>Edit</button>
 				</div>
 				<div data-attachment-display style="background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 16px;">
-					<p style="margin: 0; color: #64748b; font-size: 13px;">Click Edit to manage project attachments.</p>
+					<p style="margin: 0; color: #94a3b8; font-size: 13px;">Loading...</p>
 				</div>
 				<div data-attachment-edit style="display: none;">
 					<div id="projectAttachmentDropzone" style="border: 2px dashed var(--taskflow-border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; margin-bottom: 12px;">
@@ -4326,7 +4326,7 @@
 						<p style="margin: 4px 0 0; color: #94a3b8; font-size: 11px;">Any file type up to 25 MB</p>
 					</div>
 					<input type="file" id="projectFileInput" style="display: none;" multiple />
-					<div id="projectAttachmentsList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;"></div>
+					<div id="projectAttachmentsList" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;"></div>
 					<div style="display: flex; gap: 8px; justify-content: flex-end;">
 						<button class="taskflow-button secondary" type="button" data-cancel-attachment>Cancel</button>
 						<button class="taskflow-button primary" type="button" data-save-attachment>Save</button>
@@ -4403,10 +4403,12 @@
 		const cancelAttachmentBtn = target.querySelector("[data-cancel-attachment]");
 		const saveAttachmentBtn = target.querySelector("[data-save-attachment]");
 
+		loadProjectAttachments(projectName, attachmentDisplay);
+
 		editAttachmentBtn.addEventListener("click", async () => {
 			attachmentDisplay.style.display = "none";
 			attachmentEdit.style.display = "block";
-			await loadProjectAttachments(projectName);
+			await loadProjectAttachmentsList(projectName);
 		});
 
 		cancelAttachmentBtn.addEventListener("click", () => {
@@ -4415,42 +4417,47 @@
 		});
 
 		saveAttachmentBtn.addEventListener("click", async () => {
+			const fileInput = target.querySelector("#projectFileInput");
+			const files = fileInput?.files;
+			if (files && files.length) {
+				for (const file of files) {
+					const formData = new FormData();
+					formData.append("file", file);
+					formData.append("doctype", "Taskflow Project");
+					formData.append("docname", projectName);
+					formData.append("is_private", 0);
+					formData.append("folder", "Home");
+					try {
+						await fetch("/api/method/upload_file", {
+							method: "POST",
+							headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
+							body: formData,
+						});
+					} catch (err) {
+						showMessage(`Failed to upload ${file.name}`);
+					}
+				}
+			}
 			attachmentDisplay.style.display = "block";
 			attachmentEdit.style.display = "none";
-			showMessage("Attachments saved successfully.");
+			await loadProjectAttachments(projectName, attachmentDisplay);
 		});
 
-		// File Upload Handlers
 		const dropzone = target.querySelector("#projectAttachmentDropzone");
 		const fileInput = target.querySelector("#projectFileInput");
-
 		if (dropzone && fileInput) {
 			dropzone.addEventListener("click", () => fileInput.click());
-
 			dropzone.addEventListener("dragover", (e) => {
 				e.preventDefault();
 				dropzone.style.borderColor = "var(--taskflow-primary)";
-				dropzone.style.background = "rgba(59, 130, 246, 0.05)";
 			});
-
 			dropzone.addEventListener("dragleave", () => {
 				dropzone.style.borderColor = "var(--taskflow-border)";
-				dropzone.style.background = "transparent";
 			});
-
 			dropzone.addEventListener("drop", (e) => {
 				e.preventDefault();
 				dropzone.style.borderColor = "var(--taskflow-border)";
-				dropzone.style.background = "transparent";
-				if (e.dataTransfer.files.length) {
-					handleProjectFileUpload(e.dataTransfer.files, projectName);
-				}
-			});
-
-			fileInput.addEventListener("change", (e) => {
-				if (e.target.files.length) {
-					handleProjectFileUpload(e.target.files, projectName);
-				}
+				fileInput.files = e.dataTransfer.files;
 			});
 		}
 
@@ -4546,21 +4553,75 @@
 		});
 	}
 
-	async function loadProjectAttachments(projectName) {
+	async function loadProjectAttachments(projectName, displayEl) {
 		try {
-			const result = await apiCall("frappe.client.get_list", {
-				doctype: "File",
-				filters: JSON.stringify({ attached_to_name: projectName }),
-				fields: JSON.stringify(["name", "file_name", "file_url"]),
-				limit_page_length: 50,
-			}, "POST");
+			const url = new URL("/api/method/frappe.client.get_list", window.location.origin);
+			url.searchParams.set("doctype", "File");
+			url.searchParams.set("filters", JSON.stringify({ attached_to_name: projectName }));
+			url.searchParams.set("fields", JSON.stringify(["name", "file_name", "file_url"]));
+			url.searchParams.set("limit_page_length", "50");
 
-			const listEl = document.getElementById("projectAttachmentsList");
-			if (!listEl) return;
+			const response = await fetch(url.toString(), {
+				method: "GET",
+				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
+				credentials: "same-origin",
+			});
+			const payload = await response.json();
+			const result = payload.message || payload;
+
+			if (!displayEl) return;
+			if (!result || result.length === 0) {
+				displayEl.innerHTML = '<p style="margin: 0; color: #94a3b8; font-size: 13px;">No attachment yet.</p>';
+				return;
+			}
+
+			const imageExts = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"];
+			displayEl.innerHTML = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;">${
+				result.map(file => {
+					const ext = (file.file_name || "").split(".").pop().toLowerCase();
+					const isImage = imageExts.includes(ext);
+					if (isImage) {
+						return `<a href="${escapeHtml(file.file_url)}" target="_blank" style="display: block; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden; background: white; text-decoration: none; transition: box-shadow 0.15s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+							<div style="width: 100%; aspect-ratio: 1; overflow: hidden; background: #f1f5f9;">
+								<img src="${escapeHtml(file.file_url)}" alt="${escapeHtml(file.file_name)}" style="width: 100%; height: 100%; object-fit: cover;">
+							</div>
+							<div style="padding: 8px 10px;">
+								<span style="font-size: 12px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">${escapeHtml(file.file_name)}</span>
+							</div>
+						</a>`;
+					}
+					return `<a href="${escapeHtml(file.file_url)}" target="_blank" style="display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; background: white; text-decoration: none; transition: box-shadow 0.15s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+						<span style="font-size: 20px;">&#128196;</span>
+						<span style="font-size: 13px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(file.file_name)}</span>
+					</a>`;
+				}).join("")
+			}</div>`;
+		} catch (err) {
+			if (displayEl) displayEl.innerHTML = '<p style="margin: 0; color: #94a3b8; font-size: 13px;">No attachment yet.</p>';
+		}
+	}
+
+	async function loadProjectAttachmentsList(projectName) {
+		const listEl = document.getElementById("projectAttachmentsList");
+		if (!listEl) return;
+		try {
+			const url = new URL("/api/method/frappe.client.get_list", window.location.origin);
+			url.searchParams.set("doctype", "File");
+			url.searchParams.set("filters", JSON.stringify({ attached_to_name: projectName }));
+			url.searchParams.set("fields", JSON.stringify(["name", "file_name", "file_url"]));
+			url.searchParams.set("limit_page_length", "50");
+
+			const response = await fetch(url.toString(), {
+				method: "GET",
+				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
+				credentials: "same-origin",
+			});
+			const payload = await response.json();
+			const result = payload.message || payload;
 
 			listEl.innerHTML = "";
 			if (!result || result.length === 0) {
-				listEl.innerHTML = '<p style="color: #94a3b8; font-size: 12px;">No attachments yet.</p>';
+				listEl.innerHTML = '<p style="color: #94a3b8; font-size: 12px;">No files uploaded yet.</p>';
 				return;
 			}
 
@@ -4577,45 +4638,25 @@
 			listEl.querySelectorAll("[data-delete-file]").forEach(btn => {
 				btn.addEventListener("click", async () => {
 					try {
-						await apiCall("frappe.client.delete", { doctype: "File", name: btn.dataset.deleteFile }, "POST");
-						await loadProjectAttachments(projectName);
+						const deleteUrl = new URL("/api/method/frappe.client.delete", window.location.origin);
+						await fetch(deleteUrl.toString(), {
+							method: "POST",
+							headers: {
+								"X-Frappe-CSRF-Token": window.csrf_token || "",
+								"Content-Type": "application/x-www-form-urlencoded",
+							},
+							credentials: "same-origin",
+							body: new URLSearchParams({ doctype: "File", name: btn.dataset.deleteFile }),
+						});
+						await loadProjectAttachmentsList(projectName);
 					} catch (err) {
 						showMessage("Failed to delete file.");
 					}
 				});
 			});
 		} catch (err) {
-			console.error("Failed to load attachments:", err);
+			listEl.innerHTML = '<p style="color: #94a3b8; font-size: 12px;">No files uploaded yet.</p>';
 		}
-	}
-
-	async function handleProjectFileUpload(files, projectName) {
-		for (const file of files) {
-			try {
-				const formData = new FormData();
-				formData.append("file", file);
-				formData.append("doctype", "Taskflow Project");
-				formData.append("docname", projectName);
-				formData.append("is_private", 0);
-				formData.append("folder", "Home");
-
-				const response = await fetch("/api/method/upload_file", {
-					method: "POST",
-					headers: {
-						"X-Frappe-CSRF-Token": window.csrf_token || "",
-					},
-					body: formData,
-				});
-
-				if (!response.ok) {
-					throw new Error("Upload failed");
-				}
-			} catch (err) {
-				console.error("Failed to upload file:", err);
-				showMessage(`Failed to upload ${file.name}`);
-			}
-		}
-		await loadProjectAttachments(projectName);
 	}
 
 	async function renderProjectCommentsView() {
@@ -4628,15 +4669,17 @@
 		}
 
 		const projectName = project.name;
+		const members = (state.projectWorkspace && state.projectWorkspace.team_members) || [];
 
 		target.innerHTML = `
-			<div style="max-width: 700px; margin: 0 auto; padding: 24px;">
+			<div style="max-width: 700px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; height: calc(100vh - 120px);">
 				<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Comments</h3>
-				<div id="projectCommentsList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+				<div id="projectCommentsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
 					<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">Loading comments...</div>
 				</div>
-				<div style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 12px;">
-					<textarea id="projectCommentInput" placeholder="Add a comment..." style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
+				<div style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 12px; position: relative; flex-shrink: 0;">
+					<textarea id="projectCommentInput" placeholder="Add a comment... Type @ to mention" style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
+					<div id="mentionDropdown" style="display: none; position: absolute; left: 12px; bottom: 60px; background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 180px; overflow-y: auto; z-index: 100; min-width: 200px;"></div>
 					<div style="display: flex; justify-content: flex-end; margin-top: 8px;">
 						<button class="taskflow-button primary" type="button" data-post-project-comment>Submit</button>
 					</div>
@@ -4646,23 +4689,136 @@
 
 		await loadProjectComments(projectName);
 
+		const commentInput = target.querySelector("#projectCommentInput");
+		const mentionDropdown = target.querySelector("#mentionDropdown");
+		let mentionActive = false;
+		let mentionQuery = "";
+		let mentionStartPos = 0;
+
+		function showMentionList(query) {
+			const filtered = members.filter(m => {
+				const label = (m.label || "").toLowerCase();
+				const user = (m.user || "").toLowerCase();
+				const q = query.toLowerCase();
+				return label.includes(q) || user.includes(q);
+			});
+
+			if (filtered.length === 0) {
+				mentionDropdown.style.display = "none";
+				mentionActive = false;
+				return;
+			}
+
+			mentionDropdown.innerHTML = filtered.map(m => {
+				const avatarContent = m.user_image
+					? `<img src="${m.user_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
+					: initials(m.label);
+				return `
+					<div class="mention-item" data-user="${escapeHtml(m.user)}" data-label="${escapeHtml(m.label)}" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.15s;">
+						<div style="width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 9px; font-weight: 600; flex-shrink: 0; overflow: hidden;">
+							${avatarContent}
+						</div>
+						<div>
+							<div style="font-size: 12px; font-weight: 500; color: #1e293b;">${escapeHtml(m.label)}</div>
+							<div style="font-size: 10px; color: #94a3b8;">${escapeHtml(m.user)}</div>
+						</div>
+					</div>
+				`;
+			}).join("");
+
+			mentionDropdown.querySelectorAll(".mention-item").forEach(item => {
+				item.addEventListener("mouseenter", () => {
+					item.style.background = "#f1f5f9";
+				});
+				item.addEventListener("mouseleave", () => {
+					item.style.background = "transparent";
+				});
+				item.addEventListener("click", () => {
+					const label = item.dataset.label;
+					const before = commentInput.value.substring(0, mentionStartPos);
+					const after = commentInput.value.substring(commentInput.selectionStart);
+					commentInput.value = before + "@" + label + " " + after;
+					commentInput.focus();
+					mentionDropdown.style.display = "none";
+					mentionActive = false;
+				});
+			});
+
+			mentionDropdown.style.display = "block";
+		}
+
+		commentInput.addEventListener("input", () => {
+			const val = commentInput.value;
+			const cursorPos = commentInput.selectionStart;
+			const textBefore = val.substring(0, cursorPos);
+			const atIndex = textBefore.lastIndexOf("@");
+
+			if (atIndex >= 0 && (atIndex === 0 || textBefore[atIndex - 1] === " " || textBefore[atIndex - 1] === "\n")) {
+				mentionQuery = textBefore.substring(atIndex + 1);
+				if (!mentionQuery.includes(" ")) {
+					mentionActive = true;
+					mentionStartPos = atIndex;
+					showMentionList(mentionQuery);
+					return;
+				}
+			}
+			mentionDropdown.style.display = "none";
+			mentionActive = false;
+		});
+
+		commentInput.addEventListener("keydown", (e) => {
+			if (mentionActive && mentionDropdown.style.display === "block") {
+				const items = mentionDropdown.querySelectorAll(".mention-item");
+				const highlighted = mentionDropdown.querySelector(".mention-item[style*='background: #f1f5f9']");
+				let idx = Array.from(items).indexOf(highlighted);
+
+				if (e.key === "ArrowDown") {
+					e.preventDefault();
+					if (idx < items.length - 1) idx++;
+					items.forEach((item, i) => item.style.background = i === idx ? "#f1f5f9" : "transparent");
+				} else if (e.key === "ArrowUp") {
+					e.preventDefault();
+					if (idx > 0) idx--;
+					items.forEach((item, i) => item.style.background = i === idx ? "#f1f5f9" : "transparent");
+				} else if (e.key === "Enter" && idx >= 0) {
+					e.preventDefault();
+					items[idx].click();
+				} else if (e.key === "Escape") {
+					mentionDropdown.style.display = "none";
+					mentionActive = false;
+				}
+			}
+		});
+
+		document.addEventListener("click", (e) => {
+			if (!mentionDropdown.contains(e.target) && e.target !== commentInput) {
+				mentionDropdown.style.display = "none";
+				mentionActive = false;
+			}
+		});
+
 		target.querySelector("[data-post-project-comment]").addEventListener("click", async () => {
-			const input = target.querySelector("#projectCommentInput");
-			const content = input.value.trim();
+			const content = commentInput.value.trim();
 			if (!content) {
 				showMessage("Please enter a comment.");
 				return;
 			}
 
+			const btn = target.querySelector("[data-post-project-comment]");
+			if (btn.disabled) return;
+			btn.disabled = true;
+
 			try {
 				await apiCall("add_project_comment", {
 					payload: JSON.stringify({ project: projectName, content })
 				}, "POST");
-				input.value = "";
+				commentInput.value = "";
 				await loadProjectComments(projectName);
 				showMessage("Comment added successfully.");
 			} catch (err) {
 				showMessage(err.message || "Failed to add comment.");
+			} finally {
+				btn.disabled = false;
 			}
 		});
 	}
@@ -4701,6 +4857,7 @@
 				`;
 				listEl.appendChild(div);
 			});
+			listEl.scrollTop = listEl.scrollHeight;
 		} catch (err) {
 			listEl.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444; font-size: 13px;">Failed to load comments.</div>`;
 		}
