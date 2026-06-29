@@ -4691,7 +4691,7 @@
 			attDisplay.style.display = "block";
 			attEdit.style.display = "none";
 		});
-		loadProjectAttachments(projectName, attDisplay);
+		loadProjectAttachments(projectName, attDisplay, true);
 
 		// Dropzone
 		const dropzone = target.querySelector("#psProjectAttachmentDropzone");
@@ -4731,7 +4731,7 @@
 			}
 			attDisplay.style.display = "block";
 			attEdit.style.display = "none";
-			await loadProjectAttachments(projectName, attDisplay);
+			await loadProjectAttachments(projectName, attDisplay, true);
 		});
 
 		// --- Description Edit Toggle ---
@@ -5021,7 +5021,7 @@
 		}
 	}
 
-	async function loadProjectAttachments(projectName, displayEl) {
+	async function loadProjectAttachments(projectName, displayEl, namesOnly) {
 		try {
 			const url = new URL("/api/method/frappe.client.get_list", window.location.origin);
 			url.searchParams.set("doctype", "File");
@@ -5040,6 +5040,13 @@
 			if (!displayEl) return;
 			if (!result || result.length === 0) {
 				displayEl.innerHTML = '<p style="margin: 0; color: #94a3b8; font-size: 13px;">No attachment yet.</p>';
+				return;
+			}
+
+			if (namesOnly) {
+				displayEl.innerHTML = result.map(file =>
+					`<a href="${escapeHtml(file.file_url)}" target="_blank" style="display: block; padding: 8px 12px; margin-bottom: 6px; border: 1px solid var(--taskflow-border); border-radius: 6px; background: white; color: var(--taskflow-primary); font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${escapeHtml(file.file_name)}</a>`
+				).join("");
 				return;
 			}
 
