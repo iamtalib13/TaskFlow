@@ -4786,6 +4786,10 @@
 				return;
 			}
 
+			const btn = target.querySelector("[data-post-project-comment]");
+			if (btn.disabled) return;
+			btn.disabled = true;
+
 			try {
 				await apiCall("add_project_comment", {
 					payload: JSON.stringify({ project: projectName, content })
@@ -4795,6 +4799,8 @@
 				showMessage("Comment added successfully.");
 			} catch (err) {
 				showMessage(err.message || "Failed to add comment.");
+			} finally {
+				btn.disabled = false;
 			}
 		});
 	}

@@ -982,6 +982,20 @@ def add_project_comment(payload: str) -> dict:
     doc = frappe.get_doc("Taskflow Project", project_name)
     doc.check_permission("write")
 
+    existing = frappe.db.exists(
+        "Comment",
+        {
+            "reference_doctype": "Taskflow Project",
+            "reference_name": project_name,
+            "comment_type": "Comment",
+            "content": content,
+            "owner": frappe.session.user,
+            "creation": (">", frappe.utils.add_to_date(frappe.utils.now_datetime(), seconds=-5)),
+        },
+    )
+    if existing:
+        return {"name": existing}
+
     comment = frappe.get_doc(
         {
             "doctype": "Comment",
