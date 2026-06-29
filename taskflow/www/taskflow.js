@@ -9,7 +9,7 @@
 		"Cancelled",
 		"Overdue",
 	];
-	const TASK_VIEWS = ["list", "kanban", "dashboard", "timeline", "files", "settings"];
+	const TASK_VIEWS = ["list", "kanban", "dashboard", "timeline", "files", "settings", "project-settings"];
 	const NAV_MODES = ["dashboard", "my-tasks", "calendar", "reports", "team", "settings"];
 	const NAV_PLACEHOLDER_MODES = ["reports", "settings"];
 	const LIST_ROW_HEIGHT = 48;
@@ -273,6 +273,7 @@
 		refs.timelineView = document.querySelector("[data-timeline-view]");
 		refs.filesView = document.querySelector("[data-files-view]");
 		refs.settingsView = document.querySelector("[data-settings-view]");
+		refs.projectSettingsView = document.querySelector("[data-project-settings-view]");
 		refs.projectTitle = document.querySelector("[data-project-title]");
 		refs.projectKpis = document.querySelector("[data-project-kpis]");
 		refs.viewToggle = document.querySelector("[data-task-view-toggle]");
@@ -2058,6 +2059,7 @@
 			{ el: refs.timelineView, key: "timeline" },
 			{ el: refs.filesView, key: "files" },
 			{ el: refs.settingsView, key: "settings" },
+			{ el: refs.projectSettingsView, key: "project-settings" },
 		];
 
 		views.forEach((v) => {
@@ -2085,6 +2087,8 @@
 			renderProjectCommentsView();
 		} else if (state.taskView === "settings") {
 			renderSettingsView();
+		} else if (state.taskView === "project-settings") {
+			renderProjectSettingsView();
 		}
 	}
 
@@ -4284,6 +4288,8 @@
 			refs.filesView.innerHTML = emptyHtml;
 		} else if (state.taskView === "settings" && refs.settingsView) {
 			refs.settingsView.innerHTML = emptyHtml;
+		} else if (state.taskView === "project-settings" && refs.projectSettingsView) {
+			refs.projectSettingsView.innerHTML = emptyHtml;
 		} else if (refs.dashboardView) {
 			refs.dashboardView.innerHTML = emptyHtml;
 		}
@@ -4551,6 +4557,468 @@
 				showMessage("Please select a valid Employee from the list.");
 			}
 		});
+	}
+
+	function renderProjectSettingsView() {
+		const target = refs.projectSettingsView;
+		if (!target) return;
+		const project = state.projectWorkspace && state.projectWorkspace.project;
+		if (!project) {
+			target.innerHTML = `<div class="taskflow-empty">Select a project to view project settings.</div>`;
+			return;
+		}
+
+		const members = project.project_team_members || [];
+		const roles = ["Team Lead", "Project Manager", "Team Member", "Viewer", "Auditor", "Coordinator"];
+		const description = project.description || "";
+		const projectName = project.name || "";
+
+		target.innerHTML = `
+			<div style="display: flex; gap: 24px; padding: 24px; height: calc(100vh - 120px);">
+				<!-- Left: Settings -->
+				<div style="flex: 1; overflow-y: auto; min-width: 0;">
+					<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Project Settings</h3>
+
+					<!-- Attachment -->
+					<div class="taskflow-settings-section" data-ps-attachment-section>
+						<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+							<h3 style="margin: 0;">Attachment</h3>
+							<button class="taskflow-button secondary" type="button" data-ps-edit-attachment>Edit</button>
+						</div>
+						<div data-ps-attachment-display style="background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 16px;">
+							<p style="margin: 0; color: #94a3b8; font-size: 13px;">Loading...</p>
+						</div>
+						<div data-ps-attachment-edit style="display: none;">
+							<div id="psProjectAttachmentDropzone" style="border: 2px dashed var(--taskflow-border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; margin-bottom: 12px;">
+								<p style="margin: 0; color: #64748b; font-size: 13px;">Drop files here or <span style="color: var(--taskflow-primary);">browse</span></p>
+								<p style="margin: 4px 0 0; color: #94a3b8; font-size: 11px;">Any file type up to 25 MB</p>
+							</div>
+							<input type="file" id="psProjectFileInput" style="display: none;" multiple />
+							<div id="psProjectAttachmentsList" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;"></div>
+							<div style="display: flex; gap: 8px; justify-content: flex-end;">
+								<button class="taskflow-button secondary" type="button" data-ps-cancel-attachment>Cancel</button>
+								<button class="taskflow-button primary" type="button" data-ps-save-attachment>Save</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Description -->
+					<div class="taskflow-settings-section" data-ps-description-section>
+						<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+							<h3 style="margin: 0;">Description</h3>
+							<button class="taskflow-button secondary" type="button" data-ps-edit-description>Edit</button>
+						</div>
+						<div data-ps-description-display style="background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 16px;">
+							<div style="color: #334155; font-size: 13px; line-height: 1.6;">${description || '<span style="color: #94a3b8;">No description yet.</span>'}</div>
+						</div>
+						<div data-ps-description-edit style="display: none;">
+							<div id="psProjectDescriptionEditor" style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; min-height: 150px; margin-bottom: 12px;"></div>
+							<div style="display: flex; gap: 8px; justify-content: flex-end;">
+								<button class="taskflow-button secondary" type="button" data-ps-cancel-description>Cancel</button>
+								<button class="taskflow-button primary" type="button" data-ps-save-description>Save</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Team Members -->
+					<div class="taskflow-settings-section">
+						<h3>Team Members</h3>
+						<div class="taskflow-list-view">
+							<table class="taskflow-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; border: 1px solid var(--taskflow-border);">
+								<thead style="background: #f8fafc;">
+									<tr>
+										<th style="padding: 12px; text-align: left;">Employee</th>
+										<th style="padding: 12px; text-align: left;">Role</th>
+										<th style="padding: 12px; text-align: left;">Actions</th>
+									</tr>
+								</thead>
+								<tbody data-ps-member-table-body>
+									${members.map((m, idx) => `
+										<tr style="border-bottom: 1px solid var(--taskflow-border);">
+											<td style="padding: 12px;">${escapeHtml(m.employee_name || m.employee)}</td>
+											<td style="padding: 12px;">${escapeHtml(m.team_role)}</td>
+											<td style="padding: 12px;">
+												<button class="taskflow-button secondary" type="button" data-ps-remove-member="${idx}">Remove</button>
+											</td>
+										</tr>
+									`).join("")}
+									<tr style="background: #f1f5f9;">
+										<td style="padding: 12px; position: relative;">
+											<input type="text" data-ps-emp-search placeholder="Search Employee..." style="padding: 8px; width: 100%; border-radius: 4px; border: 1px solid var(--taskflow-border);">
+											<div data-ps-emp-results style="position: absolute; top: 100%; left: 12px; right: 12px; background: white; border: 1px solid var(--taskflow-border); z-index: 10; max-height: 200px; overflow-y: auto;"></div>
+										</td>
+										<td style="padding: 12px;">
+											<select data-ps-new-member-role style="padding: 8px; width: 100%; border-radius: 4px; border: 1px solid var(--taskflow-border);">
+												${roles.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("")}
+											</select>
+										</td>
+										<td style="padding: 12px;">
+											<button class="taskflow-button primary" type="button" data-ps-save-new-member>Add</button>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+
+				<!-- Right: Comments -->
+				<div style="width: 420px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid var(--taskflow-border); padding-left: 24px;">
+					<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Comments</h3>
+					<div id="psProjectCommentsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+						<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">Loading comments...</div>
+					</div>
+					<div style="background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 12px; position: relative; flex-shrink: 0;">
+						<textarea id="psProjectCommentInput" placeholder="Add a comment... Type @ to mention" style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
+						<div id="psMentionDropdown" style="display: none; position: absolute; left: 12px; bottom: 60px; background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 180px; overflow-y: auto; z-index: 100; min-width: 200px;"></div>
+						<div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+							<button class="taskflow-button primary" type="button" data-ps-post-project-comment>Submit</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		`;
+
+		// --- Attachment Edit Toggle ---
+		const attDisplay = target.querySelector("[data-ps-attachment-display]");
+		const attEdit = target.querySelector("[data-ps-attachment-edit]");
+		target.querySelector("[data-ps-edit-attachment]").addEventListener("click", () => {
+			attDisplay.style.display = "none";
+			attEdit.style.display = "block";
+			loadPsProjectAttachmentsList(projectName, target.querySelector("#psProjectAttachmentsList"));
+		});
+		target.querySelector("[data-ps-cancel-attachment]").addEventListener("click", () => {
+			attDisplay.style.display = "block";
+			attEdit.style.display = "none";
+		});
+		loadProjectAttachments(projectName, attDisplay);
+
+		// Dropzone
+		const dropzone = target.querySelector("#psProjectAttachmentDropzone");
+		const fileInput = target.querySelector("#psProjectFileInput");
+		if (dropzone && fileInput) {
+			dropzone.addEventListener("click", () => fileInput.click());
+			dropzone.addEventListener("dragover", e => { e.preventDefault(); dropzone.style.borderColor = "var(--taskflow-primary)"; });
+			dropzone.addEventListener("dragleave", () => { dropzone.style.borderColor = "var(--taskflow-border)"; });
+			dropzone.addEventListener("drop", e => {
+				e.preventDefault();
+				dropzone.style.borderColor = "var(--taskflow-border)";
+				fileInput.files = e.dataTransfer.files;
+			});
+		}
+
+		// Save attachment
+		target.querySelector("[data-ps-save-attachment]").addEventListener("click", async () => {
+			const psFileInput = target.querySelector("#psProjectFileInput");
+			if (psFileInput && psFileInput.files.length) {
+				for (const file of psFileInput.files) {
+					const formData = new FormData();
+					formData.append("file", file);
+					formData.append("doctype", "Taskflow Project");
+					formData.append("docname", projectName);
+					formData.append("is_private", 0);
+					formData.append("folder", "Home");
+					try {
+						await fetch("/api/method/upload_file", {
+							method: "POST",
+							headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
+							body: formData,
+						});
+					} catch (err) {
+						showMessage(`Failed to upload ${file.name}`);
+					}
+				}
+			}
+			attDisplay.style.display = "block";
+			attEdit.style.display = "none";
+			await loadProjectAttachments(projectName, attDisplay);
+		});
+
+		// --- Description Edit Toggle ---
+		const descDisplay = target.querySelector("[data-ps-description-display]");
+		const descEdit = target.querySelector("[data-ps-description-edit]");
+		let psQuillEditor = null;
+		target.querySelector("[data-ps-edit-description]").addEventListener("click", () => {
+			descDisplay.style.display = "none";
+			descEdit.style.display = "block";
+			if (!psQuillEditor && window.Quill) {
+				psQuillEditor = new Quill("#psProjectDescriptionEditor", {
+					theme: "snow",
+					placeholder: "Enter project description...",
+					modules: {
+						toolbar: [
+							[{ header: [1, 2, 3, false] }],
+							["bold", "italic", "underline"],
+							["link"],
+							[{ list: "ordered" }, { list: "bullet" }],
+							["clean"]
+						],
+					},
+				});
+				if (description) {
+					psQuillEditor.root.innerHTML = description;
+				}
+			}
+		});
+		target.querySelector("[data-ps-cancel-description]").addEventListener("click", () => {
+			descDisplay.style.display = "block";
+			descEdit.style.display = "none";
+		});
+		target.querySelector("[data-ps-save-description]").addEventListener("click", async () => {
+			if (psQuillEditor) {
+				project.description = psQuillEditor.root.innerHTML;
+				await saveProject(project);
+				descDisplay.querySelector("div").innerHTML = project.description || '<span style="color: #94a3b8;">No description yet.</span>';
+			}
+			descDisplay.style.display = "block";
+			descEdit.style.display = "none";
+			showMessage("Description saved successfully.");
+		});
+
+		// --- Employee Search ---
+		let psSelectedEmployeeId = null;
+		const empSearch = target.querySelector("[data-ps-emp-search]");
+		const empResults = target.querySelector("[data-ps-emp-results]");
+		if (empSearch) {
+			empSearch.addEventListener("input", async () => {
+				const q = empSearch.value.trim();
+				if (q.length < 2) { empResults.innerHTML = ""; return; }
+				const results = await searchEmployees(q);
+				empResults.innerHTML = results.map(r => `
+					<div class="ps-emp-result-item" data-emp-id="${escapeHtml(r.value)}" style="padding: 8px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #eee;">
+						${escapeHtml(r.label)}
+					</div>
+				`).join("");
+				empResults.querySelectorAll(".ps-emp-result-item").forEach(item => {
+					item.addEventListener("click", () => {
+						psSelectedEmployeeId = item.dataset.empId;
+						empSearch.value = item.textContent.trim();
+						empResults.innerHTML = "";
+					});
+				});
+			});
+		}
+
+		// Remove member
+		target.querySelectorAll("[data-ps-remove-member]").forEach(btn => {
+			btn.addEventListener("click", () => {
+				const idx = parseInt(btn.dataset.psRemoveMember);
+				project.project_team_members.splice(idx, 1);
+				saveProject(project).then(() => renderProjectSettingsView());
+			});
+		});
+
+		// Add member
+		target.querySelector("[data-ps-save-new-member]").addEventListener("click", () => {
+			const team_role = target.querySelector("[data-ps-new-member-role]").value;
+			if (psSelectedEmployeeId && team_role) {
+				addMember(psSelectedEmployeeId, team_role).then(() => renderProjectSettingsView());
+			} else {
+				showMessage("Please select a valid Employee from the list.");
+			}
+		});
+
+		// --- Comments ---
+		loadPsProjectComments(projectName);
+
+		const commentInput = target.querySelector("#psProjectCommentInput");
+		const mentionDropdown = target.querySelector("#psMentionDropdown");
+		let mentionActive = false;
+		let mentionQuery = "";
+		let mentionStartPos = 0;
+
+		function showPsMentionList(query) {
+			const filtered = members.filter(m => {
+				const label = (m.label || "").toLowerCase();
+				const user = (m.user || "").toLowerCase();
+				const q = query.toLowerCase();
+				return label.includes(q) || user.includes(q);
+			});
+			if (filtered.length === 0) {
+				mentionDropdown.style.display = "none";
+				mentionActive = false;
+				return;
+			}
+			mentionDropdown.innerHTML = filtered.map(m => {
+				const avatarContent = m.user_image
+					? `<img src="${m.user_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
+					: initials(m.label);
+				return `<div class="ps-mention-item" data-user="${escapeHtml(m.user)}" data-label="${escapeHtml(m.label)}" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.15s;">
+					<div style="width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 9px; font-weight: 600; flex-shrink: 0; overflow: hidden;">${avatarContent}</div>
+					<div>
+						<div style="font-size: 12px; font-weight: 500; color: #1e293b;">${escapeHtml(m.label)}</div>
+						<div style="font-size: 10px; color: #94a3b8;">${escapeHtml(m.user)}</div>
+					</div>
+				</div>`;
+			}).join("");
+			mentionDropdown.querySelectorAll(".ps-mention-item").forEach(item => {
+				item.addEventListener("mouseenter", () => { item.style.background = "#f1f5f9"; });
+				item.addEventListener("mouseleave", () => { item.style.background = "transparent"; });
+				item.addEventListener("click", () => {
+					const before = commentInput.value.substring(0, mentionStartPos);
+					const after = commentInput.value.substring(commentInput.selectionStart);
+					commentInput.value = before + "@" + item.dataset.label + " " + after;
+					commentInput.focus();
+					mentionDropdown.style.display = "none";
+					mentionActive = false;
+				});
+			});
+			mentionDropdown.style.display = "block";
+		}
+
+		commentInput.addEventListener("input", () => {
+			const val = commentInput.value;
+			const cursorPos = commentInput.selectionStart;
+			const textBefore = val.substring(0, cursorPos);
+			const atIndex = textBefore.lastIndexOf("@");
+			if (atIndex >= 0 && (atIndex === 0 || textBefore[atIndex - 1] === " " || textBefore[atIndex - 1] === "\n")) {
+				mentionQuery = textBefore.substring(atIndex + 1);
+				if (!mentionQuery.includes(" ")) {
+					mentionActive = true;
+					mentionStartPos = atIndex;
+					showPsMentionList(mentionQuery);
+					return;
+				}
+			}
+			mentionDropdown.style.display = "none";
+			mentionActive = false;
+		});
+
+		commentInput.addEventListener("keydown", (e) => {
+			if (mentionActive && mentionDropdown.style.display === "block") {
+				const items = mentionDropdown.querySelectorAll(".ps-mention-item");
+				const highlighted = mentionDropdown.querySelector(".ps-mention-item[style*='background: #f1f5f9']");
+				let idx = Array.from(items).indexOf(highlighted);
+				if (e.key === "ArrowDown") {
+					e.preventDefault();
+					if (idx < items.length - 1) idx++;
+					items.forEach((item, i) => item.style.background = i === idx ? "#f1f5f9" : "transparent");
+				} else if (e.key === "ArrowUp") {
+					e.preventDefault();
+					if (idx > 0) idx--;
+					items.forEach((item, i) => item.style.background = i === idx ? "#f1f5f9" : "transparent");
+				} else if (e.key === "Enter" && idx >= 0) {
+					e.preventDefault();
+					items[idx].click();
+				} else if (e.key === "Escape") {
+					mentionDropdown.style.display = "none";
+					mentionActive = false;
+				}
+			}
+		});
+
+		document.addEventListener("click", (e) => {
+			if (!mentionDropdown.contains(e.target) && e.target !== commentInput) {
+				mentionDropdown.style.display = "none";
+				mentionActive = false;
+			}
+		});
+
+		target.querySelector("[data-ps-post-project-comment]").addEventListener("click", async () => {
+			const content = commentInput.value.trim();
+			if (!content) { showMessage("Please enter a comment."); return; }
+			const btn = target.querySelector("[data-ps-post-project-comment]");
+			if (btn.disabled) return;
+			btn.disabled = true;
+			try {
+				await apiCall("add_project_comment", { payload: JSON.stringify({ project: projectName, content }) }, "POST");
+				commentInput.value = "";
+				await loadPsProjectComments(projectName);
+				showMessage("Comment added successfully.");
+			} catch (err) {
+				showMessage(err.message || "Failed to add comment.");
+			} finally {
+				btn.disabled = false;
+			}
+		});
+	}
+
+	async function loadPsProjectAttachmentsList(projectName, listEl) {
+		if (!listEl) return;
+		try {
+			const url = new URL("/api/method/frappe.client.get_list", window.location.origin);
+			url.searchParams.set("doctype", "File");
+			url.searchParams.set("filters", JSON.stringify({ attached_to_name: projectName }));
+			url.searchParams.set("fields", JSON.stringify(["name", "file_name", "file_url"]));
+			url.searchParams.set("limit_page_length", "50");
+			const response = await fetch(url.toString(), {
+				method: "GET",
+				headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
+				credentials: "same-origin",
+			});
+			const payload = await response.json();
+			const result = payload.message || payload;
+			listEl.innerHTML = "";
+			if (!result || result.length === 0) {
+				listEl.innerHTML = '<p style="color: #94a3b8; font-size: 12px;">No files uploaded yet.</p>';
+				return;
+			}
+			result.forEach(file => {
+				const div = document.createElement("div");
+				div.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border: 1px solid var(--taskflow-border); border-radius: 6px;";
+				div.innerHTML = `
+					<span style="flex: 1; font-size: 12px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(file.file_name)}</span>
+					<button class="taskflow-button secondary" type="button" data-ps-delete-file="${file.name}" style="padding: 2px 8px; font-size: 11px;">×</button>
+				`;
+				listEl.appendChild(div);
+			});
+			listEl.querySelectorAll("[data-ps-delete-file]").forEach(btn => {
+				btn.addEventListener("click", async () => {
+					try {
+						const deleteUrl = new URL("/api/method/frappe.client.delete", window.location.origin);
+						await fetch(deleteUrl.toString(), {
+							method: "POST",
+							headers: {
+								"X-Frappe-CSRF-Token": window.csrf_token || "",
+								"Content-Type": "application/x-www-form-urlencoded",
+							},
+							credentials: "same-origin",
+							body: new URLSearchParams({ doctype: "File", name: btn.dataset.psDeleteFile }),
+						});
+						await loadPsProjectAttachmentsList(projectName, listEl);
+					} catch (err) {
+						showMessage("Failed to delete file.");
+					}
+				});
+			});
+		} catch (err) {
+			listEl.innerHTML = '<p style="color: #94a3b8; font-size: 12px;">No files uploaded yet.</p>';
+		}
+	}
+
+	async function loadPsProjectComments(projectName) {
+		const listEl = document.getElementById("psProjectCommentsList");
+		if (!listEl) return;
+		try {
+			const result = await apiCall("get_project_comments", { project: projectName });
+			const comments = result.comments || [];
+			if (comments.length === 0) {
+				listEl.innerHTML = `<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">No comments yet. Start the conversation.</div>`;
+				return;
+			}
+			listEl.innerHTML = "";
+			comments.forEach(c => {
+				const div = document.createElement("div");
+				div.style.cssText = "display: flex; gap: 10px; padding: 12px; background: white; border: 1px solid var(--taskflow-border); border-radius: 8px;";
+				const avatarContent = c.author_image
+					? `<img src="${c.author_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
+					: initials(c.author_name);
+				div.innerHTML = `
+					<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600; flex-shrink: 0; overflow: hidden;">${avatarContent}</div>
+					<div style="flex: 1;">
+						<div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px;">
+							<span style="font-size: 13px; font-weight: 500; color: #1e293b;">${escapeHtml(c.author_name)}</span>
+							<span style="font-size: 11px; color: #94a3b8;">${prettyDate(c.creation)}</span>
+						</div>
+						<div style="font-size: 13px; color: #475569; line-height: 1.5; background: #f8fafc; padding: 10px 12px; border-radius: 0 8px 8px 8px; border: 1px solid #e2e8f0;">${c.content}</div>
+					</div>
+				`;
+				listEl.appendChild(div);
+			});
+			listEl.scrollTop = listEl.scrollHeight;
+		} catch (err) {
+			listEl.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444; font-size: 13px;">Failed to load comments.</div>`;
+		}
 	}
 
 	async function loadProjectAttachments(projectName, displayEl) {
@@ -4886,6 +5354,7 @@
 			calendar: "Calendar",
 			reports: "Reports",
 			settings: "Settings",
+			"project-settings": "Project Settings",
 			team: "Team",
 			"my-tasks": "Tasks",
 			dashboard: "Dashboard",
