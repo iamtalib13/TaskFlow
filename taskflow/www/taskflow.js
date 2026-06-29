@@ -5044,9 +5044,9 @@
 			}
 
 			if (namesOnly) {
-				displayEl.innerHTML = result.map(file =>
-					`<a href="${escapeHtml(file.file_url)}" target="_blank" style="display: block; padding: 8px 12px; margin-bottom: 6px; border: 1px solid var(--taskflow-border); border-radius: 6px; background: white; color: var(--taskflow-primary); font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${escapeHtml(file.file_name)}</a>`
-				).join("");
+				displayEl.innerHTML = `<div style="display: flex; flex-wrap: wrap; gap: 8px;">${result.map(file =>
+					`<a href="${escapeHtml(file.file_url)}" target="_blank" style="display: inline-block; padding: 6px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; background: white; color: var(--taskflow-primary); font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${escapeHtml(file.file_name)}</a>`
+				).join("")}</div>`;
 				return;
 			}
 
