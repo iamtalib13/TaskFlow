@@ -4568,7 +4568,7 @@
 			return;
 		}
 
-		const members = project.project_team_members || [];
+		const members = (state.projectWorkspace && state.projectWorkspace.team_members) || [];
 		const roles = ["Team Lead", "Project Manager", "Team Member", "Viewer", "Auditor", "Coordinator"];
 		const description = project.description || "";
 		const projectName = project.name || "";
