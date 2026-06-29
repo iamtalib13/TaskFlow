@@ -80,6 +80,7 @@ _ALLOWED_PROJECT_FIELDS = [
     "description",
     "is_template",
     "is_archived",
+    "_attachment",
 ]
 
 _ALLOWED_TASK_FIELDS = [
