@@ -968,7 +968,7 @@ def get_project_comments(project: str) -> dict:
 
 @frappe.whitelist()
 def add_project_comment(payload: str) -> dict:
-    """Add a comment to a Taskflow Project."""
+    """Add a comment to a Taskflow Project and email @mentioned members."""
     _require_login()
     data = json.loads(payload) if isinstance(payload, str) else payload
     project_name = data.get("project")
@@ -996,15 +996,66 @@ def add_project_comment(payload: str) -> dict:
     frappe.db.commit()
 
     user_details = _get_user_details(frappe.session.user)
+    sender_name = (user_details and user_details.full_name) or frappe.session.user
+
+    # Extract @mentions and send emails
+    _send_mention_emails(project_name, content, sender_name, frappe.session.user)
 
     return {
         "name": comment.name,
         "content": comment.content,
         "owner": comment.owner,
-        "author_name": (user_details and user_details.full_name) or frappe.session.user,
+        "author_name": sender_name,
         "author_image": user_details and user_details.user_image,
         "creation": comment.creation,
     }
+
+
+def _send_mention_emails(project_name: str, content: str, sender_name: str, sender_email: str):
+    """Parse @mentions from content and send emails to mentioned team members."""
+    import re
+
+    mentioned_names = re.findall(r"@([\w\s]+?)(?=\s@|\s|$|[.,!?;:])", content)
+    if not mentioned_names:
+        return
+
+    project_doc = frappe.get_doc("Taskflow Project", project_name)
+    members = project_doc.get("project_team_members", [])
+    if not members:
+        return
+
+    employee_ids = [m.employee for m in members if m.employee]
+    employee_details = _bulk_employee_details(employee_ids)
+
+    # Build label -> user_id map
+    label_to_user = {}
+    for emp_id, details in employee_details.items():
+        label = details.get("employee_name") or emp_id
+        user_id = details.get("user_id")
+        if user_id:
+            label_to_user[label.lower().strip()] = user_id
+
+    emailed = set()
+    for name in mentioned_names:
+        name_lower = name.lower().strip()
+        user_id = label_to_user.get(name_lower)
+        if user_id and user_id not in emailed and user_id != sender_email:
+            emailed.add(user_id)
+            try:
+                frappe.sendmail(
+                    recipients=[user_id],
+                    subject=f"Comment on Project: {project_name}",
+                    message=f"""
+                        <p><strong>{frappe.utils.escape_html(sender_name)}</strong> mentioned you in a comment on project <strong>{frappe.utils.escape_html(project_name)}</strong>:</p>
+                        <blockquote style="border-left: 3px solid #4f6ef7; padding: 8px 12px; margin: 8px 0; background: #f8fafc; color: #334155;">
+                            {content}
+                        </blockquote>
+                        <p><a href="/taskflow?mode=dashboard&project={frappe.utils.escape_html(project_name)}&view=files">View Comment</a></p>
+                    """,
+                    now=True,
+                )
+            except Exception:
+                pass
 
 
 @frappe.whitelist()
