@@ -995,8 +995,8 @@ def add_project_comment(payload: str) -> dict:
     comment.insert(ignore_permissions=True)
     frappe.db.commit()
 
-    user_details = _get_user_details(frappe.session.user)
-    sender_name = (user_details and user_details.full_name) or frappe.session.user
+    full_name, user_image = _get_user_details(frappe.session.user)
+    sender_name = full_name or frappe.session.user
 
     # Extract @mentions and send emails
     _send_mention_emails(project_name, content, sender_name, frappe.session.user)
@@ -1006,7 +1006,7 @@ def add_project_comment(payload: str) -> dict:
         "content": comment.content,
         "owner": comment.owner,
         "author_name": sender_name,
-        "author_image": user_details and user_details.user_image,
+        "author_image": user_image,
         "creation": comment.creation,
     }
 
