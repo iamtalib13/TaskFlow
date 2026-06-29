@@ -4310,6 +4310,7 @@
 
 		const description = project.description || "";
 		const projectName = project.name || "";
+		const attachment = project._attachment || "";
 
 		target.innerHTML = `
 			<div class="taskflow-settings-section" data-attachment-section>
@@ -4318,16 +4319,14 @@
 					<button class="taskflow-button secondary" type="button" data-edit-attachment>Edit</button>
 				</div>
 				<div data-attachment-display style="background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 16px;">
-					<p style="margin: 0; color: #64748b; font-size: 13px;">Click Edit to manage project attachments.</p>
+					${attachment
+						? `<a href="${escapeHtml(attachment)}" target="_blank" style="color: var(--taskflow-primary); font-size: 13px; text-decoration: none;">${escapeHtml(attachment.split('/').pop())}</a>`
+						: '<p style="margin: 0; color: #94a3b8; font-size: 13px;">No attachment yet.</p>'
+					}
 				</div>
 				<div data-attachment-edit style="display: none;">
-					<div id="projectAttachmentDropzone" style="border: 2px dashed var(--taskflow-border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; margin-bottom: 12px;">
-						<p style="margin: 0; color: #64748b; font-size: 13px;">Drop files here or <span style="color: var(--taskflow-primary);">browse</span></p>
-						<p style="margin: 4px 0 0; color: #94a3b8; font-size: 11px;">Any file type up to 25 MB</p>
-					</div>
-					<input type="file" id="projectFileInput" style="display: none;" multiple />
-					<div id="projectAttachmentsList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;"></div>
-					<div style="display: flex; gap: 8px; justify-content: flex-end;">
+					<input type="file" id="projectAttachmentInput" style="width: 100%; padding: 10px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px;" />
+					<div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px;">
 						<button class="taskflow-button secondary" type="button" data-cancel-attachment>Cancel</button>
 						<button class="taskflow-button primary" type="button" data-save-attachment>Save</button>
 					</div>
@@ -4402,11 +4401,11 @@
 		const editAttachmentBtn = target.querySelector("[data-edit-attachment]");
 		const cancelAttachmentBtn = target.querySelector("[data-cancel-attachment]");
 		const saveAttachmentBtn = target.querySelector("[data-save-attachment]");
+		const attachmentInput = target.querySelector("#projectAttachmentInput");
 
-		editAttachmentBtn.addEventListener("click", async () => {
+		editAttachmentBtn.addEventListener("click", () => {
 			attachmentDisplay.style.display = "none";
 			attachmentEdit.style.display = "block";
-			await loadProjectAttachments(projectName);
 		});
 
 		cancelAttachmentBtn.addEventListener("click", () => {
@@ -4415,44 +4414,37 @@
 		});
 
 		saveAttachmentBtn.addEventListener("click", async () => {
+			const file = attachmentInput.files[0];
+			if (file) {
+				const formData = new FormData();
+				formData.append("file", file);
+				formData.append("doctype", "Taskflow Project");
+				formData.append("docname", projectName);
+				formData.append("is_private", 0);
+				formData.append("folder", "Home");
+
+				try {
+					const response = await fetch("/api/method/upload_file", {
+						method: "POST",
+						headers: { "X-Frappe-CSRF-Token": window.csrf_token || "" },
+						body: formData,
+					});
+					if (!response.ok) throw new Error("Upload failed");
+					const result = await response.json();
+					const fileUrl = result.message?.file_url || "";
+
+					project._attachment = fileUrl;
+					await saveProject(project);
+
+					attachmentDisplay.innerHTML = `<a href="${escapeHtml(fileUrl)}" target="_blank" style="color: var(--taskflow-primary); font-size: 13px; text-decoration: none;">${escapeHtml(file.name)}</a>`;
+					showMessage("Attachment saved successfully.");
+				} catch (err) {
+					showMessage("Failed to upload file.");
+				}
+			}
 			attachmentDisplay.style.display = "block";
 			attachmentEdit.style.display = "none";
-			showMessage("Attachments saved successfully.");
 		});
-
-		// File Upload Handlers
-		const dropzone = target.querySelector("#projectAttachmentDropzone");
-		const fileInput = target.querySelector("#projectFileInput");
-
-		if (dropzone && fileInput) {
-			dropzone.addEventListener("click", () => fileInput.click());
-
-			dropzone.addEventListener("dragover", (e) => {
-				e.preventDefault();
-				dropzone.style.borderColor = "var(--taskflow-primary)";
-				dropzone.style.background = "rgba(59, 130, 246, 0.05)";
-			});
-
-			dropzone.addEventListener("dragleave", () => {
-				dropzone.style.borderColor = "var(--taskflow-border)";
-				dropzone.style.background = "transparent";
-			});
-
-			dropzone.addEventListener("drop", (e) => {
-				e.preventDefault();
-				dropzone.style.borderColor = "var(--taskflow-border)";
-				dropzone.style.background = "transparent";
-				if (e.dataTransfer.files.length) {
-					handleProjectFileUpload(e.dataTransfer.files, projectName);
-				}
-			});
-
-			fileInput.addEventListener("change", (e) => {
-				if (e.target.files.length) {
-					handleProjectFileUpload(e.target.files, projectName);
-				}
-			});
-		}
 
 		// Description Edit Toggle
 		const descriptionDisplay = target.querySelector("[data-description-display]");
@@ -4544,78 +4536,6 @@
 				showMessage("Please select a valid Employee from the list.");
 			}
 		});
-	}
-
-	async function loadProjectAttachments(projectName) {
-		try {
-			const result = await apiCall("frappe.client.get_list", {
-				doctype: "File",
-				filters: JSON.stringify({ attached_to_name: projectName }),
-				fields: JSON.stringify(["name", "file_name", "file_url"]),
-				limit_page_length: 50,
-			}, "POST");
-
-			const listEl = document.getElementById("projectAttachmentsList");
-			if (!listEl) return;
-
-			listEl.innerHTML = "";
-			if (!result || result.length === 0) {
-				listEl.innerHTML = '<p style="color: #94a3b8; font-size: 12px;">No attachments yet.</p>';
-				return;
-			}
-
-			result.forEach(file => {
-				const div = document.createElement("div");
-				div.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border: 1px solid var(--taskflow-border); border-radius: 6px;";
-				div.innerHTML = `
-					<span style="flex: 1; font-size: 12px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(file.file_name)}</span>
-					<button class="taskflow-button secondary" type="button" data-delete-file="${file.name}" style="padding: 2px 8px; font-size: 11px;">×</button>
-				`;
-				listEl.appendChild(div);
-			});
-
-			listEl.querySelectorAll("[data-delete-file]").forEach(btn => {
-				btn.addEventListener("click", async () => {
-					try {
-						await apiCall("frappe.client.delete", { doctype: "File", name: btn.dataset.deleteFile }, "POST");
-						await loadProjectAttachments(projectName);
-					} catch (err) {
-						showMessage("Failed to delete file.");
-					}
-				});
-			});
-		} catch (err) {
-			console.error("Failed to load attachments:", err);
-		}
-	}
-
-	async function handleProjectFileUpload(files, projectName) {
-		for (const file of files) {
-			try {
-				const formData = new FormData();
-				formData.append("file", file);
-				formData.append("doctype", "Taskflow Project");
-				formData.append("docname", projectName);
-				formData.append("is_private", 0);
-				formData.append("folder", "Home");
-
-				const response = await fetch("/api/method/upload_file", {
-					method: "POST",
-					headers: {
-						"X-Frappe-CSRF-Token": window.csrf_token || "",
-					},
-					body: formData,
-				});
-
-				if (!response.ok) {
-					throw new Error("Upload failed");
-				}
-			} catch (err) {
-				console.error("Failed to upload file:", err);
-				showMessage(`Failed to upload ${file.name}`);
-			}
-		}
-		await loadProjectAttachments(projectName);
 	}
 
 	async function renderProjectCommentsView() {

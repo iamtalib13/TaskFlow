@@ -281,6 +281,7 @@ def _serialize_project(
         "project_lead": project.project_lead,
         "project_lead_user": project.project_lead_user,
         "description": project.description,
+        "_attachment": getattr(project, "_attachment", None),
         "project_team_members": [
             {
                 "employee": member.employee,
