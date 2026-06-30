@@ -4589,13 +4589,12 @@
 			<div style="display: flex; gap: 24px; padding: 24px; height: calc(100vh - 120px); overflow: hidden;">
 				<!-- Left: Settings -->
 				<div style="flex: 1; overflow-y: auto; min-width: 0; padding-bottom: 150px;">
-					<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Project Settings</h3>
 
 					<!-- Attachment -->
 					<div class="taskflow-settings-section" data-ps-attachment-section>
 						<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
 							<h3 style="margin: 0;">Attachment</h3>
-							<button class="taskflow-button secondary" type="button" data-ps-edit-attachment>Edit</button>
+							<button class="taskflow-button secondary" type="button" data-ps-edit-attachment>Add</button>
 						</div>
 						<div data-ps-attachment-display style="background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 16px;">
 							<p style="margin: 0; color: #94a3b8; font-size: 13px;">Loading...</p>
@@ -4694,12 +4693,15 @@
 		// --- Attachment Edit Toggle ---
 		const attDisplay = target.querySelector("[data-ps-attachment-display]");
 		const attEdit = target.querySelector("[data-ps-attachment-edit]");
-		target.querySelector("[data-ps-edit-attachment]").addEventListener("click", () => {
+		const attAddBtn = target.querySelector("[data-ps-edit-attachment]");
+		attAddBtn.addEventListener("click", () => {
+			attAddBtn.style.display = "none";
 			attDisplay.style.display = "none";
 			attEdit.style.display = "block";
 			loadPsProjectAttachmentsList(projectName, target.querySelector("#psProjectAttachmentsList"));
 		});
 		target.querySelector("[data-ps-cancel-attachment]").addEventListener("click", () => {
+			attAddBtn.style.display = "";
 			attDisplay.style.display = "block";
 			attEdit.style.display = "none";
 		});
@@ -4750,7 +4752,9 @@
 		const descDisplay = target.querySelector("[data-ps-description-display]");
 		const descEdit = target.querySelector("[data-ps-description-edit]");
 		let psQuillEditor = null;
-		target.querySelector("[data-ps-edit-description]").addEventListener("click", () => {
+		const descAddBtn = target.querySelector("[data-ps-edit-description]");
+		descAddBtn.addEventListener("click", () => {
+			descAddBtn.style.display = "none";
 			descDisplay.style.display = "none";
 			descEdit.style.display = "block";
 			if (!psQuillEditor && window.Quill) {
@@ -4773,6 +4777,7 @@
 			}
 		});
 		target.querySelector("[data-ps-cancel-description]").addEventListener("click", () => {
+			descAddBtn.style.display = "";
 			descDisplay.style.display = "block";
 			descEdit.style.display = "none";
 		});
@@ -4782,6 +4787,7 @@
 				await saveProject(project);
 				descDisplay.querySelector("div").innerHTML = project.description || '<span style="color: #94a3b8;">No description yet.</span>';
 			}
+			descAddBtn.style.display = "";
 			descDisplay.style.display = "block";
 			descEdit.style.display = "none";
 			showMessage("Description saved successfully.");
