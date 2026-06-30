@@ -737,13 +737,24 @@ def save_task(payload: str) -> dict:
                 company_email = frappe.db.get_value("Employee", employee_name, "company_email")
                 if not company_email:
                     continue
+                creator_name = frappe.db.get_value("User", current_user, "full_name") or current_user
+                description_html = doc.description or "No description provided."
                 try:
                     frappe.sendmail(
                         recipients=[company_email],
                         subject=f"New Task Assigned: {doc.task_title}",
                         message=f"""
                             <p>You have been assigned a new task:</p>
-                            <p><strong>{frappe.utils.escape_html(doc.task_title)}</strong></p>
+                            <h3 style="margin: 12px 0 4px;">{frappe.utils.escape_html(doc.task_title)}</h3>
+                            <table style="border-collapse: collapse; font-size: 13px; margin: 12px 0;">
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Priority:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(doc.priority or 'Medium')}</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Start Date:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(str(doc.start_date or 'Not set'))}</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Due Date:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(str(doc.due_date or 'Not set'))}</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Created By:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(creator_name)}</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Status:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(doc.status or 'Open')}</td></tr>
+                            </table>
+                            <p style="font-weight: 600;">Description:</p>
+                            <div style="border-left: 3px solid #4f6ef7; padding: 8px 12px; margin: 8px 0; background: #f8fafc; color: #334155;">{description_html}</div>
                             <p><a href="/taskflow?mode=dashboard&project={frappe.utils.escape_html(doc.project or '')}&view=task&task={frappe.utils.escape_html(doc.name)}">View Task</a></p>
                         """,
                         now=True,
