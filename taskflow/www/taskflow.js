@@ -9,7 +9,7 @@
 		"Cancelled",
 		"Overdue",
 	];
-	const TASK_VIEWS = ["list", "kanban", "dashboard", "timeline", "files", "settings", "project-settings"];
+	const TASK_VIEWS = ["list", "kanban", "dashboard", "timeline", "files", "settings", "project-settings", "work-history"];
 	const NAV_MODES = ["dashboard", "my-tasks", "calendar", "reports", "team", "settings"];
 	const NAV_PLACEHOLDER_MODES = ["reports", "settings"];
 	const LIST_ROW_HEIGHT = 48;
@@ -274,6 +274,7 @@
 		refs.filesView = document.querySelector("[data-files-view]");
 		refs.settingsView = document.querySelector("[data-settings-view]");
 		refs.projectSettingsView = document.querySelector("[data-project-settings-view]");
+		refs.workHistoryView = document.querySelector("[data-work-history-view]");
 		refs.projectTitle = document.querySelector("[data-project-title]");
 		refs.projectKpis = document.querySelector("[data-project-kpis]");
 		refs.viewToggle = document.querySelector("[data-task-view-toggle]");
@@ -2072,6 +2073,7 @@
 			{ el: refs.filesView, key: "files" },
 			{ el: refs.settingsView, key: "settings" },
 			{ el: refs.projectSettingsView, key: "project-settings" },
+			{ el: refs.workHistoryView, key: "work-history" },
 		];
 
 		views.forEach((v) => {
