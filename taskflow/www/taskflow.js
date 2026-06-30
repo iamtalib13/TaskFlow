@@ -920,6 +920,10 @@
 		const requestId = ++state.projectRequestId;
 		state.selectedProject = projectName;
 		setNavMode("dashboard", { updateUrl: false, replace: options.replace });
+
+		// Show project-specific tabs
+		document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.remove("taskflow-hidden"));
+
 		if (options.updateUrl !== false) updateUrlState();
 		try {
 			const workspace = await apiCall("get_project_workspace", { project: projectName });
@@ -970,6 +974,7 @@
 			state.projectWorkspace = null;
 			toolbar?.classList.remove("taskflow-hidden");
 			tabs?.classList.add("taskflow-hidden");
+			document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.add("taskflow-hidden"));
 			if (refs.projectTitle) refs.projectTitle.textContent = "Calendar";
 			if (refs.projectKpis) refs.projectKpis.innerHTML = "";
 			if (breadcrumb) breadcrumb.textContent = "Calendar";
@@ -984,6 +989,7 @@
 			state.projectWorkspace = null;
 			toolbar?.classList.add("taskflow-hidden");
 			tabs?.classList.add("taskflow-hidden");
+			document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.add("taskflow-hidden"));
 
 			state.selectedTeam = state.selectedTeam || "all";
 			const teamName = getSelectedTeamName();
@@ -1013,6 +1019,12 @@
 			// SHOW PROJECT UI
 			toolbar?.classList.remove("taskflow-hidden");
 			tabs?.classList.remove("taskflow-hidden");
+			// Show project-specific tabs only if a project is selected
+			if (state.selectedProject) {
+				document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.remove("taskflow-hidden"));
+			} else {
+				document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.add("taskflow-hidden"));
+			}
 			if (refs.newTaskButton) refs.newTaskButton.disabled = false;
 			updateNavActive();
 			renderProjectList();
