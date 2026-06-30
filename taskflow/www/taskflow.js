@@ -4968,7 +4968,7 @@
 
 		const monthMap = {};
 		tasks.forEach((task) => {
-			const dateStr = task.modified || task.creation;
+			const dateStr = task.completed_on;
 			if (!dateStr) return;
 			const d = new Date(dateStr);
 			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
