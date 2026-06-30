@@ -2103,6 +2103,8 @@
 			renderSettingsView();
 		} else if (state.taskView === "project-settings") {
 			renderProjectSettingsView();
+		} else if (state.taskView === "work-history") {
+			renderWorkHistoryView();
 		}
 	}
 
@@ -4950,6 +4952,73 @@
 			} finally {
 				btn.disabled = false;
 			}
+		});
+	}
+
+	function renderWorkHistoryView() {
+		const target = refs.workHistoryView;
+		if (!target) return;
+		const project = state.projectWorkspace && state.projectWorkspace.project;
+		if (!project) {
+			target.innerHTML = `<div class="taskflow-empty">Select a project to view work history.</div>`;
+			return;
+		}
+
+		const tasks = (state.projectWorkspace && state.projectWorkspace.tasks) || [];
+
+		const monthMap = {};
+		tasks.forEach((task) => {
+			const dateStr = task.modified || task.creation;
+			if (!dateStr) return;
+			const d = new Date(dateStr);
+			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+			const label = d.toLocaleString("en-US", { year: "numeric", month: "long" });
+			if (!monthMap[key]) monthMap[key] = { label, tasks: [] };
+			monthMap[key].tasks.push(task);
+		});
+
+		const sortedKeys = Object.keys(monthMap).sort().reverse();
+
+		if (sortedKeys.length === 0) {
+			target.innerHTML = `<div class="taskflow-empty">No task activity found.</div>`;
+			return;
+		}
+
+		target.innerHTML = sortedKeys.map((key) => {
+			const group = monthMap[key];
+			const items = group.tasks.map((t) => {
+				const statusColor = {
+					"Completed": "#22c55e",
+					"In Progress": "#4f6ef7",
+					"Review": "#f59e0b",
+					"On Hold": "#94a3b8",
+					"Cancelled": "#ef4444",
+					"Overdue": "#ef4444",
+				}[t.status] || "#64748b";
+				return `
+					<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
+						<span style="width: 8px; height: 8px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;"></span>
+						<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
+						<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
+					</div>
+				`;
+			}).join("");
+			return `
+				<div style="margin-bottom: 24px;">
+					<h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(group.label)}</h3>
+					<div style="display: flex; flex-direction: column; gap: 6px;">
+						${items}
+					</div>
+				</div>
+			`;
+		}).join("");
+
+		target.querySelectorAll("[data-work-history-task]").forEach((el) => {
+			el.addEventListener("click", () => {
+				const taskName = el.dataset.workHistoryTask;
+				const task = tasks.find((t) => t.name === taskName);
+				if (task) openTaskModal(task);
+			});
 		});
 	}
 
