@@ -672,6 +672,10 @@ textarea:focus-visible,
 	overflow-y: hidden;
 }
 
+.taskflow-settings-wrapper {
+	overflow: hidden;
+}
+
 .taskflow-header {
 	height: 64px;
 	padding: 0 32px;

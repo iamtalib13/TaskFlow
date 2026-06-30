@@ -4586,7 +4586,7 @@
 		const projectName = project.name || "";
 
 		target.innerHTML = `
-			<div style="display: flex; gap: 24px; padding: 24px; height: calc(100vh - 120px);">
+			<div style="display: flex; gap: 24px; padding: 24px; height: calc(100vh - 120px); overflow: hidden;">
 				<!-- Left: Settings -->
 				<div style="flex: 1; overflow-y: auto; min-width: 0;">
 					<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Project Settings</h3>
