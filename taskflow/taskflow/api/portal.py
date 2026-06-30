@@ -727,6 +727,7 @@ def save_task(payload: str) -> dict:
         if is_new and assignee_users:
             current_user = frappe.session.user
             emailed = set()
+            project_name_val = doc.project and frappe.db.get_value("Taskflow Project", doc.project, "project_name") or ""
             for user_id in assignee_users:
                 if user_id == current_user or user_id in emailed:
                     continue
@@ -739,28 +740,38 @@ def save_task(payload: str) -> dict:
                     continue
                 creator_name = frappe.db.get_value("User", current_user, "full_name") or current_user
                 description_html = doc.description or "No description provided."
+                task_title_esc = frappe.utils.escape_html(doc.task_title or "")
+                project_esc = frappe.utils.escape_html(project_name_val or "Not set")
+                priority_esc = frappe.utils.escape_html(doc.priority or "Medium")
+                start_date_esc = frappe.utils.escape_html(str(doc.start_date or "Not set"))
+                due_date_esc = frappe.utils.escape_html(str(doc.due_date or "Not set"))
+                assigned_by_esc = frappe.utils.escape_html(creator_name)
+                status_esc = frappe.utils.escape_html(doc.status or "Open")
+                task_name_esc = frappe.utils.escape_html(doc.name or "")
+                project_id_esc = frappe.utils.escape_html(doc.project or "")
                 try:
                     frappe.sendmail(
                         recipients=[company_email],
-                        subject=f"New Task Assigned: {doc.task_title}",
-                        message=f"""
+                        subject="New Task Assigned: " + (doc.task_title or ""),
+                        message="""
                             <p>You have been assigned a new task:</p>
-                            <h3 style="margin: 12px 0 4px;">{frappe.utils.escape_html(doc.task_title)}</h3>
+                            <h3 style="margin: 12px 0 4px;">""" + task_title_esc + """</h3>
                             <table style="border-collapse: collapse; font-size: 13px; margin: 12px 0;">
-                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Priority:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(doc.priority or 'Medium')}</td></tr>
-                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Start Date:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(str(doc.start_date or 'Not set'))}</td></tr>
-                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Due Date:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(str(doc.due_date or 'Not set'))}</td></tr>
-                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Assigned by:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(creator_name)}</td></tr>
-                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Status:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(doc.status or 'Open')}</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Project:</td><td style="padding: 4px 0;">""" + project_esc + """</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Priority:</td><td style="padding: 4px 0;">""" + priority_esc + """</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Start Date:</td><td style="padding: 4px 0;">""" + start_date_esc + """</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Due Date:</td><td style="padding: 4px 0;">""" + due_date_esc + """</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Assigned by:</td><td style="padding: 4px 0;">""" + assigned_by_esc + """</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Status:</td><td style="padding: 4px 0;">""" + status_esc + """</td></tr>
                             </table>
                             <p style="font-weight: 600;">Description:</p>
-                            <div style="border-left: 3px solid #4f6ef7; padding: 8px 12px; margin: 8px 0; background: #f8fafc; color: #334155;">{description_html}</div>
-                            <p><a href="/taskflow?mode=dashboard&project={frappe.utils.escape_html(doc.project or '')}&view=task&task={frappe.utils.escape_html(doc.name)}">View Task</a></p>
+                            <div style="border-left: 3px solid #4f6ef7; padding: 8px 12px; margin: 8px 0; background: #f8fafc; color: #334155;">""" + description_html + """</div>
+                            <p><a href="/taskflow?mode=dashboard&project=""" + project_id_esc + """&view=task&task=""" + task_name_esc + """">View Task</a></p>
                         """,
                         now=True,
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    frappe.log_error(f"Task assignment email failed: {e}", "Taskflow Email")
 
         return {"name": doc.name}
     except Exception as error:
