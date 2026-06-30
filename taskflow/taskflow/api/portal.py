@@ -1243,7 +1243,8 @@ def get_assigned_tasks(user_id: str | None = None, project: str | None = None, t
 
     filters = {}
     if user_id and user_id != "all":
-        task_names = frappe.get_all(
+        # Find tasks via ToDo table
+        todo_task_names = frappe.get_all(
             "ToDo",
             filters={
                 "allocated_to": user_id,
@@ -1252,6 +1253,16 @@ def get_assigned_tasks(user_id: str | None = None, project: str | None = None, t
             },
             pluck="reference_name",
         )
+        # Also find tasks via Task Assignment child table (table_gqbl)
+        child_task_names = frappe.get_all(
+            "Task Assignment",
+            filters={
+                "user_id": user_id,
+                "parenttype": "Taskflow Task",
+            },
+            pluck="parent",
+        )
+        task_names = list(set(todo_task_names + child_task_names))
         if not task_names:
             return []
         filters["name"] = ["in", task_names]
