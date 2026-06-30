@@ -1019,8 +1019,8 @@
 			// SHOW PROJECT UI
 			toolbar?.classList.remove("taskflow-hidden");
 			tabs?.classList.remove("taskflow-hidden");
-			// Show project-specific tabs only if a project is selected
-			if (state.selectedProject) {
+			// Show project-specific tabs only in dashboard mode with a project selected
+			if (mode === "dashboard" && state.selectedProject) {
 				document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.remove("taskflow-hidden"));
 			} else {
 				document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.add("taskflow-hidden"));
