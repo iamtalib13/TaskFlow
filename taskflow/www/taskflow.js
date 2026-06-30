@@ -4588,7 +4588,7 @@
 		target.innerHTML = `
 			<div style="display: flex; gap: 24px; padding: 24px; height: calc(100vh - 120px); overflow: hidden;">
 				<!-- Left: Settings -->
-				<div style="flex: 1; overflow-y: auto; min-width: 0;">
+				<div style="flex: 1; overflow-y: auto; min-width: 0; padding-bottom: 150px;">
 					<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Project Settings</h3>
 
 					<!-- Attachment -->
@@ -4675,7 +4675,7 @@
 				</div>
 
 				<!-- Right: Comments -->
-				<div style="width: 420px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid var(--taskflow-border); padding-left: 24px; overflow: hidden;">
+				<div style="width: 420px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid var(--taskflow-border); padding-left: 24px; padding-bottom: 150px;">
 					<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Comments</h3>
 					<div id="psProjectCommentsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
 						<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">Loading comments...</div>
