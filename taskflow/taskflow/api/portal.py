@@ -750,7 +750,7 @@ def save_task(payload: str) -> dict:
                                 <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Priority:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(doc.priority or 'Medium')}</td></tr>
                                 <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Start Date:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(str(doc.start_date or 'Not set'))}</td></tr>
                                 <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Due Date:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(str(doc.due_date or 'Not set'))}</td></tr>
-                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Created By:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(creator_name)}</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Assigned by:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(creator_name)}</td></tr>
                                 <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Status:</td><td style="padding: 4px 0;">{frappe.utils.escape_html(doc.status or 'Open')}</td></tr>
                             </table>
                             <p style="font-weight: 600;">Description:</p>
