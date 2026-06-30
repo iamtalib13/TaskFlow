@@ -699,6 +699,7 @@ def save_task(payload: str) -> dict:
                 doc.set(fieldname, data.get(fieldname))
 
         assignee_users = []
+        newly_added_users = []
 
         # Sync _assign (user IDs/emails) into table_gqbl — insert only new rows
         if "_assign" in data:
@@ -711,6 +712,7 @@ def save_task(payload: str) -> dict:
 
             for user_id in assignee_users:
                 if user_id not in existing_user_ids:
+                    newly_added_users.append(user_id)
                     doc.append("table_gqbl", {"user_id": user_id})
 
         if "checklist" in data:
@@ -724,11 +726,11 @@ def save_task(payload: str) -> dict:
 
         doc.save(ignore_permissions=False, ignore_version=not is_new)
 
-        if is_new and assignee_users:
+        if newly_added_users:
             current_user = frappe.session.user
             emailed = set()
             project_name_val = doc.project and frappe.db.get_value("Taskflow Project", doc.project, "project_name") or ""
-            for user_id in assignee_users:
+            for user_id in newly_added_users:
                 if user_id == current_user or user_id in emailed:
                     continue
                 emailed.add(user_id)
@@ -752,9 +754,9 @@ def save_task(payload: str) -> dict:
                 try:
                     frappe.sendmail(
                         recipients=[company_email],
-                        subject="New Task Assigned: " + (doc.task_title or ""),
+                        subject="New Task Assigned: " + (doc.task_title or "") if is_new else "Added to Task: " + (doc.task_title or ""),
                         message="""
-                            <p>You have been assigned a new task:</p>
+                            <p>You have been assigned to a task:</p>
                             <h3 style="margin: 12px 0 4px;">""" + task_title_esc + """</h3>
                             <table style="border-collapse: collapse; font-size: 13px; margin: 12px 0;">
                                 <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Project:</td><td style="padding: 4px 0;">""" + project_esc + """</td></tr>
