@@ -698,6 +698,8 @@ def save_task(payload: str) -> dict:
             if fieldname in data:
                 doc.set(fieldname, data.get(fieldname))
 
+        assignee_users = []
+
         # Sync _assign (user IDs/emails) into table_gqbl — insert only new rows
         if "_assign" in data:
             assignee_users = data.get("_assign") or []
@@ -721,6 +723,33 @@ def save_task(payload: str) -> dict:
             _append_checklist_to_doc(doc, checklist_items)
 
         doc.save(ignore_permissions=False, ignore_version=not is_new)
+
+        if is_new and assignee_users:
+            current_user = frappe.session.user
+            emailed = set()
+            for user_id in assignee_users:
+                if user_id == current_user or user_id in emailed:
+                    continue
+                emailed.add(user_id)
+                employee_name = frappe.db.get_value("Employee", {"user_id": user_id}, "name")
+                if not employee_name:
+                    continue
+                company_email = frappe.db.get_value("Employee", employee_name, "company_email")
+                if not company_email:
+                    continue
+                try:
+                    frappe.sendmail(
+                        recipients=[company_email],
+                        subject=f"New Task Assigned: {doc.task_title}",
+                        message=f"""
+                            <p>You have been assigned a new task:</p>
+                            <p><strong>{frappe.utils.escape_html(doc.task_title)}</strong></p>
+                            <p><a href="/taskflow?mode=dashboard&project={frappe.utils.escape_html(doc.project or '')}&view=task&task={frappe.utils.escape_html(doc.name)}">View Task</a></p>
+                        """,
+                        now=True,
+                    )
+                except Exception:
+                    pass
 
         return {"name": doc.name}
     except Exception as error:
