@@ -5140,6 +5140,13 @@
 				projHtml += buildProjectHtml(monthData.projects[pn], projects, mCollapseId + "-proj-" + pIdx);
 			});
 
+			const memberSet = new Set();
+			projNames.forEach((pn) => {
+				monthData.projects[pn].forEach((t) => {
+					(t._assign || []).forEach((u) => { if (u) memberSet.add(u); });
+				});
+			});
+
 			html += `
 				<div style="margin-bottom: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
 					<div class="taskflow-wh-project-header" data-collapse-toggle="${mCollapseId}" style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
@@ -5147,7 +5154,7 @@
 							<polyline points="9 18 15 12 9 6"></polyline>
 						</svg>
 						<span style="flex: 1; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(monthData.label)}</span>
-						<span style="font-size: 12px; color: #94a3b8;">${totalTasks} task${totalTasks !== 1 ? "s" : ""} · ${projNames.length} project${projNames.length !== 1 ? "s" : ""}</span>
+						<span style="font-size: 12px; color: #94a3b8;">${totalTasks} task${totalTasks !== 1 ? "s" : ""} · ${projNames.length} project${projNames.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
 					</div>
 					<div data-collapse-content="${mCollapseId}" style="padding: 10px 0;">
 						${projHtml}
