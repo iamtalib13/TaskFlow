@@ -4958,65 +4958,153 @@
 	function renderWorkHistoryView() {
 		const target = refs.workHistoryView;
 		if (!target) return;
+
+		const statusColor = {
+			"Completed": "#22c55e",
+			"In Progress": "#4f6ef7",
+			"Review": "#f59e0b",
+			"On Hold": "#94a3b8",
+			"Cancelled": "#ef4444",
+			"Overdue": "#ef4444",
+		};
+
 		const project = state.projectWorkspace && state.projectWorkspace.project;
-		if (!project) {
-			target.innerHTML = `<div class="taskflow-empty">Select a project to view work history.</div>`;
-			return;
-		}
-
-		const tasks = (state.projectWorkspace && state.projectWorkspace.tasks) || [];
-
-		const monthMap = {};
-		tasks.forEach((task) => {
-			const dateStr = task.completed_on;
-			if (!dateStr) return;
-			const d = new Date(dateStr);
-			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-			const label = d.toLocaleString("en-US", { year: "numeric", month: "long" });
-			if (!monthMap[key]) monthMap[key] = { label, tasks: [] };
-			monthMap[key].tasks.push(task);
-		});
-
-		const sortedKeys = Object.keys(monthMap).sort().reverse();
-
-		if (sortedKeys.length === 0) {
-			target.innerHTML = `<div class="taskflow-empty">No task activity found.</div>`;
-			return;
-		}
-
-		target.innerHTML = sortedKeys.map((key) => {
-			const group = monthMap[key];
-			const items = group.tasks.map((t) => {
-				const statusColor = {
-					"Completed": "#22c55e",
-					"In Progress": "#4f6ef7",
-					"Review": "#f59e0b",
-					"On Hold": "#94a3b8",
-					"Cancelled": "#ef4444",
-					"Overdue": "#ef4444",
-				}[t.status] || "#64748b";
+		if (project) {
+			const tasks = (state.projectWorkspace && state.projectWorkspace.tasks) || [];
+			const monthMap = {};
+			tasks.forEach((task) => {
+				const dateStr = task.completed_on;
+				if (!dateStr) return;
+				const d = new Date(dateStr);
+				const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+				const label = d.toLocaleString("en-US", { year: "numeric", month: "long" });
+				if (!monthMap[key]) monthMap[key] = { label, tasks: [] };
+				monthMap[key].tasks.push(task);
+			});
+			const sortedKeys = Object.keys(monthMap).sort().reverse();
+			if (sortedKeys.length === 0) {
+				target.innerHTML = `<div class="taskflow-empty">No completed tasks found.</div>`;
+				return;
+			}
+			target.innerHTML = sortedKeys.map((key) => {
+				const group = monthMap[key];
+				const items = group.tasks.map((t) => {
+					const color = statusColor[t.status] || "#64748b";
+					return `
+						<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
+							<span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; flex-shrink: 0;"></span>
+							<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
+							<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
+						</div>
+					`;
+				}).join("");
 				return `
-					<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
-						<span style="width: 8px; height: 8px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;"></span>
-						<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
-						<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
+					<div style="margin-bottom: 24px;">
+						<h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(group.label)}</h3>
+						<div style="display: flex; flex-direction: column; gap: 6px;">${items}</div>
 					</div>
 				`;
 			}).join("");
-			return `
-				<div style="margin-bottom: 24px;">
-					<h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(group.label)}</h3>
-					<div style="display: flex; flex-direction: column; gap: 6px;">
-						${items}
+			target.querySelectorAll("[data-work-history-task]").forEach((el) => {
+				el.addEventListener("click", () => {
+					const taskName = el.dataset.workHistoryTask;
+					const task = tasks.find((t) => t.name === taskName);
+					if (task) openTaskModal(task);
+				});
+			});
+			return;
+		}
+
+		const allTasks = (state.bootstrap && state.bootstrap.tasks) || [];
+		const projects = (state.bootstrap && state.bootstrap.projects) || [];
+
+		const projectMap = {};
+		allTasks.forEach((task) => {
+			if (!task.completed_on) return;
+			const projName = task.project || "__unassigned__";
+			if (!projectMap[projName]) projectMap[projName] = { tasks: [], months: {} };
+			projectMap[projName].tasks.push(task);
+			const d = new Date(task.completed_on);
+			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+			const label = d.toLocaleString("en-US", { year: "numeric", month: "long" });
+			if (!projectMap[projName].months[key]) projectMap[projName].months[key] = { label, tasks: [] };
+			projectMap[projName].months[key].tasks.push(task);
+		});
+
+		const projectNames = Object.keys(projectMap).sort((a, b) => {
+			if (a === "__unassigned__") return 1;
+			if (b === "__unassigned__") return -1;
+			return a.localeCompare(b);
+		});
+
+		if (projectNames.length === 0) {
+			target.innerHTML = `<div class="taskflow-empty">No completed tasks found.</div>`;
+			return;
+		}
+
+		let html = "";
+		projectNames.forEach((projName, idx) => {
+			const data = projectMap[projName];
+			const projLabel = projName === "__unassigned__" ? "Unassigned" : (projects.find(p => p.name === projName)?.project_name || projName);
+			const monthKeys = Object.keys(data.months).sort().reverse();
+			const taskCount = data.tasks.length;
+			const collapseId = "wh-proj-" + idx;
+
+			let monthHtml = "";
+			monthKeys.forEach((key) => {
+				const group = data.months[key];
+				const items = group.tasks.map((t) => {
+					const color = statusColor[t.status] || "#64748b";
+					return `
+						<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
+							<span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; flex-shrink: 0;"></span>
+							<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
+							<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
+						</div>
+					`;
+				}).join("");
+				monthHtml += `
+					<div style="margin-bottom: 16px; margin-left: 16px;">
+						<h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #475569;">${escapeHtml(group.label)}</h4>
+						<div style="display: flex; flex-direction: column; gap: 4px;">${items}</div>
+					</div>
+				`;
+			});
+
+			html += `
+				<div style="margin-bottom: 8px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
+					<div class="taskflow-wh-project-header" data-collapse-toggle="${collapseId}" style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; transition: transform 0.2s;" data-collapse-icon="${collapseId}">
+							<polyline points="9 18 15 12 9 6"></polyline>
+						</svg>
+						<span style="flex: 1; font-size: 14px; font-weight: 600; color: #1e293b;">${escapeHtml(projLabel)}</span>
+						<span style="font-size: 12px; color: #94a3b8;">${taskCount} task${taskCount !== 1 ? "s" : ""}</span>
+					</div>
+					<div data-collapse-content="${collapseId}" style="display: none; padding: 12px 0;">
+						${monthHtml}
 					</div>
 				</div>
 			`;
-		}).join("");
+		});
+
+		target.innerHTML = html;
+
+		target.querySelectorAll("[data-collapse-toggle]").forEach((header) => {
+			header.addEventListener("click", () => {
+				const id = header.dataset.collapseToggle;
+				const content = target.querySelector(`[data-collapse-content="${id}"]`);
+				const icon = target.querySelector(`[data-collapse-icon="${id}"]`);
+				if (!content) return;
+				const isOpen = content.style.display !== "none";
+				content.style.display = isOpen ? "none" : "block";
+				if (icon) icon.style.transform = isOpen ? "rotate(0deg)" : "rotate(90deg)";
+			});
+		});
 
 		target.querySelectorAll("[data-work-history-task]").forEach((el) => {
 			el.addEventListener("click", () => {
 				const taskName = el.dataset.workHistoryTask;
-				const task = tasks.find((t) => t.name === taskName);
+				const task = allTasks.find((t) => t.name === taskName);
 				if (task) openTaskModal(task);
 			});
 		});
