@@ -4983,6 +4983,15 @@
 			const projName = projectTasks[0].project || "__unassigned__";
 			const projLabel = projName === "__unassigned__" ? "Unassigned" : (projects.find(p => p.name === projName)?.project_name || projName);
 
+			const memberSet = new Set();
+			projectTasks.forEach((t) => {
+				(t._assign || []).forEach((u) => { if (u) memberSet.add(u); });
+			});
+			const memberNames = [...memberSet].map(uid => {
+				const m = (state.bootstrap.team_members || []).find(mem => mem.user === uid);
+				return m ? m.label : uid;
+			});
+
 			const dateMap = {};
 			projectTasks.forEach((task) => {
 				const dateStr = task.completed_on;
@@ -5014,7 +5023,7 @@
 							<polyline points="9 18 15 12 9 6"></polyline>
 						</svg>
 						<span style="flex: 1; font-size: 13px; font-weight: 600; color: #1e293b;">${escapeHtml(projLabel)}</span>
-						<span style="font-size: 11px; color: #94a3b8;">${projectTasks.length} task${projectTasks.length !== 1 ? "s" : ""}</span>
+						<span style="font-size: 11px; color: #94a3b8;">${memberNames.length > 0 ? escapeHtml(memberNames.join(', ')) + '  ·  ' : ''}${projectTasks.length} task${projectTasks.length !== 1 ? "s" : ""}</span>
 					</div>
 					<div data-collapse-content="${collapseId}" style="display: none; padding: 10px 0;">
 						${dateHtml}
@@ -5064,15 +5073,19 @@
 						</div>
 					`;
 				});
-				const mCollapseId = "wh-month-" + mIdx;
-				html += `
+			const mCollapseId = "wh-month-" + mIdx;
+			const memberSet = new Set();
+			group.tasks.forEach((t) => {
+				(t._assign || []).forEach((u) => { if (u) memberSet.add(u); });
+			});
+			html += `
 					<div style="margin-bottom: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
 						<div class="taskflow-wh-project-header" data-collapse-toggle="${mCollapseId}" style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
 							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; transition: transform 0.2s;" data-collapse-icon="${mCollapseId}">
 								<polyline points="9 18 15 12 9 6"></polyline>
 							</svg>
 							<span style="flex: 1; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(group.label)}</span>
-							<span style="font-size: 12px; color: #94a3b8;">${group.tasks.length} task${group.tasks.length !== 1 ? "s" : ""}</span>
+							<span style="font-size: 12px; color: #94a3b8;">${group.tasks.length} task${group.tasks.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
 						</div>
 						<div data-collapse-content="${mCollapseId}" style="padding: 10px 0;">
 							${dateHtml}
