@@ -4970,10 +4970,15 @@
 
 		function renderTaskItem(t) {
 			const color = statusColor[t.status] || "#64748b";
+			const assigneeNames = (t._assign || []).map(uid => {
+				const m = (state.bootstrap.team_members || []).find(mem => mem.user === uid);
+				return m ? m.label : uid;
+			});
 			return `
 				<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
 					<span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; flex-shrink: 0;"></span>
 					<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
+					${assigneeNames.length > 0 ? `<span style="font-size: 11px; color: #64748b;">${escapeHtml(assigneeNames.join(', '))}</span>` : ''}
 					<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
 				</div>
 			`;
