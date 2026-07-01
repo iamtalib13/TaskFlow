@@ -8,7 +8,7 @@ def mark_overdue_tasks():
 		"Taskflow Task",
 		filters={
 			"due_date": ["<", today()],
-			"status": ["in", ["Open", "In Progress", "Review", "On Hold"]],
+			"status": ["in", ["Open", "In Progress"]],
 		},
 		fields=["name"],
 	)
