@@ -698,6 +698,9 @@ def save_task(payload: str) -> dict:
             if fieldname in data:
                 doc.set(fieldname, data.get(fieldname))
 
+        assignee_users = []
+        newly_added_users = []
+
         # Sync _assign (user IDs/emails) into table_gqbl — insert only new rows
         if "_assign" in data:
             assignee_users = data.get("_assign") or []
@@ -709,6 +712,7 @@ def save_task(payload: str) -> dict:
 
             for user_id in assignee_users:
                 if user_id not in existing_user_ids:
+                    newly_added_users.append(user_id)
                     doc.append("table_gqbl", {"user_id": user_id})
 
         if "checklist" in data:
@@ -721,6 +725,55 @@ def save_task(payload: str) -> dict:
             _append_checklist_to_doc(doc, checklist_items)
 
         doc.save(ignore_permissions=False, ignore_version=not is_new)
+
+        if newly_added_users:
+            current_user = frappe.session.user
+            emailed = set()
+            project_name_val = doc.project and frappe.db.get_value("Taskflow Project", doc.project, "project_name") or ""
+            for user_id in newly_added_users:
+                if user_id == current_user or user_id in emailed:
+                    continue
+                emailed.add(user_id)
+                employee_name = frappe.db.get_value("Employee", {"user_id": user_id}, "name")
+                if not employee_name:
+                    continue
+                company_email = frappe.db.get_value("Employee", employee_name, "company_email")
+                if not company_email:
+                    continue
+                creator_name = frappe.db.get_value("User", current_user, "full_name") or current_user
+                description_html = doc.description or "No description provided."
+                task_title_esc = frappe.utils.escape_html(doc.task_title or "")
+                project_esc = frappe.utils.escape_html(project_name_val or "Not set")
+                priority_esc = frappe.utils.escape_html(doc.priority or "Medium")
+                start_date_esc = frappe.utils.escape_html(str(doc.start_date or "Not set"))
+                due_date_esc = frappe.utils.escape_html(str(doc.due_date or "Not set"))
+                assigned_by_esc = frappe.utils.escape_html(creator_name)
+                status_esc = frappe.utils.escape_html(doc.status or "Open")
+                task_name_esc = frappe.utils.escape_html(doc.name or "")
+                project_id_esc = frappe.utils.escape_html(doc.project or "")
+                try:
+                    frappe.sendmail(
+                        recipients=[company_email],
+                        subject="New Task Assigned: " + (doc.task_title or "") if is_new else "Added to Task: " + (doc.task_title or ""),
+                        message="""
+                            <p>You have been assigned to a task:</p>
+                            <h3 style="margin: 12px 0 4px;">""" + task_title_esc + """</h3>
+                            <table style="border-collapse: collapse; font-size: 13px; margin: 12px 0;">
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Project:</td><td style="padding: 4px 0;">""" + project_esc + """</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Priority:</td><td style="padding: 4px 0;">""" + priority_esc + """</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Start Date:</td><td style="padding: 4px 0;">""" + start_date_esc + """</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Due Date:</td><td style="padding: 4px 0;">""" + due_date_esc + """</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Assigned by:</td><td style="padding: 4px 0;">""" + assigned_by_esc + """</td></tr>
+                                <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Status:</td><td style="padding: 4px 0;">""" + status_esc + """</td></tr>
+                            </table>
+                            <p style="font-weight: 600;">Description:</p>
+                            <div style="border-left: 3px solid #4f6ef7; padding: 8px 12px; margin: 8px 0; background: #f8fafc; color: #334155;">""" + description_html + """</div>
+                            <p><a href="/taskflow?mode=dashboard&project=""" + project_id_esc + """&view=task&task=""" + task_name_esc + """">View Task</a></p>
+                        """,
+                        now=True,
+                    )
+                except Exception as e:
+                    frappe.log_error(f"Task assignment email failed: {e}", "Taskflow Email")
 
         return {"name": doc.name}
     except Exception as error:
@@ -887,7 +940,7 @@ def get_task_details(task: str) -> dict:
 
 @frappe.whitelist()
 def add_task_comment(payload: str) -> dict:
-    """Add a comment to a Taskflow Task."""
+    """Add a comment to a Taskflow Task and email @mentioned members."""
     _require_login()
     data = frappe.parse_json(payload)
     task = data.get("task")
@@ -911,6 +964,7 @@ def add_task_comment(payload: str) -> dict:
             "comment_by": frappe.session.user,
         }
     ).insert(ignore_permissions=True)
+    frappe.db.commit()
 
     user_details = frappe.db.get_value(
         "User",
@@ -918,15 +972,78 @@ def add_task_comment(payload: str) -> dict:
         ["full_name", "user_image"],
         as_dict=True,
     )
+    sender_name = (user_details and user_details.full_name) or frappe.session.user
+
+    _send_task_mention_emails(task_doc, content, sender_name, frappe.session.user)
 
     return {
         "name": comment.name,
         "content": comment.content,
         "owner": comment.owner,
-        "author_name": (user_details and user_details.full_name) or frappe.session.user,
+        "author_name": sender_name,
         "author_image": user_details and user_details.user_image,
         "creation": comment.creation,
     }
+
+
+def _send_task_mention_emails(task_doc, content: str, sender_name: str, sender_email: str):
+    """Parse @mentions from task comment and send emails to mentioned team members."""
+    import re
+
+    mentioned_raw = re.findall(r"@(\w+(?:\s+\w+)*)", content)
+    if not mentioned_raw:
+        return
+
+    project_name = task_doc.project
+    if not project_name:
+        return
+
+    project_doc = frappe.get_doc("Taskflow Project", project_name)
+    members = project_doc.get("project_team_members", [])
+    if not members:
+        return
+
+    employee_ids = [m.employee for m in members if m.employee]
+    employee_details = _bulk_employee_details(employee_ids)
+
+    label_to_email = {}
+    for emp_id, details in employee_details.items():
+        label = details.get("employee_name") or emp_id
+        email = details.get("company_email") or details.get("user_id")
+        if email:
+            label_to_email[label.lower().strip()] = email
+
+    task_title_esc = frappe.utils.escape_html(task_doc.task_title or "")
+    project_name_esc = frappe.utils.escape_html(project_name)
+    task_name_esc = frappe.utils.escape_html(task_doc.name or "")
+    sender_name_esc = frappe.utils.escape_html(sender_name)
+
+    emailed = set()
+    for raw in mentioned_raw:
+        raw_lower = raw.lower().strip()
+        matched_email = label_to_email.get(raw_lower)
+        if not matched_email:
+            for label, email in label_to_email.items():
+                if label in raw_lower or raw_lower in label:
+                    matched_email = email
+                    break
+        if matched_email and matched_email not in emailed and matched_email != sender_email:
+            emailed.add(matched_email)
+            try:
+                frappe.sendmail(
+                    recipients=[matched_email],
+                    subject="Mentioned in Task Comment: " + (task_doc.task_title or ""),
+                    message=(
+                        "<p><strong>" + sender_name_esc + "</strong> mentioned you in a comment on task <strong>" + task_title_esc + "</strong> (Project: " + project_name_esc + "):</p>"
+                        "<blockquote style='border-left: 3px solid #4f6ef7; padding: 8px 12px; margin: 8px 0; background: #f8fafc; color: #334155;'>"
+                        + frappe.utils.escape_html(content)
+                        + "</blockquote>"
+                        "<p><a href='/taskflow?mode=dashboard&project=" + project_name_esc + "&view=task&task=" + task_name_esc + "'>View Task</a></p>"
+                    ),
+                    now=True,
+                )
+            except Exception:
+                pass
 
 
 @frappe.whitelist()
@@ -1243,7 +1360,8 @@ def get_assigned_tasks(user_id: str | None = None, project: str | None = None, t
 
     filters = {}
     if user_id and user_id != "all":
-        task_names = frappe.get_all(
+        # Find tasks via ToDo table
+        todo_task_names = frappe.get_all(
             "ToDo",
             filters={
                 "allocated_to": user_id,
@@ -1252,6 +1370,16 @@ def get_assigned_tasks(user_id: str | None = None, project: str | None = None, t
             },
             pluck="reference_name",
         )
+        # Also find tasks via Task Assignment child table (table_gqbl)
+        child_task_names = frappe.get_all(
+            "Task Assignment",
+            filters={
+                "user_id": user_id,
+                "parenttype": "Taskflow Task",
+            },
+            pluck="parent",
+        )
+        task_names = list(set(todo_task_names + child_task_names))
         if not task_names:
             return []
         filters["name"] = ["in", task_names]

@@ -368,6 +368,101 @@
 			if (refs.commentInput) refs.commentInput.value = "";
 		});
 
+		// @mention in comment
+		const mentionDropdown = document.getElementById("taskMentionDropdown");
+		if (refs.commentInput && mentionDropdown) {
+			let mentionActive = false;
+			let mentionQuery = "";
+			let mentionStartPos = 0;
+
+			function showTaskMentionList(query) {
+				const members = (state.taskDetails && state.taskDetails.members) || [];
+				const filtered = members.filter(m => {
+					const label = (m.label || "").toLowerCase();
+					const user = (m.user || "").toLowerCase();
+					const q = query.toLowerCase();
+					return label.includes(q) || user.includes(q);
+				});
+				if (filtered.length === 0) {
+					mentionDropdown.style.display = "none";
+					mentionActive = false;
+					return;
+				}
+				mentionDropdown.innerHTML = filtered.map(m => {
+					const avatarContent = m.user_image
+						? `<img src="${m.user_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
+						: (m.label || m.user || "?").substring(0, 1).toUpperCase();
+					return `
+						<div class="taskform-mention-item" data-mention-label="${escapeHtml(m.label || m.user)}" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; font-size: 13px; color: #334155;">
+							<div style="width: 26px; height: 26px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #475569; flex-shrink: 0; overflow: hidden;">
+								${avatarContent}
+							</div>
+							<span>${escapeHtml(m.label || m.user)}</span>
+						</div>
+					`;
+				}).join("");
+				mentionDropdown.style.display = "block";
+				mentionActive = true;
+			}
+
+			refs.commentInput.addEventListener("input", () => {
+				const val = refs.commentInput.value;
+				const cursor = refs.commentInput.selectionStart;
+				const textBefore = val.substring(0, cursor);
+				const atMatch = textBefore.match(/@(\w*)$/);
+				if (atMatch) {
+					mentionStartPos = cursor - atMatch[1].length - 1;
+					mentionQuery = atMatch[1];
+					showTaskMentionList(mentionQuery);
+				} else {
+					mentionDropdown.style.display = "none";
+					mentionActive = false;
+				}
+			});
+
+			refs.commentInput.addEventListener("keydown", (e) => {
+				if (!mentionActive) return;
+				const items = mentionDropdown.querySelectorAll(".taskform-mention-item");
+				let idx = -1;
+				items.forEach((item, i) => { if (item.style.background === "rgb(241, 245, 249)") idx = i; });
+				if (e.key === "ArrowDown") {
+					e.preventDefault();
+					idx = idx < items.length - 1 ? idx + 1 : 0;
+					items.forEach((item, i) => item.style.background = i === idx ? "#f1f5f9" : "transparent");
+				} else if (e.key === "ArrowUp") {
+					e.preventDefault();
+					idx = idx > 0 ? idx - 1 : items.length - 1;
+					items.forEach((item, i) => item.style.background = i === idx ? "#f1f5f9" : "transparent");
+				} else if (e.key === "Enter" && idx >= 0) {
+					e.preventDefault();
+					items[idx].click();
+				} else if (e.key === "Escape") {
+					mentionDropdown.style.display = "none";
+					mentionActive = false;
+				}
+			});
+
+			mentionDropdown.addEventListener("click", (e) => {
+				const item = e.target.closest(".taskform-mention-item");
+				if (!item) return;
+				const label = item.dataset.mentionLabel;
+				const val = refs.commentInput.value;
+				const before = val.substring(0, mentionStartPos);
+				const after = val.substring(refs.commentInput.selectionStart);
+				refs.commentInput.value = before + "@" + label + " " + after;
+				mentionDropdown.style.display = "none";
+				mentionActive = false;
+				refs.commentInput.focus();
+			});
+
+			document.addEventListener("click", (e) => {
+				if (!mentionDropdown.contains(e.target) && e.target !== refs.commentInput) {
+					mentionDropdown.style.display = "none";
+					mentionActive = false;
+				}
+			});
+		}
+
 		// File upload input change
 		const fileInput = document.getElementById("fileInput");
 		fileInput?.addEventListener("change", handleFileSelect);
@@ -541,7 +636,17 @@
 			if (details && details.task) {
 				const task = details.task;
 				state.activeTask = task;
+				state.taskDetails = details;
+
 				const currentProject = (state.bootstrap && state.bootstrap.projects || []).find(p => p.name === task.project);
+				if (currentProject) {
+					const teamMembers = (state.bootstrap && state.bootstrap.team_members || []).filter(
+						(m) => m.team === currentProject.team
+					);
+					state.taskDetails.members = teamMembers;
+				} else {
+					state.taskDetails.members = (state.bootstrap && state.bootstrap.team_members) || [];
+				}
 
 				state.selectedProject = task.project;
 				if (refs.projectSelect) refs.projectSelect.value = task.project;

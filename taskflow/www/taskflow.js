@@ -9,7 +9,7 @@
 		"Cancelled",
 		"Overdue",
 	];
-	const TASK_VIEWS = ["list", "kanban", "dashboard", "timeline", "files", "settings", "project-settings"];
+	const TASK_VIEWS = ["list", "kanban", "dashboard", "timeline", "files", "settings", "project-settings", "work-history"];
 	const NAV_MODES = ["dashboard", "my-tasks", "calendar", "reports", "team", "settings"];
 	const NAV_PLACEHOLDER_MODES = ["reports", "settings"];
 	const LIST_ROW_HEIGHT = 48;
@@ -274,6 +274,7 @@
 		refs.filesView = document.querySelector("[data-files-view]");
 		refs.settingsView = document.querySelector("[data-settings-view]");
 		refs.projectSettingsView = document.querySelector("[data-project-settings-view]");
+		refs.workHistoryView = document.querySelector("[data-work-history-view]");
 		refs.projectTitle = document.querySelector("[data-project-title]");
 		refs.projectKpis = document.querySelector("[data-project-kpis]");
 		refs.viewToggle = document.querySelector("[data-task-view-toggle]");
@@ -920,6 +921,10 @@
 		const requestId = ++state.projectRequestId;
 		state.selectedProject = projectName;
 		setNavMode("dashboard", { updateUrl: false, replace: options.replace });
+
+		// Show project-specific tabs
+		document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.remove("taskflow-hidden"));
+
 		if (options.updateUrl !== false) updateUrlState();
 		try {
 			const workspace = await apiCall("get_project_workspace", { project: projectName });
@@ -970,6 +975,7 @@
 			state.projectWorkspace = null;
 			toolbar?.classList.remove("taskflow-hidden");
 			tabs?.classList.add("taskflow-hidden");
+			document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.add("taskflow-hidden"));
 			if (refs.projectTitle) refs.projectTitle.textContent = "Calendar";
 			if (refs.projectKpis) refs.projectKpis.innerHTML = "";
 			if (breadcrumb) breadcrumb.textContent = "Calendar";
@@ -984,6 +990,7 @@
 			state.projectWorkspace = null;
 			toolbar?.classList.add("taskflow-hidden");
 			tabs?.classList.add("taskflow-hidden");
+			document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.add("taskflow-hidden"));
 
 			state.selectedTeam = state.selectedTeam || "all";
 			const teamName = getSelectedTeamName();
@@ -1013,6 +1020,12 @@
 			// SHOW PROJECT UI
 			toolbar?.classList.remove("taskflow-hidden");
 			tabs?.classList.remove("taskflow-hidden");
+			// Show project-specific tabs only in dashboard mode with a project selected
+			if (mode === "dashboard" && state.selectedProject) {
+				document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.remove("taskflow-hidden"));
+			} else {
+				document.querySelectorAll("[data-project-tab]").forEach((el) => el.classList.add("taskflow-hidden"));
+			}
 			if (refs.newTaskButton) refs.newTaskButton.disabled = false;
 			updateNavActive();
 			renderProjectList();
@@ -2060,6 +2073,7 @@
 			{ el: refs.filesView, key: "files" },
 			{ el: refs.settingsView, key: "settings" },
 			{ el: refs.projectSettingsView, key: "project-settings" },
+			{ el: refs.workHistoryView, key: "work-history" },
 		];
 
 		views.forEach((v) => {
@@ -2089,6 +2103,8 @@
 			renderSettingsView();
 		} else if (state.taskView === "project-settings") {
 			renderProjectSettingsView();
+		} else if (state.taskView === "work-history") {
+			renderWorkHistoryView();
 		}
 	}
 
@@ -4574,16 +4590,15 @@
 		const projectName = project.name || "";
 
 		target.innerHTML = `
-			<div style="display: flex; gap: 24px; padding: 24px; height: calc(100vh - 120px);">
+			<div style="display: flex; gap: 24px; padding: 24px; height: calc(100vh - 120px); overflow: hidden;">
 				<!-- Left: Settings -->
-				<div style="flex: 1; overflow-y: auto; min-width: 0;">
-					<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Project Settings</h3>
+				<div style="flex: 1; overflow-y: auto; min-width: 0; padding-bottom: 150px;">
 
 					<!-- Attachment -->
 					<div class="taskflow-settings-section" data-ps-attachment-section>
 						<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
 							<h3 style="margin: 0;">Attachment</h3>
-							<button class="taskflow-button secondary" type="button" data-ps-edit-attachment>Edit</button>
+							<button class="taskflow-button secondary" type="button" data-ps-edit-attachment>Add</button>
 						</div>
 						<div data-ps-attachment-display style="background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; padding: 16px;">
 							<p style="margin: 0; color: #94a3b8; font-size: 13px;">Loading...</p>
@@ -4663,7 +4678,7 @@
 				</div>
 
 				<!-- Right: Comments -->
-				<div style="width: 420px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid var(--taskflow-border); padding-left: 24px;">
+				<div style="width: 420px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid var(--taskflow-border); padding-left: 24px; padding-bottom: 150px;">
 					<h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Comments</h3>
 					<div id="psProjectCommentsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
 						<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">Loading comments...</div>
@@ -4682,16 +4697,19 @@
 		// --- Attachment Edit Toggle ---
 		const attDisplay = target.querySelector("[data-ps-attachment-display]");
 		const attEdit = target.querySelector("[data-ps-attachment-edit]");
-		target.querySelector("[data-ps-edit-attachment]").addEventListener("click", () => {
+		const attAddBtn = target.querySelector("[data-ps-edit-attachment]");
+		attAddBtn.addEventListener("click", () => {
+			attAddBtn.style.display = "none";
 			attDisplay.style.display = "none";
 			attEdit.style.display = "block";
 			loadPsProjectAttachmentsList(projectName, target.querySelector("#psProjectAttachmentsList"));
 		});
 		target.querySelector("[data-ps-cancel-attachment]").addEventListener("click", () => {
+			attAddBtn.style.display = "";
 			attDisplay.style.display = "block";
 			attEdit.style.display = "none";
 		});
-		loadProjectAttachments(projectName, attDisplay);
+		loadProjectAttachments(projectName, attDisplay, true);
 
 		// Dropzone
 		const dropzone = target.querySelector("#psProjectAttachmentDropzone");
@@ -4731,14 +4749,16 @@
 			}
 			attDisplay.style.display = "block";
 			attEdit.style.display = "none";
-			await loadProjectAttachments(projectName, attDisplay);
+			await loadProjectAttachments(projectName, attDisplay, true);
 		});
 
 		// --- Description Edit Toggle ---
 		const descDisplay = target.querySelector("[data-ps-description-display]");
 		const descEdit = target.querySelector("[data-ps-description-edit]");
 		let psQuillEditor = null;
-		target.querySelector("[data-ps-edit-description]").addEventListener("click", () => {
+		const descAddBtn = target.querySelector("[data-ps-edit-description]");
+		descAddBtn.addEventListener("click", () => {
+			descAddBtn.style.display = "none";
 			descDisplay.style.display = "none";
 			descEdit.style.display = "block";
 			if (!psQuillEditor && window.Quill) {
@@ -4761,6 +4781,7 @@
 			}
 		});
 		target.querySelector("[data-ps-cancel-description]").addEventListener("click", () => {
+			descAddBtn.style.display = "";
 			descDisplay.style.display = "block";
 			descEdit.style.display = "none";
 		});
@@ -4770,6 +4791,7 @@
 				await saveProject(project);
 				descDisplay.querySelector("div").innerHTML = project.description || '<span style="color: #94a3b8;">No description yet.</span>';
 			}
+			descAddBtn.style.display = "";
 			descDisplay.style.display = "block";
 			descEdit.style.display = "none";
 			showMessage("Description saved successfully.");
@@ -4933,6 +4955,161 @@
 		});
 	}
 
+	function renderWorkHistoryView() {
+		const target = refs.workHistoryView;
+		if (!target) return;
+
+		const statusColor = {
+			"Completed": "#22c55e",
+			"In Progress": "#4f6ef7",
+			"Review": "#f59e0b",
+			"On Hold": "#94a3b8",
+			"Cancelled": "#ef4444",
+			"Overdue": "#ef4444",
+		};
+
+		const project = state.projectWorkspace && state.projectWorkspace.project;
+		if (project) {
+			const tasks = (state.projectWorkspace && state.projectWorkspace.tasks) || [];
+			const monthMap = {};
+			tasks.forEach((task) => {
+				const dateStr = task.completed_on;
+				if (!dateStr) return;
+				const d = new Date(dateStr);
+				const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+				const label = d.toLocaleString("en-US", { year: "numeric", month: "long" });
+				if (!monthMap[key]) monthMap[key] = { label, tasks: [] };
+				monthMap[key].tasks.push(task);
+			});
+			const sortedKeys = Object.keys(monthMap).sort().reverse();
+			if (sortedKeys.length === 0) {
+				target.innerHTML = `<div class="taskflow-empty">No completed tasks found.</div>`;
+				return;
+			}
+			target.innerHTML = sortedKeys.map((key) => {
+				const group = monthMap[key];
+				const items = group.tasks.map((t) => {
+					const color = statusColor[t.status] || "#64748b";
+					return `
+						<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
+							<span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; flex-shrink: 0;"></span>
+							<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
+							<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
+						</div>
+					`;
+				}).join("");
+				return `
+					<div style="margin-bottom: 24px;">
+						<h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(group.label)}</h3>
+						<div style="display: flex; flex-direction: column; gap: 6px;">${items}</div>
+					</div>
+				`;
+			}).join("");
+			target.querySelectorAll("[data-work-history-task]").forEach((el) => {
+				el.addEventListener("click", () => {
+					const taskName = el.dataset.workHistoryTask;
+					const task = tasks.find((t) => t.name === taskName);
+					if (task) openTaskModal(task);
+				});
+			});
+			return;
+		}
+
+		const allTasks = (state.bootstrap && state.bootstrap.tasks) || [];
+		const projects = (state.bootstrap && state.bootstrap.projects) || [];
+
+		const projectMap = {};
+		allTasks.forEach((task) => {
+			if (!task.completed_on) return;
+			const projName = task.project || "__unassigned__";
+			if (!projectMap[projName]) projectMap[projName] = { tasks: [], months: {} };
+			projectMap[projName].tasks.push(task);
+			const d = new Date(task.completed_on);
+			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+			const label = d.toLocaleString("en-US", { year: "numeric", month: "long" });
+			if (!projectMap[projName].months[key]) projectMap[projName].months[key] = { label, tasks: [] };
+			projectMap[projName].months[key].tasks.push(task);
+		});
+
+		const projectNames = Object.keys(projectMap).sort((a, b) => {
+			if (a === "__unassigned__") return 1;
+			if (b === "__unassigned__") return -1;
+			return a.localeCompare(b);
+		});
+
+		if (projectNames.length === 0) {
+			target.innerHTML = `<div class="taskflow-empty">No completed tasks found.</div>`;
+			return;
+		}
+
+		let html = "";
+		projectNames.forEach((projName, idx) => {
+			const data = projectMap[projName];
+			const projLabel = projName === "__unassigned__" ? "Unassigned" : (projects.find(p => p.name === projName)?.project_name || projName);
+			const monthKeys = Object.keys(data.months).sort().reverse();
+			const taskCount = data.tasks.length;
+			const collapseId = "wh-proj-" + idx;
+
+			let monthHtml = "";
+			monthKeys.forEach((key) => {
+				const group = data.months[key];
+				const items = group.tasks.map((t) => {
+					const color = statusColor[t.status] || "#64748b";
+					return `
+						<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
+							<span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; flex-shrink: 0;"></span>
+							<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
+							<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
+						</div>
+					`;
+				}).join("");
+				monthHtml += `
+					<div style="margin-bottom: 16px; margin-left: 16px;">
+						<h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #475569;">${escapeHtml(group.label)}</h4>
+						<div style="display: flex; flex-direction: column; gap: 4px;">${items}</div>
+					</div>
+				`;
+			});
+
+			html += `
+				<div style="margin-bottom: 8px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
+					<div class="taskflow-wh-project-header" data-collapse-toggle="${collapseId}" style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; transition: transform 0.2s;" data-collapse-icon="${collapseId}">
+							<polyline points="9 18 15 12 9 6"></polyline>
+						</svg>
+						<span style="flex: 1; font-size: 14px; font-weight: 600; color: #1e293b;">${escapeHtml(projLabel)}</span>
+						<span style="font-size: 12px; color: #94a3b8;">${taskCount} task${taskCount !== 1 ? "s" : ""}</span>
+					</div>
+					<div data-collapse-content="${collapseId}" style="display: none; padding: 12px 0;">
+						${monthHtml}
+					</div>
+				</div>
+			`;
+		});
+
+		target.innerHTML = html;
+
+		target.querySelectorAll("[data-collapse-toggle]").forEach((header) => {
+			header.addEventListener("click", () => {
+				const id = header.dataset.collapseToggle;
+				const content = target.querySelector(`[data-collapse-content="${id}"]`);
+				const icon = target.querySelector(`[data-collapse-icon="${id}"]`);
+				if (!content) return;
+				const isOpen = content.style.display !== "none";
+				content.style.display = isOpen ? "none" : "block";
+				if (icon) icon.style.transform = isOpen ? "rotate(0deg)" : "rotate(90deg)";
+			});
+		});
+
+		target.querySelectorAll("[data-work-history-task]").forEach((el) => {
+			el.addEventListener("click", () => {
+				const taskName = el.dataset.workHistoryTask;
+				const task = allTasks.find((t) => t.name === taskName);
+				if (task) openTaskModal(task);
+			});
+		});
+	}
+
 	async function loadPsProjectAttachmentsList(projectName, listEl) {
 		if (!listEl) return;
 		try {
@@ -5021,7 +5198,7 @@
 		}
 	}
 
-	async function loadProjectAttachments(projectName, displayEl) {
+	async function loadProjectAttachments(projectName, displayEl, namesOnly) {
 		try {
 			const url = new URL("/api/method/frappe.client.get_list", window.location.origin);
 			url.searchParams.set("doctype", "File");
@@ -5040,6 +5217,13 @@
 			if (!displayEl) return;
 			if (!result || result.length === 0) {
 				displayEl.innerHTML = '<p style="margin: 0; color: #94a3b8; font-size: 13px;">No attachment yet.</p>';
+				return;
+			}
+
+			if (namesOnly) {
+				displayEl.innerHTML = `<div style="display: flex; flex-wrap: wrap; gap: 8px;">${result.map(file =>
+					`<a href="${escapeHtml(file.file_url)}" target="_blank" style="display: inline-block; padding: 6px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; background: white; color: var(--taskflow-primary); font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${escapeHtml(file.file_name)}</a>`
+				).join("")}</div>`;
 				return;
 			}
 

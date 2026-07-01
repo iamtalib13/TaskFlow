@@ -41,30 +41,12 @@
 				</li>
 				<li
 					class="taskflow-nav-item"
-					data-nav="reports"
-					role="button"
-					tabindex="0"
-					aria-current="false"
-				>
-					<span class="taskflow-nav-icon">📊</span> Reports
-				</li>
-				<li
-					class="taskflow-nav-item"
 					data-nav="team"
 					role="button"
 					tabindex="0"
 					aria-current="false"
 				>
 					<span class="taskflow-nav-icon">👥</span> Team
-				</li>
-				<li
-					class="taskflow-nav-item"
-					data-nav="settings"
-					role="button"
-					tabindex="0"
-					aria-current="false"
-				>
-					<span class="taskflow-nav-icon">⚙</span> Settings
 				</li>
 			</ul>
 		</nav>
@@ -184,7 +166,7 @@
 
 		<!-- Project Toolbar -->
 		<div class="taskflow-toolbar" style="display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 32px 32px 16px;">
-			<div style="display: flex; width: 100%; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+			<div style="display: flex; width: 100%; justify-content: space-between; align-items: flex-end; flex-wrap: nowrap; gap: 16px;">
 				<div class="taskflow-project-info">
 					<h1 class="taskflow-project-title" data-project-title>&nbsp;</h1>
 					<div
@@ -280,31 +262,23 @@
 				Timeline
 			</button>
 			<button
-				class="taskflow-tab"
-				type="button"
-				data-view="files"
-				role="tab"
-				aria-selected="false"
-			>
-				Comments
-			</button>
-			<button
-				class="taskflow-tab"
-				type="button"
-				data-view="settings"
-				role="tab"
-				aria-selected="false"
-			>
-				Settings
-			</button>
-			<button
-				class="taskflow-tab"
+				class="taskflow-tab taskflow-hidden"
 				type="button"
 				data-view="project-settings"
+				data-project-tab
 				role="tab"
 				aria-selected="false"
 			>
 				Project Settings
+			</button>
+			<button
+				class="taskflow-tab"
+				type="button"
+				data-view="work-history"
+				role="tab"
+				aria-selected="false"
+			>
+				Work History
 			</button>
 		</div>
 
@@ -429,6 +403,13 @@
 			<div
 				class="taskflow-settings-wrapper taskflow-view-content taskflow-hidden"
 				data-project-settings-view
+			></div>
+
+			<!-- Work History View -->
+			<div
+				class="taskflow-view-content taskflow-hidden"
+				data-work-history-view
+				style="padding: 24px; overflow-y: auto;"
 			></div>
 
 			<!-- Stats Area (Hidden by default in new design but kept for state) -->

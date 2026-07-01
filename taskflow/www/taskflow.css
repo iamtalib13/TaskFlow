@@ -383,7 +383,7 @@ body.taskflow-portal-page {
 }
 
 .taskflow-sidebar-nav:hover {
-	width: 260px; /* Expanded width on hover */
+	width: 60px; /* Keep collapsed on hover */
 }
 
 /* Sidebar Projects */
@@ -570,30 +570,7 @@ button:disabled {
 	display: none;
 }
 
-/* Styles for expanded state (on hover) */
-.taskflow-sidebar-nav:hover .taskflow-nav-item {
-	flex-direction: row; /* Restore side-by-side layout */
-	justify-content: flex-start; /* Align left when expanded */
-	align-items: center; /* Re-align items vertically */
-	padding: 10px 12px; /* Restore original padding */
-	text-align: left; /* Restore text alignment */
-	font-size: 14px; /* Restore base font size */
-	line-height: normal; /* Restore normal line height */
-	width: auto; /* Allow item to take necessary width */
-	max-width: none; /* Remove max-width constraint */
-}
-
-.taskflow-sidebar-nav:hover .taskflow-nav-item .taskflow-nav-icon {
-	margin-right: 12px; /* Restore right margin for icon */
-	font-size: 18px; /* Restore icon size */
-	width: 20px; /* Restore icon width */
-}
-
-/* Show text content and badges when expanded */
-.taskflow-sidebar-nav:hover .taskflow-nav-item span:not(.taskflow-nav-icon),
-.taskflow-sidebar-nav:hover .taskflow-nav-item .taskflow-badge {
-	display: inline; /* Show text and badges */
-}
+/* Hover expansion removed */
 
 .taskflow-badge {
 	margin-left: auto;
@@ -693,6 +670,10 @@ textarea:focus-visible,
 
 .taskflow-view-content.full-width {
 	overflow-y: hidden;
+}
+
+.taskflow-settings-wrapper {
+	overflow: hidden;
 }
 
 .taskflow-header {
