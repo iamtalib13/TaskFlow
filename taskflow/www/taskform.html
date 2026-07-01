@@ -1881,11 +1881,12 @@
 								<p>Start the conversation by adding a comment.</p>
 							</div>
 						</div>
-						<div class="comment-compose">
+						<div class="comment-compose" style="position: relative;">
+							<div id="taskMentionDropdown" style="display: none; position: absolute; bottom: 100%; left: 0; right: 0; max-height: 180px; overflow-y: auto; background: white; border: 1px solid var(--taskflow-border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100;"></div>
 							<textarea
 								class="comment-compose-input"
 								id="commentInput"
-								placeholder="Add a comment..."
+								placeholder="Add a comment... Use @ to mention"
 								rows="3"
 							></textarea>
 							<div class="comment-compose-actions">
