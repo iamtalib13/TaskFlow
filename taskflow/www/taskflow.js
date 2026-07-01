@@ -4968,6 +4968,61 @@
 			"Overdue": "#ef4444",
 		};
 
+		function renderTaskItem(t) {
+			const color = statusColor[t.status] || "#64748b";
+			return `
+				<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
+					<span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; flex-shrink: 0;"></span>
+					<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
+					<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
+				</div>
+			`;
+		}
+
+		function buildProjectHtml(projectTasks, projects, collapseId) {
+			const projName = projectTasks[0].project || "__unassigned__";
+			const projLabel = projName === "__unassigned__" ? "Unassigned" : (projects.find(p => p.name === projName)?.project_name || projName);
+
+			const dateMap = {};
+			projectTasks.forEach((task) => {
+				const dateStr = task.completed_on;
+				if (!dateStr) return;
+				const d = new Date(dateStr);
+				const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+				const dateLabel = d.toLocaleString("en-US", { day: "numeric", month: "short", year: "numeric" });
+				if (!dateMap[dateKey]) dateMap[dateKey] = { label: dateLabel, tasks: [] };
+				dateMap[dateKey].tasks.push(task);
+			});
+
+			const sortedDates = Object.keys(dateMap).sort().reverse();
+			let dateHtml = "";
+			sortedDates.forEach((dKey) => {
+				const group = dateMap[dKey];
+				const items = group.tasks.map(t => renderTaskItem(t)).join("");
+				dateHtml += `
+					<div style="margin-bottom: 12px; margin-left: 16px;">
+						<h5 style="margin: 0 0 6px 0; font-size: 12px; font-weight: 600; color: #64748b;">${escapeHtml(group.label)}</h5>
+						<div style="display: flex; flex-direction: column; gap: 4px;">${items}</div>
+					</div>
+				`;
+			});
+
+			return `
+				<div style="margin-bottom: 8px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
+					<div class="taskflow-wh-project-header" data-collapse-toggle="${collapseId}" style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
+						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; transition: transform 0.2s;" data-collapse-icon="${collapseId}">
+							<polyline points="9 18 15 12 9 6"></polyline>
+						</svg>
+						<span style="flex: 1; font-size: 13px; font-weight: 600; color: #1e293b;">${escapeHtml(projLabel)}</span>
+						<span style="font-size: 11px; color: #94a3b8;">${projectTasks.length} task${projectTasks.length !== 1 ? "s" : ""}</span>
+					</div>
+					<div data-collapse-content="${collapseId}" style="display: none; padding: 10px 0;">
+						${dateHtml}
+					</div>
+				</div>
+			`;
+		}
+
 		const project = state.projectWorkspace && state.projectWorkspace.project;
 		if (project) {
 			const tasks = (state.projectWorkspace && state.projectWorkspace.tasks) || [];
@@ -4986,25 +5041,57 @@
 				target.innerHTML = `<div class="taskflow-empty">No completed tasks found.</div>`;
 				return;
 			}
-			target.innerHTML = sortedKeys.map((key) => {
+			let html = "";
+			sortedKeys.forEach((key, mIdx) => {
 				const group = monthMap[key];
-				const items = group.tasks.map((t) => {
-					const color = statusColor[t.status] || "#64748b";
-					return `
-						<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
-							<span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; flex-shrink: 0;"></span>
-							<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
-							<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
+				const dateMap = {};
+				group.tasks.forEach((task) => {
+					const d = new Date(task.completed_on);
+					const dKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+					const dLabel = d.toLocaleString("en-US", { day: "numeric", month: "short", year: "numeric" });
+					if (!dateMap[dKey]) dateMap[dKey] = { label: dLabel, tasks: [] };
+					dateMap[dKey].tasks.push(task);
+				});
+				const sortedDates = Object.keys(dateMap).sort().reverse();
+				let dateHtml = "";
+				sortedDates.forEach((dKey) => {
+					const dg = dateMap[dKey];
+					const items = dg.tasks.map(t => renderTaskItem(t)).join("");
+					dateHtml += `
+						<div style="margin-bottom: 12px; margin-left: 16px;">
+							<h5 style="margin: 0 0 6px 0; font-size: 12px; font-weight: 600; color: #64748b;">${escapeHtml(dg.label)}</h5>
+							<div style="display: flex; flex-direction: column; gap: 4px;">${items}</div>
 						</div>
 					`;
-				}).join("");
-				return `
-					<div style="margin-bottom: 24px;">
-						<h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(group.label)}</h3>
-						<div style="display: flex; flex-direction: column; gap: 6px;">${items}</div>
+				});
+				const mCollapseId = "wh-month-" + mIdx;
+				html += `
+					<div style="margin-bottom: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
+						<div class="taskflow-wh-project-header" data-collapse-toggle="${mCollapseId}" style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; transition: transform 0.2s;" data-collapse-icon="${mCollapseId}">
+								<polyline points="9 18 15 12 9 6"></polyline>
+							</svg>
+							<span style="flex: 1; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(group.label)}</span>
+							<span style="font-size: 12px; color: #94a3b8;">${group.tasks.length} task${group.tasks.length !== 1 ? "s" : ""}</span>
+						</div>
+						<div data-collapse-content="${mCollapseId}" style="padding: 10px 0;">
+							${dateHtml}
+						</div>
 					</div>
 				`;
-			}).join("");
+			});
+			target.innerHTML = html;
+			target.querySelectorAll("[data-collapse-toggle]").forEach((header) => {
+				header.addEventListener("click", () => {
+					const id = header.dataset.collapseToggle;
+					const content = target.querySelector(`[data-collapse-content="${id}"]`);
+					const icon = target.querySelector(`[data-collapse-icon="${id}"]`);
+					if (!content) return;
+					const isOpen = content.style.display !== "none";
+					content.style.display = isOpen ? "none" : "block";
+					if (icon) icon.style.transform = isOpen ? "rotate(0deg)" : "rotate(90deg)";
+				});
+			});
 			target.querySelectorAll("[data-work-history-task]").forEach((el) => {
 				el.addEventListener("click", () => {
 					const taskName = el.dataset.workHistoryTask;
@@ -5018,70 +5105,52 @@
 		const allTasks = (state.bootstrap && state.bootstrap.tasks) || [];
 		const projects = (state.bootstrap && state.bootstrap.projects) || [];
 
-		const projectMap = {};
+		const monthMap = {};
 		allTasks.forEach((task) => {
 			if (!task.completed_on) return;
-			const projName = task.project || "__unassigned__";
-			if (!projectMap[projName]) projectMap[projName] = { tasks: [], months: {} };
-			projectMap[projName].tasks.push(task);
 			const d = new Date(task.completed_on);
 			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 			const label = d.toLocaleString("en-US", { year: "numeric", month: "long" });
-			if (!projectMap[projName].months[key]) projectMap[projName].months[key] = { label, tasks: [] };
-			projectMap[projName].months[key].tasks.push(task);
+			if (!monthMap[key]) monthMap[key] = { label, projects: {} };
+			const projName = task.project || "__unassigned__";
+			if (!monthMap[key].projects[projName]) monthMap[key].projects[projName] = [];
+			monthMap[key].projects[projName].push(task);
 		});
 
-		const projectNames = Object.keys(projectMap).sort((a, b) => {
-			if (a === "__unassigned__") return 1;
-			if (b === "__unassigned__") return -1;
-			return a.localeCompare(b);
-		});
+		const sortedMonths = Object.keys(monthMap).sort().reverse();
 
-		if (projectNames.length === 0) {
+		if (sortedMonths.length === 0) {
 			target.innerHTML = `<div class="taskflow-empty">No completed tasks found.</div>`;
 			return;
 		}
 
 		let html = "";
-		projectNames.forEach((projName, idx) => {
-			const data = projectMap[projName];
-			const projLabel = projName === "__unassigned__" ? "Unassigned" : (projects.find(p => p.name === projName)?.project_name || projName);
-			const monthKeys = Object.keys(data.months).sort().reverse();
-			const taskCount = data.tasks.length;
-			const collapseId = "wh-proj-" + idx;
+		sortedMonths.forEach((mKey, mIdx) => {
+			const monthData = monthMap[mKey];
+			const projNames = Object.keys(monthData.projects).sort((a, b) => {
+				if (a === "__unassigned__") return 1;
+				if (b === "__unassigned__") return -1;
+				return a.localeCompare(b);
+			});
+			const totalTasks = projNames.reduce((sum, pn) => sum + monthData.projects[pn].length, 0);
+			const mCollapseId = "wh-month-" + mIdx;
 
-			let monthHtml = "";
-			monthKeys.forEach((key) => {
-				const group = data.months[key];
-				const items = group.tasks.map((t) => {
-					const color = statusColor[t.status] || "#64748b";
-					return `
-						<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
-							<span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; flex-shrink: 0;"></span>
-							<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
-							<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
-						</div>
-					`;
-				}).join("");
-				monthHtml += `
-					<div style="margin-bottom: 16px; margin-left: 16px;">
-						<h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #475569;">${escapeHtml(group.label)}</h4>
-						<div style="display: flex; flex-direction: column; gap: 4px;">${items}</div>
-					</div>
-				`;
+			let projHtml = "";
+			projNames.forEach((pn, pIdx) => {
+				projHtml += buildProjectHtml(monthData.projects[pn], projects, mCollapseId + "-proj-" + pIdx);
 			});
 
 			html += `
-				<div style="margin-bottom: 8px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
-					<div class="taskflow-wh-project-header" data-collapse-toggle="${collapseId}" style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; transition: transform 0.2s;" data-collapse-icon="${collapseId}">
+				<div style="margin-bottom: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
+					<div class="taskflow-wh-project-header" data-collapse-toggle="${mCollapseId}" style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; transition: transform 0.2s;" data-collapse-icon="${mCollapseId}">
 							<polyline points="9 18 15 12 9 6"></polyline>
 						</svg>
-						<span style="flex: 1; font-size: 14px; font-weight: 600; color: #1e293b;">${escapeHtml(projLabel)}</span>
-						<span style="font-size: 12px; color: #94a3b8;">${taskCount} task${taskCount !== 1 ? "s" : ""}</span>
+						<span style="flex: 1; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(monthData.label)}</span>
+						<span style="font-size: 12px; color: #94a3b8;">${totalTasks} task${totalTasks !== 1 ? "s" : ""} · ${projNames.length} project${projNames.length !== 1 ? "s" : ""}</span>
 					</div>
-					<div data-collapse-content="${collapseId}" style="display: none; padding: 12px 0;">
-						${monthHtml}
+					<div data-collapse-content="${mCollapseId}" style="padding: 10px 0;">
+						${projHtml}
 					</div>
 				</div>
 			`;
