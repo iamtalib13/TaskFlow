@@ -91,24 +91,27 @@
 				<option value="all">Team: All Teams</option>
 			</select>
 		</div>
-		<div class="taskflow-section-header">
-			<span>PROJECTS</span>
-			<span class="taskflow-badge" data-project-count>0</span>
-		</div>
 		<div style="padding: 0 12px 12px">
-			<input
-				type="text"
-				data-project-search
-				aria-label="Search projects"
-				placeholder="Search projects..."
-				style="
-					width: 100%;
-					padding: 8px;
-					border-radius: 8px;
-					border: 1px solid var(--taskflow-border);
-					font-size: 13px;
-				"
-			/>
+			<div style="display: flex; align-items: center; gap: 8px;">
+				<div class="taskflow-section-header" style="margin: 0; padding: 0; border: none; white-space: nowrap;">
+					<span>PROJECTS</span>
+					<span class="taskflow-badge" data-project-count>0</span>
+				</div>
+				<input
+					type="text"
+					data-project-search
+					aria-label="Search projects"
+					placeholder="Search..."
+					style="
+						flex: 1;
+						padding: 8px;
+						border-radius: 8px;
+						border: 1px solid var(--taskflow-border);
+						font-size: 13px;
+						min-width: 0;
+					"
+				/>
+			</div>
 		</div>
 		<div class="taskflow-project-list" data-project-list>
 			<!-- Dynamic Project List -->
