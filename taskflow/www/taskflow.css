@@ -2038,7 +2038,7 @@ body.taskflow-dragging .taskflow-card-dragging {
 	align-items: center;
 	gap: 10px;
 	padding: 8px 16px 8px 28px;
-	border-bottom: 1px solid #d8dee4;
+	/* border-bottom: 1px solid #d8dee4; */
 	transition: background-color 0.15s ease;
 	cursor: pointer;
 }
