@@ -633,6 +633,12 @@
 				state.projectQuery = e.target.value;
 				renderProjectList();
 			});
+			refs.projectSearch.addEventListener("focus", () => {
+				refs.projectSearch.placeholder = "Search Project";
+			});
+			refs.projectSearch.addEventListener("blur", () => {
+				refs.projectSearch.placeholder = " ";
+			});
 		}
 
 		document.querySelector("[data-team-view-toggle]")?.addEventListener("click", (e) => {
@@ -5085,8 +5091,9 @@
 							<span class="wh-header-title">${escapeHtml(group.label)}</span>
 							<span class="wh-header-meta">${group.tasks.length} task${group.tasks.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
 						</div>
-						<div data-collapse-content="${mCollapseId}" style="display: none; padding-left: 28px;">
-						</div>
+					<div data-collapse-content="${mCollapseId}" style="display: none; padding-left: 28px;">
+						${dateHtml}
+					</div>
 					</div>
 				`;
 			});
