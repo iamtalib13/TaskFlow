@@ -41,7 +41,7 @@
 		myTasksProject: "all",
 		myTasksTeam: "all",
 		selectedTeam: "all",
-		selectedMember: null,
+		selectedMember: "all",
 		projectModalMode: "create",
 		taskModalMode: "create",
 		projectRequestId: 0,
@@ -82,7 +82,7 @@
 		if (mode) state.navMode = mode;
 		if (project) state.selectedProject = project;
 		state.selectedTeam = team || "all";
-		state.selectedMember = member || null;
+		state.selectedMember = member || "all";
 		state.calendarProject = calendarProject || "";
 		state.calendarMember = calendarMember || "";
 		if (view) state.taskView = normalizeTaskView(view);
@@ -212,7 +212,7 @@
 
 		if (view) state.taskView = normalizeTaskView(view);
 		state.selectedTeam = team || "all";
-		state.selectedMember = member || null;
+		state.selectedMember = member || "all";
 		state.calendarProject = calendarProject || "";
 		state.calendarMember = calendarMember || "";
 		state.selectedStatuses = statuses
@@ -550,7 +550,7 @@
 			refs.myTasksTeamSelector.addEventListener("change", (e) => {
 				state.myTasksTeam = e.target.value;
 				state.myTasksProject = "all";
-				state.selectedMember = null;
+				state.selectedMember = "all";
 				renderProjectWorkspace();
 			});
 		}
@@ -594,7 +594,7 @@
 		if (refs.teamSwitcher) {
 			refs.teamSwitcher.addEventListener("change", async (e) => {
 				state.selectedTeam = e.target.value;
-				state.selectedMember = null; // Reset selected member when team changes
+				state.selectedMember = "all"; // Reset selected member when team changes
 				state.calendarProject = "";
 				state.calendarMember = "";
 				renderProjectList();
@@ -1528,21 +1528,17 @@
 				);
 
 				const defaultEmployee = getCurrentUserEmployeeId();
-				if (state.selectedMember !== "all") {
+				if (state.selectedMember && state.selectedMember !== "all") {
 					const memberExists = members.some(
 						(m) => String(m.employee) === String(state.selectedMember),
 					);
 					if (!memberExists) {
-						const defaultMember = members.find(
-							(m) => String(m.employee) === String(defaultEmployee),
-						);
-						state.selectedMember =
-							defaultMember?.employee || members[0]?.employee || "all";
+						state.selectedMember = "all";
 					}
 				}
 
 				const activeMem =
-					state.selectedMember !== null ? state.selectedMember : defaultEmployee;
+					state.selectedMember !== null ? state.selectedMember : "all";
 				const options =
 					`<option value="all" ${activeMem === "all" ? "selected" : ""}>All Members</option>` +
 					members
