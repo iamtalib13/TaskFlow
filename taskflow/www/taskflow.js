@@ -4971,11 +4971,11 @@
 				return m ? m.label : uid;
 			});
 			return `
-				<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--taskflow-border); border-radius: 8px; cursor: pointer;" data-work-history-task="${escapeHtml(t.name)}">
-					<span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; flex-shrink: 0;"></span>
-					<span style="flex: 1; font-size: 13px; font-weight: 500; color: #334155;">${escapeHtml(t.task_title || t.name)}</span>
-					${assigneeNames.length > 0 ? `<span style="font-size: 11px; color: #64748b;">${escapeHtml(assigneeNames.join(', '))}</span>` : ''}
-					<span style="font-size: 11px; color: #94a3b8;">${escapeHtml(t.status)}</span>
+				<div class="wh-task-row" data-work-history-task="${escapeHtml(t.name)}">
+					<span class="wh-task-dot" style="background: ${color};"></span>
+					<span class="wh-task-title">${escapeHtml(t.task_title || t.name)}</span>
+					${assigneeNames.length > 0 ? `<span class="wh-task-assignee">${escapeHtml(assigneeNames.join(', '))}</span>` : ''}
+					<span class="wh-task-status">${escapeHtml(t.status)}</span>
 				</div>
 			`;
 		}
@@ -5010,23 +5010,23 @@
 				const group = dateMap[dKey];
 				const items = group.tasks.map(t => renderTaskItem(t)).join("");
 				dateHtml += `
-					<div style="margin-bottom: 12px; margin-left: 16px;">
-						<h5 style="margin: 0 0 6px 0; font-size: 12px; font-weight: 600; color: #64748b;">${escapeHtml(group.label)}</h5>
-						<div style="display: flex; flex-direction: column; gap: 4px;">${items}</div>
+					<div class="wh-date-group">
+						<h5 class="wh-date-label">${escapeHtml(group.label)}</h5>
+						${items}
 					</div>
 				`;
 			});
 
 			return `
-				<div style="margin-bottom: 8px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
-					<div class="taskflow-wh-project-header" data-collapse-toggle="${collapseId}" style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
-						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; transition: transform 0.2s;" data-collapse-icon="${collapseId}">
+				<div class="wh-panel">
+					<div class="wh-header" data-collapse-toggle="${collapseId}">
+						<svg class="wh-header-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" data-collapse-icon="${collapseId}">
 							<polyline points="9 18 15 12 9 6"></polyline>
 						</svg>
-						<span style="flex: 1; font-size: 13px; font-weight: 600; color: #1e293b;">${escapeHtml(projLabel)}</span>
-						<span style="font-size: 11px; color: #94a3b8;">${memberNames.length > 0 ? escapeHtml(memberNames.join(', ')) + '  ·  ' : ''}${projectTasks.length} task${projectTasks.length !== 1 ? "s" : ""}</span>
+						<span class="wh-header-title">${escapeHtml(projLabel)}</span>
+						<span class="wh-header-meta">${memberNames.length > 0 ? escapeHtml(memberNames.join(', ')) + ' · ' : ''}${projectTasks.length} task${projectTasks.length !== 1 ? "s" : ""}</span>
 					</div>
-					<div data-collapse-content="${collapseId}" style="display: none; padding: 10px 0;">
+					<div data-collapse-content="${collapseId}" style="display: none; padding: 4px 0;">
 						${dateHtml}
 					</div>
 				</div>
@@ -5068,9 +5068,9 @@
 					const dg = dateMap[dKey];
 					const items = dg.tasks.map(t => renderTaskItem(t)).join("");
 					dateHtml += `
-						<div style="margin-bottom: 12px; margin-left: 16px;">
-							<h5 style="margin: 0 0 6px 0; font-size: 12px; font-weight: 600; color: #64748b;">${escapeHtml(dg.label)}</h5>
-							<div style="display: flex; flex-direction: column; gap: 4px;">${items}</div>
+						<div class="wh-date-group">
+							<h5 class="wh-date-label">${escapeHtml(dg.label)}</h5>
+							${items}
 						</div>
 					`;
 				});
@@ -5080,16 +5080,16 @@
 				(t._assign || []).forEach((u) => { if (u) memberSet.add(u); });
 			});
 			html += `
-					<div style="margin-bottom: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
-						<div class="taskflow-wh-project-header" data-collapse-toggle="${mCollapseId}" style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
-							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; transition: transform 0.2s;" data-collapse-icon="${mCollapseId}">
+					<div class="wh-panel">
+						<div class="wh-header" data-collapse-toggle="${mCollapseId}">
+							<svg class="wh-header-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" data-collapse-icon="${mCollapseId}">
 								<polyline points="9 18 15 12 9 6"></polyline>
 							</svg>
-							<span style="flex: 1; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(group.label)}</span>
-							<span style="font-size: 12px; color: #94a3b8;">${group.tasks.length} task${group.tasks.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
+							<span class="wh-header-title">${escapeHtml(group.label)}</span>
+							<span class="wh-header-meta">${group.tasks.length} task${group.tasks.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
 						</div>
-						<div data-collapse-content="${mCollapseId}" style="padding: 10px 0;">
-							${dateHtml}
+						<div data-collapse-content="${mCollapseId}" style="display: none;">
+							<div class="wh-children">${dateHtml}</div>
 						</div>
 					</div>
 				`;
@@ -5162,16 +5162,16 @@
 			});
 
 			html += `
-				<div style="margin-bottom: 12px; border: 1px solid var(--taskflow-border); border-radius: 8px; overflow: hidden;">
-					<div class="taskflow-wh-project-header" data-collapse-toggle="${mCollapseId}" style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #f8fafc; cursor: pointer; user-select: none;">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; transition: transform 0.2s;" data-collapse-icon="${mCollapseId}">
+				<div class="wh-panel">
+					<div class="wh-header" data-collapse-toggle="${mCollapseId}">
+						<svg class="wh-header-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" data-collapse-icon="${mCollapseId}">
 							<polyline points="9 18 15 12 9 6"></polyline>
 						</svg>
-						<span style="flex: 1; font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(monthData.label)}</span>
-						<span style="font-size: 12px; color: #94a3b8;">${totalTasks} task${totalTasks !== 1 ? "s" : ""} · ${projNames.length} project${projNames.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
+						<span class="wh-header-title">${escapeHtml(monthData.label)}</span>
+						<span class="wh-header-meta">${totalTasks} task${totalTasks !== 1 ? "s" : ""} · ${projNames.length} project${projNames.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
 					</div>
-					<div data-collapse-content="${mCollapseId}" style="padding: 10px 0;">
-						${projHtml}
+					<div data-collapse-content="${mCollapseId}" style="display: none;">
+						<div class="wh-children">${projHtml}</div>
 					</div>
 				</div>
 			`;
