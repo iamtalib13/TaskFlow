@@ -400,6 +400,61 @@ body.taskflow-portal-page {
 	padding: 24px 24px 11px 24px;
 }
 
+/* Labeled Field (Material outlined style) */
+.taskflow-labeled-field {
+	position: relative;
+	width: 100%;
+}
+
+.taskflow-labeled-field .taskflow-team-switcher {
+	width: 100%;
+	padding: 14px 12px 6px 12px;
+	border: 1px solid var(--taskflow-border);
+	border-radius: 8px;
+	font-size: 14px;
+	color: var(--taskflow-text);
+	background: var(--taskflow-sidebar-bg);
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 12px center;
+	cursor: pointer;
+	outline: none;
+	transition: border-color 0.2s;
+}
+
+.taskflow-labeled-field .taskflow-team-switcher:focus {
+	border-color: var(--taskflow-primary);
+}
+
+.taskflow-labeled-field__label {
+	position: absolute;
+	top: 50%;
+	left: 12px;
+	transform: translateY(-50%);
+	font-size: 14px;
+	color: var(--taskflow-text-muted);
+	pointer-events: none;
+	transition: all 0.2s ease;
+	background: var(--taskflow-sidebar-bg);
+	padding: 0 4px;
+}
+
+.taskflow-labeled-field .taskflow-team-switcher:focus ~ .taskflow-labeled-field__label,
+.taskflow-labeled-field .taskflow-team-switcher:valid ~ .taskflow-labeled-field__label {
+	top: 0;
+	font-size: 11px;
+	color: var(--taskflow-primary);
+}
+
+.taskflow-labeled-field .taskflow-team-switcher:valid ~ .taskflow-labeled-field__label {
+	color: var(--taskflow-text-muted);
+}
+
+.taskflow-labeled-field .taskflow-team-switcher:focus ~ .taskflow-labeled-field__label {
+	color: var(--taskflow-primary);
+}
+
 .taskflow-logo {
 	display: flex;
 	align-items: center;

@@ -1346,11 +1346,11 @@
 		if (!refs.teamSwitcher) return;
 		const teams = (state.bootstrap && state.bootstrap.teams) || [];
 		refs.teamSwitcher.innerHTML =
-			`<option value="all">Team: All Teams</option>` +
+			`<option value="all">All Teams</option>` +
 			teams
 				.map(
 					(t) =>
-						`<option value="${escapeHtml(t.name)}">Team: ${escapeHtml(t.team_name)}</option>`,
+						`<option value="${escapeHtml(t.name)}">${escapeHtml(t.team_name)}</option>`,
 				)
 				.join("");
 

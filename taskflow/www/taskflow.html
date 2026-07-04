@@ -77,19 +77,17 @@
 			<span id="teamSectionLabel">Team: All Teams</span>
 		</div>
 		<div style="padding: 11px 24px">
-			<select
-				class="taskflow-team-switcher"
-				data-team-switcher
-				aria-label="Select team"
-				style="
-					width: 100%;
-					padding: 8px;
-					border-radius: 8px;
-					border: 1px solid var(--taskflow-border);
-				"
-			>
-				<option value="all">Team: All Teams</option>
-			</select>
+			<div class="taskflow-labeled-field">
+				<select
+					class="taskflow-team-switcher"
+					data-team-switcher
+					aria-label="Select team"
+					required
+				>
+					<option value="all">All Teams</option>
+				</select>
+				<label class="taskflow-labeled-field__label">Team</label>
+			</div>
 		</div>
 		<div style="padding: 11px 24px">
 			<div style="display: flex; align-items: center; gap: 8px;">
