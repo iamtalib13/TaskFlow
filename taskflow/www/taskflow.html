@@ -73,42 +73,34 @@
 				<span class="taskflow-btn-icon">+</span> New Project
 			</button>
 		</div>
-		<div class="taskflow-section-header">
-			<span>TEAM</span>
+		<div class="taskflow-section-header" style="display: none;">
+			<span id="teamSectionLabel">Team: All Teams</span>
 		</div>
-		<div style="padding: 0 12px 20px">
-			<select
-				class="taskflow-team-switcher"
-				data-team-switcher
-				aria-label="Select team"
-				style="
-					width: 100%;
-					padding: 8px;
-					border-radius: 8px;
-					border: 1px solid var(--taskflow-border);
-				"
-			>
-				<option value="all">All Teams</option>
-			</select>
+		<div style="padding: 11px 24px">
+			<div class="taskflow-labeled-field">
+				<select
+					class="taskflow-team-switcher"
+					data-team-switcher
+					aria-label="Select team"
+					required
+				>
+					<option value="all">All Teams</option>
+				</select>
+				<label class="taskflow-labeled-field__label">Team</label>
+			</div>
 		</div>
-		<div class="taskflow-section-header">
-			<span>PROJECTS</span>
-			<span class="taskflow-badge" data-project-count>0</span>
-		</div>
-		<div style="padding: 0 12px 12px">
-			<input
-				type="text"
-				data-project-search
-				aria-label="Search projects"
-				placeholder="Search projects..."
-				style="
-					width: 100%;
-					padding: 8px;
-					border-radius: 8px;
-					border: 1px solid var(--taskflow-border);
-					font-size: 13px;
-				"
-			/>
+		<div style="padding: 11px 24px">
+			<div class="taskflow-labeled-field">
+				<input
+					type="text"
+					data-project-search
+					aria-label="Search projects"
+					placeholder=" "
+				/>
+				<label class="taskflow-labeled-field__label">
+					Projects <span class="taskflow-badge" data-project-count>0</span>
+				</label>
+			</div>
 		</div>
 		<div class="taskflow-project-list" data-project-list>
 			<!-- Dynamic Project List -->

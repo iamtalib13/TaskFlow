@@ -397,7 +397,74 @@ body.taskflow-portal-page {
 }
 
 .taskflow-brand-section {
-	padding: 24px;
+	padding: 24px 24px 11px 24px;
+}
+
+/* Labeled Field (Material outlined style) */
+.taskflow-labeled-field {
+	position: relative;
+	width: 100%;
+}
+
+.taskflow-labeled-field .taskflow-team-switcher,
+.taskflow-labeled-field input[type="text"] {
+	width: 100%;
+	padding: 14px 12px 6px 12px;
+	border: 1px solid var(--taskflow-border);
+	border-radius: 8px;
+	font-size: 14px;
+	color: var(--taskflow-text);
+	background: var(--taskflow-sidebar-bg);
+	outline: none;
+	transition: border-color 0.2s;
+}
+
+.taskflow-labeled-field .taskflow-team-switcher {
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 12px center;
+	cursor: pointer;
+}
+
+.taskflow-labeled-field .taskflow-team-switcher:focus,
+.taskflow-labeled-field input[type="text"]:focus {
+	border-color: var(--taskflow-primary);
+}
+
+.taskflow-labeled-field__label {
+	position: absolute;
+	top: 50%;
+	left: 12px;
+	transform: translateY(-50%);
+	font-size: 14px;
+	color: var(--taskflow-text-muted);
+	pointer-events: none;
+	transition: all 0.2s ease;
+	background: var(--taskflow-sidebar-bg);
+	padding: 0 4px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.taskflow-labeled-field .taskflow-team-switcher:focus ~ .taskflow-labeled-field__label,
+.taskflow-labeled-field .taskflow-team-switcher:valid ~ .taskflow-labeled-field__label,
+.taskflow-labeled-field input[type="text"]:focus ~ .taskflow-labeled-field__label,
+.taskflow-labeled-field input[type="text"]:not(:placeholder-shown) ~ .taskflow-labeled-field__label {
+	top: 0;
+	font-size: 11px;
+	color: var(--taskflow-primary);
+}
+
+.taskflow-labeled-field .taskflow-team-switcher:valid ~ .taskflow-labeled-field__label,
+.taskflow-labeled-field input[type="text"]:not(:placeholder-shown) ~ .taskflow-labeled-field__label {
+	color: var(--taskflow-text-muted);
+}
+
+.taskflow-labeled-field .taskflow-team-switcher:focus ~ .taskflow-labeled-field__label,
+.taskflow-labeled-field input[type="text"]:focus ~ .taskflow-labeled-field__label {
+	color: var(--taskflow-primary);
 }
 
 .taskflow-logo {
@@ -1825,6 +1892,121 @@ body.taskflow-dragging .taskflow-card-dragging {
 	color: var(--taskflow-text-muted);
 	text-align: center;
 	font-size: 14px;
+}
+
+/* ── Work History (GitHub Commits style) ─────────────────── */
+.wh-panel {
+	background: #fff;
+	/* border: 0px solid #d0d7de; */
+	border-radius: 8px;
+	overflow: hidden;
+	margin-bottom: 12px;
+}
+
+.wh-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 16px;
+	background: #ffffff;
+	cursor: pointer;
+	user-select: none;
+	border-bottom: 0px solid #d0d7de;
+}
+
+.wh-header:hover {
+	background: #f0f3f6;
+}
+
+.wh-header-icon {
+	flex-shrink: 0;
+	transition: transform 0.2s;
+}
+
+.wh-header-title {
+	flex: 1;
+	font-size: 14px;
+	font-weight: 600;
+	color: #24292f;
+}
+
+.wh-header-meta {
+	font-size: 12px;
+	color: #57606a;
+}
+
+.wh-content {
+	padding: 0;
+}
+
+.wh-children {
+	margin-left: 20px;
+	padding: 8px 0 8px 16px;
+	border-left: 2px solid #d0d7de;
+}
+
+.wh-date-group {
+	padding: 0 0 0 16px;
+}
+
+.wh-date-label {
+	font-size: 12px;
+	font-weight: 600;
+	color: #57606a;
+	padding: 10px 0 4px 0;
+	margin: 0;
+}
+
+.wh-task-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 16px 8px 28px;
+	border-bottom: 1px solid #d8dee4;
+	transition: background-color 0.15s ease;
+	cursor: pointer;
+}
+
+.wh-task-row:last-child {
+	border-bottom: none;
+}
+
+.wh-task-row:hover {
+	background: #f6f8fa;
+}
+
+.wh-task-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.wh-task-title {
+	flex: 1;
+	font-size: 13px;
+	font-weight: 500;
+	color: #24292f;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.wh-task-assignee {
+	font-size: 12px;
+	color: #57606a;
+	flex-shrink: 0;
+}
+
+.wh-task-status {
+	font-size: 11px;
+	color: #57606a;
+	flex-shrink: 0;
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: #f1f3f5;
+	font-weight: 500;
 }
 
 .taskflow-trend-neutral {
