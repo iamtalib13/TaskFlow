@@ -5002,7 +5002,7 @@
 			return `
 				<div class="wh-project-section">
 					<div class="wh-project-header" data-collapse-toggle="${collapseId}">
-						<div class="wh-project-icon" style="background: ${projColor};">${initials(projLabel)}</div>
+						<div class="wh-project-icon">${initials(projLabel)}</div>
 						<svg class="wh-header-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" data-collapse-icon="${collapseId}">
 							<polyline points="9 18 15 12 9 6"></polyline>
 						</svg>
