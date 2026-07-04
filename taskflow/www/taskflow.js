@@ -4957,6 +4957,74 @@
 		});
 	}
 
+	function setupWorkHistoryPagination(target, allTasks) {
+		const panels = target.querySelectorAll(".wh-panel");
+		const BATCH = 20;
+		let shown = 0;
+
+		function countTasksInPanels(startIdx, maxPanels) {
+			let count = 0;
+			for (let i = startIdx; i < startIdx + maxPanels && i < panels.length; i++) {
+				count += panels[i].querySelectorAll(".wh-task-row").length;
+			}
+			return count;
+		}
+
+		function showNextBatch() {
+			let added = 0;
+			while (shown < panels.length && added < BATCH) {
+				const panel = panels[shown];
+				panel.style.display = "";
+				added += panel.querySelectorAll(".wh-task-row").length;
+				shown++;
+			}
+			updateLoadMore();
+		}
+
+		function updateLoadMore() {
+			let existing = target.querySelector(".wh-load-more");
+			const allShown = shown >= panels.length;
+			if (allShown) {
+				if (existing) existing.remove();
+				return;
+			}
+			if (!existing) {
+				existing = document.createElement("div");
+				existing.className = "wh-load-more";
+				existing.style.cssText = "text-align: center; padding: 16px; cursor: pointer; color: var(--taskflow-primary, #4f6ef7); font-size: 13px; font-weight: 600; border-radius: 8px; transition: background 0.15s;";
+				existing.addEventListener("mouseenter", () => { existing.style.background = "#f0f5ff"; });
+				existing.addEventListener("mouseleave", () => { existing.style.background = ""; });
+				existing.addEventListener("click", showNextBatch);
+				target.appendChild(existing);
+			}
+			const remaining = panels.length - shown;
+			existing.textContent = `Load more (${remaining} month${remaining !== 1 ? "s" : ""} remaining)`;
+		}
+
+		panels.forEach((p) => { p.style.display = "none"; });
+		showNextBatch();
+
+		target.querySelectorAll("[data-collapse-toggle]").forEach((header) => {
+			header.addEventListener("click", () => {
+				const id = header.dataset.collapseToggle;
+				const content = target.querySelector(`[data-collapse-content="${id}"]`);
+				const icon = target.querySelector(`[data-collapse-icon="${id}"]`);
+				if (!content) return;
+				const isOpen = content.style.display !== "none";
+				content.style.display = isOpen ? "none" : "block";
+				if (icon) icon.style.transform = isOpen ? "rotate(0deg)" : "rotate(90deg)";
+			});
+		});
+
+		target.querySelectorAll("[data-work-history-task]").forEach((el) => {
+			el.addEventListener("click", () => {
+				const taskName = el.dataset.workHistoryTask;
+				const task = allTasks.find((t) => t.name === taskName);
+				if (task) openTaskModal(task);
+			});
+		});
+	}
+
 	function renderWorkHistoryView() {
 		const target = refs.workHistoryView;
 		if (!target) return;
@@ -5023,6 +5091,7 @@
 		}
 
 		const project = state.projectWorkspace && state.projectWorkspace.project;
+		const BATCH_SIZE = 20;
 		if (project) {
 			let tasks = (state.projectWorkspace && state.projectWorkspace.tasks) || [];
 			if (state.selectedMember && state.selectedMember !== "all") {
@@ -5098,24 +5167,7 @@
 				`;
 			});
 			target.innerHTML = html;
-			target.querySelectorAll("[data-collapse-toggle]").forEach((header) => {
-				header.addEventListener("click", () => {
-					const id = header.dataset.collapseToggle;
-					const content = target.querySelector(`[data-collapse-content="${id}"]`);
-					const icon = target.querySelector(`[data-collapse-icon="${id}"]`);
-					if (!content) return;
-					const isOpen = content.style.display !== "none";
-					content.style.display = isOpen ? "none" : "block";
-					if (icon) icon.style.transform = isOpen ? "rotate(0deg)" : "rotate(90deg)";
-				});
-			});
-			target.querySelectorAll("[data-work-history-task]").forEach((el) => {
-				el.addEventListener("click", () => {
-					const taskName = el.dataset.workHistoryTask;
-					const task = tasks.find((t) => t.name === taskName);
-					if (task) openTaskModal(task);
-				});
-			});
+			setupWorkHistoryPagination(target, tasks);
 			return;
 		}
 
@@ -5197,26 +5249,7 @@
 		});
 
 		target.innerHTML = html;
-
-		target.querySelectorAll("[data-collapse-toggle]").forEach((header) => {
-			header.addEventListener("click", () => {
-				const id = header.dataset.collapseToggle;
-				const content = target.querySelector(`[data-collapse-content="${id}"]`);
-				const icon = target.querySelector(`[data-collapse-icon="${id}"]`);
-				if (!content) return;
-				const isOpen = content.style.display !== "none";
-				content.style.display = isOpen ? "none" : "block";
-				if (icon) icon.style.transform = isOpen ? "rotate(0deg)" : "rotate(90deg)";
-			});
-		});
-
-		target.querySelectorAll("[data-work-history-task]").forEach((el) => {
-			el.addEventListener("click", () => {
-				const taskName = el.dataset.workHistoryTask;
-				const task = allTasks.find((t) => t.name === taskName);
-				if (task) openTaskModal(task);
-			});
-		});
+		setupWorkHistoryPagination(target, allTasks);
 	}
 
 	async function loadPsProjectAttachmentsList(projectName, listEl) {
