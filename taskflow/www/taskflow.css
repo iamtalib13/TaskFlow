@@ -1897,7 +1897,7 @@ body.taskflow-dragging .taskflow-card-dragging {
 /* ── Work History (GitHub Commits style) ─────────────────── */
 .wh-panel {
 	background: #fff;
-	border: 1px solid #d0d7de;
+	/* border: 0px solid #d0d7de; */
 	border-radius: 8px;
 	overflow: hidden;
 	margin-bottom: 12px;
