@@ -5026,7 +5026,7 @@
 						<span class="wh-header-title">${escapeHtml(projLabel)}</span>
 						<span class="wh-header-meta">${memberNames.length > 0 ? escapeHtml(memberNames.join(', ')) + ' · ' : ''}${projectTasks.length} task${projectTasks.length !== 1 ? "s" : ""}</span>
 					</div>
-					<div data-collapse-content="${collapseId}" style="display: none; padding: 4px 0;">
+					<div data-collapse-content="${collapseId}" style="display: none; padding: 4px 0 4px 28px;">
 						${dateHtml}
 					</div>
 				</div>
