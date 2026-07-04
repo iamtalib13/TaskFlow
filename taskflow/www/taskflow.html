@@ -73,7 +73,7 @@
 				<span class="taskflow-btn-icon">+</span> New Project
 			</button>
 		</div>
-		<div class="taskflow-section-header" style="display: none;">
+		<div class="taskflow-section-header" style="display: none">
 			<span id="teamSectionLabel">Team: All Teams</span>
 		</div>
 		<div style="padding: 11px 24px">
@@ -144,12 +144,20 @@
 						<img src="/assets/taskflow/favicon.png" alt="User" data-user-image />
 					</div>
 					<!-- Dropdown Menu -->
-					<div class="taskflow-user-dropdown" id="userProfileDropdown" aria-hidden="true">
+					<div
+						class="taskflow-user-dropdown"
+						id="userProfileDropdown"
+						aria-hidden="true"
+					>
 						<a class="taskflow-user-dropdown-item" href="/app/sahayog-home/">
 							<span>🏠</span> Sahayog Home
 						</a>
 						<div class="taskflow-user-dropdown-divider"></div>
-						<button class="taskflow-user-dropdown-item taskflow-user-dropdown-logout" id="userLogoutBtn" type="button">
+						<button
+							class="taskflow-user-dropdown-item taskflow-user-dropdown-logout"
+							id="userLogoutBtn"
+							type="button"
+						>
 							<span>🚪</span> Logout
 						</button>
 					</div>
@@ -158,20 +166,44 @@
 		</header>
 
 		<!-- Project Toolbar -->
-		<div class="taskflow-toolbar" style="display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 32px 32px 16px;">
-			<div style="display: flex; width: 100%; justify-content: space-between; align-items: flex-end; flex-wrap: nowrap; gap: 16px;">
+		<div
+			class="taskflow-toolbar"
+			style="
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 16px;
+				padding: 32px 32px 16px;
+			"
+		>
+			<div
+				style="
+					display: flex;
+					width: 100%;
+					justify-content: space-between;
+					align-items: flex-end;
+					flex-wrap: nowrap;
+					gap: 16px;
+				"
+			>
 				<div class="taskflow-project-info">
 					<h1 class="taskflow-project-title" data-project-title>&nbsp;</h1>
 					<div
 						class="taskflow-member-selector-container taskflow-hidden"
 						data-member-selector-wrapper
-						style="margin-left: 12px; display: flex; gap: 8px;"
+						style="margin-left: 12px; display: flex; gap: 8px"
 					>
 						<select
 							class="taskflow-member-selector"
 							data-my-tasks-team-selector
 							aria-label="Select team"
-							style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--taskflow-border); font-size: 14px; font-weight: 600;"
+							style="
+								padding: 4px 8px;
+								border-radius: 6px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 14px;
+								font-weight: 600;
+							"
 						>
 							<option value="all">All Teams</option>
 						</select>
@@ -179,7 +211,13 @@
 							class="taskflow-member-selector"
 							data-my-tasks-project-selector
 							aria-label="Select project"
-							style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--taskflow-border); font-size: 14px; font-weight: 600;"
+							style="
+								padding: 4px 8px;
+								border-radius: 6px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 14px;
+								font-weight: 600;
+							"
 						>
 							<option value="all">All Projects</option>
 						</select>
@@ -187,7 +225,13 @@
 							class="taskflow-member-selector"
 							data-member-selector
 							aria-label="Select member"
-							style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--taskflow-border); font-size: 14px; font-weight: 600;"
+							style="
+								padding: 4px 8px;
+								border-radius: 6px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 14px;
+								font-weight: 600;
+							"
 						></select>
 					</div>
 				</div>
@@ -212,7 +256,11 @@
 				</div>
 			</div>
 			<!-- KPI cards container right under Project Info -->
-			<div class="taskflow-project-kpis" data-project-kpis style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; width: 100%;"></div>
+			<div
+				class="taskflow-project-kpis"
+				data-project-kpis
+				style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; width: 100%"
+			></div>
 		</div>
 
 		<!-- View Navigation Tabs -->
@@ -362,18 +410,104 @@
 				class="taskflow-timeline-wrapper taskflow-view-content taskflow-hidden"
 				data-timeline-view
 			>
-				<div class="taskflow-calendar-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--taskflow-border); background: #ffffff; gap: 16px; flex-wrap: wrap;">
-					<h3 data-calendar-title style="margin: 0; font-size: 18px; font-weight: 700; color: var(--taskflow-text);">Calendar</h3>
-					<div class="taskflow-calendar-filters" data-calendar-filters style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-						<select data-calendar-team-filter aria-label="Filter calendar by team" style="padding: 7px 9px; border-radius: 8px; border: 1px solid var(--taskflow-border); font-size: 13px; min-width: 150px;"></select>
-						<select data-calendar-project-filter aria-label="Filter calendar by project" style="padding: 7px 9px; border-radius: 8px; border: 1px solid var(--taskflow-border); font-size: 13px; min-width: 170px;"></select>
-						<select data-calendar-member-filter aria-label="Filter calendar by team member" style="padding: 7px 9px; border-radius: 8px; border: 1px solid var(--taskflow-border); font-size: 13px; min-width: 170px;"></select>
+				<div
+					class="taskflow-calendar-header"
+					style="
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						padding: 16px 24px;
+						border-bottom: 1px solid var(--taskflow-border);
+						background: #ffffff;
+						gap: 16px;
+						flex-wrap: wrap;
+					"
+				>
+					<h3
+						data-calendar-title
+						style="
+							margin: 0;
+							font-size: 18px;
+							font-weight: 700;
+							color: var(--taskflow-text);
+						"
+					>
+						Calendar
+					</h3>
+					<div
+						class="taskflow-calendar-filters"
+						data-calendar-filters
+						style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
+					>
+						<select
+							data-calendar-team-filter
+							aria-label="Filter calendar by team"
+							style="
+								padding: 7px 9px;
+								border-radius: 8px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 13px;
+								min-width: 150px;
+							"
+						></select>
+						<select
+							data-calendar-project-filter
+							aria-label="Filter calendar by project"
+							style="
+								padding: 7px 9px;
+								border-radius: 8px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 13px;
+								min-width: 170px;
+							"
+						></select>
+						<select
+							data-calendar-member-filter
+							aria-label="Filter calendar by team member"
+							style="
+								padding: 7px 9px;
+								border-radius: 8px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 13px;
+								min-width: 170px;
+							"
+						></select>
 					</div>
-					<div class="taskflow-calendar-kpis" data-calendar-kpis style="display: flex; align-items: center; gap: 16px; font-size: 13px;"></div>
-					<div class="taskflow-calendar-controls" style="display: flex; align-items: center; gap: 12px;">
-						<button class="taskflow-button secondary" type="button" data-calendar-prev style="padding: 6px 12px; font-size: 13px;">&larr; Prev</button>
-						<span data-calendar-month style="font-size: 15px; font-weight: 600; min-width: 120px; text-align: center; color: var(--taskflow-text);"></span>
-						<button class="taskflow-button secondary" type="button" data-calendar-next style="padding: 6px 12px; font-size: 13px;">Next &rarr;</button>
+					<div
+						class="taskflow-calendar-kpis"
+						data-calendar-kpis
+						style="display: flex; align-items: center; gap: 16px; font-size: 13px"
+					></div>
+					<div
+						class="taskflow-calendar-controls"
+						style="display: flex; align-items: center; gap: 12px"
+					>
+						<button
+							class="taskflow-button secondary"
+							type="button"
+							data-calendar-prev
+							style="padding: 6px 12px; font-size: 13px"
+						>
+							&larr; Prev
+						</button>
+						<span
+							data-calendar-month
+							style="
+								font-size: 15px;
+								font-weight: 600;
+								min-width: 120px;
+								text-align: center;
+								color: var(--taskflow-text);
+							"
+						></span>
+						<button
+							class="taskflow-button secondary"
+							type="button"
+							data-calendar-next
+							style="padding: 6px 12px; font-size: 13px"
+						>
+							Next &rarr;
+						</button>
 					</div>
 				</div>
 				<div class="taskflow-calendar-grid" data-calendar-grid></div>
@@ -401,7 +535,7 @@
 			<div
 				class="taskflow-view-content taskflow-hidden"
 				data-work-history-view
-				style="padding: 24px; overflow-y: auto;"
+				style="padding: 0px; overflow-y: auto"
 			></div>
 
 			<!-- Stats Area (Hidden by default in new design but kept for state) -->
@@ -441,46 +575,68 @@
 			<div class="taskflow-modal-main-content">
 				<input type="hidden" name="name" />
 				<div class="quick-project-layout">
-					
 					<!-- Left Section: Basic Info & Description -->
 					<div class="quick-project-section">
 						<div class="quick-project-section-title">Project Details</div>
-						
-						<label class="quick-project-field-full">Project Name *
-							<input type="text" name="project_name" required placeholder="Enter project name" />
-						</label>
-						
-						<label class="quick-project-field-full">Project Code *
-							<input type="text" name="project_code" required placeholder="e.g. PROJ" />
+
+						<label class="quick-project-field-full"
+							>Project Name *
+							<input
+								type="text"
+								name="project_name"
+								required
+								placeholder="Enter project name"
+							/>
 						</label>
 
-						<label class="quick-project-field-full">Description
-							<textarea name="description" rows="6" placeholder="Project objectives, notes, or requirements..." style="resize: vertical; min-height: 120px;"></textarea>
+						<label class="quick-project-field-full"
+							>Project Code *
+							<input
+								type="text"
+								name="project_code"
+								required
+								placeholder="e.g. PROJ"
+							/>
+						</label>
+
+						<label class="quick-project-field-full"
+							>Description
+							<textarea
+								name="description"
+								rows="6"
+								placeholder="Project objectives, notes, or requirements..."
+								style="resize: vertical; min-height: 120px"
+							></textarea>
 						</label>
 					</div>
 
 					<!-- Right Section: Attributes & Meta -->
 					<div class="quick-project-section">
 						<div class="quick-project-section-title">Planning & Meta</div>
-						
+
 						<div class="quick-project-field-group">
-							<label class="quick-project-field-full">Team *
+							<label class="quick-project-field-full"
+								>Team *
 								<select name="team" required></select>
 							</label>
 
-							<label class="quick-project-field-full">Project Lead
+							<label class="quick-project-field-full"
+								>Project Lead
 								<select name="project_lead"></select>
 							</label>
 
-							<label>Start Date
+							<label
+								>Start Date
 								<input type="date" name="start_date" />
 							</label>
 
-							<label>End Date
+							<label
+								>End Date
 								<input type="date" name="end_date" />
 							</label>
 
-							<label>Status
+							<label
+								>Status
 								<select name="status">
 									<option>Draft</option>
 									<option>Planning</option>
@@ -491,7 +647,8 @@
 								</select>
 							</label>
 
-							<label>Priority
+							<label
+								>Priority
 								<select name="priority">
 									<option>Low</option>
 									<option selected>Medium</option>
@@ -500,11 +657,18 @@
 								</select>
 							</label>
 
-							<label>Expected Hours
-								<input type="number" step="0.01" name="expected_hours" placeholder="0.00" />
+							<label
+								>Expected Hours
+								<input
+									type="number"
+									step="0.01"
+									name="expected_hours"
+									placeholder="0.00"
+								/>
 							</label>
 
-							<label>Completion %
+							<label
+								>Completion %
 								<input
 									type="number"
 									min="0"
@@ -515,7 +679,6 @@
 							</label>
 						</div>
 					</div>
-
 				</div>
 				<div class="taskflow-rail-row" style="margin-top: 16px">
 					<span class="taskflow-muted"
@@ -609,10 +772,22 @@
 			transform: translateY(-1px);
 			filter: brightness(0.95);
 		}
-		.taskflow-calendar-task-badge.status-open { background: #ffedd5; border-left: 3px solid #f97316; }
-		.taskflow-calendar-task-badge.status-in-progress { background: #ffedd5; border-left: 3px solid #f97316; }
-		.taskflow-calendar-task-badge.status-completed { background: #dcfce7; border-left: 3px solid #22c55e; }
-		.taskflow-calendar-task-badge.status-overdue { background: #fee2e2; border-left: 3px solid #ef4444; }
+		.taskflow-calendar-task-badge.status-open {
+			background: #ffedd5;
+			border-left: 3px solid #f97316;
+		}
+		.taskflow-calendar-task-badge.status-in-progress {
+			background: #ffedd5;
+			border-left: 3px solid #f97316;
+		}
+		.taskflow-calendar-task-badge.status-completed {
+			background: #dcfce7;
+			border-left: 3px solid #22c55e;
+		}
+		.taskflow-calendar-task-badge.status-overdue {
+			background: #fee2e2;
+			border-left: 3px solid #ef4444;
+		}
 
 		.taskflow-calendar-more-btn {
 			display: block;
@@ -654,7 +829,9 @@
 			max-width: 850px !important;
 			border-radius: 12px !important;
 			background: #ffffff !important;
-			box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+			box-shadow:
+				0 20px 25px -5px rgba(0, 0, 0, 0.1),
+				0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 			border: 1px solid var(--taskflow-border) !important;
 		}
 
@@ -724,7 +901,7 @@
 			grid-template-columns: 1fr 1fr;
 			gap: 14px;
 		}
-		
+
 		.quick-project-field-full {
 			grid-column: 1 / -1;
 		}
@@ -765,7 +942,9 @@
 			max-width: 850px !important;
 			border-radius: 12px !important;
 			background: #ffffff !important;
-			box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+			box-shadow:
+				0 20px 25px -5px rgba(0, 0, 0, 0.1),
+				0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 			border: 1px solid var(--taskflow-border) !important;
 		}
 
@@ -805,7 +984,7 @@
 			grid-template-columns: 1fr 1fr;
 			gap: 14px;
 		}
-		
+
 		.quick-task-field-full {
 			grid-column: 1 / -1;
 		}
@@ -883,18 +1062,41 @@
 			<div class="taskflow-modal-main-content">
 				<input type="hidden" name="name" />
 				<div class="quick-task-layout">
-					
 					<!-- Left Section: Main Info -->
 					<div class="quick-task-section">
 						<div class="quick-task-section-title">Task Details</div>
-						
-						<label class="quick-task-field-full">Task Title *
-							<input type="text" name="task_title" required placeholder="What needs to be done?" />
+
+						<label class="quick-task-field-full"
+							>Task Title *
+							<input
+								type="text"
+								name="task_title"
+								required
+								placeholder="What needs to be done?"
+							/>
 						</label>
 
-						<div class="quick-task-field-full" style="display: flex; flex-direction: column; gap: 6px;">
-							<span style="font-size: 12px; font-weight: 600; color: var(--taskflow-text-muted);">Description</span>
-							<div id="quick-task-desc-editor" style="min-height: 180px; border: 1px solid var(--taskflow-border); border-radius: 8px; background: #fff;"></div>
+						<div
+							class="quick-task-field-full"
+							style="display: flex; flex-direction: column; gap: 6px"
+						>
+							<span
+								style="
+									font-size: 12px;
+									font-weight: 600;
+									color: var(--taskflow-text-muted);
+								"
+								>Description</span
+							>
+							<div
+								id="quick-task-desc-editor"
+								style="
+									min-height: 180px;
+									border: 1px solid var(--taskflow-border);
+									border-radius: 8px;
+									background: #fff;
+								"
+							></div>
 							<input type="hidden" name="description" />
 						</div>
 					</div>
@@ -902,34 +1104,60 @@
 					<!-- Right Section: Attributes & Meta -->
 					<div class="quick-task-section">
 						<div class="quick-task-section-title">Planning & Meta</div>
-						
+
 						<div class="quick-task-field-group">
-							<label class="quick-task-field-full">Project *
-								<select name="project" required id="quickTaskProjectSelect"></select>
+							<label class="quick-task-field-full"
+								>Project *
+								<select
+									name="project"
+									required
+									id="quickTaskProjectSelect"
+								></select>
 							</label>
 
-							<label class="quick-task-field-full">Assignee
-								<div class="taskflow-assignee-widget" style="width: 100%; margin-top: 6px;">
-									<div class="assignee-badges" id="quickAssigneeBadges" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;"></div>
-									<select class="sidebar-select" style="width: 100%;" id="quickTaskAssignedToSelect">
+							<label class="quick-task-field-full"
+								>Assignee
+								<div
+									class="taskflow-assignee-widget"
+									style="width: 100%; margin-top: 6px"
+								>
+									<div
+										class="assignee-badges"
+										id="quickAssigneeBadges"
+										style="
+											display: flex;
+											flex-direction: column;
+											gap: 6px;
+											margin-bottom: 8px;
+										"
+									></div>
+									<select
+										class="sidebar-select"
+										style="width: 100%"
+										id="quickTaskAssignedToSelect"
+									>
 										<option value="">Add Assignee...</option>
 									</select>
 								</div>
 							</label>
 
-							<label>Start Date *
+							<label
+								>Start Date *
 								<input type="date" name="start_date" required />
 							</label>
 
-							<label id="quickCompletedDateLabel" style="display:none;">Completed Date
+							<label id="quickCompletedDateLabel" style="display: none"
+								>Completed Date
 								<input type="date" name="completed_date" />
 							</label>
 
-							<label>Due Date *
+							<label
+								>Due Date *
 								<input type="date" name="due_date" required />
 							</label>
 
-							<label>Priority
+							<label
+								>Priority
 								<select name="priority">
 									<option value="Low">Low</option>
 									<option selected value="Medium">Medium</option>
@@ -938,7 +1166,8 @@
 								</select>
 							</label>
 
-							<label>Status
+							<label
+								>Status
 								<select name="status">
 									<option selected value="Open">Open</option>
 									<option value="In Progress">In Progress</option>
@@ -948,16 +1177,18 @@
 								</select>
 							</label>
 
-							<label class="quick-task-field-full">Task Type
+							<label class="quick-task-field-full"
+								>Task Type
 								<select name="task_type">
 									<option selected value="Task">Task</option>
 									<option value="Bug">Bug</option>
-									<option value="Customization Request">Customization Request</option>
+									<option value="Customization Request">
+										Customization Request
+									</option>
 								</select>
 							</label>
 						</div>
 					</div>
-
 				</div>
 			</div>
 		</form>
@@ -1016,11 +1247,7 @@
 </div>
 
 <!-- Task Detail Iframe Modal -->
-<div
-	class="taskflow-modal-backdrop"
-	data-task-detail-iframe-backdrop
-	aria-hidden="true"
->
+<div class="taskflow-modal-backdrop" data-task-detail-iframe-backdrop aria-hidden="true">
 	<style>
 		.task-detail-iframe-modal {
 			width: 95vw !important;
@@ -1075,11 +1302,7 @@
 		<div class="taskflow-modal-header">
 			<h3 id="task-detail-iframe-title">Task Details</h3>
 			<div class="taskflow-modal-header-actions">
-				<button
-					class="taskflow-button secondary"
-					type="button"
-					data-close-iframe-modal
-				>
+				<button class="taskflow-button secondary" type="button" data-close-iframe-modal>
 					Close
 				</button>
 			</div>
