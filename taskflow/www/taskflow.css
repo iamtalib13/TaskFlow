@@ -1953,22 +1953,42 @@ body.taskflow-dragging .taskflow-card-dragging {
 }
 
 .wh-date-group:nth-child(5n+1) {
-	background: #ffffff;
+	background: transparent;
 }
 
 .wh-date-group:nth-child(5n+2) {
-	background: #f0fdf4;
+	background: transparent;
 }
 
 .wh-date-group:nth-child(5n+3) {
-	background: #fefce8;
+	background: transparent;
 }
 
 .wh-date-group:nth-child(5n+4) {
-	background: #fdf2f8;
+	background: transparent;
 }
 
 .wh-date-group:nth-child(5n+5) {
+	background: transparent;
+}
+
+.wh-project-section:nth-child(5n+1) {
+	background: #ffffff;
+}
+
+.wh-project-section:nth-child(5n+2) {
+	background: #f0fdf4;
+}
+
+.wh-project-section:nth-child(5n+3) {
+	background: #fefce8;
+}
+
+.wh-project-section:nth-child(5n+4) {
+	background: #fdf2f8;
+}
+
+.wh-project-section:nth-child(5n+5) {
 	background: #faf5ff;
 }
 
@@ -2004,6 +2024,8 @@ body.taskflow-dragging .taskflow-card-dragging {
 
 .wh-project-section {
 	margin-bottom: 12px;
+	padding: 4px 8px;
+	border-radius: 8px;
 }
 
 .wh-project-header {
