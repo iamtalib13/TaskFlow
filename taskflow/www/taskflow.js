@@ -4997,29 +4997,7 @@
 				return m ? m.label : uid;
 			});
 
-			const dateMap = {};
-			projectTasks.forEach((task) => {
-				const dateStr = task.completed_on;
-				if (!dateStr) return;
-				const d = new Date(dateStr);
-				const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-				const dateLabel = d.toLocaleString("en-US", { day: "numeric", month: "short", year: "numeric" });
-				if (!dateMap[dateKey]) dateMap[dateKey] = { label: dateLabel, tasks: [] };
-				dateMap[dateKey].tasks.push(task);
-			});
-
-			const sortedDates = Object.keys(dateMap).sort().reverse();
-			let dateHtml = "";
-			sortedDates.forEach((dKey) => {
-				const group = dateMap[dKey];
-				const items = group.tasks.map(t => renderTaskItem(t)).join("");
-				dateHtml += `
-					<div class="wh-date-group">
-						<h5 class="wh-date-label">${escapeHtml(group.label)}</h5>
-						${items}
-					</div>
-				`;
-			});
+			const items = projectTasks.map(t => renderTaskItem(t)).join("");
 
 			return `
 				<div class="wh-project-section">
@@ -5032,7 +5010,7 @@
 						<span class="wh-header-meta">${memberNames.length > 0 ? escapeHtml(memberNames.join(', ')) + ' · ' : ''}${projectTasks.length} task${projectTasks.length !== 1 ? "s" : ""}</span>
 					</div>
 					<div data-collapse-content="${collapseId}" style="display: none; padding: 4px 0 4px 28px;">
-						${dateHtml}
+						${items}
 					</div>
 				</div>
 			`;
