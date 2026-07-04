@@ -733,6 +733,7 @@ textarea:focus-visible,
 	flex-direction: column;
 	height: 100%;
 	overflow-y: auto;
+	padding: 0;
 }
 
 .taskflow-view-content.full-width {
