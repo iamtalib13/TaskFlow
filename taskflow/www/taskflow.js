@@ -633,6 +633,12 @@
 				state.projectQuery = e.target.value;
 				renderProjectList();
 			});
+			refs.projectSearch.addEventListener("focus", () => {
+				refs.projectSearch.placeholder = "Search Project";
+			});
+			refs.projectSearch.addEventListener("blur", () => {
+				refs.projectSearch.placeholder = " ";
+			});
 		}
 
 		document.querySelector("[data-team-view-toggle]")?.addEventListener("click", (e) => {
@@ -4984,6 +4990,10 @@
 			const projName = projectTasks[0].project || "__unassigned__";
 			const projLabel = projName === "__unassigned__" ? "Unassigned" : (projects.find(p => p.name === projName)?.project_name || projName);
 
+			const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
+			const colorIdx = projects.findIndex(p => p.name === projName);
+			const projColor = colors[colorIdx >= 0 ? colorIdx % colors.length : 0];
+
 			const memberSet = new Set();
 			projectTasks.forEach((t) => {
 				(t._assign || []).forEach((u) => { if (u) memberSet.add(u); });
@@ -4993,33 +5003,12 @@
 				return m ? m.label : uid;
 			});
 
-			const dateMap = {};
-			projectTasks.forEach((task) => {
-				const dateStr = task.completed_on;
-				if (!dateStr) return;
-				const d = new Date(dateStr);
-				const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-				const dateLabel = d.toLocaleString("en-US", { day: "numeric", month: "short", year: "numeric" });
-				if (!dateMap[dateKey]) dateMap[dateKey] = { label: dateLabel, tasks: [] };
-				dateMap[dateKey].tasks.push(task);
-			});
-
-			const sortedDates = Object.keys(dateMap).sort().reverse();
-			let dateHtml = "";
-			sortedDates.forEach((dKey) => {
-				const group = dateMap[dKey];
-				const items = group.tasks.map(t => renderTaskItem(t)).join("");
-				dateHtml += `
-					<div class="wh-date-group">
-						<h5 class="wh-date-label">${escapeHtml(group.label)}</h5>
-						${items}
-					</div>
-				`;
-			});
+			const items = projectTasks.map(t => renderTaskItem(t)).join("");
 
 			return `
-				<div class="wh-panel">
-					<div class="wh-header" data-collapse-toggle="${collapseId}">
+				<div class="wh-project-section">
+					<div class="wh-project-header" data-collapse-toggle="${collapseId}">
+						<div class="wh-project-icon">${initials(projLabel)}</div>
 						<svg class="wh-header-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" data-collapse-icon="${collapseId}">
 							<polyline points="9 18 15 12 9 6"></polyline>
 						</svg>
@@ -5027,7 +5016,7 @@
 						<span class="wh-header-meta">${memberNames.length > 0 ? escapeHtml(memberNames.join(', ')) + ' · ' : ''}${projectTasks.length} task${projectTasks.length !== 1 ? "s" : ""}</span>
 					</div>
 					<div data-collapse-content="${collapseId}" style="display: none; padding: 4px 0 4px 28px;">
-						${dateHtml}
+						${items}
 					</div>
 				</div>
 			`;
@@ -5035,7 +5024,11 @@
 
 		const project = state.projectWorkspace && state.projectWorkspace.project;
 		if (project) {
-			const tasks = (state.projectWorkspace && state.projectWorkspace.tasks) || [];
+			let tasks = (state.projectWorkspace && state.projectWorkspace.tasks) || [];
+			if (state.selectedMember && state.selectedMember !== "all") {
+				tasks = tasks.filter((t) => String(t.assigned_to) === String(state.selectedMember));
+			}
+			const projects = (state.bootstrap && state.bootstrap.projects) || [];
 			const monthMap = {};
 			tasks.forEach((task) => {
 				const dateStr = task.completed_on;
@@ -5066,11 +5059,21 @@
 				let dateHtml = "";
 				sortedDates.forEach((dKey) => {
 					const dg = dateMap[dKey];
-					const items = dg.tasks.map(t => renderTaskItem(t)).join("");
+					const projMap = {};
+					dg.tasks.forEach((t) => {
+						const pn = t.project || "__unassigned__";
+						if (!projMap[pn]) projMap[pn] = [];
+						projMap[pn].push(t);
+					});
+					const projNames = Object.keys(projMap);
+					let projItemsHtml = "";
+					projNames.forEach((pn, pIdx) => {
+						projItemsHtml += buildProjectHtml(projMap[pn], projects, `wh-month-${mIdx}-date-${dKey}-proj-${pIdx}`);
+					});
 					dateHtml += `
 						<div class="wh-date-group">
 							<h5 class="wh-date-label">${escapeHtml(dg.label)}</h5>
-							${items}
+							${projItemsHtml}
 						</div>
 					`;
 				});
@@ -5088,9 +5091,9 @@
 							<span class="wh-header-title">${escapeHtml(group.label)}</span>
 							<span class="wh-header-meta">${group.tasks.length} task${group.tasks.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
 						</div>
-						<div data-collapse-content="${mCollapseId}" style="display: none;">
-							<div class="wh-children">${dateHtml}</div>
-						</div>
+					<div data-collapse-content="${mCollapseId}" style="display: none; padding-left: 28px;">
+						${dateHtml}
+					</div>
 					</div>
 				`;
 			});
@@ -5116,7 +5119,10 @@
 			return;
 		}
 
-		const allTasks = (state.bootstrap && state.bootstrap.tasks) || [];
+		let allTasks = (state.bootstrap && state.bootstrap.tasks) || [];
+		if (state.selectedMember && state.selectedMember !== "all") {
+			allTasks = allTasks.filter((t) => String(t.assigned_to) === String(state.selectedMember));
+		}
 		const projects = (state.bootstrap && state.bootstrap.projects) || [];
 
 		const monthMap = {};
@@ -5125,10 +5131,8 @@
 			const d = new Date(task.completed_on);
 			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 			const label = d.toLocaleString("en-US", { year: "numeric", month: "long" });
-			if (!monthMap[key]) monthMap[key] = { label, projects: {} };
-			const projName = task.project || "__unassigned__";
-			if (!monthMap[key].projects[projName]) monthMap[key].projects[projName] = [];
-			monthMap[key].projects[projName].push(task);
+			if (!monthMap[key]) monthMap[key] = { label, tasks: [] };
+			monthMap[key].tasks.push(task);
 		});
 
 		const sortedMonths = Object.keys(monthMap).sort().reverse();
@@ -5141,26 +5145,41 @@
 		let html = "";
 		sortedMonths.forEach((mKey, mIdx) => {
 			const monthData = monthMap[mKey];
-			const projNames = Object.keys(monthData.projects).sort((a, b) => {
-				if (a === "__unassigned__") return 1;
-				if (b === "__unassigned__") return -1;
-				return a.localeCompare(b);
+			const dateMap = {};
+			monthData.tasks.forEach((task) => {
+				const d = new Date(task.completed_on);
+				const dKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+				const dLabel = d.toLocaleString("en-US", { day: "numeric", month: "short", year: "numeric" });
+				if (!dateMap[dKey]) dateMap[dKey] = { label: dLabel, tasks: [] };
+				dateMap[dKey].tasks.push(task);
 			});
-			const totalTasks = projNames.reduce((sum, pn) => sum + monthData.projects[pn].length, 0);
-			const mCollapseId = "wh-month-" + mIdx;
-
-			let projHtml = "";
-			projNames.forEach((pn, pIdx) => {
-				projHtml += buildProjectHtml(monthData.projects[pn], projects, mCollapseId + "-proj-" + pIdx);
-			});
-
-			const memberSet = new Set();
-			projNames.forEach((pn) => {
-				monthData.projects[pn].forEach((t) => {
-					(t._assign || []).forEach((u) => { if (u) memberSet.add(u); });
+			const sortedDates = Object.keys(dateMap).sort().reverse();
+			let dateHtml = "";
+			sortedDates.forEach((dKey) => {
+				const dg = dateMap[dKey];
+				const projMap = {};
+				dg.tasks.forEach((t) => {
+					const pn = t.project || "__unassigned__";
+					if (!projMap[pn]) projMap[pn] = [];
+					projMap[pn].push(t);
 				});
+				const projNames = Object.keys(projMap);
+				let projItemsHtml = "";
+				projNames.forEach((pn, pIdx) => {
+					projItemsHtml += buildProjectHtml(projMap[pn], projects, `wh-month-${mIdx}-date-${dKey}-proj-${pIdx}`);
+				});
+				dateHtml += `
+					<div class="wh-date-group">
+						<h5 class="wh-date-label">${escapeHtml(dg.label)}</h5>
+						${projItemsHtml}
+					</div>
+				`;
 			});
-
+			const mCollapseId = "wh-month-" + mIdx;
+			const memberSet = new Set();
+			monthData.tasks.forEach((t) => {
+				(t._assign || []).forEach((u) => { if (u) memberSet.add(u); });
+			});
 			html += `
 				<div class="wh-panel">
 					<div class="wh-header" data-collapse-toggle="${mCollapseId}">
@@ -5168,10 +5187,10 @@
 							<polyline points="9 18 15 12 9 6"></polyline>
 						</svg>
 						<span class="wh-header-title">${escapeHtml(monthData.label)}</span>
-						<span class="wh-header-meta">${totalTasks} task${totalTasks !== 1 ? "s" : ""} · ${projNames.length} project${projNames.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
+						<span class="wh-header-meta">${monthData.tasks.length} task${monthData.tasks.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
 					</div>
-					<div data-collapse-content="${mCollapseId}" style="display: none;">
-						<div class="wh-children">${projHtml}</div>
+					<div data-collapse-content="${mCollapseId}" style="display: none; padding-left: 28px;">
+						${dateHtml}
 					</div>
 				</div>
 			`;
