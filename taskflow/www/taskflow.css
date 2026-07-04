@@ -1942,19 +1942,95 @@ body.taskflow-dragging .taskflow-card-dragging {
 .wh-children {
 	margin-left: 20px;
 	padding: 8px 0 8px 16px;
-	border-left: 2px solid #d0d7de;
 }
 
 .wh-date-group {
-	padding: 0 0 0 16px;
+	margin: 8px 0 0 0;
+	padding: 0 16px 12px 16px;
+	border: 1px solid #d0d7de;
+	border-top: none;
+	border-radius: 0 0 6px 6px;
+}
+
+.wh-date-group:nth-child(5n+1) {
+	background: #f0f9ff;
+}
+
+.wh-date-group:nth-child(5n+2) {
+	background: #f0fdf4;
+}
+
+.wh-date-group:nth-child(5n+3) {
+	background: #fefce8;
+}
+
+.wh-date-group:nth-child(5n+4) {
+	background: #fdf2f8;
+}
+
+.wh-date-group:nth-child(5n+5) {
+	background: #faf5ff;
 }
 
 .wh-date-label {
 	font-size: 12px;
 	font-weight: 600;
 	color: #57606a;
-	padding: 10px 0 4px 0;
-	margin: 0;
+	padding: 8px 12px;
+	margin: 0 -17px 0 -17px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background: #f6f8fa;
+	border-bottom: 1px solid #d0d7de;
+	border-radius: 6px 6px 0 0;
+	border-top: 1px solid #d0d7de;
+	border-left: 1px solid #d0d7de;
+	border-right: 1px solid #d0d7de;
+}
+
+.wh-date-label::before {
+	content: "—";
+	color: #d0d7de;
+	flex-shrink: 0;
+}
+
+.wh-date-label::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: #d0d7de;
+}
+
+.wh-project-section {
+	margin-bottom: 12px;
+}
+
+.wh-project-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	cursor: pointer;
+	border-radius: 6px;
+	transition: background-color 0.15s ease;
+}
+
+.wh-project-header:hover {
+	background: #f6f8fa;
+}
+
+.wh-project-icon {
+	width: 24px;
+	height: 24px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	flex-shrink: 0;
 }
 
 .wh-task-row {
