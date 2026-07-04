@@ -90,25 +90,16 @@
 			</div>
 		</div>
 		<div style="padding: 11px 24px">
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<div class="taskflow-section-header" style="margin: 0; padding: 0; border: none; white-space: nowrap;">
-					<span>PROJECTS</span>
-					<span class="taskflow-badge" data-project-count>0</span>
-				</div>
+			<div class="taskflow-labeled-field">
 				<input
 					type="text"
 					data-project-search
 					aria-label="Search projects"
-					placeholder="Search..."
-					style="
-						flex: 1;
-						padding: 8px;
-						border-radius: 8px;
-						border: 1px solid var(--taskflow-border);
-						font-size: 13px;
-						min-width: 0;
-					"
+					placeholder=" "
 				/>
+				<label class="taskflow-labeled-field__label">
+					Projects <span class="taskflow-badge" data-project-count>0</span>
+				</label>
 			</div>
 		</div>
 		<div class="taskflow-project-list" data-project-list>
