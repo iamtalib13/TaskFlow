@@ -4970,6 +4970,13 @@
 			"Overdue": "#ef4444",
 		};
 
+		const BATCH_SIZE = 20;
+		let currentStart = 0;
+		let hasMore = true;
+		let loading = false;
+		let allLoadedTasks = [];
+		let monthCounter = 0;
+
 		function renderTaskItem(t) {
 			const color = statusColor[t.status] || "#64748b";
 			const assigneeNames = (t._assign || []).map(uid => {
@@ -4989,10 +4996,6 @@
 		function buildProjectHtml(projectTasks, projects, collapseId) {
 			const projName = projectTasks[0].project || "__unassigned__";
 			const projLabel = projName === "__unassigned__" ? "Unassigned" : (projects.find(p => p.name === projName)?.project_name || projName);
-
-			const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
-			const colorIdx = projects.findIndex(p => p.name === projName);
-			const projColor = colors[colorIdx >= 0 ? colorIdx % colors.length : 0];
 
 			const memberSet = new Set();
 			projectTasks.forEach((t) => {
@@ -5022,12 +5025,7 @@
 			`;
 		}
 
-		const project = state.projectWorkspace && state.projectWorkspace.project;
-		if (project) {
-			let tasks = (state.projectWorkspace && state.projectWorkspace.tasks) || [];
-			if (state.selectedMember && state.selectedMember !== "all") {
-				tasks = tasks.filter((t) => String(t.assigned_to) === String(state.selectedMember));
-			}
+		function buildHtmlFromTasks(tasks) {
 			const projects = (state.bootstrap && state.bootstrap.projects) || [];
 			const monthMap = {};
 			tasks.forEach((task) => {
@@ -5040,12 +5038,8 @@
 				monthMap[key].tasks.push(task);
 			});
 			const sortedKeys = Object.keys(monthMap).sort().reverse();
-			if (sortedKeys.length === 0) {
-				target.innerHTML = `<div class="taskflow-empty">No completed tasks found.</div>`;
-				return;
-			}
 			let html = "";
-			sortedKeys.forEach((key, mIdx) => {
+			sortedKeys.forEach((key) => {
 				const group = monthMap[key];
 				const dateMap = {};
 				group.tasks.forEach((task) => {
@@ -5068,8 +5062,9 @@
 					const projNames = Object.keys(projMap);
 					let projItemsHtml = "";
 					projNames.forEach((pn, pIdx) => {
-						projItemsHtml += buildProjectHtml(projMap[pn], projects, `wh-month-${mIdx}-date-${dKey}-proj-${pIdx}`);
+						projItemsHtml += buildProjectHtml(projMap[pn], projects, `wh-date-${dKey}-proj-${pIdx}-${monthCounter}`);
 					});
+					monthCounter++;
 					dateHtml += `
 						<div class="wh-date-group">
 							<h5 class="wh-date-label">${escapeHtml(dg.label)}</h5>
@@ -5077,12 +5072,13 @@
 						</div>
 					`;
 				});
-			const mCollapseId = "wh-month-" + mIdx;
-			const memberSet = new Set();
-			group.tasks.forEach((t) => {
-				(t._assign || []).forEach((u) => { if (u) memberSet.add(u); });
-			});
-			html += `
+				const mCollapseId = "wh-month-" + monthCounter;
+				monthCounter++;
+				const memberSet = new Set();
+				group.tasks.forEach((t) => {
+					(t._assign || []).forEach((u) => { if (u) memberSet.add(u); });
+				});
+				html += `
 					<div class="wh-panel">
 						<div class="wh-header" data-collapse-toggle="${mCollapseId}">
 							<svg class="wh-header-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" data-collapse-icon="${mCollapseId}">
@@ -5091,13 +5087,16 @@
 							<span class="wh-header-title">${escapeHtml(group.label)}</span>
 							<span class="wh-header-meta">${group.tasks.length} task${group.tasks.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
 						</div>
-					<div data-collapse-content="${mCollapseId}" style="display: none; padding-left: 28px;">
-						${dateHtml}
-					</div>
+						<div data-collapse-content="${mCollapseId}" style="display: none; padding-left: 28px;">
+							${dateHtml}
+						</div>
 					</div>
 				`;
 			});
-			target.innerHTML = html;
+			return html;
+		}
+
+		function attachListeners() {
 			target.querySelectorAll("[data-collapse-toggle]").forEach((header) => {
 				header.addEventListener("click", () => {
 					const id = header.dataset.collapseToggle;
@@ -5110,113 +5109,105 @@
 				});
 			});
 			target.querySelectorAll("[data-work-history-task]").forEach((el) => {
+				if (el.dataset.whListener) return;
+				el.dataset.whListener = "1";
 				el.addEventListener("click", () => {
 					const taskName = el.dataset.workHistoryTask;
-					const task = tasks.find((t) => t.name === taskName);
+					const task = allLoadedTasks.find((t) => t.name === taskName);
 					if (task) openTaskModal(task);
 				});
 			});
-			return;
 		}
 
-		let allTasks = (state.bootstrap && state.bootstrap.tasks) || [];
-		if (state.selectedMember && state.selectedMember !== "all") {
-			allTasks = allTasks.filter((t) => String(t.assigned_to) === String(state.selectedMember));
-		}
-		const projects = (state.bootstrap && state.bootstrap.projects) || [];
-
-		const monthMap = {};
-		allTasks.forEach((task) => {
-			if (!task.completed_on) return;
-			const d = new Date(task.completed_on);
-			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-			const label = d.toLocaleString("en-US", { year: "numeric", month: "long" });
-			if (!monthMap[key]) monthMap[key] = { label, tasks: [] };
-			monthMap[key].tasks.push(task);
-		});
-
-		const sortedMonths = Object.keys(monthMap).sort().reverse();
-
-		if (sortedMonths.length === 0) {
-			target.innerHTML = `<div class="taskflow-empty">No completed tasks found.</div>`;
-			return;
+		function updateLoadMoreBtn() {
+			let btn = target.querySelector(".wh-load-more");
+			if (hasMore) {
+				if (!btn) {
+					btn = document.createElement("div");
+					btn.className = "wh-load-more";
+					btn.style.cssText = "text-align: center; padding: 16px; cursor: pointer; color: var(--taskflow-primary, #4f6ef7); font-size: 13px; font-weight: 600; border-radius: 8px; transition: background 0.15s;";
+					btn.addEventListener("mouseenter", () => { btn.style.background = "#f0f5ff"; });
+					btn.addEventListener("mouseleave", () => { btn.style.background = ""; });
+					btn.addEventListener("click", loadMore);
+					target.appendChild(btn);
+				}
+				btn.textContent = `Load more`;
+			} else if (btn) {
+				btn.remove();
+			}
 		}
 
-		let html = "";
-		sortedMonths.forEach((mKey, mIdx) => {
-			const monthData = monthMap[mKey];
-			const dateMap = {};
-			monthData.tasks.forEach((task) => {
-				const d = new Date(task.completed_on);
-				const dKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-				const dLabel = d.toLocaleString("en-US", { day: "numeric", month: "short", year: "numeric" });
-				if (!dateMap[dKey]) dateMap[dKey] = { label: dLabel, tasks: [] };
-				dateMap[dKey].tasks.push(task);
-			});
-			const sortedDates = Object.keys(dateMap).sort().reverse();
-			let dateHtml = "";
-			sortedDates.forEach((dKey) => {
-				const dg = dateMap[dKey];
-				const projMap = {};
-				dg.tasks.forEach((t) => {
-					const pn = t.project || "__unassigned__";
-					if (!projMap[pn]) projMap[pn] = [];
-					projMap[pn].push(t);
-				});
-				const projNames = Object.keys(projMap);
-				let projItemsHtml = "";
-				projNames.forEach((pn, pIdx) => {
-					projItemsHtml += buildProjectHtml(projMap[pn], projects, `wh-month-${mIdx}-date-${dKey}-proj-${pIdx}`);
-				});
-				dateHtml += `
-					<div class="wh-date-group">
-						<h5 class="wh-date-label">${escapeHtml(dg.label)}</h5>
-						${projItemsHtml}
-					</div>
-				`;
-			});
-			const mCollapseId = "wh-month-" + mIdx;
-			const memberSet = new Set();
-			monthData.tasks.forEach((t) => {
-				(t._assign || []).forEach((u) => { if (u) memberSet.add(u); });
-			});
-			html += `
-				<div class="wh-panel">
-					<div class="wh-header" data-collapse-toggle="${mCollapseId}">
-						<svg class="wh-header-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" data-collapse-icon="${mCollapseId}">
-							<polyline points="9 18 15 12 9 6"></polyline>
-						</svg>
-						<span class="wh-header-title">${escapeHtml(monthData.label)}</span>
-						<span class="wh-header-meta">${monthData.tasks.length} task${monthData.tasks.length !== 1 ? "s" : ""} · ${memberSet.size} member${memberSet.size !== 1 ? "s" : ""}</span>
-					</div>
-					<div data-collapse-content="${mCollapseId}" style="display: none; padding-left: 28px;">
-						${dateHtml}
-					</div>
-				</div>
-			`;
-		});
+		async function loadMore() {
+			if (loading || !hasMore) return;
+			loading = true;
+			const btn = target.querySelector(".wh-load-more");
+			if (btn) btn.textContent = "Loading...";
 
-		target.innerHTML = html;
+			const project = state.projectWorkspace && state.projectWorkspace.project;
+			const args = { start: currentStart, page_length: BATCH_SIZE };
+			if (project) args.project = project.name || project;
+			if (state.selectedMember && state.selectedMember !== "all") {
+				args.member = state.selectedMember;
+			}
 
-		target.querySelectorAll("[data-collapse-toggle]").forEach((header) => {
-			header.addEventListener("click", () => {
-				const id = header.dataset.collapseToggle;
-				const content = target.querySelector(`[data-collapse-content="${id}"]`);
-				const icon = target.querySelector(`[data-collapse-icon="${id}"]`);
-				if (!content) return;
-				const isOpen = content.style.display !== "none";
-				content.style.display = isOpen ? "none" : "block";
-				if (icon) icon.style.transform = isOpen ? "rotate(0deg)" : "rotate(90deg)";
-			});
-		});
+			try {
+				const result = await apiCall("get_work_history_tasks", args);
+				const newTasks = result.tasks || [];
+				hasMore = result.has_more;
+				currentStart += newTasks.length;
+				allLoadedTasks.push(...newTasks);
 
-		target.querySelectorAll("[data-work-history-task]").forEach((el) => {
-			el.addEventListener("click", () => {
-				const taskName = el.dataset.workHistoryTask;
-				const task = allTasks.find((t) => t.name === taskName);
-				if (task) openTaskModal(task);
-			});
-		});
+				const loadMoreBtn = target.querySelector(".wh-load-more");
+				const newHtml = buildHtmlFromTasks(newTasks);
+				const temp = document.createElement("div");
+				temp.innerHTML = newHtml;
+				while (temp.firstChild) {
+					if (loadMoreBtn) {
+						target.insertBefore(temp.firstChild, loadMoreBtn);
+					} else {
+						target.appendChild(temp.firstChild);
+					}
+				}
+				attachListeners();
+				updateLoadMoreBtn();
+			} catch (e) {
+				if (btn) btn.textContent = "Load more";
+			} finally {
+				loading = false;
+			}
+		}
+
+		async function initialLoad() {
+			target.innerHTML = `<div class="taskflow-empty">Loading...</div>`;
+
+			const project = state.projectWorkspace && state.projectWorkspace.project;
+			const args = { start: 0, page_length: BATCH_SIZE };
+			if (project) args.project = project.name || project;
+			if (state.selectedMember && state.selectedMember !== "all") {
+				args.member = state.selectedMember;
+			}
+
+			try {
+				const result = await apiCall("get_work_history_tasks", args);
+				const tasks = result.tasks || [];
+				hasMore = result.has_more;
+				currentStart = tasks.length;
+				allLoadedTasks = tasks;
+
+				if (tasks.length === 0) {
+					target.innerHTML = `<div class="taskflow-empty">No completed tasks found.</div>`;
+					return;
+				}
+
+				target.innerHTML = buildHtmlFromTasks(tasks);
+				attachListeners();
+				updateLoadMoreBtn();
+			} catch (e) {
+				target.innerHTML = `<div class="taskflow-empty">Failed to load work history.</div>`;
+			}
+		}
+
+		initialLoad();
 	}
 
 	async function loadPsProjectAttachmentsList(projectName, listEl) {

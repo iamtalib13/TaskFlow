@@ -502,6 +502,48 @@ def get_portal_bootstrap() -> dict:
 
 
 @frappe.whitelist()
+def get_work_history_tasks(project=None, member=None, start=0, page_length=20) -> dict:
+    """Return paginated completed tasks for work history view."""
+    _require_login()
+    filters = {"completed_on": ["is", "set"]}
+    if project and isinstance(project, str):
+        filters["project"] = project
+    if member and isinstance(member, str) and member != "all":
+        filters["assigned_to"] = member
+
+    tasks = frappe.get_list(
+        "Taskflow Task",
+        fields=_TASK_FIELDS,
+        filters=filters,
+        order_by="completed_on desc",
+        start=int(start),
+        page_length=int(page_length),
+    )
+
+    task_docs = [frappe.get_doc("Taskflow Task", task.name) for task in tasks]
+
+    project_names = list({task.project for task in task_docs if task.project})
+    project_map = {}
+    if project_names:
+        for pname in project_names:
+            project_map[pname] = frappe.db.get_value("Taskflow Project", pname, "project_name") or pname
+
+    task_employee_name_map = _bulk_employee_names([task.assigned_to for task in task_docs if task.assigned_to])
+    task_user_image_map = _bulk_user_images([task.assigned_to_user for task in task_docs if task.assigned_to_user])
+
+    total = frappe.db.count("Taskflow Task", filters)
+
+    return {
+        "tasks": [
+            _serialize_task(task_doc, project_map, task_user_image_map, task_employee_name_map)
+            for task_doc in task_docs
+        ],
+        "has_more": int(start) + int(page_length) < total,
+        "total": total,
+    }
+
+
+@frappe.whitelist()
 def get_project_workspace(project: str) -> dict:
     """Return full workspace data for a single project."""
     _require_login()
