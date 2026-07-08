@@ -1110,6 +1110,75 @@
 							<input type="hidden" name="description" />
 						</div>
 
+						<div class="quick-task-field-group">
+							<label
+								>Responsible Person
+								<select name="responsible_person" id="quickTaskResponsiblePerson">
+									<option value="">Select...</option>
+								</select>
+							</label>
+
+							<label
+								>Guided By
+								<select name="guided_by" id="quickTaskGuidedBy">
+									<option value="">Select...</option>
+								</select>
+							</label>
+						</div>
+
+						<label
+							>Pending With
+							<input type="text" name="pending_with" placeholder="Enter name" />
+						</label>
+
+						<div class="quick-task-field-group">
+							<label
+								>Toll ID
+								<input type="text" name="toll_id" placeholder="Enter Toll ID" />
+							</label>
+
+							<label
+								>Ticket Date
+								<input type="date" name="ticket_date" />
+							</label>
+						</div>
+
+						<label
+							>Ticket Raised By
+							<input type="text" name="ticket_raised_by" placeholder="Enter name" />
+						</label>
+					</div>
+
+					<!-- Right Section: People & Schedule -->
+					<div class="quick-task-section">
+						<div class="quick-task-section-title">People & Schedule</div>
+
+						<label class="quick-task-field-full"
+							>Assignee
+							<div
+								class="taskflow-assignee-widget"
+								style="width: 100%; margin-top: 6px"
+							>
+								<div
+									class="assignee-badges"
+									id="quickAssigneeBadges"
+									style="
+										display: flex;
+										flex-direction: column;
+										gap: 6px;
+										margin-bottom: 8px;
+									"
+								></div>
+								<select
+									class="sidebar-select"
+									style="width: 100%"
+									id="quickTaskAssignedToSelect"
+								>
+									<option value="">Add Assignee...</option>
+								</select>
+							</div>
+						</label>
+
 						<label class="quick-task-field-full"
 							>Project *
 							<select
@@ -1164,58 +1233,6 @@
 								<input type="date" name="due_date" required />
 							</label>
 						</div>
-					</div>
-
-					<!-- Right Section: People & Tickets -->
-					<div class="quick-task-section">
-						<div class="quick-task-section-title">People & Schedule</div>
-
-						<label class="quick-task-field-full"
-							>Assignee
-							<div
-								class="taskflow-assignee-widget"
-								style="width: 100%; margin-top: 6px"
-							>
-								<div
-									class="assignee-badges"
-									id="quickAssigneeBadges"
-									style="
-										display: flex;
-										flex-direction: column;
-										gap: 6px;
-										margin-bottom: 8px;
-									"
-								></div>
-								<select
-									class="sidebar-select"
-									style="width: 100%"
-									id="quickTaskAssignedToSelect"
-								>
-									<option value="">Add Assignee...</option>
-								</select>
-							</div>
-						</label>
-
-						<div class="quick-task-field-group">
-							<label
-								>Responsible Person
-								<select name="responsible_person" id="quickTaskResponsiblePerson">
-									<option value="">Select...</option>
-								</select>
-							</label>
-
-							<label
-								>Guided By
-								<select name="guided_by" id="quickTaskGuidedBy">
-									<option value="">Select...</option>
-								</select>
-							</label>
-						</div>
-
-						<label
-							>Pending With
-							<input type="text" name="pending_with" placeholder="Enter name" />
-						</label>
 
 						<label id="quickCompletedDateLabel" style="display: none"
 							>Completed Date
@@ -1225,23 +1242,6 @@
 						<label
 							>Expected Resolution Date
 							<input type="date" name="expected_resolution_date" />
-						</label>
-
-						<div class="quick-task-field-group">
-							<label
-								>Toll ID
-								<input type="text" name="toll_id" placeholder="Enter Toll ID" />
-							</label>
-
-							<label
-								>Ticket Date
-								<input type="date" name="ticket_date" />
-							</label>
-						</div>
-
-						<label
-							>Ticket Raised By
-							<input type="text" name="ticket_raised_by" placeholder="Enter name" />
 						</label>
 					</div>
 				</div>
