@@ -125,6 +125,7 @@
 		refs.assignedToSelect = document.getElementById("assignedToSelect");
 		refs.pendingWithSelect = document.getElementById("pendingWithInput");
 		refs.guidedBySelect = document.getElementById("guidedByInput");
+		refs.responsiblePersonSelect = document.getElementById("responsiblePersonSelect");
 
 		refs.startDateInput = document.getElementById("startDateInput");
 		refs.dueDateInput = document.getElementById("dueDateInput");
@@ -498,6 +499,7 @@
 	function populateAssigneeDropdowns() {
 		updateAssigneeOptions();
 		updateGuidedByOptions();
+		updateResponsiblePersonOptions();
 	}
 	
 	function updateGuidedByOptions() {
@@ -525,6 +527,25 @@
 		refs.guidedBySelect.innerHTML = html;
 		if (currentVal) {
 			refs.guidedBySelect.value = currentVal;
+		}
+	}
+
+	function updateResponsiblePersonOptions() {
+		if (!refs.responsiblePersonSelect || !state.bootstrap) return;
+		const members = state.bootstrap.team_members || [];
+		const currentVal = state.activeTask ? state.activeTask.responsible_person : "";
+
+		let html = '<option value="">Select...</option>';
+		members.forEach(m => {
+			if (m.employee) {
+				const label = m.label || m.employee;
+				html += `<option value="${escapeHtml(m.employee)}">${escapeHtml(label)}</option>`;
+			}
+		});
+
+		refs.responsiblePersonSelect.innerHTML = html;
+		if (currentVal) {
+			refs.responsiblePersonSelect.value = currentVal;
 		}
 	}
 
@@ -691,6 +712,7 @@
 				updateGuidedByOptions();
 				if (refs.pendingWithSelect) refs.pendingWithSelect.value = task.pending_with || "";
 				if (refs.guidedBySelect) refs.guidedBySelect.value = task.guided_by || "";
+				if (refs.responsiblePersonSelect) refs.responsiblePersonSelect.value = task.responsible_person || "";
 
 				// Ticket info
 				if (refs.ticketIdInput) refs.ticketIdInput.value = task.ticket_id || "";
@@ -1110,6 +1132,7 @@
 			_assign: state.activeTaskAssignees || [],
 			pending_with: refs.pendingWithSelect?.value || null,
 			guided_by: refs.guidedBySelect?.value || null,
+			responsible_person: refs.responsiblePersonSelect?.value || null,
 			start_date: normalizeDateForPayload(refs.startDateInput?.value),
 			due_date: normalizeDateForPayload(refs.dueDateInput?.value),
 			completed_date: normalizeDateForPayload(refs.completedOnInput?.value),
