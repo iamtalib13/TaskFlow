@@ -1433,6 +1433,13 @@
 								<option value="">Guided by...</option>
 							</select>
 						</div>
+
+						<div class="field-row">
+							<span class="field-label">Responsible Person</span>
+							<select class="sidebar-select" id="responsiblePersonSelect" name="responsible_person" style="width: 100%;">
+								<option value="">Select...</option>
+							</select>
+						</div>
 					</div>
 
 					<!-- Schedule -->
@@ -1450,6 +1457,11 @@
 								<span id="dueDateStatusBadge" style="display: none; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; text-transform: uppercase;"></span>
 							</span>
 							<input type="text" name="due_date" id="dueDateInput" class="sidebar-input" placeholder="DD-MM-YYYY" style="cursor: pointer;" />
+						</div>
+
+						<div class="field-row">
+							<span class="field-label">Expected Resolution Date</span>
+							<input type="text" name="expected_resolution_date" id="expectedResolutionDateInput" class="sidebar-input" placeholder="DD-MM-YYYY" style="cursor: pointer;" />
 						</div>
 
 						<div class="field-row">
@@ -1476,6 +1488,17 @@
 						<div class="field-row">
 							<span class="field-label">Ticket Date</span>
 							<input type="text" name="ticket_date" id="ticketDateInput" class="sidebar-input" placeholder="DD-MM-YYYY" style="cursor: pointer;" />
+						</div>
+
+						<div class="field-row">
+							<span class="field-label">Toll ID</span>
+							<input
+								type="text"
+								name="toll_id"
+								id="tollIdInput"
+								class="sidebar-input"
+								placeholder="Enter Toll ID"
+							/>
 						</div>
 
 						<div class="field-row">

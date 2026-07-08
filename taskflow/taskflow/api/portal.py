@@ -44,6 +44,9 @@ _TASK_FIELDS = [
     "ticket_id",
     "ticket_raised_by",
     "ticket_description",
+    "responsible_person",
+    "toll_id",
+    "expected_resolution_date",
     "creation",
     "owner",
     "modified_by",
@@ -110,6 +113,9 @@ _ALLOWED_TASK_FIELDS = [
     "ticket_id",
     "ticket_raised_by",
     "ticket_description",
+    "responsible_person",
+    "toll_id",
+    "expected_resolution_date",
 ]
 
 
@@ -394,6 +400,9 @@ def _serialize_task(
         "ticket_id": task.ticket_id,
         "ticket_raised_by": task.ticket_raised_by,
         "ticket_description": task.ticket_description,
+        "responsible_person": task.responsible_person,
+        "toll_id": task.toll_id,
+        "expected_resolution_date": task.expected_resolution_date,
         "checklist": [
             {
                 "name": item.name,

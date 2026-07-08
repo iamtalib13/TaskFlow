@@ -3180,6 +3180,23 @@
 				}
 			}
 
+			const guidedBySelect = document.getElementById("quickTaskGuidedBy");
+			if (guidedBySelect && state.bootstrap && state.bootstrap.team_members) {
+				guidedBySelect.innerHTML = '<option value="">Select...</option>' +
+					state.bootstrap.team_members
+						.map((m) => `<option value="${m.user}">${m.label || m.user}</option>`)
+						.join("");
+			}
+
+			const responsibleSelect = document.getElementById("quickTaskResponsiblePerson");
+			if (responsibleSelect && state.bootstrap && state.bootstrap.team_members) {
+				responsibleSelect.innerHTML = '<option value="">Select...</option>' +
+					state.bootstrap.team_members
+						.filter((m) => m.employee)
+						.map((m) => `<option value="${m.employee}">${m.label || m.employee}</option>`)
+						.join("");
+			}
+
 			const form = refs.taskFormQuick;
 			if (form) {
 				form.reset();
@@ -3762,6 +3779,13 @@
 			description: getFormValue(form, "description", ""),
 			is_milestone: getFormChecked(form, "is_milestone") ? 1 : 0,
 			is_blocked: getFormChecked(form, "is_blocked") ? 1 : 0,
+			pending_with: getFormValue(form, "pending_with"),
+			guided_by: getFormValue(form, "guided_by"),
+			ticket_date: normalizeDateForPayload(getFormValue(form, "ticket_date")),
+			ticket_raised_by: getFormValue(form, "ticket_raised_by"),
+			responsible_person: getFormValue(form, "responsible_person"),
+			toll_id: getFormValue(form, "toll_id"),
+			expected_resolution_date: normalizeDateForPayload(getFormValue(form, "expected_resolution_date")),
 			checklist: state.currentChecklist,
 		};
 	}

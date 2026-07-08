@@ -940,12 +940,22 @@
 		.quick-task-modal {
 			width: 90vw !important;
 			max-width: 850px !important;
+			max-height: 90vh !important;
 			border-radius: 12px !important;
 			background: #ffffff !important;
 			box-shadow:
 				0 20px 25px -5px rgba(0, 0, 0, 0.1),
 				0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 			border: 1px solid var(--taskflow-border) !important;
+			display: flex !important;
+			flex-direction: column !important;
+			overflow: hidden !important;
+		}
+
+		.quick-task-modal .taskflow-modal-main-content {
+			overflow-y: auto !important;
+			flex: 1 !important;
+			min-height: 0 !important;
 		}
 
 		.quick-task-layout {
@@ -1062,7 +1072,7 @@
 			<div class="taskflow-modal-main-content">
 				<input type="hidden" name="name" />
 				<div class="quick-task-layout">
-					<!-- Left Section: Main Info -->
+					<!-- Left Section: Task Details -->
 					<div class="quick-task-section">
 						<div class="quick-task-section-title">Task Details</div>
 
@@ -1091,7 +1101,7 @@
 							<div
 								id="quick-task-desc-editor"
 								style="
-									min-height: 180px;
+									min-height: 120px;
 									border: 1px solid var(--taskflow-border);
 									border-radius: 8px;
 									background: #fff;
@@ -1099,61 +1109,95 @@
 							></div>
 							<input type="hidden" name="description" />
 						</div>
-					</div>
-
-					<!-- Right Section: Attributes & Meta -->
-					<div class="quick-task-section">
-						<div class="quick-task-section-title">Planning & Meta</div>
 
 						<div class="quick-task-field-group">
-							<label class="quick-task-field-full"
-								>Project *
-								<select
-									name="project"
-									required
-									id="quickTaskProjectSelect"
-								></select>
+							<label
+								>Responsible Person
+								<select name="responsible_person" id="quickTaskResponsiblePerson">
+									<option value="">Select...</option>
+								</select>
 							</label>
 
-							<label class="quick-task-field-full"
-								>Assignee
+							<label
+								>Guided By
+								<select name="guided_by" id="quickTaskGuidedBy">
+									<option value="">Select...</option>
+								</select>
+							</label>
+						</div>
+
+						<label
+							>Pending With
+							<input type="text" name="pending_with" placeholder="Enter name" />
+						</label>
+
+						<div class="quick-task-field-group">
+							<label
+								>Toll ID
+								<input type="text" name="toll_id" placeholder="Enter Toll ID" />
+							</label>
+
+							<label
+								>Ticket Date
+								<input type="date" name="ticket_date" />
+							</label>
+						</div>
+
+						<label
+							>Ticket Raised By
+							<input type="text" name="ticket_raised_by" placeholder="Enter name" />
+						</label>
+					</div>
+
+					<!-- Right Section: People & Schedule -->
+					<div class="quick-task-section">
+						<div class="quick-task-section-title">People & Schedule</div>
+
+						<label class="quick-task-field-full"
+							>Assignee
+							<div
+								class="taskflow-assignee-widget"
+								style="width: 100%; margin-top: 6px"
+							>
 								<div
-									class="taskflow-assignee-widget"
-									style="width: 100%; margin-top: 6px"
+									class="assignee-badges"
+									id="quickAssigneeBadges"
+									style="
+										display: flex;
+										flex-direction: column;
+										gap: 6px;
+										margin-bottom: 8px;
+									"
+								></div>
+								<select
+									class="sidebar-select"
+									style="width: 100%"
+									id="quickTaskAssignedToSelect"
 								>
-									<div
-										class="assignee-badges"
-										id="quickAssigneeBadges"
-										style="
-											display: flex;
-											flex-direction: column;
-											gap: 6px;
-											margin-bottom: 8px;
-										"
-									></div>
-									<select
-										class="sidebar-select"
-										style="width: 100%"
-										id="quickTaskAssignedToSelect"
-									>
-										<option value="">Add Assignee...</option>
-									</select>
-								</div>
-							</label>
+									<option value="">Add Assignee...</option>
+								</select>
+							</div>
+						</label>
 
+						<label class="quick-task-field-full"
+							>Project *
+							<select
+								name="project"
+								required
+								id="quickTaskProjectSelect"
+							></select>
+						</label>
+
+						<div class="quick-task-field-group">
 							<label
-								>Start Date *
-								<input type="date" name="start_date" required />
-							</label>
-
-							<label id="quickCompletedDateLabel" style="display: none"
-								>Completed Date
-								<input type="date" name="completed_date" />
-							</label>
-
-							<label
-								>Due Date *
-								<input type="date" name="due_date" required />
+								>Task Type
+								<select name="task_type">
+									<option selected value="Task">Task</option>
+									<option value="Bug">Bug</option>
+									<option value="Customization Request">
+										Customization Request
+									</option>
+								</select>
 							</label>
 
 							<label
@@ -1165,29 +1209,40 @@
 									<option value="Critical">Critical</option>
 								</select>
 							</label>
+						</div>
+
+						<label
+							>Status
+							<select name="status">
+								<option selected value="Open">Open</option>
+								<option value="In Progress">In Progress</option>
+								<option value="Review">Review</option>
+								<option value="On Hold">On Hold</option>
+								<option value="Completed">Completed</option>
+							</select>
+						</label>
+
+						<div class="quick-task-field-group">
+							<label
+								>Start Date *
+								<input type="date" name="start_date" required />
+							</label>
 
 							<label
-								>Status
-								<select name="status">
-									<option selected value="Open">Open</option>
-									<option value="In Progress">In Progress</option>
-									<option value="Review">Review</option>
-									<option value="On Hold">On Hold</option>
-									<option value="Completed">Completed</option>
-								</select>
-							</label>
-
-							<label class="quick-task-field-full"
-								>Task Type
-								<select name="task_type">
-									<option selected value="Task">Task</option>
-									<option value="Bug">Bug</option>
-									<option value="Customization Request">
-										Customization Request
-									</option>
-								</select>
+								>Due Date *
+								<input type="date" name="due_date" required />
 							</label>
 						</div>
+
+						<label id="quickCompletedDateLabel" style="display: none"
+							>Completed Date
+							<input type="date" name="completed_date" />
+						</label>
+
+						<label
+							>Expected Resolution Date
+							<input type="date" name="expected_resolution_date" />
+						</label>
 					</div>
 				</div>
 			</div>

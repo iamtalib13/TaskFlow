@@ -125,12 +125,15 @@
 		refs.assignedToSelect = document.getElementById("assignedToSelect");
 		refs.pendingWithSelect = document.getElementById("pendingWithInput");
 		refs.guidedBySelect = document.getElementById("guidedByInput");
+		refs.responsiblePersonSelect = document.getElementById("responsiblePersonSelect");
 
 		refs.startDateInput = document.getElementById("startDateInput");
 		refs.dueDateInput = document.getElementById("dueDateInput");
 		refs.completedOnInput = document.getElementById("completedOnInput");
 		refs.estimatedHoursInput = document.getElementById("estimatedHoursInput");
 		refs.ticketDateInput = document.getElementById("ticketDateInput");
+		refs.tollIdInput = document.getElementById("tollIdInput");
+		refs.expectedResolutionDateInput = document.getElementById("expectedResolutionDateInput");
 
 		refs.ticketIdInput = document.getElementById("ticketIdInput");
 		refs.ticketRaisedByInput = document.getElementById("ticketRaisedByInput");
@@ -498,6 +501,7 @@
 	function populateAssigneeDropdowns() {
 		updateAssigneeOptions();
 		updateGuidedByOptions();
+		updateResponsiblePersonOptions();
 	}
 	
 	function updateGuidedByOptions() {
@@ -525,6 +529,25 @@
 		refs.guidedBySelect.innerHTML = html;
 		if (currentVal) {
 			refs.guidedBySelect.value = currentVal;
+		}
+	}
+
+	function updateResponsiblePersonOptions() {
+		if (!refs.responsiblePersonSelect || !state.bootstrap) return;
+		const members = state.bootstrap.team_members || [];
+		const currentVal = state.activeTask ? state.activeTask.responsible_person : "";
+
+		let html = '<option value="">Select...</option>';
+		members.forEach(m => {
+			if (m.employee) {
+				const label = m.label || m.employee;
+				html += `<option value="${escapeHtml(m.employee)}">${escapeHtml(label)}</option>`;
+			}
+		});
+
+		refs.responsiblePersonSelect.innerHTML = html;
+		if (currentVal) {
+			refs.responsiblePersonSelect.value = currentVal;
 		}
 	}
 
@@ -691,6 +714,7 @@
 				updateGuidedByOptions();
 				if (refs.pendingWithSelect) refs.pendingWithSelect.value = task.pending_with || "";
 				if (refs.guidedBySelect) refs.guidedBySelect.value = task.guided_by || "";
+				if (refs.responsiblePersonSelect) refs.responsiblePersonSelect.value = task.responsible_person || "";
 
 				// Ticket info
 				if (refs.ticketIdInput) refs.ticketIdInput.value = task.ticket_id || "";
@@ -702,6 +726,8 @@
 				if (refs.dueDateInput) refs.dueDateInput.value = dateInputValue(task.due_date);
 				if (refs.completedOnInput) refs.completedOnInput.value = dateInputValue(task.completed_date);
 				if (refs.ticketDateInput) refs.ticketDateInput.value = dateInputValue(task.ticket_date);
+				if (refs.tollIdInput) refs.tollIdInput.value = task.toll_id || "";
+				if (refs.expectedResolutionDateInput) refs.expectedResolutionDateInput.value = dateInputValue(task.expected_resolution_date);
 				syncDatepickers();
 				updateDueDateStatusBadge();
 
@@ -1110,10 +1136,13 @@
 			_assign: state.activeTaskAssignees || [],
 			pending_with: refs.pendingWithSelect?.value || null,
 			guided_by: refs.guidedBySelect?.value || null,
+			responsible_person: refs.responsiblePersonSelect?.value || null,
 			start_date: normalizeDateForPayload(refs.startDateInput?.value),
 			due_date: normalizeDateForPayload(refs.dueDateInput?.value),
 			completed_date: normalizeDateForPayload(refs.completedOnInput?.value),
 			ticket_date: normalizeDateForPayload(refs.ticketDateInput?.value),
+			toll_id: refs.tollIdInput?.value || "",
+			expected_resolution_date: normalizeDateForPayload(refs.expectedResolutionDateInput?.value),
 			estimated_hours: parseFloat(refs.estimatedHoursInput?.value) || 0,
 			ticket_id: refs.ticketIdInput?.value || "",
 			ticket_raised_by: refs.ticketRaisedByInput?.value || "",

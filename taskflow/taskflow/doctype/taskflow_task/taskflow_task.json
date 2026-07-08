@@ -17,6 +17,8 @@
   "assignment_section",
   "assigned_to",
   "assigned_to_user",
+  "responsible_person",
+  "toll_id",
   "assignment_column",
   "status",
   "pending_with",
@@ -32,6 +34,7 @@
   "completed_on",
   "timeline_column",
   "sequence",
+  "expected_resolution_date",
   "effort_section",
   "progress_percent",
   "estimated_hours",
@@ -307,11 +310,27 @@
    "fieldname": "table_gqbl",
    "fieldtype": "Table",
    "options": "Task Assignment"
+  },
+  {
+   "fieldname": "responsible_person",
+   "fieldtype": "Link",
+   "label": "Responsible person",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "expected_resolution_date",
+   "fieldtype": "Date",
+   "label": "Expected Resolution Date"
+  },
+  {
+   "fieldname": "toll_id",
+   "fieldtype": "Data",
+   "label": "Toll ID"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-24 14:04:16.872145",
+ "modified": "2026-07-08 14:58:37.614208",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",
