@@ -1177,17 +1177,56 @@
 								</select>
 							</label>
 
-							<label class="quick-task-field-full"
-								>Task Type
-								<select name="task_type">
-									<option selected value="Task">Task</option>
-									<option value="Bug">Bug</option>
-									<option value="Customization Request">
-										Customization Request
-									</option>
-								</select>
-							</label>
-						</div>
+						<label class="quick-task-field-full"
+							>Task Type
+							<select name="task_type">
+								<option selected value="Task">Task</option>
+								<option value="Bug">Bug</option>
+								<option value="Customization Request">
+									Customization Request
+								</option>
+							</select>
+						</label>
+
+						<label
+							>Responsible Person
+							<select name="responsible_person" id="quickTaskResponsiblePerson">
+								<option value="">Select...</option>
+							</select>
+						</label>
+
+						<label
+							>Toll ID
+							<input type="text" name="toll_id" placeholder="Enter Toll ID" />
+						</label>
+
+						<label
+							>Pending With
+							<input type="text" name="pending_with" placeholder="Enter name" />
+						</label>
+
+						<label
+							>Guided By
+							<select name="guided_by" id="quickTaskGuidedBy">
+								<option value="">Select...</option>
+							</select>
+						</label>
+
+						<label
+							>Ticket Raised By
+							<input type="text" name="ticket_raised_by" placeholder="Enter name" />
+						</label>
+
+						<label
+							>Ticket Date
+							<input type="date" name="ticket_date" />
+						</label>
+
+						<label
+							>Expected Resolution Date
+							<input type="date" name="expected_resolution_date" />
+						</label>
+					</div>
 					</div>
 				</div>
 			</div>
