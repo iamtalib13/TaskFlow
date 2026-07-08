@@ -132,6 +132,8 @@
 		refs.completedOnInput = document.getElementById("completedOnInput");
 		refs.estimatedHoursInput = document.getElementById("estimatedHoursInput");
 		refs.ticketDateInput = document.getElementById("ticketDateInput");
+		refs.tollIdInput = document.getElementById("tollIdInput");
+		refs.expectedResolutionDateInput = document.getElementById("expectedResolutionDateInput");
 
 		refs.ticketIdInput = document.getElementById("ticketIdInput");
 		refs.ticketRaisedByInput = document.getElementById("ticketRaisedByInput");
@@ -724,6 +726,8 @@
 				if (refs.dueDateInput) refs.dueDateInput.value = dateInputValue(task.due_date);
 				if (refs.completedOnInput) refs.completedOnInput.value = dateInputValue(task.completed_date);
 				if (refs.ticketDateInput) refs.ticketDateInput.value = dateInputValue(task.ticket_date);
+				if (refs.tollIdInput) refs.tollIdInput.value = task.toll_id || "";
+				if (refs.expectedResolutionDateInput) refs.expectedResolutionDateInput.value = dateInputValue(task.expected_resolution_date);
 				syncDatepickers();
 				updateDueDateStatusBadge();
 
@@ -1137,6 +1141,8 @@
 			due_date: normalizeDateForPayload(refs.dueDateInput?.value),
 			completed_date: normalizeDateForPayload(refs.completedOnInput?.value),
 			ticket_date: normalizeDateForPayload(refs.ticketDateInput?.value),
+			toll_id: refs.tollIdInput?.value || "",
+			expected_resolution_date: normalizeDateForPayload(refs.expectedResolutionDateInput?.value),
 			estimated_hours: parseFloat(refs.estimatedHoursInput?.value) || 0,
 			ticket_id: refs.ticketIdInput?.value || "",
 			ticket_raised_by: refs.ticketRaisedByInput?.value || "",
