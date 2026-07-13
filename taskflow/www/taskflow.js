@@ -3197,12 +3197,15 @@
 						.join("");
 			}
 
-			const form = refs.taskFormQuick;
-			if (form) {
-				form.reset();
-				if (form.elements.name) form.elements.name.value = "";
-				if (form.elements.status) form.elements.status.value = status || "Open";
-				if (form.elements.start_date) {
+		const form = refs.taskFormQuick;
+		if (form) {
+			form.reset();
+			if (window._taskDescEditor) {
+				window._taskDescEditor.setText("");
+			}
+			if (form.elements.name) form.elements.name.value = "";
+			if (form.elements.status) form.elements.status.value = status || "Open";
+			if (form.elements.start_date) {
 					const today = new Date();
 					const yyyy = today.getFullYear();
 					const mm = String(today.getMonth() + 1).padStart(2, "0");
