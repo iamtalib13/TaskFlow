@@ -1394,6 +1394,106 @@
 	</div>
 </div>
 
+<!-- Add Team Member Modal -->
+<div
+	class="taskflow-modal-backdrop"
+	data-modal-name="add-member"
+	data-add-member-modal
+	aria-hidden="true"
+>
+	<div
+		class="taskflow-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="add-member-modal-title"
+		style="width: 90vw; max-width: 500px; border-radius: 12px;"
+	>
+		<form class="taskflow-form" data-add-member-form>
+			<div class="taskflow-modal-header">
+				<h3 id="add-member-modal-title">Add Team Member</h3>
+				<div class="taskflow-modal-header-actions">
+					<button
+						class="taskflow-button secondary"
+						type="button"
+						data-close-modal="add-member"
+					>
+						Close
+					</button>
+					<button class="taskflow-button primary" type="submit">Add Member</button>
+				</div>
+			</div>
+			<div class="taskflow-modal-main-content" style="padding: 24px;">
+				<div style="display: flex; flex-direction: column; gap: 20px;">
+					<!-- Employee Selection -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Employee *
+						</span>
+						<select 
+							name="employee" 
+							required
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						>
+							<option value="">Select Employee</option>
+						</select>
+					</label>
+
+					<!-- Team Role Selection -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Team Role *
+						</span>
+						<select 
+							name="team_role" 
+							required
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						>
+							<option value="">Select Role</option>
+							<option value="Team Lead">Team Lead</option>
+							<option value="Project Manager">Project Manager</option>
+							<option value="Team Member" selected>Team Member</option>
+							<option value="Viewer">Viewer</option>
+							<option value="Auditor">Auditor</option>
+							<option value="Coordinator">Coordinator</option>
+						</select>
+					</label>
+
+					<!-- Access Level Selection -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Access Level *
+						</span>
+						<select 
+							name="access_level" 
+							required
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						>
+							<option value="">Select Access Level</option>
+							<option value="View">View</option>
+							<option value="Operate" selected>Operate</option>
+							<option value="Manage">Manage</option>
+							<option value="Admin">Admin</option>
+						</select>
+					</label>
+
+					<!-- Is Active Checkbox -->
+					<label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+						<input 
+							type="checkbox" 
+							name="is_active" 
+							checked
+							style="width: 18px; height: 18px; cursor: pointer;"
+						>
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Active Member
+						</span>
+					</label>
+				</div>
+			</div>
+		</form>
+	</div>
+</div>
+
 <script>
 	window.csrf_token = window.csrf_token || "{{ csrf_token }}";
 </script>

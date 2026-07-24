@@ -611,6 +611,72 @@ def get_project_workspace(project: str) -> dict:
 
 
 @frappe.whitelist()
+def get_employees() -> dict:
+    """Return list of active employees for selection."""
+    _require_login()
+    
+    employees = frappe.get_all(
+        "Employee",
+        filters={"status": "Active"},
+        fields=["name", "employee_name", "designation", "department", "user_id"],
+        order_by="employee_name asc"
+    )
+    
+    return {"employees": employees}
+
+
+@frappe.whitelist()
+def add_team_member(team: str, employee: str, team_role: str, access_level: str, is_active: int = 1) -> dict:
+    """Add a new member to a team."""
+    _require_login()
+    
+    if not team or team == "all":
+        frappe.throw(_("Please select a specific team"))
+    
+    # Check if user has permission to manage this team
+    from taskflow.taskflow.service.team_hierarchy import can_manage_team
+    if not can_manage_team(frappe.session.user, team):
+        frappe.throw(_("You don't have permission to add members to this team"))
+    
+    # Check if member already exists
+    existing = frappe.db.exists("Taskflow Team Member", {
+        "parent": team,
+        "employee": employee
+    })
+    
+    if existing:
+        frappe.throw(_("This employee is already a member of the team"))
+    
+    # Get the team document
+    team_doc = frappe.get_doc("Taskflow Team", team)
+    
+    # Get user_id from employee
+    user_id = frappe.db.get_value("Employee", employee, "user_id")
+    
+    # Add new member to child table
+    team_doc.append("team_members", {
+        "employee": employee,
+        "user": user_id,
+        "team_role": team_role,
+        "access_level": access_level,
+        "is_active": is_active
+    })
+    
+    # Save the team document
+    team_doc.save(ignore_permissions=True)
+    frappe.db.commit()
+    
+    return {
+        "message": _("Team member added successfully"),
+        "member": {
+            "employee": employee,
+            "team_role": team_role,
+            "access_level": access_level
+        }
+    }
+
+
+@frappe.whitelist()
 def get_team_members(team: str | None = None) -> dict:
     """Return team members from the team_members child table of Taskflow Team."""
     _require_login()

@@ -668,6 +668,12 @@
 			});
 		}
 
+		// Add Member Form Handler
+		const addMemberForm = document.querySelector("[data-add-member-form]");
+		if (addMemberForm) {
+			addMemberForm.addEventListener("submit", submitAddMemberForm);
+		}
+
 		document.getElementById("quickTaskAssignedToSelect")?.addEventListener("change", (e) => {
 			const email = e.target.value;
 			if (email) {
@@ -3287,8 +3293,8 @@
 		toggleModal(refs.projectModal, true);
 	}
 
-	function openAddTeamMemberModal() {
-		// Open the Taskflow Team doctype in a new window/tab with the selected team
+	async function openAddTeamMemberModal() {
+		// Check if a specific team is selected
 		const teamName = state.selectedTeam && state.selectedTeam !== "all" ? state.selectedTeam : null;
 		
 		if (!teamName) {
@@ -3296,8 +3302,32 @@
 			return;
 		}
 		
-		// Open Frappe form for the team to edit members
-		window.open(`/app/taskflow-team/${encodeURIComponent(teamName)}`, '_blank');
+		// Fetch employees
+		try {
+			const data = await apiCall("get_employees");
+			const employees = data.employees || [];
+			
+			// Populate employee dropdown
+			const form = document.querySelector("[data-add-member-form]");
+			const employeeSelect = form.elements.employee;
+			
+			employeeSelect.innerHTML = '<option value="">Select Employee</option>' + 
+				employees.map(emp => 
+					`<option value="${escapeHtml(emp.name)}">${escapeHtml(emp.employee_name)} (${escapeHtml(emp.name)})</option>`
+				).join('');
+			
+			// Reset form
+			form.reset();
+			form.elements.team_role.value = "Team Member";
+			form.elements.access_level.value = "Operate";
+			form.elements.is_active.checked = true;
+			
+			// Show modal
+			toggleModal(document.querySelector("[data-add-member-modal]"), true);
+		} catch (err) {
+			console.error("Error loading employees:", err);
+			frappe.msgprint("Error loading employees. Please try again.");
+		}
 	}
 
 	async function openTaskModal(task, status = "") {
@@ -3805,6 +3835,54 @@
 				project_lead: form.elements.project_lead.value || null,
 				description: form.elements.description.value || "",
 			});
+		} finally {
+			setFormSaving(form, false);
+		}
+	}
+
+	async function submitAddMemberForm(event) {
+		event.preventDefault();
+		const form = event.currentTarget;
+		if (form.dataset.saving === "1") return;
+		
+		setFormSaving(form, true);
+		
+		try {
+			const teamName = state.selectedTeam;
+			const employee = form.elements.employee.value;
+			const teamRole = form.elements.team_role.value;
+			const accessLevel = form.elements.access_level.value;
+			const isActive = form.elements.is_active.checked ? 1 : 0;
+			
+			if (!employee) {
+				frappe.msgprint("Please select an employee");
+				return;
+			}
+			
+			// Call API to add team member
+			const result = await apiCall("add_team_member", {
+				team: teamName,
+				employee: employee,
+				team_role: teamRole,
+				access_level: accessLevel,
+				is_active: isActive
+			});
+			
+			// Show success message
+			frappe.show_alert({
+				message: result.message || "Team member added successfully",
+				indicator: "green"
+			});
+			
+			// Close modal
+			toggleModal(document.querySelector("[data-add-member-modal]"), false);
+			
+			// Refresh team members view
+			renderTeamView();
+			
+		} catch (err) {
+			console.error("Error adding team member:", err);
+			frappe.msgprint(err.message || "Error adding team member. Please try again.");
 		} finally {
 			setFormSaving(form, false);
 		}
