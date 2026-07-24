@@ -3310,11 +3310,13 @@
 		const optionsContainer = form.querySelector("[data-employee-options]");
 		const loadingDiv = form.querySelector("[data-employee-loading]");
 		const emptyDiv = form.querySelector("[data-employee-empty]");
+		const modal = document.querySelector("[data-add-member-modal]");
 		
 		// Reset form
 		form.reset();
 		searchInput.value = "";
 		hiddenInput.value = "";
+		dropdown.style.display = "none";
 		form.elements.team_role.value = "Team Member";
 		form.elements.access_level.value = "Operate";
 		form.elements.is_active.checked = true;
@@ -3344,7 +3346,7 @@
 		}
 		
 		// Search functionality
-		searchInput.addEventListener("input", () => {
+		const handleInput = () => {
 			const searchTerm = searchInput.value.toLowerCase().trim();
 			
 			if (!searchTerm) {
@@ -3367,24 +3369,33 @@
 			}
 			
 			dropdown.style.display = "block";
-		});
+		};
 		
 		// Show dropdown on focus
-		searchInput.addEventListener("focus", () => {
+		const handleFocus = () => {
 			if (allEmployees.length > 0) {
 				dropdown.style.display = "block";
 			}
-		});
+		};
 		
 		// Hide dropdown when clicking outside
-		document.addEventListener("click", function hideDropdown(e) {
+		const handleClickOutside = (e) => {
 			if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
 				dropdown.style.display = "none";
 			}
-		});
+		};
+		
+		// Remove any existing listeners
+		searchInput.removeEventListener("input", handleInput);
+		searchInput.removeEventListener("focus", handleFocus);
+		
+		// Add event listeners
+		searchInput.addEventListener("input", handleInput);
+		searchInput.addEventListener("focus", handleFocus);
+		document.addEventListener("click", handleClickOutside);
 		
 		// Show modal
-		toggleModal(document.querySelector("[data-add-member-modal]"), true);
+		toggleModal(modal, true);
 	}
 	
 	function renderEmployeeOptions(employees, container, searchInput, hiddenInput, dropdown) {
@@ -4316,6 +4327,15 @@
 		if (name === "project") toggleModal(refs.projectModal, false);
 		if (name === "task") closeTaskModal();
 		if (name === "task-quick") toggleModal(refs.taskModalQuick, false);
+		if (name === "add-member") {
+			const modal = document.querySelector("[data-add-member-modal]");
+			if (modal) {
+				// Cleanup dropdown
+				const dropdown = modal.querySelector("[data-employee-dropdown]");
+				if (dropdown) dropdown.style.display = "none";
+				toggleModal(modal, false);
+			}
+		}
 	}
 
 	async function closeIframeModal() {
