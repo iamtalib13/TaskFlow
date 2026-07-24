@@ -583,6 +583,7 @@ def get_project_workspace(project: str) -> dict:
     team_member_data = [
         {
             "employee": member.employee,
+            "employee_name": employee_details.get(member.employee, {}).get("employee_name") or member.employee,
             "user": employee_details.get(member.employee, {}).get("user_id"),
             "user_image": member_user_image_map.get(employee_details.get(member.employee, {}).get("user_id")),
             "label": employee_details.get(member.employee, {}).get("employee_name") or member.employee,

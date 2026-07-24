@@ -4900,7 +4900,10 @@
 								<tbody data-ps-member-table-body>
 									${members.map((m, idx) => `
 										<tr style="border-bottom: 1px solid var(--taskflow-border);">
-											<td style="padding: 12px;">${escapeHtml(m.employee_name || m.employee)}</td>
+											<td style="padding: 12px;">
+												<div style="font-weight: 600; color: #1e293b;">${escapeHtml(m.employee_name || m.employee)}</div>
+												${m.employee_name ? `<div style="font-size: 12px; color: #64748b;">${escapeHtml(m.employee)}</div>` : ''}
+											</td>
 											<td style="padding: 12px;">${escapeHtml(m.team_role)}</td>
 											<td style="padding: 12px;">
 												<button class="taskflow-button secondary" type="button" data-ps-remove-member="${idx}">Remove</button>
