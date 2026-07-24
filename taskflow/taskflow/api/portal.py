@@ -611,6 +611,106 @@ def get_project_workspace(project: str) -> dict:
 
 
 @frappe.whitelist()
+def get_team_members(team: str | None = None) -> dict:
+    """Return team members from the team_members child table of Taskflow Team."""
+    _require_login()
+    
+    if not team or team == "all":
+        # Get all teams accessible to the user
+        from taskflow.taskflow.service.team_hierarchy import get_accessible_teams
+        accessible_teams = list(get_accessible_teams(frappe.session.user))
+        
+        if not accessible_teams:
+            return {"team_members": []}
+        
+        # Get all team members from accessible teams
+        team_members = frappe.get_all(
+            "Taskflow Team Member",
+            filters={
+                "parent": ["in", accessible_teams],
+                "is_active": 1
+            },
+            fields=[
+                "name",
+                "parent as team",
+                "employee",
+                "user",
+                "team_role",
+                "access_level",
+                "is_active"
+            ]
+        )
+    else:
+        # Get members for specific team
+        team_members = frappe.get_all(
+            "Taskflow Team Member",
+            filters={
+                "parent": team,
+                "is_active": 1
+            },
+            fields=[
+                "name",
+                "parent as team",
+                "employee",
+                "user",
+                "team_role",
+                "access_level",
+                "is_active"
+            ]
+        )
+    
+    # Enrich with employee details
+    employee_ids = [m.employee for m in team_members if m.employee]
+    employee_map = {}
+    
+    if employee_ids:
+        employees = frappe.get_all(
+            "Employee",
+            filters={"name": ["in", employee_ids]},
+            fields=["name", "employee_name", "user_id", "image", "designation", "department"]
+        )
+        employee_map = {e.name: e for e in employees}
+    
+    # Get task counts for each member
+    for member in team_members:
+        emp_data = employee_map.get(member.employee, {})
+        member.employee_name = emp_data.get("employee_name", member.employee)
+        member.user_image = emp_data.get("image")
+        member.designation = emp_data.get("designation", "")
+        member.department = emp_data.get("department", "")
+        
+        # Get task counts
+        if member.user:
+            task_counts = frappe.db.sql("""
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status != 'Completed' THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed,
+                    SUM(CASE WHEN status = 'Overdue' THEN 1 ELSE 0 END) as overdue
+                FROM `tabTaskflow Task`
+                WHERE _assign LIKE %s
+            """, ('%"' + member.user + '"%',), as_dict=True)
+            
+            if task_counts:
+                member.total_tasks = task_counts[0].total or 0
+                member.pending_tasks = task_counts[0].pending or 0
+                member.completed_tasks = task_counts[0].completed or 0
+                member.overdue_tasks = task_counts[0].overdue or 0
+            else:
+                member.total_tasks = 0
+                member.pending_tasks = 0
+                member.completed_tasks = 0
+                member.overdue_tasks = 0
+        else:
+            member.total_tasks = 0
+            member.pending_tasks = 0
+            member.completed_tasks = 0
+            member.overdue_tasks = 0
+    
+    return {"team_members": team_members}
+
+
+@frappe.whitelist()
 def get_dashboard_data(team: str | None = None) -> dict:
     """Return workload statistics per employee, optionally filtered by team."""
     _require_login()

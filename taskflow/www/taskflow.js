@@ -415,7 +415,7 @@
 				if (mode) {
 					setNavMode(mode);
 					if (mode === "team") {
-						state.teamView = "cards";
+						state.teamView = "members";
 						renderTeamView();
 					}
 					closeSidebars();
@@ -431,6 +431,11 @@
 				)
 					return;
 				openTaskModal();
+			}
+
+			const addMemberButton = e.target.closest("[data-add-team-member]");
+			if (addMemberButton) {
+				openAddTeamMemberModal();
 			}
 
 			const postCommentButton = e.target.closest("[data-post-comment]");
@@ -1041,48 +1046,173 @@
 		if (options.updateUrl !== false) updateUrlState({ replace: options.replace });
 	}
 	async function renderTeamView() {
+		const teamMembers = document.querySelector("[data-team-members]");
+		const teamCardsWrapper = document.querySelector("[data-team-cards-wrapper]");
 		const teamGrid = document.querySelector("[data-team-grid]");
 		const teamTimeline = document.querySelector("[data-team-timeline]");
 		const header = document.querySelector("[data-team-view] h2");
 		const teamName = getSelectedTeamName();
 		const viewToggle = document.querySelector("[data-team-view-toggle]");
 
-		if (!teamGrid || !teamTimeline) return;
+		if (!teamMembers || !teamGrid || !teamTimeline) return;
 
 		viewToggle
 			.querySelectorAll(".taskflow-tab")
 			.forEach((t) => t.classList.toggle("active", t.dataset.view === state.teamView));
 
-		if (header) header.textContent = `${teamName} Team Dashboard`;
+		if (header) header.textContent = teamName;
 
 		try {
-			const data = await apiCall("get_dashboard_data");
-			const allGlobalData = data.global_team_data || [];
-			let filteredMembers = allGlobalData;
-			if (state.selectedTeam && state.selectedTeam !== "all") {
-				filteredMembers = allGlobalData.filter((member) => {
-					// We need to fetch team memberships, as they are not directly in global_team_data
-					// Assuming bootstrap.team_members contains this info
-					const memberTeams = ((state.bootstrap && state.bootstrap.team_members) || [])
-						.filter((tm) => tm.employee === member.employee)
-						.map((tm) => tm.team);
-					return memberTeams.includes(state.selectedTeam);
-				});
-			}
-
-			if (state.teamView === "cards") {
-				teamGrid.classList.remove("taskflow-hidden");
+			if (state.teamView === "members") {
+				// Fetch team members from team_members child table
+				const data = await apiCall("get_team_members", { team: state.selectedTeam });
+				const members = data.team_members || [];
+				
+				teamMembers.classList.remove("taskflow-hidden");
+				teamCardsWrapper.classList.add("taskflow-hidden");
+				teamTimeline.classList.add("taskflow-hidden");
+				renderTeamMembers(members, teamMembers);
+			} else if (state.teamView === "cards") {
+				// Use existing dashboard data for cards view
+				const data = await apiCall("get_dashboard_data", { team: state.selectedTeam });
+				const allGlobalData = data.global_team_data || [];
+				let filteredMembers = allGlobalData;
+				if (state.selectedTeam && state.selectedTeam !== "all") {
+					filteredMembers = allGlobalData.filter((member) => {
+						const memberTeams = ((state.bootstrap && state.bootstrap.team_members) || [])
+							.filter((tm) => tm.employee === member.employee)
+							.map((tm) => tm.team);
+						return memberTeams.includes(state.selectedTeam);
+					});
+				}
+				
+				teamMembers.classList.add("taskflow-hidden");
+				teamCardsWrapper.classList.remove("taskflow-hidden");
 				teamTimeline.classList.add("taskflow-hidden");
 				renderTeamCards(filteredMembers, teamGrid);
 			} else {
-				teamGrid.classList.add("taskflow-hidden");
+				// Timeline view
+				const data = await apiCall("get_dashboard_data", { team: state.selectedTeam });
+				const allGlobalData = data.global_team_data || [];
+				let filteredMembers = allGlobalData;
+				if (state.selectedTeam && state.selectedTeam !== "all") {
+					filteredMembers = allGlobalData.filter((member) => {
+						const memberTeams = ((state.bootstrap && state.bootstrap.team_members) || [])
+							.filter((tm) => tm.employee === member.employee)
+							.map((tm) => tm.team);
+						return memberTeams.includes(state.selectedTeam);
+					});
+				}
+				
+				teamMembers.classList.add("taskflow-hidden");
+				teamCardsWrapper.classList.add("taskflow-hidden");
 				teamTimeline.classList.remove("taskflow-hidden");
 				renderTeamTimeline(filteredMembers, teamTimeline);
 			}
 		} catch (err) {
 			console.error(err);
-			teamGrid.innerHTML = '<div class="taskflow-empty">Error loading team data.</div>';
+			teamMembers.innerHTML = '<div class="taskflow-empty">Error loading team data.</div>';
 		}
+	}
+
+	function renderTeamMembers(members, container) {
+		if (members.length === 0) {
+			container.innerHTML = '<div class="taskflow-empty">No team members found.</div>';
+			return;
+		}
+
+		container.innerHTML = `
+			<div style="background: white; border-radius: 12px; border: 1px solid var(--taskflow-border); overflow: hidden;">
+				<table class="taskflow-table" style="width: 100%; border-collapse: collapse;">
+					<thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+						<tr>
+							<th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: #475569;">Sr No</th>
+							<th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: #475569;">Employee Name</th>
+							<th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: #475569;">Designation</th>
+							<th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: #475569;">Team Role</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Access Level</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Total Tasks</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Pending</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Completed</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Overdue</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Status</th>
+						</tr>
+					</thead>
+					<tbody>
+						${members
+							.map((m, index) => {
+								const totalTasks = m.total_tasks || 0;
+								const pendingTasks = m.pending_tasks || 0;
+								const completedTasks = m.completed_tasks || 0;
+								const overdueTasks = m.overdue_tasks || 0;
+								
+								// Access level badge colors
+								const accessColors = {
+									'Admin': { bg: '#fef2f2', text: '#991b1b' },
+									'Manage': { bg: '#fef3c7', text: '#92400e' },
+									'Operate': { bg: '#dbeafe', text: '#1e40af' },
+									'View': { bg: '#f3f4f6', text: '#374151' }
+								};
+								const accessStyle = accessColors[m.access_level] || accessColors['View'];
+
+								return `
+									<tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" 
+										onmouseover="this.style.background='#f8fafc'" 
+										onmouseout="this.style.background='white'">
+										<td style="padding: 16px; color: #64748b; font-size: 14px;">${index + 1}</td>
+										<td style="padding: 16px;">
+											<div style="display: flex; align-items: center; gap: 12px;">
+												<div class="taskflow-avatar" style="width: 36px; height: 36px; background: #3b82f6; color: white; font-size: 14px;">
+													${m.user_image ? `<img src="${m.user_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : initials(m.employee_name || m.employee)}
+												</div>
+												<div>
+													<div style="font-weight: 600; color: #1e293b; font-size: 14px;">${escapeHtml(m.employee_name || m.employee)}</div>
+													<div style="font-size: 12px; color: #64748b;">${escapeHtml(m.employee)}</div>
+												</div>
+											</div>
+										</td>
+										<td style="padding: 16px; color: #64748b; font-size: 13px;">${escapeHtml(m.designation || '-')}</td>
+										<td style="padding: 16px;">
+											<span style="display: inline-block; padding: 4px 10px; background: #e0e7ff; color: #3730a3; border-radius: 12px; font-size: 12px; font-weight: 600;">
+												${escapeHtml(m.team_role)}
+											</span>
+										</td>
+										<td style="padding: 16px; text-align: center;">
+											<span style="display: inline-block; padding: 4px 10px; background: ${accessStyle.bg}; color: ${accessStyle.text}; border-radius: 12px; font-size: 12px; font-weight: 600;">
+												${escapeHtml(m.access_level)}
+											</span>
+										</td>
+										<td style="padding: 16px; text-align: center; font-weight: 600; font-size: 14px; color: #334155;">
+											${totalTasks}
+										</td>
+										<td style="padding: 16px; text-align: center;">
+											<span style="display: inline-block; padding: 4px 12px; background: #fef3c7; color: #92400e; border-radius: 12px; font-size: 13px; font-weight: 600;">
+												${pendingTasks}
+											</span>
+										</td>
+										<td style="padding: 16px; text-align: center;">
+											<span style="display: inline-block; padding: 4px 12px; background: #d1fae5; color: #065f46; border-radius: 12px; font-size: 13px; font-weight: 600;">
+												${completedTasks}
+											</span>
+										</td>
+										<td style="padding: 16px; text-align: center;">
+											<span style="display: inline-block; padding: 4px 12px; background: ${overdueTasks > 0 ? '#fee2e2' : '#f3f4f6'}; color: ${overdueTasks > 0 ? '#991b1b' : '#6b7280'}; border-radius: 12px; font-size: 13px; font-weight: 600;">
+												${overdueTasks}
+											</span>
+										</td>
+										<td style="padding: 16px; text-align: center;">
+											<span style="display: inline-block; padding: 4px 12px; background: ${m.is_active ? '#d1fae5' : '#fee2e2'}; color: ${m.is_active ? '#065f46' : '#991b1b'}; border-radius: 12px; font-size: 12px; font-weight: 600;">
+												${m.is_active ? 'Active' : 'Inactive'}
+											</span>
+										</td>
+									</tr>
+								`;
+							})
+							.join("")}
+					</tbody>
+				</table>
+			</div>
+		`;
 	}
 
 	function renderTeamCards(filteredMembers, teamGrid) {
@@ -3155,6 +3285,19 @@
 		form.elements.description.value = project ? stripHtml(project.description || "") : "";
 		syncProjectDatepickers(form);
 		toggleModal(refs.projectModal, true);
+	}
+
+	function openAddTeamMemberModal() {
+		// Open the Taskflow Team doctype in a new window/tab with the selected team
+		const teamName = state.selectedTeam && state.selectedTeam !== "all" ? state.selectedTeam : null;
+		
+		if (!teamName) {
+			frappe.msgprint("Please select a specific team first.");
+			return;
+		}
+		
+		// Open Frappe form for the team to edit members
+		window.open(`/app/taskflow-team/${encodeURIComponent(teamName)}`, '_blank');
 	}
 
 	async function openTaskModal(task, status = "") {

@@ -335,13 +335,31 @@
 						margin-bottom: 20px;
 					"
 				>
-					<h2>Team</h2>
+					<div style="display: flex; align-items: center; gap: 16px;">
+						<h2>Team</h2>
+						<button 
+							class="taskflow-btn-primary" 
+							data-add-team-member 
+							style="padding: 6px 16px; font-size: 14px;"
+							title="Add Team Member"
+						>
+							<span class="taskflow-btn-icon">+</span> Add Member
+						</button>
+					</div>
 					<div class="taskflow-btn-group" data-team-view-toggle>
 						<button
 							class="taskflow-tab active"
-							data-view="cards"
+							data-view="members"
 							role="tab"
 							aria-selected="true"
+						>
+							Members
+						</button>
+						<button
+							class="taskflow-tab"
+							data-view="cards"
+							role="tab"
+							aria-selected="false"
 						>
 							Cards
 						</button>
@@ -356,8 +374,16 @@
 					</div>
 				</div>
 
+				<!-- Members View -->
 				<div
-					class="taskflow-team-split-view"
+					class="taskflow-team-members-wrapper"
+					data-team-members
+					style="display: block"
+				></div>
+
+				<!-- Cards View -->
+				<div
+					class="taskflow-team-split-view taskflow-hidden"
 					data-team-cards-wrapper
 					style="display: flex; gap: 24px"
 				>
