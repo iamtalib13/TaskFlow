@@ -1401,6 +1401,30 @@
 	data-add-member-modal
 	aria-hidden="true"
 >
+	<style>
+		/* Employee dropdown scrollbar styling */
+		[data-employee-dropdown]::-webkit-scrollbar {
+			width: 8px;
+		}
+		[data-employee-dropdown]::-webkit-scrollbar-track {
+			background: #f1f5f9;
+			border-radius: 4px;
+		}
+		[data-employee-dropdown]::-webkit-scrollbar-thumb {
+			background: #cbd5e1;
+			border-radius: 4px;
+		}
+		[data-employee-dropdown]::-webkit-scrollbar-thumb:hover {
+			background: #94a3b8;
+		}
+		
+		/* Search input focus state */
+		[data-employee-search]:focus {
+			border-color: #3b82f6 !important;
+			background: #ffffff !important;
+			box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+		}
+	</style>
 	<div
 		class="taskflow-modal"
 		role="dialog"
@@ -1429,13 +1453,30 @@
 						<span style="font-size: 13px; font-weight: 600; color: #475569;">
 							Employee *
 						</span>
-						<select 
-							name="employee" 
-							required
-							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
-						>
-							<option value="">Select Employee</option>
-						</select>
+						<div style="position: relative;">
+							<input 
+								type="text" 
+								name="employee_search"
+								data-employee-search
+								autocomplete="off"
+								placeholder="Search employee..."
+								required
+								style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s; width: 100%;"
+							/>
+							<input type="hidden" name="employee" data-employee-value required />
+							<div 
+								data-employee-dropdown
+								style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 250px; overflow-y: auto; z-index: 1000;"
+							>
+								<div data-employee-options style="padding: 4px;"></div>
+								<div data-employee-loading style="padding: 16px; text-align: center; color: #64748b; font-size: 13px; display: none;">
+									Loading employees...
+								</div>
+								<div data-employee-empty style="padding: 16px; text-align: center; color: #94a3b8; font-size: 13px; display: none;">
+									No employees found
+								</div>
+							</div>
+						</div>
 					</label>
 
 					<!-- Team Role Selection -->

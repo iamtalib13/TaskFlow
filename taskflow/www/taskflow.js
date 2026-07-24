@@ -3302,32 +3302,121 @@
 			return;
 		}
 		
+		// Get form elements
+		const form = document.querySelector("[data-add-member-form]");
+		const searchInput = form.querySelector("[data-employee-search]");
+		const hiddenInput = form.querySelector("[data-employee-value]");
+		const dropdown = form.querySelector("[data-employee-dropdown]");
+		const optionsContainer = form.querySelector("[data-employee-options]");
+		const loadingDiv = form.querySelector("[data-employee-loading]");
+		const emptyDiv = form.querySelector("[data-employee-empty]");
+		
+		// Reset form
+		form.reset();
+		searchInput.value = "";
+		hiddenInput.value = "";
+		form.elements.team_role.value = "Team Member";
+		form.elements.access_level.value = "Operate";
+		form.elements.is_active.checked = true;
+		
+		let allEmployees = [];
+		
 		// Fetch employees
 		try {
+			loadingDiv.style.display = "block";
+			dropdown.style.display = "block";
+			
 			const data = await apiCall("get_employees");
-			const employees = data.employees || [];
+			allEmployees = data.employees || [];
 			
-			// Populate employee dropdown
-			const form = document.querySelector("[data-add-member-form]");
-			const employeeSelect = form.elements.employee;
+			loadingDiv.style.display = "none";
 			
-			employeeSelect.innerHTML = '<option value="">Select Employee</option>' + 
-				employees.map(emp => 
-					`<option value="${escapeHtml(emp.name)}">${escapeHtml(emp.employee_name)} (${escapeHtml(emp.name)})</option>`
-				).join('');
-			
-			// Reset form
-			form.reset();
-			form.elements.team_role.value = "Team Member";
-			form.elements.access_level.value = "Operate";
-			form.elements.is_active.checked = true;
-			
-			// Show modal
-			toggleModal(document.querySelector("[data-add-member-modal]"), true);
+			if (allEmployees.length === 0) {
+				emptyDiv.style.display = "block";
+			} else {
+				renderEmployeeOptions(allEmployees, optionsContainer, searchInput, hiddenInput, dropdown);
+			}
 		} catch (err) {
 			console.error("Error loading employees:", err);
-			frappe.msgprint("Error loading employees. Please try again.");
+			loadingDiv.style.display = "none";
+			emptyDiv.textContent = "Error loading employees";
+			emptyDiv.style.display = "block";
 		}
+		
+		// Search functionality
+		searchInput.addEventListener("input", () => {
+			const searchTerm = searchInput.value.toLowerCase().trim();
+			
+			if (!searchTerm) {
+				renderEmployeeOptions(allEmployees, optionsContainer, searchInput, hiddenInput, dropdown);
+				dropdown.style.display = "block";
+				return;
+			}
+			
+			const filtered = allEmployees.filter(emp => 
+				emp.employee_name.toLowerCase().includes(searchTerm) || 
+				emp.name.toLowerCase().includes(searchTerm)
+			);
+			
+			if (filtered.length === 0) {
+				optionsContainer.innerHTML = "";
+				emptyDiv.style.display = "block";
+			} else {
+				emptyDiv.style.display = "none";
+				renderEmployeeOptions(filtered, optionsContainer, searchInput, hiddenInput, dropdown);
+			}
+			
+			dropdown.style.display = "block";
+		});
+		
+		// Show dropdown on focus
+		searchInput.addEventListener("focus", () => {
+			if (allEmployees.length > 0) {
+				dropdown.style.display = "block";
+			}
+		});
+		
+		// Hide dropdown when clicking outside
+		document.addEventListener("click", function hideDropdown(e) {
+			if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+				dropdown.style.display = "none";
+			}
+		});
+		
+		// Show modal
+		toggleModal(document.querySelector("[data-add-member-modal]"), true);
+	}
+	
+	function renderEmployeeOptions(employees, container, searchInput, hiddenInput, dropdown) {
+		container.innerHTML = employees.map(emp => `
+			<div 
+				class="employee-option" 
+				data-employee-id="${escapeHtml(emp.name)}"
+				data-employee-name="${escapeHtml(emp.employee_name)}"
+				style="padding: 10px 12px; cursor: pointer; border-radius: 6px; transition: background 0.15s; display: flex; flex-direction: column; gap: 2px;"
+				onmouseover="this.style.background='#f1f5f9'" 
+				onmouseout="this.style.background='white'"
+			>
+				<div style="font-weight: 600; color: #1e293b; font-size: 14px;">
+					${escapeHtml(emp.employee_name)}
+				</div>
+				<div style="font-size: 12px; color: #64748b;">
+					${escapeHtml(emp.name)}${emp.designation ? ' • ' + escapeHtml(emp.designation) : ''}
+				</div>
+			</div>
+		`).join('');
+		
+		// Add click handlers
+		container.querySelectorAll(".employee-option").forEach(option => {
+			option.addEventListener("click", () => {
+				const employeeId = option.dataset.employeeId;
+				const employeeName = option.dataset.employeeName;
+				
+				searchInput.value = employeeName + " (" + employeeId + ")";
+				hiddenInput.value = employeeId;
+				dropdown.style.display = "none";
+			});
+		});
 	}
 
 	async function openTaskModal(task, status = "") {
