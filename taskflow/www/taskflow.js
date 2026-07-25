@@ -2355,9 +2355,9 @@
 		const alertContainer = document.querySelector("[data-oldest-task-alert]");
 		if (!alertContainer) return;
 
-		let pendingTasks = (tasks || []).filter(
-			(t) => !["Completed", "Cancelled"].includes(t.status) && t.start_date,
-		);
+	let pendingTasks = (tasks || []).filter(
+		(t) => !["Completed", "Cancelled", "Review", "On Hold"].includes(t.status) && t.start_date,
+	);
 
 		// Filter by employee only in project view (not My Tasks — tasks are pre-filtered)
 		if (filterEmployee) {
