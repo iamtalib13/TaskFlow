@@ -415,7 +415,7 @@
 				if (mode) {
 					setNavMode(mode);
 					if (mode === "team") {
-						state.teamView = "cards";
+						state.teamView = "members";
 						renderTeamView();
 					}
 					closeSidebars();
@@ -431,6 +431,11 @@
 				)
 					return;
 				openTaskModal();
+			}
+
+			const addMemberButton = e.target.closest("[data-add-team-member]");
+			if (addMemberButton) {
+				openAddTeamMemberModal();
 			}
 
 			const postCommentButton = e.target.closest("[data-post-comment]");
@@ -661,6 +666,12 @@
 				const label = document.getElementById("quickCompletedDateLabel");
 				if (label) label.style.display = e.target.value === "Completed" ? "" : "none";
 			});
+		}
+
+		// Add Member Form Handler
+		const addMemberForm = document.querySelector("[data-add-member-form]");
+		if (addMemberForm) {
+			addMemberForm.addEventListener("submit", submitAddMemberForm);
 		}
 
 		document.getElementById("quickTaskAssignedToSelect")?.addEventListener("change", (e) => {
@@ -1041,48 +1052,173 @@
 		if (options.updateUrl !== false) updateUrlState({ replace: options.replace });
 	}
 	async function renderTeamView() {
+		const teamMembers = document.querySelector("[data-team-members]");
+		const teamCardsWrapper = document.querySelector("[data-team-cards-wrapper]");
 		const teamGrid = document.querySelector("[data-team-grid]");
 		const teamTimeline = document.querySelector("[data-team-timeline]");
 		const header = document.querySelector("[data-team-view] h2");
 		const teamName = getSelectedTeamName();
 		const viewToggle = document.querySelector("[data-team-view-toggle]");
 
-		if (!teamGrid || !teamTimeline) return;
+		if (!teamMembers || !teamGrid || !teamTimeline) return;
 
 		viewToggle
 			.querySelectorAll(".taskflow-tab")
 			.forEach((t) => t.classList.toggle("active", t.dataset.view === state.teamView));
 
-		if (header) header.textContent = `${teamName} Team Dashboard`;
+		if (header) header.textContent = teamName;
 
 		try {
-			const data = await apiCall("get_dashboard_data");
-			const allGlobalData = data.global_team_data || [];
-			let filteredMembers = allGlobalData;
-			if (state.selectedTeam && state.selectedTeam !== "all") {
-				filteredMembers = allGlobalData.filter((member) => {
-					// We need to fetch team memberships, as they are not directly in global_team_data
-					// Assuming bootstrap.team_members contains this info
-					const memberTeams = ((state.bootstrap && state.bootstrap.team_members) || [])
-						.filter((tm) => tm.employee === member.employee)
-						.map((tm) => tm.team);
-					return memberTeams.includes(state.selectedTeam);
-				});
-			}
-
-			if (state.teamView === "cards") {
-				teamGrid.classList.remove("taskflow-hidden");
+			if (state.teamView === "members") {
+				// Fetch team members from team_members child table
+				const data = await apiCall("get_team_members", { team: state.selectedTeam });
+				const members = data.team_members || [];
+				
+				teamMembers.classList.remove("taskflow-hidden");
+				teamCardsWrapper.classList.add("taskflow-hidden");
+				teamTimeline.classList.add("taskflow-hidden");
+				renderTeamMembers(members, teamMembers);
+			} else if (state.teamView === "cards") {
+				// Use existing dashboard data for cards view
+				const data = await apiCall("get_dashboard_data", { team: state.selectedTeam });
+				const allGlobalData = data.global_team_data || [];
+				let filteredMembers = allGlobalData;
+				if (state.selectedTeam && state.selectedTeam !== "all") {
+					filteredMembers = allGlobalData.filter((member) => {
+						const memberTeams = ((state.bootstrap && state.bootstrap.team_members) || [])
+							.filter((tm) => tm.employee === member.employee)
+							.map((tm) => tm.team);
+						return memberTeams.includes(state.selectedTeam);
+					});
+				}
+				
+				teamMembers.classList.add("taskflow-hidden");
+				teamCardsWrapper.classList.remove("taskflow-hidden");
 				teamTimeline.classList.add("taskflow-hidden");
 				renderTeamCards(filteredMembers, teamGrid);
 			} else {
-				teamGrid.classList.add("taskflow-hidden");
+				// Timeline view
+				const data = await apiCall("get_dashboard_data", { team: state.selectedTeam });
+				const allGlobalData = data.global_team_data || [];
+				let filteredMembers = allGlobalData;
+				if (state.selectedTeam && state.selectedTeam !== "all") {
+					filteredMembers = allGlobalData.filter((member) => {
+						const memberTeams = ((state.bootstrap && state.bootstrap.team_members) || [])
+							.filter((tm) => tm.employee === member.employee)
+							.map((tm) => tm.team);
+						return memberTeams.includes(state.selectedTeam);
+					});
+				}
+				
+				teamMembers.classList.add("taskflow-hidden");
+				teamCardsWrapper.classList.add("taskflow-hidden");
 				teamTimeline.classList.remove("taskflow-hidden");
 				renderTeamTimeline(filteredMembers, teamTimeline);
 			}
 		} catch (err) {
 			console.error(err);
-			teamGrid.innerHTML = '<div class="taskflow-empty">Error loading team data.</div>';
+			teamMembers.innerHTML = '<div class="taskflow-empty">Error loading team data.</div>';
 		}
+	}
+
+	function renderTeamMembers(members, container) {
+		if (members.length === 0) {
+			container.innerHTML = '<div class="taskflow-empty">No team members found.</div>';
+			return;
+		}
+
+		container.innerHTML = `
+			<div style="background: white; border-radius: 12px; border: 1px solid var(--taskflow-border); overflow: hidden;">
+				<table class="taskflow-table" style="width: 100%; border-collapse: collapse;">
+					<thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+						<tr>
+							<th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: #475569;">Sr No</th>
+							<th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: #475569;">Employee Name</th>
+							<th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: #475569;">Designation</th>
+							<th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: #475569;">Team Role</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Access Level</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Total Tasks</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Pending</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Completed</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Overdue</th>
+							<th style="padding: 16px; text-align: center; font-size: 13px; font-weight: 600; color: #475569;">Status</th>
+						</tr>
+					</thead>
+					<tbody>
+						${members
+							.map((m, index) => {
+								const totalTasks = m.total_tasks || 0;
+								const pendingTasks = m.pending_tasks || 0;
+								const completedTasks = m.completed_tasks || 0;
+								const overdueTasks = m.overdue_tasks || 0;
+								
+								// Access level badge colors
+								const accessColors = {
+									'Admin': { bg: '#fef2f2', text: '#991b1b' },
+									'Manage': { bg: '#fef3c7', text: '#92400e' },
+									'Operate': { bg: '#dbeafe', text: '#1e40af' },
+									'View': { bg: '#f3f4f6', text: '#374151' }
+								};
+								const accessStyle = accessColors[m.access_level] || accessColors['View'];
+
+								return `
+									<tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" 
+										onmouseover="this.style.background='#f8fafc'" 
+										onmouseout="this.style.background='white'">
+										<td style="padding: 16px; color: #64748b; font-size: 14px;">${index + 1}</td>
+										<td style="padding: 16px;">
+											<div style="display: flex; align-items: center; gap: 12px;">
+												<div class="taskflow-avatar" style="width: 36px; height: 36px; background: #3b82f6; color: white; font-size: 14px;">
+													${m.user_image ? `<img src="${m.user_image}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : initials(m.employee_name || m.employee)}
+												</div>
+												<div>
+													<div style="font-weight: 600; color: #1e293b; font-size: 14px;">${escapeHtml(m.employee_name || m.employee)}</div>
+													<div style="font-size: 12px; color: #64748b;">${escapeHtml(m.employee)}</div>
+												</div>
+											</div>
+										</td>
+										<td style="padding: 16px; color: #64748b; font-size: 13px;">${escapeHtml(m.designation || '-')}</td>
+										<td style="padding: 16px;">
+											<span style="display: inline-block; padding: 4px 10px; background: #e0e7ff; color: #3730a3; border-radius: 12px; font-size: 12px; font-weight: 600;">
+												${escapeHtml(m.team_role)}
+											</span>
+										</td>
+										<td style="padding: 16px; text-align: center;">
+											<span style="display: inline-block; padding: 4px 10px; background: ${accessStyle.bg}; color: ${accessStyle.text}; border-radius: 12px; font-size: 12px; font-weight: 600;">
+												${escapeHtml(m.access_level)}
+											</span>
+										</td>
+										<td style="padding: 16px; text-align: center; font-weight: 600; font-size: 14px; color: #334155;">
+											${totalTasks}
+										</td>
+										<td style="padding: 16px; text-align: center;">
+											<span style="display: inline-block; padding: 4px 12px; background: #fef3c7; color: #92400e; border-radius: 12px; font-size: 13px; font-weight: 600;">
+												${pendingTasks}
+											</span>
+										</td>
+										<td style="padding: 16px; text-align: center;">
+											<span style="display: inline-block; padding: 4px 12px; background: #d1fae5; color: #065f46; border-radius: 12px; font-size: 13px; font-weight: 600;">
+												${completedTasks}
+											</span>
+										</td>
+										<td style="padding: 16px; text-align: center;">
+											<span style="display: inline-block; padding: 4px 12px; background: ${overdueTasks > 0 ? '#fee2e2' : '#f3f4f6'}; color: ${overdueTasks > 0 ? '#991b1b' : '#6b7280'}; border-radius: 12px; font-size: 13px; font-weight: 600;">
+												${overdueTasks}
+											</span>
+										</td>
+										<td style="padding: 16px; text-align: center;">
+											<span style="display: inline-block; padding: 4px 12px; background: ${m.is_active ? '#d1fae5' : '#fee2e2'}; color: ${m.is_active ? '#065f46' : '#991b1b'}; border-radius: 12px; font-size: 12px; font-weight: 600;">
+												${m.is_active ? 'Active' : 'Inactive'}
+											</span>
+										</td>
+									</tr>
+								`;
+							})
+							.join("")}
+					</tbody>
+				</table>
+			</div>
+		`;
 	}
 
 	function renderTeamCards(filteredMembers, teamGrid) {
@@ -2219,9 +2355,9 @@
 		const alertContainer = document.querySelector("[data-oldest-task-alert]");
 		if (!alertContainer) return;
 
-		let pendingTasks = (tasks || []).filter(
-			(t) => !["Completed", "Cancelled"].includes(t.status) && t.start_date,
-		);
+	let pendingTasks = (tasks || []).filter(
+		(t) => !["Completed", "Cancelled", "Review", "On Hold"].includes(t.status) && t.start_date,
+	);
 
 		// Filter by employee only in project view (not My Tasks — tasks are pre-filtered)
 		if (filterEmployee) {
@@ -3157,6 +3293,143 @@
 		toggleModal(refs.projectModal, true);
 	}
 
+	async function openAddTeamMemberModal() {
+		// Check if a specific team is selected
+		const teamName = state.selectedTeam && state.selectedTeam !== "all" ? state.selectedTeam : null;
+		
+		if (!teamName) {
+			frappe.msgprint("Please select a specific team first.");
+			return;
+		}
+		
+		// Get form elements
+		const form = document.querySelector("[data-add-member-form]");
+		const searchInput = form.querySelector("[data-employee-search]");
+		const hiddenInput = form.querySelector("[data-employee-value]");
+		const dropdown = form.querySelector("[data-employee-dropdown]");
+		const optionsContainer = form.querySelector("[data-employee-options]");
+		const loadingDiv = form.querySelector("[data-employee-loading]");
+		const emptyDiv = form.querySelector("[data-employee-empty]");
+		const modal = document.querySelector("[data-add-member-modal]");
+		
+		// Reset form
+		form.reset();
+		searchInput.value = "";
+		hiddenInput.value = "";
+		dropdown.style.display = "none";
+		form.elements.team_role.value = "Team Member";
+		form.elements.access_level.value = "Operate";
+		form.elements.is_active.checked = true;
+		
+		let allEmployees = [];
+		
+		// Fetch employees
+		try {
+			loadingDiv.style.display = "block";
+			dropdown.style.display = "block";
+			
+			const data = await apiCall("get_employees");
+			allEmployees = data.employees || [];
+			
+			loadingDiv.style.display = "none";
+			
+			if (allEmployees.length === 0) {
+				emptyDiv.style.display = "block";
+			} else {
+				renderEmployeeOptions(allEmployees, optionsContainer, searchInput, hiddenInput, dropdown);
+			}
+		} catch (err) {
+			console.error("Error loading employees:", err);
+			loadingDiv.style.display = "none";
+			emptyDiv.textContent = "Error loading employees";
+			emptyDiv.style.display = "block";
+		}
+		
+		// Search functionality
+		const handleInput = () => {
+			const searchTerm = searchInput.value.toLowerCase().trim();
+			
+			if (!searchTerm) {
+				renderEmployeeOptions(allEmployees, optionsContainer, searchInput, hiddenInput, dropdown);
+				dropdown.style.display = "block";
+				return;
+			}
+			
+			const filtered = allEmployees.filter(emp => 
+				emp.employee_name.toLowerCase().includes(searchTerm) || 
+				emp.name.toLowerCase().includes(searchTerm)
+			);
+			
+			if (filtered.length === 0) {
+				optionsContainer.innerHTML = "";
+				emptyDiv.style.display = "block";
+			} else {
+				emptyDiv.style.display = "none";
+				renderEmployeeOptions(filtered, optionsContainer, searchInput, hiddenInput, dropdown);
+			}
+			
+			dropdown.style.display = "block";
+		};
+		
+		// Show dropdown on focus
+		const handleFocus = () => {
+			if (allEmployees.length > 0) {
+				dropdown.style.display = "block";
+			}
+		};
+		
+		// Hide dropdown when clicking outside
+		const handleClickOutside = (e) => {
+			if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+				dropdown.style.display = "none";
+			}
+		};
+		
+		// Remove any existing listeners
+		searchInput.removeEventListener("input", handleInput);
+		searchInput.removeEventListener("focus", handleFocus);
+		
+		// Add event listeners
+		searchInput.addEventListener("input", handleInput);
+		searchInput.addEventListener("focus", handleFocus);
+		document.addEventListener("click", handleClickOutside);
+		
+		// Show modal
+		toggleModal(modal, true);
+	}
+	
+	function renderEmployeeOptions(employees, container, searchInput, hiddenInput, dropdown) {
+		container.innerHTML = employees.map(emp => `
+			<div 
+				class="employee-option" 
+				data-employee-id="${escapeHtml(emp.name)}"
+				data-employee-name="${escapeHtml(emp.employee_name)}"
+				style="padding: 10px 12px; cursor: pointer; border-radius: 6px; transition: background 0.15s; display: flex; flex-direction: column; gap: 2px;"
+				onmouseover="this.style.background='#f1f5f9'" 
+				onmouseout="this.style.background='white'"
+			>
+				<div style="font-weight: 600; color: #1e293b; font-size: 14px;">
+					${escapeHtml(emp.employee_name)}
+				</div>
+				<div style="font-size: 12px; color: #64748b;">
+					${escapeHtml(emp.name)}${emp.designation ? ' • ' + escapeHtml(emp.designation) : ''}
+				</div>
+			</div>
+		`).join('');
+		
+		// Add click handlers
+		container.querySelectorAll(".employee-option").forEach(option => {
+			option.addEventListener("click", () => {
+				const employeeId = option.dataset.employeeId;
+				const employeeName = option.dataset.employeeName;
+				
+				searchInput.value = employeeName + " (" + employeeId + ")";
+				hiddenInput.value = employeeId;
+				dropdown.style.display = "none";
+			});
+		});
+	}
+
 	async function openTaskModal(task, status = "") {
 		if (!task) {
 			const projSelect = document.getElementById("quickTaskProjectSelect");
@@ -3227,9 +3500,9 @@
 				} else {
 					state.quickTaskAssignees = [];
 				}
-			} else {
-				state.quickTaskAssignees = [];
 			}
+			// For non-admin users, keep the current user pre-assigned from populateQuickTaskAssignees
+			// (already set above). Only clear for Administrator.
 
 			renderQuickAssigneeWidget();
 			return;
@@ -3269,6 +3542,21 @@
 
 	function populateQuickTaskAssignees() {
 		state.quickTaskAssignees = [];
+		const currentUserEmail = state.bootstrap && state.bootstrap.user && state.bootstrap.user.user;
+		if (currentUserEmail && currentUserEmail !== "Administrator") {
+			const projSelect = document.getElementById("quickTaskProjectSelect");
+			const selectedProjName = projSelect ? projSelect.value : "";
+			const projectObj = (state.bootstrap.projects || []).find(
+				(p) => p.name === selectedProjName,
+			);
+			const teamName = projectObj ? projectObj.team : "";
+			const isMember = (state.bootstrap.team_members || []).some(
+				(m) => m.user === currentUserEmail && m.team === teamName,
+			);
+			if (isMember) {
+				state.quickTaskAssignees = [currentUserEmail];
+			}
+		}
 		renderQuickAssigneeWidget();
 	}
 
@@ -3667,6 +3955,54 @@
 		}
 	}
 
+	async function submitAddMemberForm(event) {
+		event.preventDefault();
+		const form = event.currentTarget;
+		if (form.dataset.saving === "1") return;
+		
+		setFormSaving(form, true);
+		
+		try {
+			const teamName = state.selectedTeam;
+			const employee = form.elements.employee.value;
+			const teamRole = form.elements.team_role.value;
+			const accessLevel = form.elements.access_level.value;
+			const isActive = form.elements.is_active.checked ? 1 : 0;
+			
+			if (!employee) {
+				frappe.msgprint("Please select an employee");
+				return;
+			}
+			
+			// Call API to add team member
+			const result = await apiCall("add_team_member", {
+				team: teamName,
+				employee: employee,
+				team_role: teamRole,
+				access_level: accessLevel,
+				is_active: isActive
+			});
+			
+			// Show success message
+			frappe.show_alert({
+				message: result.message || "Team member added successfully",
+				indicator: "green"
+			});
+			
+			// Close modal
+			toggleModal(document.querySelector("[data-add-member-modal]"), false);
+			
+			// Refresh team members view
+			renderTeamView();
+			
+		} catch (err) {
+			console.error("Error adding team member:", err);
+			frappe.msgprint(err.message || "Error adding team member. Please try again.");
+		} finally {
+			setFormSaving(form, false);
+		}
+	}
+
 	async function submitTaskForm(event) {
 		event.preventDefault();
 		const form = event.currentTarget;
@@ -4006,6 +4342,15 @@
 		if (name === "project") toggleModal(refs.projectModal, false);
 		if (name === "task") closeTaskModal();
 		if (name === "task-quick") toggleModal(refs.taskModalQuick, false);
+		if (name === "add-member") {
+			const modal = document.querySelector("[data-add-member-modal]");
+			if (modal) {
+				// Cleanup dropdown
+				const dropdown = modal.querySelector("[data-employee-dropdown]");
+				if (dropdown) dropdown.style.display = "none";
+				toggleModal(modal, false);
+			}
+		}
 	}
 
 	async function closeIframeModal() {
@@ -4679,7 +5024,10 @@
 								<tbody data-ps-member-table-body>
 									${members.map((m, idx) => `
 										<tr style="border-bottom: 1px solid var(--taskflow-border);">
-											<td style="padding: 12px;">${escapeHtml(m.employee_name || m.employee)}</td>
+											<td style="padding: 12px;">
+												<div style="font-weight: 600; color: #1e293b;">${escapeHtml(m.employee_name || m.employee)}</div>
+												${m.employee_name ? `<div style="font-size: 12px; color: #64748b;">${escapeHtml(m.employee)}</div>` : ''}
+											</td>
 											<td style="padding: 12px;">${escapeHtml(m.team_role)}</td>
 											<td style="padding: 12px;">
 												<button class="taskflow-button secondary" type="button" data-ps-remove-member="${idx}">Remove</button>
