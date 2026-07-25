@@ -3500,9 +3500,9 @@
 				} else {
 					state.quickTaskAssignees = [];
 				}
-			} else {
-				state.quickTaskAssignees = [];
 			}
+			// For non-admin users, keep the current user pre-assigned from populateQuickTaskAssignees
+			// (already set above). Only clear for Administrator.
 
 			renderQuickAssigneeWidget();
 			return;
@@ -3542,6 +3542,21 @@
 
 	function populateQuickTaskAssignees() {
 		state.quickTaskAssignees = [];
+		const currentUserEmail = state.bootstrap && state.bootstrap.user && state.bootstrap.user.user;
+		if (currentUserEmail && currentUserEmail !== "Administrator") {
+			const projSelect = document.getElementById("quickTaskProjectSelect");
+			const selectedProjName = projSelect ? projSelect.value : "";
+			const projectObj = (state.bootstrap.projects || []).find(
+				(p) => p.name === selectedProjName,
+			);
+			const teamName = projectObj ? projectObj.team : "";
+			const isMember = (state.bootstrap.team_members || []).some(
+				(m) => m.user === currentUserEmail && m.team === teamName,
+			);
+			if (isMember) {
+				state.quickTaskAssignees = [currentUserEmail];
+			}
+		}
 		renderQuickAssigneeWidget();
 	}
 
