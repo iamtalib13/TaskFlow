@@ -1544,7 +1544,25 @@
 	<div class="taskflow-modal-content" style="max-width: 500px;">
 		<div class="taskflow-modal-header">
 			<h3 style="margin: 0; font-size: 18px; font-weight: 600;">Bulk Insert Tasks</h3>
-			<button class="taskflow-modal-close" data-close-modal="bulkInsertModal">&times;</button>
+			<div style="display: flex; align-items: center; gap: 8px;">
+				<button id="bulkGetTemplate" type="button" style="
+					padding: 6px 12px;
+					border-radius: 6px;
+					border: 1px solid #e2e8f0;
+					background: white;
+					color: #475569;
+					font-size: 13px;
+					font-weight: 500;
+					cursor: pointer;
+					transition: all 0.2s;
+					display: flex;
+					align-items: center;
+					gap: 4px;
+				">
+					📥 Get Template
+				</button>
+				<button class="taskflow-modal-close" data-close-modal="bulkInsertModal">&times;</button>
+			</div>
 		</div>
 		<div class="taskflow-modal-body">
 			<p style="margin: 0 0 16px; color: #64748b; font-size: 14px;">

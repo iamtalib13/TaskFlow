@@ -995,6 +995,26 @@
 			btn.addEventListener("click", closeBulkInsertModal);
 		});
 
+		// Get Template Button Handler
+		document.getElementById("bulkGetTemplate")?.addEventListener("click", () => {
+			const templateData = [
+				["task_title", "project", "team", "status", "priority", "task_type", "assigned_to", "start_date", "due_date", "estimated_hours", "description"],
+				["Sample Task 1", "Project Name", "Team Name", "Open", "Medium", "Task", "", "2026-08-01", "2026-08-15", "8", "This is a sample task description"],
+				["Sample Task 2", "Project Name", "Team Name", "In Progress", "High", "Bug", "", "2026-08-01", "2026-08-10", "4", "This is a sample bug report"]
+			];
+
+			let csvContent = templateData.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+			const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+			const link = document.createElement("a");
+			const url = URL.createObjectURL(blob);
+			link.setAttribute("href", url);
+			link.setAttribute("download", "bulk_insert_template.csv");
+			link.style.visibility = "hidden";
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+		});
+
 		if (refs.sidebarToggle && refs.container) {
 			refs.sidebarToggle.addEventListener("click", toggleSidebars);
 		}
