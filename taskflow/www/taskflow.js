@@ -1023,9 +1023,9 @@
 		// Get Template Button Handler
 		document.getElementById("bulkGetTemplate")?.addEventListener("click", () => {
 			const templateData = [
-				["task_title", "project", "team", "status", "priority", "task_type", "assigned_to", "start_date", "due_date", "estimated_hours", "description"],
-				["Sample Task 1", "Project Name", "Team Name", "Open", "Medium", "Task", "", "2026-08-01", "2026-08-15", "8", "This is a sample task description"],
-				["Sample Task 2", "Project Name", "Team Name", "In Progress", "High", "Bug", "", "2026-08-01", "2026-08-10", "4", "This is a sample bug report"]
+				["task_title", "project", "team", "status", "priority", "task_type", "assigned_to", "start_date", "due_date", "completed_on", "description", "pending_from"],
+				["Sample Task 1", "Project Name", "Team Name", "Open", "Medium", "Task", "", "2026-08-01", "2026-08-15", "", "This is a sample task description", "John Doe"],
+				["Sample Task 2", "Project Name", "Team Name", "Completed", "High", "Bug", "", "2026-08-01", "2026-08-10", "2026-08-10", "This is a sample bug report", "Jane Smith"]
 			];
 
 			let csvContent = templateData.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
