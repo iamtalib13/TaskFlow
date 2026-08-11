@@ -35,6 +35,7 @@
   "timeline_column",
   "sequence",
   "expected_resolution_date",
+  "pending_from",
   "effort_section",
   "progress_percent",
   "estimated_hours",
@@ -326,11 +327,16 @@
    "fieldname": "toll_id",
    "fieldtype": "Data",
    "label": "Toll ID"
+  },
+  {
+   "fieldname": "pending_from",
+   "fieldtype": "Data",
+   "label": "Pending From"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-08 14:58:37.614208",
+ "modified": "2026-08-11 15:09:46.167013",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",
