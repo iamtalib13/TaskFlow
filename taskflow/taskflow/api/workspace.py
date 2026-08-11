@@ -5,6 +5,7 @@ from typing import Any
 
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 TEAM_FIELDS = [
     "name",
@@ -672,4 +673,226 @@ def _sync_assignments(doc, new_assignees):
             })
         except Exception:
             pass
+
+
+@frappe.whitelist(methods=["POST"])
+def bulk_insert_tasks() -> dict[str, Any]:
+    """Bulk insert tasks from uploaded CSV or Excel file."""
+    _require_login()
+    
+    files = frappe.request.files
+    if not files:
+        frappe.throw("No file uploaded. Please select a file.")
+    
+    if "file" not in files:
+        frappe.throw("Invalid upload. Please try again.")
+    
+    file = files["file"]
+    if not file.filename:
+        frappe.throw("File has no name. Please try again.")
+    
+    filename = file.filename.lower()
+    print(f"[Bulk Insert] Processing file: {filename}")
+    
+    if not (filename.endswith(".csv") or filename.endswith(".xlsx")):
+        frappe.throw("Invalid file type. Please upload a CSV or Excel (.xlsx) file.")
+    
+    try:
+        if filename.endswith(".csv"):
+            rows = _parse_csv(file)
+        else:
+            rows = _parse_excel(file)
+    except Exception as e:
+        frappe.throw(f"Error parsing file: {str(e)}")
+    
+    if not rows:
+        frappe.throw("No data found in the file.")
+    
+    # Debug: return raw data to see what's happening
+    debug_info = {
+        "total_rows": len(rows),
+        "first_row_raw": [repr(h) for h in rows[0]] if rows else [],
+        "second_row_raw": [repr(v) for v in rows[1]] if len(rows) > 1 else [],
+    }
+    
+    # Get header row and map to field names
+    # Clean headers: strip whitespace, lowercase, replace spaces with underscores
+    headers = []
+    for h in rows[0]:
+        # Convert to string and handle different types
+        header_str = str(h) if h is not None else ""
+        # Remove single quotes if present
+        header_str = header_str.strip("'\"")
+        cleaned = header_str.strip().lower()
+        
+        # Fix Quoted-Printable encoding: +AF8 = _, +AC0 = -
+        import re
+        cleaned = cleaned.replace("+af8-", "_").replace("+af8_", "_")
+        cleaned = cleaned.replace("+ac0-", "-").replace("+ac0_", "_")
+        # Also handle uppercase variants
+        cleaned = cleaned.replace("+AF8-", "_").replace("+AF8_", "_")
+        cleaned = cleaned.replace("+AC0-", "-").replace("+AC0_", "_")
+        # Replace spaces and hyphens with underscores
+        cleaned = cleaned.replace(" ", "_").replace("-", "_")
+        # Remove any remaining special characters except underscore
+        cleaned = re.sub(r'[^a-z0-9_]', '', cleaned)
+        # Fix double underscores
+        cleaned = re.sub(r'_+', '_', cleaned)
+        headers.append(cleaned)
+    
+    debug_info["cleaned_headers"] = headers
+    
+    data_rows = rows[1:]
+    
+    # Valid fields for Taskflow Task
+    valid_fields = {
+        "task_title", "project", "team", "status", "priority", "task_type",
+        "assigned_to", "start_date", "due_date", "completed_on", "description",
+        "pending_from", "pending_with", "guided_by", "responsible_person",
+        "estimated_hours", "actual_hours", "progress_percent", "is_milestone",
+        "is_blocked", "sequence", "toll_id", "ticket_date", "ticket_id",
+        "ticket_raised_by", "ticket_description", "expected_resolution_date",
+        "estimated_completion_date", "parent_task",
+    }
+    
+    # Map headers to valid field names
+    field_map = []
+    for header in headers:
+        if header in valid_fields:
+            field_map.append(header)
+        else:
+            field_map.append(None)
+    
+    debug_info["field_map"] = field_map
+    
+    created_tasks = []
+    errors = []
+    
+    for idx, row in enumerate(data_rows, start=2):
+        try:
+            task_data = {}
+            for col_idx, field_name in enumerate(field_map):
+                if field_name and col_idx < len(row):
+                    value = str(row[col_idx]).strip() if row[col_idx] else ""
+                    # Remove single quotes
+                    value = value.strip("'\"")
+                    # Fix Quoted-Printable in values (dates, etc.)
+                    value = value.replace("+AC0-", "-").replace("+AC0_", "-")
+                    if value:
+                        task_data[field_name] = value
+            
+            if not task_data.get("task_title"):
+                errors.append(f"Row {idx}: Task title is required.")
+                continue
+            
+            # Create task
+            doc = frappe.new_doc("Taskflow Task")
+            
+            # Set basic fields
+            for field in ["task_title", "project", "team", "status", "priority", "task_type",
+                         "pending_from", "pending_with", "toll_id", "ticket_id", 
+                         "ticket_raised_by", "ticket_description"]:
+                if field in task_data:
+                    doc.set(field, task_data[field])
+            
+            # Set date fields
+            for field in ["start_date", "due_date", "completed_on", "expected_resolution_date", 
+                         "estimated_completion_date", "ticket_date"]:
+                if field in task_data:
+                    doc.set(field, task_data[field])
+            
+            # Set numeric fields
+            if "estimated_hours" in task_data:
+                doc.estimated_hours = flt(task_data["estimated_hours"])
+            if "actual_hours" in task_data:
+                doc.actual_hours = flt(task_data["actual_hours"])
+            if "progress_percent" in task_data:
+                doc.progress_percent = flt(task_data["progress_percent"])
+            if "sequence" in task_data:
+                doc.sequence = int(task_data["sequence"])
+            
+            # Set check fields
+            if "is_milestone" in task_data:
+                doc.is_milestone = 1 if task_data["is_milestone"] in ["1", "Yes", "yes", "true"] else 0
+            if "is_blocked" in task_data:
+                doc.is_blocked = 1 if task_data["is_blocked"] in ["1", "Yes", "yes", "true"] else 0
+            
+            # Set description (handle HTML content)
+            if "description" in task_data:
+                doc.description = task_data["description"]
+            
+            # Set default status if not provided
+            if not doc.status:
+                doc.status = "Open"
+            if not doc.priority:
+                doc.priority = "Medium"
+            
+            doc.insert(ignore_permissions=True)
+            created_tasks.append(doc.name)
+            
+        except Exception as e:
+            errors.append(f"Row {idx}: {str(e)}")
+    
+    message = f"Successfully created {len(created_tasks)} task(s)."
+    if errors:
+        message += f" {len(errors)} row(s) had errors."
+    
+    return {
+        "message": message,
+        "created_count": len(created_tasks),
+        "error_count": len(errors),
+        "created_tasks": created_tasks,
+        "errors": errors,
+        "debug": debug_info,
+    }
+
+
+def _parse_csv(file) -> list[list[str]]:
+    """Parse CSV file and return list of rows."""
+    import csv
+    import io
+    
+    # Read file content
+    content = file.read()
+    
+    # Try different encodings
+    for encoding in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
+        try:
+            decoded = content.decode(encoding)
+            break
+        except (UnicodeDecodeError, AttributeError):
+            continue
+    else:
+        decoded = content.decode("utf-8", errors="ignore")
+    
+    # Strip BOM if present
+    if decoded.startswith("\ufeff"):
+        decoded = decoded[1:]
+    
+    reader = csv.reader(io.StringIO(decoded))
+    rows = []
+    for row in reader:
+        # Skip empty rows
+        if any(cell.strip() for cell in row):
+            rows.append(row)
+    
+    return rows
+
+
+def _parse_excel(file) -> list[list[str]]:
+    """Parse Excel file and return list of rows."""
+    try:
+        import openpyxl
+    except ImportError:
+        frappe.throw("openpyxl is required to read Excel files.")
+    
+    wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+    ws = wb.active
+    
+    rows = []
+    for row in ws.iter_rows(values_only=True):
+        rows.append([str(cell) if cell is not None else "" for cell in row])
+    
+    wb.close()
+    return rows
 

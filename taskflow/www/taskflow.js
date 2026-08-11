@@ -943,13 +943,13 @@
 
 			const formData = new FormData();
 			formData.append("file", selectedBulkFile);
-			formData.append("csrf_token", window.csrf_token);
 
 			bulkUploadProgress.style.display = "block";
 			bulkUploadBtn.disabled = true;
 
 			const xhr = new XMLHttpRequest();
-			xhr.open("POST", "/api/method/taskflow.taskflow.api.taskflow.bulk_insert_tasks", true);
+			xhr.open("POST", "/api/method/taskflow.taskflow.api.workspace.bulk_insert_tasks", true);
+			xhr.setRequestHeader("X-Frappe-CSRF-Token", window.csrf_token || "");
 
 			xhr.upload.addEventListener("progress", (e) => {
 				if (e.lengthComputable) {
@@ -970,8 +970,12 @@
 						refreshView();
 					}
 				} else {
-					const err = JSON.parse(xhr.responseText);
-					showBulkError(err._error_message || "Upload failed. Please try again.");
+					let errMsg = "Upload failed. Please try again.";
+					try {
+						const err = JSON.parse(xhr.responseText);
+						errMsg = err._error_message || err.message || errMsg;
+					} catch (e) {}
+					showBulkError(errMsg);
 				}
 			};
 
