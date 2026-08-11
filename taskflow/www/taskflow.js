@@ -4489,6 +4489,7 @@
 			is_milestone: getFormChecked(form, "is_milestone") ? 1 : 0,
 			is_blocked: getFormChecked(form, "is_blocked") ? 1 : 0,
 			pending_with: getFormValue(form, "pending_with"),
+			pending_from: getFormValue(form, "pending_from"),
 			guided_by: getFormValue(form, "guided_by"),
 			ticket_date: normalizeDateForPayload(getFormValue(form, "ticket_date")),
 			ticket_raised_by: getFormValue(form, "ticket_raised_by"),
