@@ -3741,7 +3741,7 @@
 		};
 		
 		try {
-			const url = new URL("taskflow.taskflow.api.workspace.create_team", window.location.origin);
+			const url = new URL("/api/method/taskflow.taskflow.api.workspace.create_team", window.location.origin);
 			const response = await fetch(url.toString(), {
 				method: "POST",
 				headers: {

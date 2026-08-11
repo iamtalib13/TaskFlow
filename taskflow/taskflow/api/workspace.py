@@ -522,6 +522,18 @@ def create_team(payload: str) -> dict[str, Any]:
     data = _parse_payload(payload)
     doc = frappe.new_doc("Taskflow Team")
     _apply_fields(doc, data, TEAM_WRITE_FIELDS)
+    
+    # Handle team_members child table
+    team_members = data.get("team_members") or []
+    for member in team_members:
+        if member.get("user"):
+            doc.append("team_members", {
+                "user": member.get("user"),
+                "team_role": member.get("team_role", "Team Member"),
+                "access_level": member.get("access_level", "Operate"),
+                "is_active": member.get("is_active", 1),
+            })
+    
     doc.insert(ignore_permissions=False)
     return {"name": doc.name}
 
@@ -532,6 +544,20 @@ def update_team(name: str, payload: str) -> dict[str, Any]:
     doc = frappe.get_doc("Taskflow Team", name)
     data = _parse_payload(payload)
     _apply_fields(doc, data, TEAM_WRITE_FIELDS)
+    
+    # Handle team_members child table
+    team_members = data.get("team_members")
+    if team_members is not None:
+        doc.set("team_members", [])
+        for member in team_members:
+            if member.get("user"):
+                doc.append("team_members", {
+                    "user": member.get("user"),
+                    "team_role": member.get("team_role", "Team Member"),
+                    "access_level": member.get("access_level", "Operate"),
+                    "is_active": member.get("is_active", 1),
+                })
+    
     doc.save(ignore_permissions=False)
     return {"name": doc.name}
 
