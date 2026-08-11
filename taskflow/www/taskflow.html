@@ -1541,6 +1541,154 @@
 						</span>
 					</label>
 				</div>
+				</div>
+		</form>
+	</div>
+</div>
+
+<!-- Add Team Modal -->
+<div
+	class="taskflow-modal-backdrop"
+	data-modal-name="add-team"
+	data-add-team-modal
+	aria-hidden="true"
+>
+	<div
+		class="taskflow-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="add-team-modal-title"
+		style="width: 90vw; max-width: 600px; border-radius: 12px;"
+	>
+		<form class="taskflow-form" data-add-team-form>
+			<div class="taskflow-modal-header">
+				<h3 id="add-team-modal-title">Add Team</h3>
+				<div class="taskflow-modal-header-actions">
+					<button
+						class="taskflow-button secondary"
+						type="button"
+						data-close-modal="add-team"
+					>
+						Close
+					</button>
+					<button class="taskflow-button primary" type="submit">Create Team</button>
+				</div>
+			</div>
+			<div class="taskflow-modal-main-content" style="padding: 24px;">
+				<div style="display: flex; flex-direction: column; gap: 20px;">
+					<!-- Team Name -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Team Name *
+						</span>
+						<input 
+							type="text" 
+							name="team_name" 
+							required
+							placeholder="Enter team name"
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						/>
+					</label>
+
+					<!-- Visibility Scope -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Visibility Scope *
+						</span>
+						<select 
+							name="visibility_scope" 
+							required
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						>
+							<option value="Team" selected>Team</option>
+							<option value="Parent Team">Parent Team</option>
+							<option value="Global">Global</option>
+						</select>
+					</label>
+
+					<!-- Description -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Description
+						</span>
+						<textarea 
+							name="description" 
+							rows="3"
+							placeholder="Enter team description"
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s; resize: vertical;"
+						></textarea>
+					</label>
+
+					<!-- Team Lead -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Team Lead
+						</span>
+						<select 
+							name="team_lead"
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						>
+							<option value="">Select Team Lead</option>
+						</select>
+					</label>
+
+					<!-- Team Members Table -->
+					<div style="display: flex; flex-direction: column; gap: 8px;">
+						<div style="display: flex; align-items: center; justify-content: space-between;">
+							<span style="font-size: 13px; font-weight: 600; color: #475569;">
+								Team Members
+							</span>
+							<button 
+								type="button" 
+								data-add-team-member-row
+								style="padding: 4px 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; color: #3b82f6; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+							>
+								+ Add Row
+							</button>
+						</div>
+						<div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+							<table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+								<thead>
+									<tr style="background: #f8fafc;">
+										<th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">Employee</th>
+										<th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">Team Role</th>
+										<th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">Access Level</th>
+										<th style="padding: 10px 12px; width: 50px; border-bottom: 1px solid #e2e8f0;"></th>
+									</tr>
+								</thead>
+								<tbody data-team-members-body>
+									<tr data-team-member-row>
+										<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+											<select name="member_user" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+												<option value="">Select Employee</option>
+											</select>
+										</td>
+										<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+											<select name="team_role" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+												<option value="Team Member">Team Member</option>
+												<option value="Team Lead">Team Lead</option>
+												<option value="Coordinator">Coordinator</option>
+												<option value="Viewer">Viewer</option>
+												<option value="Auditor">Auditor</option>
+											</select>
+										</td>
+										<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+											<select name="access_level" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+												<option value="View">View</option>
+												<option value="Operate" selected>Operate</option>
+												<option value="Manage">Manage</option>
+												<option value="Admin">Admin</option>
+											</select>
+										</td>
+										<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+											<button type="button" data-remove-team-member-row style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 16px;">&times;</button>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
 			</div>
 		</form>
 	</div>

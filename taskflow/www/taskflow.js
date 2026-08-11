@@ -438,6 +438,11 @@
 				openAddTeamMemberModal();
 			}
 
+			const addTeamButton = e.target.closest("[data-add-team]");
+			if (addTeamButton) {
+				openAddTeamModal();
+			}
+
 			const postCommentButton = e.target.closest("[data-post-comment]");
 			if (postCommentButton) {
 				postComment();
@@ -673,6 +678,26 @@
 		if (addMemberForm) {
 			addMemberForm.addEventListener("submit", submitAddMemberForm);
 		}
+
+		// Add Team Form Handler
+		const addTeamForm = document.querySelector("[data-add-team-form]");
+		if (addTeamForm) {
+			addTeamForm.addEventListener("submit", submitAddTeamForm);
+		}
+
+		// Add Team Member Row Button
+		document.querySelector("[data-add-team-member-row]")?.addEventListener("click", addTeamMemberRow);
+
+		// Remove Team Member Row (delegated)
+		document.addEventListener("click", (e) => {
+			if (e.target.closest("[data-remove-team-member-row]")) {
+				const row = e.target.closest("[data-team-member-row]");
+				const tbody = document.querySelector("[data-team-members-body]");
+				if (row && tbody && tbody.querySelectorAll("[data-team-member-row]").length > 1) {
+					row.remove();
+				}
+			}
+		});
 
 		document.getElementById("quickTaskAssignedToSelect")?.addEventListener("change", (e) => {
 			const email = e.target.value;
@@ -3585,6 +3610,162 @@
 		
 		// Show modal
 		toggleModal(modal, true);
+	}
+
+	async function openAddTeamModal() {
+		const modal = document.querySelector("[data-add-team-modal]");
+		const form = document.querySelector("[data-add-team-form]");
+		
+		if (!modal || !form) return;
+		
+		// Reset form
+		form.reset();
+		
+		// Populate Team Lead dropdown with employees
+		const teamLeadSelect = form.querySelector('[name="team_lead"]');
+		teamLeadSelect.innerHTML = '<option value="">Select Team Lead</option>';
+		
+		try {
+			const data = await apiCall("get_employees");
+			const employees = data.employees || [];
+			employees.forEach(emp => {
+				const option = document.createElement("option");
+				option.value = emp.name;
+				option.textContent = emp.employee_name;
+				teamLeadSelect.appendChild(option);
+			});
+		} catch (err) {
+			console.error("Error loading employees:", err);
+		}
+		
+		// Populate Team Members dropdown in table
+		populateTeamMemberDropdowns();
+		
+		toggleModal(modal, true);
+	}
+
+	function populateTeamMemberDropdowns() {
+		const memberSelects = document.querySelectorAll('[data-team-members-body] [name="member_user"]');
+		memberSelects.forEach(select => {
+			const currentValue = select.value;
+			select.innerHTML = '<option value="">Select Employee</option>';
+			
+			if (window.state && window.state.employees) {
+				window.state.employees.forEach(emp => {
+					const option = document.createElement("option");
+					option.value = emp.name;
+					option.textContent = emp.employee_name;
+					select.appendChild(option);
+				});
+			}
+			
+			if (currentValue) select.value = currentValue;
+		});
+	}
+
+	function addTeamMemberRow() {
+		const tbody = document.querySelector("[data-team-members-body]");
+		if (!tbody) return;
+		
+		const newRow = document.createElement("tr");
+		newRow.setAttribute("data-team-member-row", "");
+		newRow.innerHTML = `
+			<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+				<select name="member_user" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+					<option value="">Select Employee</option>
+				</select>
+			</td>
+			<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+				<select name="team_role" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+					<option value="Team Member">Team Member</option>
+					<option value="Team Lead">Team Lead</option>
+					<option value="Coordinator">Coordinator</option>
+					<option value="Viewer">Viewer</option>
+					<option value="Auditor">Auditor</option>
+				</select>
+			</td>
+			<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+				<select name="access_level" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+					<option value="View">View</option>
+					<option value="Operate" selected>Operate</option>
+					<option value="Manage">Manage</option>
+					<option value="Admin">Admin</option>
+				</select>
+			</td>
+			<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+				<button type="button" data-remove-team-member-row style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 16px;">&times;</button>
+			</td>
+		`;
+		tbody.appendChild(newRow);
+		
+		// Populate employee dropdown in new row
+		const newSelect = newRow.querySelector('[name="member_user"]');
+		if (window.state && window.state.employees) {
+			window.state.employees.forEach(emp => {
+				const option = document.createElement("option");
+				option.value = emp.name;
+				option.textContent = emp.employee_name;
+				newSelect.appendChild(option);
+			});
+		}
+	}
+
+	async function submitAddTeamForm(e) {
+		e.preventDefault();
+		const form = e.target;
+		const formData = new FormData(form);
+		
+		// Collect team members from table
+		const members = [];
+		const rows = document.querySelectorAll("[data-team-members-body] [data-team-member-row]");
+		rows.forEach(row => {
+			const memberUser = row.querySelector('[name="member_user"]').value;
+			const teamRole = row.querySelector('[name="team_role"]').value;
+			const accessLevel = row.querySelector('[name="access_level"]').value;
+			if (memberUser) {
+				members.push({
+					user: memberUser,
+					team_role: teamRole,
+					access_level: accessLevel,
+					is_active: 1
+				});
+			}
+		});
+		
+		const payload = {
+			team_name: formData.get("team_name"),
+			visibility_scope: formData.get("visibility_scope"),
+			description: formData.get("description"),
+			team_lead: formData.get("team_lead"),
+			team_members: members
+		};
+		
+		try {
+			const url = new URL("taskflow.taskflow.api.workspace.create_team", window.location.origin);
+			const response = await fetch(url.toString(), {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/x-www-form-urlencoded",
+					"X-Frappe-CSRF-Token": window.csrf_token || "",
+				},
+				credentials: "same-origin",
+				body: new URLSearchParams({ payload: JSON.stringify(payload) }).toString(),
+			});
+			
+			const result = await response.json();
+			
+			if (!response.ok) {
+				throw new Error(result._error_message || result.message || "Failed to create team");
+			}
+			
+			if (result && result.message && result.message.name) {
+				frappe.msgprint("Team created successfully!");
+				toggleModal(document.querySelector("[data-add-team-modal]"), false);
+				setTimeout(() => location.reload(), 500);
+			}
+		} catch (err) {
+			frappe.msgprint("Error creating team: " + (err.message || "Unknown error"));
+		}
 	}
 	
 	function renderEmployeeOptions(employees, container, searchInput, hiddenInput, dropdown) {
