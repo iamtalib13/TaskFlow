@@ -826,6 +826,175 @@
 			document.querySelector("[data-filter-sidebar]")?.classList.remove("open");
 		});
 
+		// Bulk Insert Button Handler
+		const bulkInsertModal = document.getElementById("bulkInsertModal");
+		const bulkUploadArea = document.getElementById("bulkUploadArea");
+		const bulkFileInput = document.getElementById("bulkFileInput");
+		const bulkFileInfo = document.getElementById("bulkFileInfo");
+		const bulkFileName = document.getElementById("bulkFileName");
+		const bulkFileSize = document.getElementById("bulkFileSize");
+		const bulkRemoveFile = document.getElementById("bulkRemoveFile");
+		const bulkUploadBtn = document.getElementById("bulkUploadBtn");
+		const bulkUploadProgress = document.getElementById("bulkUploadProgress");
+		const bulkProgressBar = document.getElementById("bulkProgressBar");
+		const bulkUploadPercent = document.getElementById("bulkUploadPercent");
+		const bulkUploadError = document.getElementById("bulkUploadError");
+		const bulkErrorMessage = document.getElementById("bulkErrorMessage");
+		let selectedBulkFile = null;
+
+		function openBulkInsertModal() {
+			if (bulkInsertModal) {
+				bulkInsertModal.style.display = "flex";
+				resetBulkUpload();
+			}
+		}
+
+		function closeBulkInsertModal() {
+			if (bulkInsertModal) {
+				bulkInsertModal.style.display = "none";
+				resetBulkUpload();
+			}
+		}
+
+		function resetBulkUpload() {
+			selectedBulkFile = null;
+			if (bulkFileInput) bulkFileInput.value = "";
+			if (bulkFileInfo) bulkFileInfo.style.display = "none";
+			if (bulkUploadProgress) bulkUploadProgress.style.display = "none";
+			if (bulkUploadError) bulkUploadError.style.display = "none";
+			if (bulkUploadBtn) bulkUploadBtn.disabled = true;
+			if (bulkUploadArea) {
+				bulkUploadArea.style.borderColor = "#cbd5e1";
+				bulkUploadArea.style.background = "#f8fafc";
+			}
+		}
+
+		function formatFileSize(bytes) {
+			if (bytes < 1024) return bytes + " B";
+			if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+			return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+		}
+
+		function handleBulkFileSelect(file) {
+			if (!file) return;
+
+			const validTypes = [
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				"application/vnd.ms-excel",
+				"text/csv",
+			];
+			const validExtensions = [".xlsx", ".csv"];
+			const fileName = file.name.toLowerCase();
+			const hasValidExtension = validExtensions.some((ext) => fileName.endsWith(ext));
+
+			if (!validTypes.includes(file.type) && !hasValidExtension) {
+				showBulkError("Invalid file type. Please select an Excel (.xlsx) or CSV file.");
+				return;
+			}
+
+			if (file.size > 10 * 1024 * 1024) {
+				showBulkError("File size exceeds 10MB limit. Please use a smaller file.");
+				return;
+			}
+
+			selectedBulkFile = file;
+			bulkFileName.textContent = file.name;
+			bulkFileSize.textContent = formatFileSize(file.size);
+			bulkFileInfo.style.display = "block";
+			bulkUploadBtn.disabled = false;
+			bulkUploadError.style.display = "none";
+		}
+
+		function showBulkError(message) {
+			bulkErrorMessage.textContent = message;
+			bulkUploadError.style.display = "block";
+			bulkFileInfo.style.display = "none";
+			selectedBulkFile = null;
+			bulkUploadBtn.disabled = true;
+		}
+
+		function uploadBulkFile() {
+			if (!selectedBulkFile) return;
+
+			const formData = new FormData();
+			formData.append("file", selectedBulkFile);
+			formData.append("csrf_token", window.csrf_token);
+
+			bulkUploadProgress.style.display = "block";
+			bulkUploadBtn.disabled = true;
+
+			const xhr = new XMLHttpRequest();
+			xhr.open("POST", "/api/method/taskflow.taskflow.api.taskflow.bulk_insert_tasks", true);
+
+			xhr.upload.addEventListener("progress", (e) => {
+				if (e.lengthComputable) {
+					const percent = Math.round((e.loaded / e.total) * 100);
+					bulkProgressBar.style.width = percent + "%";
+					bulkUploadPercent.textContent = percent + "%";
+				}
+			});
+
+			xhr.onload = function () {
+				if (xhr.status === 200) {
+					const response = JSON.parse(xhr.responseText);
+					if (response.message) {
+						closeBulkInsertModal();
+						if (typeof frappe !== "undefined" && frappe.show_alert) {
+							frappe.show_alert({ message: response.message, indicator: "green" }, 5);
+						}
+						refreshView();
+					}
+				} else {
+					const err = JSON.parse(xhr.responseText);
+					showBulkError(err._error_message || "Upload failed. Please try again.");
+				}
+			};
+
+			xhr.onerror = function () {
+				showBulkError("Network error. Please check your connection and try again.");
+			};
+
+			xhr.send(formData);
+		}
+
+		document.querySelector("[data-bulk-insert-button]")?.addEventListener("click", (e) => {
+			e.stopPropagation();
+			openBulkInsertModal();
+		});
+
+		bulkUploadArea?.addEventListener("click", () => bulkFileInput?.click());
+
+		bulkUploadArea?.addEventListener("dragover", (e) => {
+			e.preventDefault();
+			bulkUploadArea.style.borderColor = "#3b82f6";
+			bulkUploadArea.style.background = "#eff6ff";
+		});
+
+		bulkUploadArea?.addEventListener("dragleave", () => {
+			bulkUploadArea.style.borderColor = "#cbd5e1";
+			bulkUploadArea.style.background = "#f8fafc";
+		});
+
+		bulkUploadArea?.addEventListener("drop", (e) => {
+			e.preventDefault();
+			bulkUploadArea.style.borderColor = "#cbd5e1";
+			bulkUploadArea.style.background = "#f8fafc";
+			const file = e.dataTransfer.files[0];
+			handleBulkFileSelect(file);
+		});
+
+		bulkFileInput?.addEventListener("change", (e) => {
+			handleBulkFileSelect(e.target.files[0]);
+		});
+
+		bulkRemoveFile?.addEventListener("click", () => resetBulkUpload());
+
+		bulkUploadBtn?.addEventListener("click", uploadBulkFile);
+
+		document.querySelectorAll('[data-close-modal="bulkInsertModal"]').forEach((btn) => {
+			btn.addEventListener("click", closeBulkInsertModal);
+		});
+
 		if (refs.sidebarToggle && refs.container) {
 			refs.sidebarToggle.addEventListener("click", toggleSidebars);
 		}

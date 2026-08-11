@@ -1538,6 +1538,77 @@
 	</div>
 </div>
 
+<!-- Bulk Insert Modal -->
+<div id="bulkInsertModal" class="taskflow-modal" style="display: none;">
+	<div class="taskflow-modal-overlay" data-close-modal="bulkInsertModal"></div>
+	<div class="taskflow-modal-content" style="max-width: 500px;">
+		<div class="taskflow-modal-header">
+			<h3 style="margin: 0; font-size: 18px; font-weight: 600;">Bulk Insert Tasks</h3>
+			<button class="taskflow-modal-close" data-close-modal="bulkInsertModal">&times;</button>
+		</div>
+		<div class="taskflow-modal-body">
+			<p style="margin: 0 0 16px; color: #64748b; font-size: 14px;">
+				Upload an Excel (.xlsx) or CSV file to bulk create tasks.
+			</p>
+			
+			<!-- File Upload Area -->
+			<div id="bulkUploadArea" style="
+				border: 2px dashed #cbd5e1;
+				border-radius: 12px;
+				padding: 40px 20px;
+				text-align: center;
+				cursor: pointer;
+				transition: all 0.2s;
+				background: #f8fafc;
+			">
+				<input type="file" id="bulkFileInput" accept=".xlsx,.csv" style="display: none;" />
+				<div style="font-size: 40px; margin-bottom: 12px;">📁</div>
+				<div style="font-size: 14px; font-weight: 600; color: #334155; margin-bottom: 4px;">
+					Drop file here or click to browse
+				</div>
+				<div style="font-size: 12px; color: #94a3b8;">
+					Supports .xlsx and .csv files
+				</div>
+			</div>
+
+			<!-- Selected File Info -->
+			<div id="bulkFileInfo" style="display: none; margin-top: 16px; padding: 12px; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0;">
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<span style="font-size: 20px;">📄</span>
+					<div style="flex: 1;">
+						<div id="bulkFileName" style="font-size: 14px; font-weight: 600; color: #166534;"></div>
+						<div id="bulkFileSize" style="font-size: 12px; color: #16a34a;"></div>
+					</div>
+					<button id="bulkRemoveFile" style="background: none; border: none; cursor: pointer; font-size: 18px; color: #dc2626;">&times;</button>
+				</div>
+			</div>
+
+			<!-- Upload Progress -->
+			<div id="bulkUploadProgress" style="display: none; margin-top: 16px;">
+				<div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+					<span style="font-size: 13px; color: #475569;">Uploading...</span>
+					<span id="bulkUploadPercent" style="font-size: 13px; font-weight: 600; color: #3b82f6;">0%</span>
+				</div>
+				<div style="height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+					<div id="bulkProgressBar" style="height: 100%; background: #3b82f6; width: 0%; transition: width 0.3s;"></div>
+				</div>
+			</div>
+
+			<!-- Error Message -->
+			<div id="bulkUploadError" style="display: none; margin-top: 16px; padding: 12px; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca;">
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<span style="color: #dc2626;">⚠️</span>
+					<span id="bulkErrorMessage" style="font-size: 13px; color: #991b1b;"></span>
+				</div>
+			</div>
+		</div>
+		<div class="taskflow-modal-footer">
+			<button class="taskflow-btn-cancel" data-close-modal="bulkInsertModal">Cancel</button>
+			<button id="bulkUploadBtn" class="taskflow-btn-primary" disabled>Upload & Process</button>
+		</div>
+	</div>
+</div>
+
 <script>
 	window.csrf_token = window.csrf_token || "{{ csrf_token }}";
 </script>
