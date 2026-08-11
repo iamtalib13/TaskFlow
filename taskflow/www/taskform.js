@@ -25,6 +25,7 @@
 		taskTypeSelect: null,
 		assignedToSelect: null,
 		pendingWithSelect: null,
+		pendingFromInput: null,
 		guidedBySelect: null,
 		startDateInput: null,
 		dueDateInput: null,
@@ -124,6 +125,7 @@
 		refs.taskTypeSelect = document.getElementById("taskTypeCapsule");
 		refs.assignedToSelect = document.getElementById("assignedToSelect");
 		refs.pendingWithSelect = document.getElementById("pendingWithInput");
+		refs.pendingFromInput = document.getElementById("pendingFromInput");
 		refs.guidedBySelect = document.getElementById("guidedByInput");
 		refs.responsiblePersonSelect = document.getElementById("responsiblePersonSelect");
 
@@ -320,6 +322,7 @@
 			}
 		});
 		refs.pendingWithSelect?.addEventListener("input", () => triggerAutoSave());
+		refs.pendingFromInput?.addEventListener("input", () => triggerAutoSave());
 		refs.guidedBySelect?.addEventListener("input", () => triggerAutoSave());
 		refs.completedOnInput?.addEventListener("change", () => triggerAutoSave());
 
@@ -713,6 +716,7 @@
 				updateAssigneeOptions();
 				updateGuidedByOptions();
 				if (refs.pendingWithSelect) refs.pendingWithSelect.value = task.pending_with || "";
+				if (refs.pendingFromInput) refs.pendingFromInput.value = task.pending_from || "";
 				if (refs.guidedBySelect) refs.guidedBySelect.value = task.guided_by || "";
 				if (refs.responsiblePersonSelect) refs.responsiblePersonSelect.value = task.responsible_person || "";
 
@@ -1135,6 +1139,7 @@
 			})(),
 			_assign: state.activeTaskAssignees || [],
 			pending_with: refs.pendingWithSelect?.value || null,
+			pending_from: refs.pendingFromInput?.value || null,
 			guided_by: refs.guidedBySelect?.value || null,
 			responsible_person: refs.responsiblePersonSelect?.value || null,
 			start_date: normalizeDateForPayload(refs.startDateInput?.value),
