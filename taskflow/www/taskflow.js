@@ -3824,39 +3824,55 @@
 			backdrop.setAttribute("data-modal-name", "send-mail");
 			backdrop.setAttribute("data-send-mail-modal", "");
 			backdrop.innerHTML = `
-				<div class="taskflow-modal" style="max-width: 500px; width: 100%;">
-					<div class="taskflow-modal-header">
-						<h3>Send Mail</h3>
-						<button class="taskflow-modal-close" data-close-send-mail>&times;</button>
+				<div class="taskflow-modal" style="max-width: 900px; width: 100%; display: flex; gap: 20px;">
+					<div style="flex: 1;">
+						<div class="taskflow-modal-header">
+							<h3>Send Mail</h3>
+							<button class="taskflow-modal-close" data-close-send-mail>&times;</button>
+						</div>
+						<div class="taskflow-modal-body">
+							<div style="margin-bottom: 16px;">
+								<label style="display: block; font-weight: 600; margin-bottom: 6px;">Select Team</label>
+								<select id="sendMailTeamSelect" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
+									<option value="">-- Select Team --</option>
+								</select>
+							</div>
+							<div style="margin-bottom: 16px; display: none;" id="sendMailMembersWrapper">
+								<label style="display: block; font-weight: 600; margin-bottom: 6px;">Select Members</label>
+								<select id="sendMailMembersSelect" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
+								</select>
+							</div>
+							<div style="margin-bottom: 16px;">
+								<label style="display: block; font-weight: 600; margin-bottom: 6px;">Date Filter</label>
+								<div style="display: flex; gap: 8px;">
+									<button type="button" class="send-mail-date-tab" data-date-filter="today" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Today</button>
+									<button type="button" class="send-mail-date-tab" data-date-filter="yesterday" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Yesterday</button>
+									<button type="button" class="send-mail-date-tab" data-date-filter="custom" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Select Date</button>
+								</div>
+							</div>
+							<div style="margin-bottom: 16px; display: none;" id="sendMailCustomDateWrapper">
+								<label style="display: block; font-weight: 600; margin-bottom: 6px;">Custom Date</label>
+								<input type="date" id="sendMailCustomDate" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;" />
+							</div>
+							<div style="margin-bottom: 16px; display: none;" id="sendMailResultsWrapper">
+								<label style="display: block; font-weight: 600; margin-bottom: 6px;">Completed Tasks</label>
+								<div id="sendMailResults" style="border: 1px solid var(--taskflow-border); border-radius: 6px; max-height: 200px; overflow-y: auto; padding: 8px;">
+								</div>
+							</div>
+						</div>
 					</div>
-					<div class="taskflow-modal-body">
-						<div style="margin-bottom: 16px;">
-							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Select Team</label>
-							<select id="sendMailTeamSelect" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
-								<option value="">-- Select Team --</option>
-							</select>
-						</div>
-						<div style="margin-bottom: 16px; display: none;" id="sendMailMembersWrapper">
-							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Select Members</label>
-							<select id="sendMailMembersSelect" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
-							</select>
-						</div>
-						<div style="margin-bottom: 16px;">
-							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Date Filter</label>
-							<div style="display: flex; gap: 8px;">
-								<button type="button" class="send-mail-date-tab" data-date-filter="today" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Today</button>
-								<button type="button" class="send-mail-date-tab" data-date-filter="yesterday" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Yesterday</button>
-								<button type="button" class="send-mail-date-tab" data-date-filter="custom" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Select Date</button>
-							</div>
-						</div>
-						<div style="margin-bottom: 16px; display: none;" id="sendMailCustomDateWrapper">
-							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Custom Date</label>
-							<input type="date" id="sendMailCustomDate" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;" />
-						</div>
-						<div style="margin-bottom: 16px; display: none;" id="sendMailResultsWrapper">
-							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Completed Tasks</label>
-							<div id="sendMailResults" style="border: 1px solid var(--taskflow-border); border-radius: 6px; max-height: 200px; overflow-y: auto; padding: 8px;">
-							</div>
+					<div style="flex: 1; border-left: 1px solid var(--taskflow-border); padding-left: 20px;">
+						<h3 style="margin-bottom: 12px;">Mail Preview</h3>
+						<div id="sendMailPreview" style="background: var(--taskflow-bg); border: 1px solid var(--taskflow-border); border-radius: 6px; padding: 16px; font-size: 14px; line-height: 1.6;">
+							<div style="font-weight: 700; font-size: 16px; margin-bottom: 8px;">Apptech Notification : Project Tracker</div>
+							<div>Hi Team,</div>
+							<div style="margin-top: 8px;">Please find the latest progress update based on the shared task sheet:</div>
+							<div style="margin-top: 8px;">📢 <strong>Today's Update:</strong> In total <span id="previewTotalTasks">0</span> completed tasks, we have completed <span id="previewCompletedTasks">0</span>.</div>
+							<div style="margin-top: 4px;">Project Name: <span id="previewProjectName">...</span></div>
+							<div style="margin-top: 4px;">Tasks Completed: <span id="previewCompletedCount">0</span></div>
+							<div style="margin-top: 12px;">We are actively working on the pending items and will complete them shortly.</div>
+							<div style="margin-top: 12px; font-weight: 600;">Completed Tasks:</div>
+							<div id="previewTaskList" style="margin-top: 4px; padding-left: 16px;"></div>
 						</div>
 					</div>
 				</div>
@@ -3962,6 +3978,8 @@
 					}
 					const result = await apiCall("get_completed_tasks_by_date", args);
 					const tasks = result || [];
+
+					// Update results list
 					if (tasks.length === 0) {
 						resultsDiv.innerHTML = '<div style="color: var(--text-color-muted); font-size: 13px;">No completed tasks found</div>';
 					} else {
@@ -3971,6 +3989,32 @@
 								<div style="color: var(--text-color-muted); margin-top: 2px;">${escapeHtml(t.project || '')} ${t.completed_on ? ' - ' + escapeHtml(t.completed_on) : ''}</div>
 							</div>
 						`).join("");
+					}
+
+					// Update mail preview
+					const projectNames = [...new Set(tasks.map((t) => t.project).filter(Boolean))];
+					const previewTotal = tasks.length;
+					const previewCompleted = tasks.length;
+					const previewProject = projectNames.length > 0 ? projectNames.join(", ") : "...";
+
+					const previewTotalEl = modal.querySelector("#previewTotalTasks");
+					const previewCompletedEl = modal.querySelector("#previewCompletedTasks");
+					const previewProjectEl = modal.querySelector("#previewProjectName");
+					const previewCompletedCountEl = modal.querySelector("#previewCompletedCount");
+					const previewTaskListEl = modal.querySelector("#previewTaskList");
+
+					if (previewTotalEl) previewTotalEl.textContent = previewTotal;
+					if (previewCompletedEl) previewCompletedEl.textContent = previewCompleted;
+					if (previewProjectEl) previewProjectEl.textContent = previewProject;
+					if (previewCompletedCountEl) previewCompletedCountEl.textContent = previewCompleted;
+					if (previewTaskListEl) {
+						if (tasks.length === 0) {
+							previewTaskListEl.innerHTML = '<div style="color: var(--text-color-muted);">No tasks</div>';
+						} else {
+							previewTaskListEl.innerHTML = tasks.map((t) => `
+								<div style="padding: 2px 0;">✅ ${escapeHtml(t.task_title || t.name)}</div>
+							`).join("");
+						}
 					}
 				} catch (err) {
 					resultsDiv.innerHTML = '<div style="color: var(--text-color-muted); font-size: 13px;">Error loading tasks</div>';
