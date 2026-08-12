@@ -1637,3 +1637,60 @@ def get_assigned_tasks(user_id: str | None = None, project: str | None = None, t
         _serialize_task(task_doc, project_map, task_user_image_map, task_employee_name_map)
         for task_doc in task_docs
     ]
+
+
+@frappe.whitelist(methods=["GET"])
+def get_completed_tasks_by_date(user_id: str | None = None, date: str = "", date_type: str = "today") -> list[dict]:
+    """Get completed tasks for a specific date."""
+    from frappe.utils import today, add_to_date, getdate
+
+    _require_login()
+
+    if date_type == "today":
+        target_date = getdate(today())
+    elif date_type == "yesterday":
+        target_date = getdate(add_to_date(today(), days=-1))
+    else:
+        target_date = getdate(date)
+
+    filters = {
+        "status": "Completed",
+        "completed_on": ["between", [target_date, add_to_date(target_date, days=1)]],
+    }
+
+    if user_id:
+        todo_task_names = frappe.get_all(
+            "ToDo",
+            filters={
+                "allocated_to": user_id,
+                "reference_type": "Taskflow Task",
+                "status": ["!=", "Cancelled"],
+            },
+            pluck="reference_name",
+        )
+        child_task_names = frappe.get_all(
+            "Task Assignment",
+            filters={
+                "user_id": user_id,
+                "parenttype": "Taskflow Task",
+            },
+            pluck="parent",
+        )
+        task_names = list(set(todo_task_names + child_task_names))
+
+        if not task_names:
+            return []
+
+        filters["name"] = ["in", task_names]
+
+    tasks = frappe.get_list(
+        "Taskflow Task",
+        fields=[
+            "name", "task_title", "project", "team", "status",
+            "priority", "completed_on", "description",
+        ],
+        filters=filters,
+        order_by="completed_on desc",
+    )
+
+    return tasks
