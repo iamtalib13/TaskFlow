@@ -3843,15 +3843,20 @@
 						</div>
 						<div style="margin-bottom: 16px;">
 							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Date Filter</label>
-							<select id="sendMailDateFilter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
-								<option value="today">Today</option>
-								<option value="yesterday">Yesterday</option>
-								<option value="custom">Select Custom Date</option>
-							</select>
+							<div style="display: flex; gap: 8px;">
+								<button type="button" class="send-mail-date-tab" data-date-filter="today" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Today</button>
+								<button type="button" class="send-mail-date-tab" data-date-filter="yesterday" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Yesterday</button>
+								<button type="button" class="send-mail-date-tab" data-date-filter="custom" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Select Date</button>
+							</div>
 						</div>
 						<div style="margin-bottom: 16px; display: none;" id="sendMailCustomDateWrapper">
 							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Custom Date</label>
 							<input type="date" id="sendMailCustomDate" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;" />
+						</div>
+						<div style="margin-bottom: 16px; display: none;" id="sendMailResultsWrapper">
+							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Completed Tasks</label>
+							<div id="sendMailResults" style="border: 1px solid var(--taskflow-border); border-radius: 6px; max-height: 200px; overflow-y: auto; padding: 8px;">
+							</div>
 						</div>
 					</div>
 				</div>
@@ -3898,12 +3903,76 @@
 				}
 			});
 
-			// Date filter change handler
-			const dateFilter = backdrop.querySelector("#sendMailDateFilter");
+			// Date filter tab handlers
+			const dateTabs = backdrop.querySelectorAll(".send-mail-date-tab");
 			const customDateWrapper = backdrop.querySelector("#sendMailCustomDateWrapper");
-			dateFilter.addEventListener("change", () => {
-				customDateWrapper.style.display = dateFilter.value === "custom" ? "block" : "none";
+			const customDateInput = backdrop.querySelector("#sendMailCustomDate");
+			const resultsWrapper = backdrop.querySelector("#sendMailResultsWrapper");
+			const resultsDiv = backdrop.querySelector("#sendMailResults");
+			let selectedDateType = null;
+
+			dateTabs.forEach((tab) => {
+				tab.addEventListener("click", () => {
+					dateTabs.forEach((t) => {
+						t.classList.remove("active");
+						t.style.background = "var(--taskflow-bg)";
+					});
+					tab.classList.add("active");
+					tab.style.background = "var(--taskflow-primary)";
+					tab.style.color = "white";
+					selectedDateType = tab.dataset.dateFilter;
+					customDateWrapper.style.display = selectedDateType === "custom" ? "block" : "none";
+					fetchCompletedTasks();
+				});
 			});
+
+			// Set initial active tab style
+			const activeTab = backdrop.querySelector(".send-mail-date-tab.active");
+			if (activeTab) {
+				activeTab.style.background = "var(--taskflow-primary)";
+				activeTab.style.color = "white";
+			}
+
+			customDateInput.addEventListener("change", () => {
+				fetchCompletedTasks();
+			});
+
+			membersSelect.addEventListener("change", () => {
+				fetchCompletedTasks();
+			});
+
+			async function fetchCompletedTasks() {
+				const member = membersSelect.value;
+
+				if (!member || !selectedDateType) {
+					resultsWrapper.style.display = "none";
+					return;
+				}
+
+				resultsDiv.innerHTML = '<div style="color: var(--text-color-muted); font-size: 13px;">Loading...</div>';
+				resultsWrapper.style.display = "block";
+
+				try {
+					const result = await apiCall("get_completed_tasks_by_date", {
+						user_id: member,
+						date_type: selectedDateType,
+						date: customDateInput.value,
+					});
+					const tasks = result || [];
+					if (tasks.length === 0) {
+						resultsDiv.innerHTML = '<div style="color: var(--text-color-muted); font-size: 13px;">No completed tasks found</div>';
+					} else {
+						resultsDiv.innerHTML = tasks.map((t) => `
+							<div style="padding: 8px; border-bottom: 1px solid var(--taskflow-border); font-size: 13px;">
+								<div style="font-weight: 600;">${escapeHtml(t.task_title || t.name)}</div>
+								<div style="color: var(--text-color-muted); margin-top: 2px;">${escapeHtml(t.project || '')} ${t.completed_on ? ' - ' + escapeHtml(t.completed_on) : ''}</div>
+							</div>
+						`).join("");
+					}
+				} catch (err) {
+					resultsDiv.innerHTML = '<div style="color: var(--text-color-muted); font-size: 13px;">Error loading tasks</div>';
+				}
+			}
 		}
 
 		// Populate team options
@@ -3922,8 +3991,12 @@
 		// Reset members
 		const membersWrapper = modal.querySelector("#sendMailMembersWrapper");
 		const membersSelect = modal.querySelector("#sendMailMembersSelect");
+		const resultsWrapper = modal.querySelector("#sendMailResultsWrapper");
+		const resultsDiv = modal.querySelector("#sendMailResults");
 		if (membersWrapper) membersWrapper.style.display = "none";
 		if (membersSelect) membersSelect.innerHTML = "";
+		if (resultsWrapper) resultsWrapper.style.display = "none";
+		if (resultsDiv) resultsDiv.innerHTML = "";
 
 		modal.classList.add("open");
 	}
