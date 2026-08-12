@@ -244,6 +244,10 @@
 	}
 
 	function setTaskView(view, options = {}) {
+		// Save previous view for send-mail modal revert
+		if (view !== "send-mail") {
+			state.previousTaskView = state.taskView;
+		}
 		state.taskView = normalizeTaskView(view);
 		// Force URL update to persist view state
 		updateUrlState({ replace: options.replace });
@@ -402,6 +406,11 @@
 			tabsContainer.addEventListener("click", (e) => {
 				const tab = e.target.closest("[data-view]");
 				if (tab) {
+					// Send Mail opens a popup, don't switch views
+					if (tab.dataset.view === "send-mail") {
+						openSendMailModal();
+						return;
+					}
 					console.log("Tab triggered:", tab.dataset.view);
 					setTaskView(tab.dataset.view);
 				}
@@ -2463,14 +2472,6 @@
 			renderProjectSettingsView();
 		} else if (state.taskView === "work-history") {
 			renderWorkHistoryView();
-		} else if (state.taskView === "send-mail") {
-			// Send Mail tab - render placeholder content
-			if (refs.sendMailView) {
-				refs.sendMailView.innerHTML = `
-					<h2>Send Mail</h2>
-					<p style="color: var(--text-color-muted); margin-top: 8px;">Send email notifications to team members.</p>
-				`;
-			}
 		}
 	}
 
@@ -3812,6 +3813,38 @@
 				dropdown.style.display = "none";
 			});
 		});
+	}
+
+	function openSendMailModal() {
+		// Create modal if it doesn't exist
+		let modal = document.querySelector("[data-send-mail-modal]");
+		if (!modal) {
+			const backdrop = document.createElement("div");
+			backdrop.className = "taskflow-modal-backdrop";
+			backdrop.setAttribute("data-modal-name", "send-mail");
+			backdrop.setAttribute("data-send-mail-modal", "");
+			backdrop.innerHTML = `
+				<div class="taskflow-modal" style="max-width: 500px; width: 100%;">
+					<div class="taskflow-modal-header">
+						<h3>Send Mail</h3>
+						<button class="taskflow-modal-close" data-close-send-mail>&times;</button>
+					</div>
+					<div class="taskflow-modal-body">
+						<p style="color: var(--text-color-muted);">Send email notifications to team members.</p>
+					</div>
+				</div>
+			`;
+			document.body.appendChild(backdrop);
+			modal = backdrop;
+
+			// Close handlers
+			backdrop.addEventListener("click", (e) => {
+				if (e.target === backdrop || e.target.closest("[data-close-send-mail]")) {
+					backdrop.classList.remove("open");
+				}
+			});
+		}
+		modal.classList.add("open");
 	}
 
 	async function openTaskModal(task, status = "") {
