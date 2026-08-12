@@ -712,7 +712,8 @@ def bulk_insert_tasks() -> dict[str, Any]:
     debug_info = {
         "total_rows": len(rows),
         "first_row_raw": [repr(h) for h in rows[0]] if rows else [],
-        "second_row_raw": [repr(v) for v in rows[1]] if len(rows) > 1 else [],
+        "all_rows_count": len(rows),
+        "sample_rows": [[repr(v) for v in row[:3]] for row in rows[:5]],  # First 5 rows, first 3 cols
     }
     
     # Get header row and map to field names
@@ -727,17 +728,21 @@ def bulk_insert_tasks() -> dict[str, Any]:
         
         # Fix Quoted-Printable encoding: +AF8 = _, +AC0 = -
         import re
-        cleaned = cleaned.replace("+af8-", "_").replace("+af8_", "_")
-        cleaned = cleaned.replace("+ac0-", "-").replace("+ac0_", "_")
-        # Also handle uppercase variants
-        cleaned = cleaned.replace("+AF8-", "_").replace("+AF8_", "_")
-        cleaned = cleaned.replace("+AC0-", "-").replace("+AC0_", "_")
-        # Replace spaces and hyphens with underscores
-        cleaned = cleaned.replace(" ", "_").replace("-", "_")
-        # Remove any remaining special characters except underscore
-        cleaned = re.sub(r'[^a-z0-9_]', '', cleaned)
-        # Fix double underscores
-        cleaned = re.sub(r'_+', '_', cleaned)
+        cleaned = _decode_qp(cleaned)
+        
+        # Handle child table notation: table_gqbl.user_id → keep table_gqbl prefix
+        if "." in cleaned:
+            parts = cleaned.split(".", 1)
+            table_name = parts[0].replace(" ", "_")
+            field_name = parts[1].replace(" ", "_")
+            cleaned = f"{table_name}.{field_name}"
+        else:
+            # Replace spaces and hyphens with underscores
+            cleaned = cleaned.replace(" ", "_").replace("-", "_")
+            # Remove any remaining special characters except underscore and dot
+            cleaned = re.sub(r'[^a-z0-9_.]', '', cleaned)
+            # Fix double underscores
+            cleaned = re.sub(r'_+', '_', cleaned)
         headers.append(cleaned)
     
     debug_info["cleaned_headers"] = headers
@@ -756,32 +761,45 @@ def bulk_insert_tasks() -> dict[str, Any]:
     }
     
     # Map headers to valid field names
+    # Handle table_gqbl.* prefixed headers (child table fields)
     field_map = []
     for header in headers:
+        mapped = None
+        # Direct match
         if header in valid_fields:
-            field_map.append(header)
-        else:
-            field_map.append(None)
+            mapped = header
+        # Handle table_gqbl.user_id → assigned_to
+        elif header.startswith("table_gqbl"):
+            mapped = "assigned_to"
+        # Handle child table notation: table_gqbl.user_id (before cleaning)
+        field_map.append(mapped)
     
     debug_info["field_map"] = field_map
     
     created_tasks = []
     errors = []
     
+    print(f"[Bulk Insert] Processing {len(data_rows)} data rows")
+    print(f"[Bulk Insert] Header count: {len(headers)}")
+    
     for idx, row in enumerate(data_rows, start=2):
+        print(f"[Bulk Insert] Processing row {idx}: col_count={len(row)}, values={row[:5]}")
         try:
             task_data = {}
             for col_idx, field_name in enumerate(field_map):
                 if field_name and col_idx < len(row):
                     value = str(row[col_idx]).strip() if row[col_idx] else ""
-                    # Remove single quotes
+                    # Remove any remaining quotes
                     value = value.strip("'\"")
                     # Fix Quoted-Printable in values (dates, etc.)
-                    value = value.replace("+AC0-", "-").replace("+AC0_", "-")
+                    value = _decode_qp(value)
                     if value:
                         task_data[field_name] = value
             
+            print(f"[Bulk Insert] Row {idx} task_data: {task_data}")
+            
             if not task_data.get("task_title"):
+                print(f"[Bulk Insert] Row {idx}: No task_title found!")
                 errors.append(f"Row {idx}: Task title is required.")
                 continue
             
@@ -821,17 +839,37 @@ def bulk_insert_tasks() -> dict[str, Any]:
             if "description" in task_data:
                 doc.description = task_data["description"]
             
+            # Handle assigned_to - save ALL values to table_gqbl child table
+            if "assigned_to" in task_data:
+                assigned_to_str = task_data["assigned_to"]
+                # Split by comma and handle multiple users
+                assigned_users = [u.strip() for u in assigned_to_str.split(",") if u.strip()]
+                
+                if assigned_users:
+                    # Add all users to table_gqbl child table (NOT to assigned_to)
+                    for user_id in assigned_users:
+                        doc.append("table_gqbl", {
+                            "user_id": user_id,
+                        })
+            
             # Set default status if not provided
             if not doc.status:
                 doc.status = "Open"
             if not doc.priority:
                 doc.priority = "Medium"
             
+            print(f"[Bulk Insert] Row {idx}: Inserting task: {task_data.get('task_title')}")
             doc.insert(ignore_permissions=True)
+            print(f"[Bulk Insert] Row {idx}: Created task {doc.name}")
             created_tasks.append(doc.name)
             
         except Exception as e:
+            print(f"[Bulk Insert] Row {idx}: ERROR - {str(e)}")
             errors.append(f"Row {idx}: {str(e)}")
+    
+    # Commit all created tasks
+    if created_tasks:
+        frappe.db.commit()
     
     message = f"Successfully created {len(created_tasks)} task(s)."
     if errors:
@@ -847,34 +885,100 @@ def bulk_insert_tasks() -> dict[str, Any]:
     }
 
 
+def _decode_qp(text: str) -> str:
+    """Decode Quoted-Printable-like encoding used in the CSV.
+    Handles +AF8- → _, +AC0- → -, +ACI- → \", +IB0- → comma, +IBw- → \\, etc.
+    """
+    # Order matters: decode longer patterns first
+    text = text.replace("+AF8-", "_").replace("+AF8_", "_")
+    text = text.replace("+AC0-", "-").replace("+AC0_", "-")
+    text = text.replace("+IB0-", ",").replace("+IB0_", ",")
+    text = text.replace("+IBw-", "\\").replace("+IBw_", "\\")
+    text = text.replace("+ACI-", '"').replace("+ACI_", '"')
+    # Clean up: remove stray quote/backslash artifacts
+    text = text.replace('\\"', '"').replace('"', '')
+    text = text.replace("\\,", ",")
+    return text
+
+
 def _parse_csv(file) -> list[list[str]]:
-    """Parse CSV file and return list of rows."""
-    import csv
-    import io
+    """Parse CSV file and return list of rows.
     
-    # Read file content
+    Uses Python's csv module to properly handle:
+    - Quoted values containing commas (e.g., '3130,3131' stays as one cell)
+    - Various separators (tab, comma)
+    - Surrounding single/double quotes
+    """
+    import csv, io
+    
     content = file.read()
+    print(f"[Bulk Insert] File size: {len(content)} bytes")
     
-    # Try different encodings
     for encoding in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
         try:
             decoded = content.decode(encoding)
+            print(f"[Bulk Insert] Decoded with {encoding}")
             break
         except (UnicodeDecodeError, AttributeError):
             continue
     else:
         decoded = content.decode("utf-8", errors="ignore")
     
-    # Strip BOM if present
     if decoded.startswith("\ufeff"):
         decoded = decoded[1:]
     
-    reader = csv.reader(io.StringIO(decoded))
+    decoded = decoded.replace("\r\n", "\n").replace("\r", "\n")
+    
+    print(f"[Bulk Insert] First 500 chars: {repr(decoded[:500])}")
+    
+    # Detect separator from first non-empty line
+    lines = [l for l in decoded.split("\n") if l.strip()]
+    if not lines:
+        return []
+    
+    first_line = lines[0]
+    tab_count = first_line.count("\t")
+    comma_count = first_line.count(",")
+    
+    if tab_count > comma_count:
+        separator = "\t"
+        print(f"[Bulk Insert] Detected TAB separator ({tab_count} tabs)")
+    else:
+        separator = ","
+        print(f"[Bulk Insert] Detected COMMA separator ({comma_count} commas)")
+    
+    # Use csv module with proper quoting support
+    # This handles '3130,3131' as a single cell when wrapped in quotes
+    csv_file = io.StringIO(decoded)
+    
+    # Configure csv reader for the detected separator
+    if separator == "\t":
+        reader = csv.reader(csv_file, delimiter="\t", quotechar="'")
+    else:
+        reader = csv.reader(csv_file, delimiter=",", quotechar="'")
+    
     rows = []
     for row in reader:
         # Skip empty rows
-        if any(cell.strip() for cell in row):
-            rows.append(row)
+        if not row or all(not cell.strip() for cell in row):
+            continue
+        
+        # Clean each cell: strip whitespace, decode QP
+        cleaned_row = []
+        for cell in row:
+            cell = cell.strip()
+            # Remove surrounding double quotes if present
+            if cell.startswith('"') and cell.endswith('"'):
+                cell = cell[1:-1]
+            # Decode QP encoding in each cell
+            cell = _decode_qp(cell)
+            cleaned_row.append(cell)
+        
+        rows.append(cleaned_row)
+    
+    print(f"[Bulk Insert] Parsed {len(rows)} rows, {len(rows[0]) if rows else 0} cols")
+    for i, row in enumerate(rows[:5]):
+        print(f"[Bulk Insert] Row {i}: col_count={len(row)}, data={row}")
     
     return rows
 
