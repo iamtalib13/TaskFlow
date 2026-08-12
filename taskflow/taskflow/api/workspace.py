@@ -783,7 +783,7 @@ def bulk_insert_tasks() -> dict[str, Any]:
     print(f"[Bulk Insert] Header count: {len(headers)}")
     
     for idx, row in enumerate(data_rows, start=2):
-        print(f"[Bulk Insert] Processing row {idx}: col_count={len(row)}, values={row[:5]}")
+        print(f"[Bulk Insert] Processing row {idx}: col_count={len(row)}, values={row}")
         try:
             task_data = {}
             for col_idx, field_name in enumerate(field_map):
@@ -797,6 +797,9 @@ def bulk_insert_tasks() -> dict[str, Any]:
                         task_data[field_name] = value
             
             print(f"[Bulk Insert] Row {idx} task_data: {task_data}")
+            print(f"[Bulk Insert] Row {idx} all values by position:")
+            for col_idx, val in enumerate(row):
+                print(f"  col {col_idx}: {repr(val)}")
             
             if not task_data.get("task_title"):
                 print(f"[Bulk Insert] Row {idx}: No task_title found!")
@@ -904,12 +907,12 @@ def _decode_qp(text: str) -> str:
 def _parse_csv(file) -> list[list[str]]:
     """Parse CSV file and return list of rows.
     
-    Uses Python's csv module to properly handle:
-    - Quoted values containing commas (e.g., '3130,3131' stays as one cell)
-    - Various separators (tab, comma)
-    - Surrounding single/double quotes
+    Handles the file format where:
+    - Each cell is individually wrapped in single quotes: 'val1','val2','val3'
+    - Cells may contain commas inside quotes: '3130,3131' should stay as one cell
+    - Values may have Quoted-Printable encoding: +AF8- → _, +AC0- → -
     """
-    import csv, io
+    import re
     
     content = file.read()
     print(f"[Bulk Insert] File size: {len(content)} bytes")
@@ -947,34 +950,49 @@ def _parse_csv(file) -> list[list[str]]:
         separator = ","
         print(f"[Bulk Insert] Detected COMMA separator ({comma_count} commas)")
     
-    # Use csv module with proper quoting support
-    # This handles '3130,3131' as a single cell when wrapped in quotes
-    csv_file = io.StringIO(decoded)
-    
-    # Configure csv reader for the detected separator
-    if separator == "\t":
-        reader = csv.reader(csv_file, delimiter="\t", quotechar="'")
-    else:
-        reader = csv.reader(csv_file, delimiter=",", quotechar="'")
-    
     rows = []
-    for row in reader:
-        # Skip empty rows
-        if not row or all(not cell.strip() for cell in row):
+    for line in lines:
+        line = line.strip()
+        if not line:
             continue
         
-        # Clean each cell: strip whitespace, decode QP
-        cleaned_row = []
-        for cell in row:
-            cell = cell.strip()
-            # Remove surrounding double quotes if present
-            if cell.startswith('"') and cell.endswith('"'):
-                cell = cell[1:-1]
-            # Decode QP encoding in each cell
-            cell = _decode_qp(cell)
-            cleaned_row.append(cell)
+        # Remove surrounding single quotes from entire line
+        if line.startswith("'") and line.endswith("'"):
+            line = line[1:-1]
         
-        rows.append(cleaned_row)
+        # Split by separator
+        raw_cells = line.split(separator)
+        
+        # Merge cells that are inside single quotes (e.g., '3130,3131' split into '3130 and 3131')
+        cells = []
+        current_cell = None
+        for cell in raw_cells:
+            cell = cell.strip()
+            if current_cell is not None:
+                # We're inside a quoted value, keep appending
+                current_cell += separator + cell
+                if cell.endswith("'"):
+                    # End of quoted value
+                    current_cell = current_cell.rstrip("'").lstrip("'")
+                    cells.append(current_cell)
+                    current_cell = None
+            elif cell.startswith("'") and not cell.endswith("'"):
+                # Start of quoted value that contains separator
+                current_cell = cell
+            else:
+                # Normal cell, strip quotes
+                cell = cell.strip("'\"")
+                cells.append(cell)
+        
+        # If we ended while inside a quoted value, add it
+        if current_cell is not None:
+            current_cell = current_cell.rstrip("'").lstrip("'")
+            cells.append(current_cell)
+        
+        # Decode QP encoding in each cell
+        cells = [_decode_qp(c) for c in cells]
+        
+        rows.append(cells)
     
     print(f"[Bulk Insert] Parsed {len(rows)} rows, {len(rows[0]) if rows else 0} cols")
     for i, row in enumerate(rows[:5]):
