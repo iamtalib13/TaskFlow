@@ -275,6 +275,7 @@
 		refs.settingsView = document.querySelector("[data-settings-view]");
 		refs.projectSettingsView = document.querySelector("[data-project-settings-view]");
 		refs.workHistoryView = document.querySelector("[data-work-history-view]");
+		refs.sendMailView = document.querySelector("[data-send-mail-view]");
 		refs.projectTitle = document.querySelector("[data-project-title]");
 		refs.projectKpis = document.querySelector("[data-project-kpis]");
 		refs.viewToggle = document.querySelector("[data-task-view-toggle]");
@@ -2430,6 +2431,7 @@
 			{ el: refs.settingsView, key: "settings" },
 			{ el: refs.projectSettingsView, key: "project-settings" },
 			{ el: refs.workHistoryView, key: "work-history" },
+			{ el: refs.sendMailView, key: "send-mail" },
 		];
 
 		views.forEach((v) => {
@@ -2461,6 +2463,14 @@
 			renderProjectSettingsView();
 		} else if (state.taskView === "work-history") {
 			renderWorkHistoryView();
+		} else if (state.taskView === "send-mail") {
+			// Send Mail tab - render placeholder content
+			if (refs.sendMailView) {
+				refs.sendMailView.innerHTML = `
+					<h2>Send Mail</h2>
+					<p style="color: var(--text-color-muted); margin-top: 8px;">Send email notifications to team members.</p>
+				`;
+			}
 		}
 	}
 

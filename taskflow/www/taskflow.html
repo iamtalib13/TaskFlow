@@ -323,6 +323,16 @@
 			>
 				Work History
 			</button>
+			<button
+				class="taskflow-tab"
+				type="button"
+				data-view="send-mail"
+				role="tab"
+				aria-selected="false"
+				style="margin-left: auto;"
+			>
+				Send Mail
+			</button>
 		</div>
 
 		<!-- Content Area -->
@@ -574,6 +584,16 @@
 				data-work-history-view
 				style="padding: 0px; overflow-y: auto"
 			></div>
+
+			<!-- Send Mail View -->
+			<div
+				class="taskflow-view-content taskflow-hidden"
+				data-send-mail-view
+				style="padding: 20px; overflow-y: auto"
+			>
+				<h2>Send Mail</h2>
+				<p style="color: var(--text-color-muted); margin-top: 8px;">Send email notifications to team members.</p>
+			</div>
 
 			<!-- Stats Area (Hidden by default in new design but kept for state) -->
 			<div class="taskflow-hidden" data-stats></div>
