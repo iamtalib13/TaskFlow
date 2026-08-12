@@ -1712,6 +1712,7 @@ def send_mail(to: str, cc: str = "", subject: str = "", message: str = "") -> di
         cc=cc_list,
         subject=subject or "Apptech Notification : Project Tracker",
         message=message,
+        now=True,
     )
 
     return {"status": "success", "message": "Mail sent successfully."}
