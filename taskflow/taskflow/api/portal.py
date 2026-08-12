@@ -1694,3 +1694,24 @@ def get_completed_tasks_by_date(user_id: str | None = None, date: str = "", date
     )
 
     return tasks
+
+
+@frappe.whitelist(methods=["POST"])
+def send_mail(to: str, cc: str = "", subject: str = "", message: str = "") -> dict:
+    """Send an email with the given To, CC, subject, and message body."""
+    _require_login()
+
+    if not to:
+        frappe.throw("To field is required.")
+
+    recipients = [e.strip() for e in to.split(",") if e.strip()]
+    cc_list = [e.strip() for e in cc.split(",") if e.strip()] if cc else []
+
+    frappe.sendmail(
+        recipients=recipients,
+        cc=cc_list,
+        subject=subject or "Apptech Notification : Project Tracker",
+        message=message,
+    )
+
+    return {"status": "success", "message": "Mail sent successfully."}

@@ -3896,6 +3896,42 @@
 				}
 			});
 
+			// Send Mail button handler
+			const sendMailBtn = backdrop.querySelector("#sendMailBtn");
+			sendMailBtn.addEventListener("click", async () => {
+				const toInput = backdrop.querySelector("#sendMailTo");
+				const ccInput = backdrop.querySelector("#sendMailCc");
+				const previewEl = backdrop.querySelector("#sendMailPreview");
+
+				const to = toInput.value.trim();
+				const cc = ccInput.value.trim();
+				const message = previewEl ? previewEl.innerHTML : "";
+
+				if (!to) {
+					frappe.msgprint("Please enter a recipient email in To field.");
+					return;
+				}
+
+				sendMailBtn.disabled = true;
+				sendMailBtn.textContent = "Sending...";
+
+				try {
+					const result = await apiCall("send_mail", {
+						to: to,
+						cc: cc,
+						subject: "Apptech Notification : Project Tracker",
+						message: message,
+					}, "POST");
+					frappe.msgprint(result.message || "Mail sent successfully.");
+					backdrop.classList.remove("open");
+				} catch (err) {
+					frappe.msgprint("Failed to send mail. Please try again.");
+				} finally {
+					sendMailBtn.disabled = false;
+					sendMailBtn.textContent = "Send Mail";
+				}
+			});
+
 			// Team change handler
 			const teamSelect = backdrop.querySelector("#sendMailTeamSelect");
 			const membersWrapper = backdrop.querySelector("#sendMailMembersWrapper");
