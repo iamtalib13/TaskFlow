@@ -1020,11 +1020,11 @@ def _parse_excel(file) -> list[list[str]]:
 
 
 @frappe.whitelist(methods=["GET"])
-def get_completed_tasks_by_date(user_id: str, date: str, date_type: str = "today") -> list[dict]:
-    """Get completed tasks for a user on a specific date.
+def get_completed_tasks_by_date(user_id: str | None = None, date: str = "", date_type: str = "today") -> list[dict]:
+    """Get completed tasks for a specific date.
     
     Args:
-        user_id: Employee ID or User ID
+        user_id: Employee ID or User ID (optional - if empty, returns all)
         date: Date string (YYYY-MM-DD) for custom, ignored for today/yesterday
         date_type: 'today', 'yesterday', or 'custom'
     """
@@ -1039,41 +1039,44 @@ def get_completed_tasks_by_date(user_id: str, date: str, date_type: str = "today
     else:
         target_date = getdate(date)
     
-    # Find tasks assigned to this user
-    todo_task_names = frappe.get_all(
-        "ToDo",
-        filters={
-            "allocated_to": user_id,
-            "reference_type": "Taskflow Task",
-            "status": ["!=", "Cancelled"],
-        },
-        pluck="reference_name",
-    )
-    child_task_names = frappe.get_all(
-        "Task Assignment",
-        filters={
-            "user_id": user_id,
-            "parenttype": "Taskflow Task",
-        },
-        pluck="parent",
-    )
-    task_names = list(set(todo_task_names + child_task_names))
+    filters = {
+        "status": "Completed",
+        "completed_on": ["between", [target_date, add_to_date(target_date, days=1)]],
+    }
     
-    if not task_names:
-        return []
+    if user_id:
+        # Find tasks assigned to this user
+        todo_task_names = frappe.get_all(
+            "ToDo",
+            filters={
+                "allocated_to": user_id,
+                "reference_type": "Taskflow Task",
+                "status": ["!=", "Cancelled"],
+            },
+            pluck="reference_name",
+        )
+        child_task_names = frappe.get_all(
+            "Task Assignment",
+            filters={
+                "user_id": user_id,
+                "parenttype": "Taskflow Task",
+            },
+            pluck="parent",
+        )
+        task_names = list(set(todo_task_names + child_task_names))
+        
+        if not task_names:
+            return []
+        
+        filters["name"] = ["in", task_names]
     
-    # Get tasks completed on the target date
     tasks = frappe.get_list(
         "Taskflow Task",
         fields=[
             "name", "task_title", "project", "team", "status",
             "priority", "completed_on", "description",
         ],
-        filters={
-            "name": ["in", task_names],
-            "status": "Completed",
-            "completed_on": ["like", f"{target_date}%"],
-        },
+        filters=filters,
         order_by="completed_on desc",
     )
     

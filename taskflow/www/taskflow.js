@@ -3942,22 +3942,25 @@
 			});
 
 			async function fetchCompletedTasks() {
-				const member = membersSelect.value;
-
-				if (!member || !selectedDateType) {
+				if (!selectedDateType) {
 					resultsWrapper.style.display = "none";
 					return;
 				}
+
+				const member = membersSelect.value;
 
 				resultsDiv.innerHTML = '<div style="color: var(--text-color-muted); font-size: 13px;">Loading...</div>';
 				resultsWrapper.style.display = "block";
 
 				try {
-					const result = await apiCall("get_completed_tasks_by_date", {
-						user_id: member,
+					const args = {
 						date_type: selectedDateType,
 						date: customDateInput.value,
-					});
+					};
+					if (member) {
+						args.user_id = member;
+					}
+					const result = await apiCall("get_completed_tasks_by_date", args);
 					const tasks = result || [];
 					if (tasks.length === 0) {
 						resultsDiv.innerHTML = '<div style="color: var(--text-color-muted); font-size: 13px;">No completed tasks found</div>';
