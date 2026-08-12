@@ -3841,6 +3841,18 @@
 							<select id="sendMailMembersSelect" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
 							</select>
 						</div>
+						<div style="margin-bottom: 16px;">
+							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Date Filter</label>
+							<select id="sendMailDateFilter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
+								<option value="today">Today</option>
+								<option value="yesterday">Yesterday</option>
+								<option value="custom">Select Custom Date</option>
+							</select>
+						</div>
+						<div style="margin-bottom: 16px; display: none;" id="sendMailCustomDateWrapper">
+							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Custom Date</label>
+							<input type="date" id="sendMailCustomDate" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;" />
+						</div>
 					</div>
 				</div>
 			`;
@@ -3884,6 +3896,13 @@
 				} catch (err) {
 					membersSelect.innerHTML = '<option value="">Error loading members</option>';
 				}
+			});
+
+			// Date filter change handler
+			const dateFilter = backdrop.querySelector("#sendMailDateFilter");
+			const customDateWrapper = backdrop.querySelector("#sendMailCustomDateWrapper");
+			dateFilter.addEventListener("change", () => {
+				customDateWrapper.style.display = dateFilter.value === "custom" ? "block" : "none";
 			});
 		}
 
