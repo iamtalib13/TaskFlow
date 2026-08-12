@@ -244,6 +244,10 @@
 	}
 
 	function setTaskView(view, options = {}) {
+		// Save previous view for send-mail modal revert
+		if (view !== "send-mail") {
+			state.previousTaskView = state.taskView;
+		}
 		state.taskView = normalizeTaskView(view);
 		// Force URL update to persist view state
 		updateUrlState({ replace: options.replace });
@@ -275,6 +279,7 @@
 		refs.settingsView = document.querySelector("[data-settings-view]");
 		refs.projectSettingsView = document.querySelector("[data-project-settings-view]");
 		refs.workHistoryView = document.querySelector("[data-work-history-view]");
+		refs.sendMailView = document.querySelector("[data-send-mail-view]");
 		refs.projectTitle = document.querySelector("[data-project-title]");
 		refs.projectKpis = document.querySelector("[data-project-kpis]");
 		refs.viewToggle = document.querySelector("[data-task-view-toggle]");
@@ -401,6 +406,11 @@
 			tabsContainer.addEventListener("click", (e) => {
 				const tab = e.target.closest("[data-view]");
 				if (tab) {
+					// Send Mail opens a popup, don't switch views
+					if (tab.dataset.view === "send-mail") {
+						openSendMailModal();
+						return;
+					}
 					console.log("Tab triggered:", tab.dataset.view);
 					setTaskView(tab.dataset.view);
 				}
@@ -436,6 +446,11 @@
 			const addMemberButton = e.target.closest("[data-add-team-member]");
 			if (addMemberButton) {
 				openAddTeamMemberModal();
+			}
+
+			const addTeamButton = e.target.closest("[data-add-team]");
+			if (addTeamButton) {
+				openAddTeamModal();
 			}
 
 			const postCommentButton = e.target.closest("[data-post-comment]");
@@ -674,6 +689,26 @@
 			addMemberForm.addEventListener("submit", submitAddMemberForm);
 		}
 
+		// Add Team Form Handler
+		const addTeamForm = document.querySelector("[data-add-team-form]");
+		if (addTeamForm) {
+			addTeamForm.addEventListener("submit", submitAddTeamForm);
+		}
+
+		// Add Team Member Row Button
+		document.querySelector("[data-add-team-member-row]")?.addEventListener("click", addTeamMemberRow);
+
+		// Remove Team Member Row (delegated)
+		document.addEventListener("click", (e) => {
+			if (e.target.closest("[data-remove-team-member-row]")) {
+				const row = e.target.closest("[data-team-member-row]");
+				const tbody = document.querySelector("[data-team-members-body]");
+				if (row && tbody && tbody.querySelectorAll("[data-team-member-row]").length > 1) {
+					row.remove();
+				}
+			}
+		});
+
 		document.getElementById("quickTaskAssignedToSelect")?.addEventListener("change", (e) => {
 			const email = e.target.value;
 			if (email) {
@@ -824,6 +859,206 @@
 
 			// Close sidebar
 			document.querySelector("[data-filter-sidebar]")?.classList.remove("open");
+		});
+
+		// Bulk Insert Button Handler
+		const bulkInsertModal = document.getElementById("bulkInsertModal");
+		const bulkUploadArea = document.getElementById("bulkUploadArea");
+		const bulkFileInput = document.getElementById("bulkFileInput");
+		const bulkFileInfo = document.getElementById("bulkFileInfo");
+		const bulkFileName = document.getElementById("bulkFileName");
+		const bulkFileSize = document.getElementById("bulkFileSize");
+		const bulkRemoveFile = document.getElementById("bulkRemoveFile");
+		const bulkUploadBtn = document.getElementById("bulkUploadBtn");
+		const bulkUploadProgress = document.getElementById("bulkUploadProgress");
+		const bulkProgressBar = document.getElementById("bulkProgressBar");
+		const bulkUploadPercent = document.getElementById("bulkUploadPercent");
+		const bulkUploadError = document.getElementById("bulkUploadError");
+		const bulkErrorMessage = document.getElementById("bulkErrorMessage");
+		let selectedBulkFile = null;
+
+		function openBulkInsertModal() {
+			if (bulkInsertModal) {
+				bulkInsertModal.classList.add("open");
+				resetBulkUpload();
+			}
+		}
+
+		function closeBulkInsertModal() {
+			if (bulkInsertModal) {
+				bulkInsertModal.classList.remove("open");
+				resetBulkUpload();
+			}
+		}
+
+		function resetBulkUpload() {
+			selectedBulkFile = null;
+			if (bulkFileInput) bulkFileInput.value = "";
+			if (bulkFileInfo) bulkFileInfo.style.display = "none";
+			if (bulkUploadProgress) bulkUploadProgress.style.display = "none";
+			if (bulkUploadError) bulkUploadError.style.display = "none";
+			if (bulkUploadBtn) bulkUploadBtn.disabled = true;
+			if (bulkUploadArea) {
+				bulkUploadArea.style.borderColor = "#cbd5e1";
+				bulkUploadArea.style.background = "#f8fafc";
+			}
+		}
+
+		function formatFileSize(bytes) {
+			if (bytes < 1024) return bytes + " B";
+			if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+			return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+		}
+
+		function handleBulkFileSelect(file) {
+			if (!file) return;
+
+			const validTypes = [
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				"application/vnd.ms-excel",
+				"text/csv",
+			];
+			const validExtensions = [".xlsx", ".csv"];
+			const fileName = file.name.toLowerCase();
+			const hasValidExtension = validExtensions.some((ext) => fileName.endsWith(ext));
+
+			if (!validTypes.includes(file.type) && !hasValidExtension) {
+				showBulkError("Invalid file type. Please select an Excel (.xlsx) or CSV file.");
+				return;
+			}
+
+			if (file.size > 10 * 1024 * 1024) {
+				showBulkError("File size exceeds 10MB limit. Please use a smaller file.");
+				return;
+			}
+
+			selectedBulkFile = file;
+			bulkFileName.textContent = file.name;
+			bulkFileSize.textContent = formatFileSize(file.size);
+			bulkFileInfo.style.display = "block";
+			bulkUploadBtn.disabled = false;
+			bulkUploadError.style.display = "none";
+		}
+
+		function showBulkError(message) {
+			bulkErrorMessage.textContent = message;
+			bulkUploadError.style.display = "block";
+			bulkFileInfo.style.display = "none";
+			selectedBulkFile = null;
+			bulkUploadBtn.disabled = true;
+		}
+
+		function uploadBulkFile() {
+			if (!selectedBulkFile) return;
+
+			const formData = new FormData();
+			formData.append("file", selectedBulkFile);
+
+			bulkUploadProgress.style.display = "block";
+			bulkUploadBtn.disabled = true;
+
+			const xhr = new XMLHttpRequest();
+			xhr.open("POST", "/api/method/taskflow.taskflow.api.workspace.bulk_insert_tasks", true);
+			xhr.setRequestHeader("X-Frappe-CSRF-Token", window.csrf_token || "");
+
+			xhr.upload.addEventListener("progress", (e) => {
+				if (e.lengthComputable) {
+					const percent = Math.round((e.loaded / e.total) * 100);
+					bulkProgressBar.style.width = percent + "%";
+					bulkUploadPercent.textContent = percent + "%";
+				}
+			});
+
+			xhr.onload = function () {
+				if (xhr.status === 200) {
+					const response = JSON.parse(xhr.responseText);
+					if (response.message) {
+						closeBulkInsertModal();
+						if (typeof frappe !== "undefined" && frappe.show_alert) {
+							frappe.show_alert({ message: response.message, indicator: "green" }, 5);
+						}
+						refreshView();
+					}
+				} else {
+					let errMsg = "Upload failed. Please try again.";
+					try {
+						const err = JSON.parse(xhr.responseText);
+						errMsg = err._error_message || err.message || errMsg;
+					} catch (e) {}
+					showBulkError(errMsg);
+				}
+			};
+
+			xhr.onerror = function () {
+				showBulkError("Network error. Please check your connection and try again.");
+			};
+
+			xhr.send(formData);
+		}
+
+		document.querySelector("[data-bulk-insert-button]")?.addEventListener("click", (e) => {
+			e.stopPropagation();
+			openBulkInsertModal();
+		});
+
+		bulkUploadArea?.addEventListener("click", () => bulkFileInput?.click());
+
+		bulkUploadArea?.addEventListener("dragover", (e) => {
+			e.preventDefault();
+			bulkUploadArea.style.borderColor = "#3b82f6";
+			bulkUploadArea.style.background = "#eff6ff";
+		});
+
+		bulkUploadArea?.addEventListener("dragleave", () => {
+			bulkUploadArea.style.borderColor = "#cbd5e1";
+			bulkUploadArea.style.background = "#f8fafc";
+		});
+
+		bulkUploadArea?.addEventListener("drop", (e) => {
+			e.preventDefault();
+			bulkUploadArea.style.borderColor = "#cbd5e1";
+			bulkUploadArea.style.background = "#f8fafc";
+			const file = e.dataTransfer.files[0];
+			handleBulkFileSelect(file);
+		});
+
+		bulkFileInput?.addEventListener("change", (e) => {
+			handleBulkFileSelect(e.target.files[0]);
+		});
+
+		bulkRemoveFile?.addEventListener("click", () => resetBulkUpload());
+
+		bulkUploadBtn?.addEventListener("click", uploadBulkFile);
+
+		document.querySelectorAll('[data-close-modal="bulkInsertModal"]').forEach((btn) => {
+			btn.addEventListener("click", closeBulkInsertModal);
+		});
+
+		// Close bulk insert modal on backdrop click
+		bulkInsertModal?.addEventListener("click", (e) => {
+			if (e.target === bulkInsertModal) {
+				closeBulkInsertModal();
+			}
+		});
+
+		// Get Template Button Handler
+		document.getElementById("bulkGetTemplate")?.addEventListener("click", () => {
+			const templateData = [
+				["task_title", "project", "team", "status", "priority", "task_type", "assigned_to", "start_date", "due_date", "completed_on", "description", "pending_from"],
+				["Sample Task 1", "Project Name", "Team Name", "Open", "Medium", "Task", "", "2026-08-01", "2026-08-15", "", "This is a sample task description", "John Doe"],
+				["Sample Task 2", "Project Name", "Team Name", "Completed", "High", "Bug", "", "2026-08-01", "2026-08-10", "2026-08-10", "This is a sample bug report", "Jane Smith"]
+			];
+
+			let csvContent = templateData.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+			const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+			const link = document.createElement("a");
+			const url = URL.createObjectURL(blob);
+			link.setAttribute("href", url);
+			link.setAttribute("download", "bulk_insert_template.csv");
+			link.style.visibility = "hidden";
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
 		});
 
 		if (refs.sidebarToggle && refs.container) {
@@ -2212,6 +2447,7 @@
 			{ el: refs.settingsView, key: "settings" },
 			{ el: refs.projectSettingsView, key: "project-settings" },
 			{ el: refs.workHistoryView, key: "work-history" },
+			{ el: refs.sendMailView, key: "send-mail" },
 		];
 
 		views.forEach((v) => {
@@ -3397,6 +3633,162 @@
 		// Show modal
 		toggleModal(modal, true);
 	}
+
+	async function openAddTeamModal() {
+		const modal = document.querySelector("[data-add-team-modal]");
+		const form = document.querySelector("[data-add-team-form]");
+		
+		if (!modal || !form) return;
+		
+		// Reset form
+		form.reset();
+		
+		// Populate Team Lead dropdown with employees
+		const teamLeadSelect = form.querySelector('[name="team_lead"]');
+		teamLeadSelect.innerHTML = '<option value="">Select Team Lead</option>';
+		
+		try {
+			const data = await apiCall("get_employees");
+			const employees = data.employees || [];
+			employees.forEach(emp => {
+				const option = document.createElement("option");
+				option.value = emp.name;
+				option.textContent = emp.employee_name;
+				teamLeadSelect.appendChild(option);
+			});
+		} catch (err) {
+			console.error("Error loading employees:", err);
+		}
+		
+		// Populate Team Members dropdown in table
+		populateTeamMemberDropdowns();
+		
+		toggleModal(modal, true);
+	}
+
+	function populateTeamMemberDropdowns() {
+		const memberSelects = document.querySelectorAll('[data-team-members-body] [name="member_user"]');
+		memberSelects.forEach(select => {
+			const currentValue = select.value;
+			select.innerHTML = '<option value="">Select Employee</option>';
+			
+			if (window.state && window.state.employees) {
+				window.state.employees.forEach(emp => {
+					const option = document.createElement("option");
+					option.value = emp.name;
+					option.textContent = emp.employee_name;
+					select.appendChild(option);
+				});
+			}
+			
+			if (currentValue) select.value = currentValue;
+		});
+	}
+
+	function addTeamMemberRow() {
+		const tbody = document.querySelector("[data-team-members-body]");
+		if (!tbody) return;
+		
+		const newRow = document.createElement("tr");
+		newRow.setAttribute("data-team-member-row", "");
+		newRow.innerHTML = `
+			<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+				<select name="member_user" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+					<option value="">Select Employee</option>
+				</select>
+			</td>
+			<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+				<select name="team_role" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+					<option value="Team Member">Team Member</option>
+					<option value="Team Lead">Team Lead</option>
+					<option value="Coordinator">Coordinator</option>
+					<option value="Viewer">Viewer</option>
+					<option value="Auditor">Auditor</option>
+				</select>
+			</td>
+			<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+				<select name="access_level" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+					<option value="View">View</option>
+					<option value="Operate" selected>Operate</option>
+					<option value="Manage">Manage</option>
+					<option value="Admin">Admin</option>
+				</select>
+			</td>
+			<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+				<button type="button" data-remove-team-member-row style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 16px;">&times;</button>
+			</td>
+		`;
+		tbody.appendChild(newRow);
+		
+		// Populate employee dropdown in new row
+		const newSelect = newRow.querySelector('[name="member_user"]');
+		if (window.state && window.state.employees) {
+			window.state.employees.forEach(emp => {
+				const option = document.createElement("option");
+				option.value = emp.name;
+				option.textContent = emp.employee_name;
+				newSelect.appendChild(option);
+			});
+		}
+	}
+
+	async function submitAddTeamForm(e) {
+		e.preventDefault();
+		const form = e.target;
+		const formData = new FormData(form);
+		
+		// Collect team members from table
+		const members = [];
+		const rows = document.querySelectorAll("[data-team-members-body] [data-team-member-row]");
+		rows.forEach(row => {
+			const memberUser = row.querySelector('[name="member_user"]').value;
+			const teamRole = row.querySelector('[name="team_role"]').value;
+			const accessLevel = row.querySelector('[name="access_level"]').value;
+			if (memberUser) {
+				members.push({
+					user: memberUser,
+					team_role: teamRole,
+					access_level: accessLevel,
+					is_active: 1
+				});
+			}
+		});
+		
+		const payload = {
+			team_name: formData.get("team_name"),
+			visibility_scope: formData.get("visibility_scope"),
+			description: formData.get("description"),
+			team_lead: formData.get("team_lead"),
+			team_members: members
+		};
+		
+		try {
+			const url = new URL("/api/method/taskflow.taskflow.api.workspace.create_team", window.location.origin);
+			const response = await fetch(url.toString(), {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/x-www-form-urlencoded",
+					"X-Frappe-CSRF-Token": window.csrf_token || "",
+				},
+				credentials: "same-origin",
+				body: new URLSearchParams({ payload: JSON.stringify(payload) }).toString(),
+			});
+			
+			const result = await response.json();
+			
+			if (!response.ok) {
+				throw new Error(result._error_message || result.message || "Failed to create team");
+			}
+			
+			if (result && result.message && result.message.name) {
+				frappe.msgprint("Team created successfully!");
+				toggleModal(document.querySelector("[data-add-team-modal]"), false);
+				setTimeout(() => location.reload(), 500);
+			}
+		} catch (err) {
+			frappe.msgprint("Error creating team: " + (err.message || "Unknown error"));
+		}
+	}
 	
 	function renderEmployeeOptions(employees, container, searchInput, hiddenInput, dropdown) {
 		container.innerHTML = employees.map(emp => `
@@ -3428,6 +3820,284 @@
 				dropdown.style.display = "none";
 			});
 		});
+	}
+
+	function openSendMailModal() {
+		// Create modal if it doesn't exist
+		let modal = document.querySelector("[data-send-mail-modal]");
+		if (!modal) {
+			const backdrop = document.createElement("div");
+			backdrop.className = "taskflow-modal-backdrop";
+			backdrop.setAttribute("data-modal-name", "send-mail");
+			backdrop.setAttribute("data-send-mail-modal", "");
+			backdrop.innerHTML = `
+				<div class="taskflow-modal" style="max-width: 900px; width: 100%; display: flex; gap: 20px;">
+					<div style="flex: 1;">
+						<div class="taskflow-modal-header">
+							<h3>Send Mail</h3>
+							<button class="taskflow-modal-close" data-close-send-mail>&times;</button>
+						</div>
+						<div class="taskflow-modal-body">
+							<div style="margin-bottom: 16px;">
+								<label style="display: block; font-weight: 600; margin-bottom: 6px;">Select Team</label>
+								<select id="sendMailTeamSelect" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
+									<option value="">-- Select Team --</option>
+								</select>
+							</div>
+							<div style="margin-bottom: 16px; display: none;" id="sendMailMembersWrapper">
+								<label style="display: block; font-weight: 600; margin-bottom: 6px;">Select Members</label>
+								<select id="sendMailMembersSelect" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
+								</select>
+							</div>
+							<div style="margin-bottom: 16px;">
+								<label style="display: block; font-weight: 600; margin-bottom: 6px;">Date Filter</label>
+								<div style="display: flex; gap: 8px;">
+									<button type="button" class="send-mail-date-tab" data-date-filter="today" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Today</button>
+									<button type="button" class="send-mail-date-tab" data-date-filter="yesterday" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Yesterday</button>
+									<button type="button" class="send-mail-date-tab" data-date-filter="custom" style="padding: 6px 14px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 13px; cursor: pointer; background: var(--taskflow-bg);">Select Date</button>
+								</div>
+							</div>
+							<div style="margin-bottom: 16px; display: none;" id="sendMailCustomDateWrapper">
+								<label style="display: block; font-weight: 600; margin-bottom: 6px;">Custom Date</label>
+								<input type="date" id="sendMailCustomDate" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;" />
+							</div>
+							<div style="margin-bottom: 16px; display: none;" id="sendMailResultsWrapper">
+								<label style="display: block; font-weight: 600; margin-bottom: 6px;">Completed Tasks</label>
+								<div id="sendMailResults" style="border: 1px solid var(--taskflow-border); border-radius: 6px; max-height: 200px; overflow-y: auto; padding: 8px;">
+								</div>
+							</div>
+						</div>
+					</div>
+					<div style="flex: 1; border-left: 1px solid var(--taskflow-border); padding-left: 20px;">
+						<div style="margin-bottom: 12px;">
+							<label style="display: block; font-weight: 600; margin-bottom: 6px;">To</label>
+							<input type="email" id="sendMailTo" placeholder="recipient@example.com" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;" />
+						</div>
+						<div style="margin-bottom: 16px;">
+							<label style="display: block; font-weight: 600; margin-bottom: 6px;">CC</label>
+							<input type="email" id="sendMailCc" placeholder="cc@example.com" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;" />
+						</div>
+						<h3 style="margin-bottom: 12px;">Mail Preview</h3>
+						<div id="sendMailPreview" style="background: var(--taskflow-bg); border: 1px solid var(--taskflow-border); border-radius: 6px; padding: 16px; font-size: 14px; line-height: 1.6;">
+							<div style="font-weight: 700; font-size: 16px; margin-bottom: 8px;">Apptech Notification : Project Tracker</div>
+							<div>Hi Team,</div>
+							<div style="margin-top: 8px;">Please find the latest progress update based on the shared task sheet:</div>
+							<div style="margin-top: 8px;">📢 <strong>Today's Update:</strong> In total <span id="previewTotalTasks">0</span> completed tasks, we have completed <span id="previewCompletedTasks">0</span>.</div>
+							<div style="margin-top: 4px;">Project Name: <span id="previewProjectName">...</span></div>
+							<div style="margin-top: 4px;">Tasks Completed: <span id="previewCompletedCount">0</span></div>
+							<div style="margin-top: 12px;">We are actively working on the pending items and will complete them shortly.</div>
+							<div style="margin-top: 12px; font-weight: 600;">Completed Tasks:</div>
+							<div id="previewTaskList" style="margin-top: 4px; padding-left: 16px;"></div>
+						</div>
+						<button id="sendMailBtn" style="width: 100%; margin-top: 16px; padding: 10px; background: #2490ef; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Send Mail</button>
+					</div>
+				</div>
+			`;
+			document.body.appendChild(backdrop);
+			modal = backdrop;
+
+			// Close handlers
+			backdrop.addEventListener("click", (e) => {
+				if (e.target === backdrop || e.target.closest("[data-close-send-mail]")) {
+					backdrop.classList.remove("open");
+				}
+			});
+
+			// Send Mail button handler
+			const sendMailBtn = backdrop.querySelector("#sendMailBtn");
+			sendMailBtn.addEventListener("click", async () => {
+				const toInput = backdrop.querySelector("#sendMailTo");
+				const ccInput = backdrop.querySelector("#sendMailCc");
+				const previewEl = backdrop.querySelector("#sendMailPreview");
+
+				const to = toInput.value.trim();
+				const cc = ccInput.value.trim();
+				const message = previewEl ? previewEl.innerHTML : "";
+
+				if (!to) {
+					frappe.show_alert({ message: "Please enter a recipient email in To field.", indicator: "red" });
+					return;
+				}
+
+				sendMailBtn.disabled = true;
+				sendMailBtn.textContent = "Sending...";
+
+				try {
+					const result = await apiCall("send_mail", {
+						to: to,
+						cc: cc,
+						subject: "Apptech Notification : Project Tracker",
+						message: message,
+					}, "POST");
+					frappe.show_alert({ message: result.message || "Mail sent successfully.", indicator: "green" });
+					backdrop.classList.remove("open");
+				} catch (err) {
+					frappe.show_alert({ message: "Failed to send mail. Please try again.", indicator: "red" });
+				} finally {
+					sendMailBtn.disabled = false;
+					sendMailBtn.textContent = "Send Mail";
+				}
+			});
+
+			// Team change handler
+			const teamSelect = backdrop.querySelector("#sendMailTeamSelect");
+			const membersWrapper = backdrop.querySelector("#sendMailMembersWrapper");
+			const membersSelect = backdrop.querySelector("#sendMailMembersSelect");
+
+			teamSelect.addEventListener("change", async () => {
+				const team = teamSelect.value;
+				if (!team) {
+					membersWrapper.style.display = "none";
+					membersSelect.innerHTML = "";
+					return;
+				}
+				membersSelect.innerHTML = '<option value="">Loading...</option>';
+				membersWrapper.style.display = "block";
+				try {
+					const result = await apiCall("get_team_members", { team });
+					const members = result.team_members || [];
+					membersSelect.innerHTML = "";
+					members.forEach((m) => {
+						const option = document.createElement("option");
+						option.value = m.user || m.employee;
+						option.textContent = m.employee_name || m.user || m.employee;
+						membersSelect.appendChild(option);
+					});
+					if (members.length === 0) {
+						membersSelect.innerHTML = '<option value="">No members found</option>';
+					}
+				} catch (err) {
+					membersSelect.innerHTML = '<option value="">Error loading members</option>';
+				}
+			});
+
+			// Date filter tab handlers
+			const dateTabs = backdrop.querySelectorAll(".send-mail-date-tab");
+			const customDateWrapper = backdrop.querySelector("#sendMailCustomDateWrapper");
+			const customDateInput = backdrop.querySelector("#sendMailCustomDate");
+			const resultsWrapper = backdrop.querySelector("#sendMailResultsWrapper");
+			const resultsDiv = backdrop.querySelector("#sendMailResults");
+			let selectedDateType = null;
+
+			dateTabs.forEach((tab) => {
+				tab.addEventListener("click", () => {
+					dateTabs.forEach((t) => {
+						t.classList.remove("active");
+						t.style.background = "var(--taskflow-bg)";
+					});
+					tab.classList.add("active");
+					tab.style.background = "var(--taskflow-primary)";
+					tab.style.color = "white";
+					selectedDateType = tab.dataset.dateFilter;
+					customDateWrapper.style.display = selectedDateType === "custom" ? "block" : "none";
+					fetchCompletedTasks();
+				});
+			});
+
+			// Set initial active tab style
+			const activeTab = backdrop.querySelector(".send-mail-date-tab.active");
+			if (activeTab) {
+				activeTab.style.background = "var(--taskflow-primary)";
+				activeTab.style.color = "white";
+			}
+
+			customDateInput.addEventListener("change", () => {
+				fetchCompletedTasks();
+			});
+
+			membersSelect.addEventListener("change", () => {
+				fetchCompletedTasks();
+			});
+
+			async function fetchCompletedTasks() {
+				if (!selectedDateType) {
+					resultsWrapper.style.display = "none";
+					return;
+				}
+
+				const member = membersSelect.value;
+
+				resultsDiv.innerHTML = '<div style="color: var(--text-color-muted); font-size: 13px;">Loading...</div>';
+				resultsWrapper.style.display = "block";
+
+				try {
+					const args = {
+						date_type: selectedDateType,
+						date: customDateInput.value,
+					};
+					if (member) {
+						args.user_id = member;
+					}
+					const result = await apiCall("get_completed_tasks_by_date", args);
+					const tasks = result || [];
+
+					// Update results list
+					if (tasks.length === 0) {
+						resultsDiv.innerHTML = '<div style="color: var(--text-color-muted); font-size: 13px;">No completed tasks found</div>';
+					} else {
+						resultsDiv.innerHTML = tasks.map((t) => `
+							<div style="padding: 8px; border-bottom: 1px solid var(--taskflow-border); font-size: 13px;">
+								<div style="font-weight: 600;">${escapeHtml(t.task_title || t.name)}</div>
+								<div style="color: var(--text-color-muted); margin-top: 2px;">${escapeHtml(t.project || '')} ${t.completed_on ? ' - ' + escapeHtml(t.completed_on) : ''}</div>
+							</div>
+						`).join("");
+					}
+
+					// Update mail preview
+					const projectNames = [...new Set(tasks.map((t) => t.project).filter(Boolean))];
+					const previewTotal = tasks.length;
+					const previewCompleted = tasks.length;
+					const previewProject = projectNames.length > 0 ? projectNames.join(", ") : "...";
+
+					const previewTotalEl = modal.querySelector("#previewTotalTasks");
+					const previewCompletedEl = modal.querySelector("#previewCompletedTasks");
+					const previewProjectEl = modal.querySelector("#previewProjectName");
+					const previewCompletedCountEl = modal.querySelector("#previewCompletedCount");
+					const previewTaskListEl = modal.querySelector("#previewTaskList");
+
+					if (previewTotalEl) previewTotalEl.textContent = previewTotal;
+					if (previewCompletedEl) previewCompletedEl.textContent = previewCompleted;
+					if (previewProjectEl) previewProjectEl.textContent = previewProject;
+					if (previewCompletedCountEl) previewCompletedCountEl.textContent = previewCompleted;
+					if (previewTaskListEl) {
+						if (tasks.length === 0) {
+							previewTaskListEl.innerHTML = '<div style="color: var(--text-color-muted);">No tasks</div>';
+						} else {
+							previewTaskListEl.innerHTML = tasks.map((t) => `
+								<div style="padding: 2px 0;">✅ ${escapeHtml(t.task_title || t.name)}</div>
+							`).join("");
+						}
+					}
+				} catch (err) {
+					resultsDiv.innerHTML = '<div style="color: var(--text-color-muted); font-size: 13px;">Error loading tasks</div>';
+				}
+			}
+		}
+
+		// Populate team options
+		const select = modal.querySelector("#sendMailTeamSelect");
+		if (select) {
+			select.innerHTML = '<option value="">-- Select Team --</option>';
+			const teams = (state.bootstrap && state.bootstrap.teams) || [];
+			teams.forEach((team) => {
+				const option = document.createElement("option");
+				option.value = team.name;
+				option.textContent = team.team_name || team.name;
+				select.appendChild(option);
+			});
+		}
+
+		// Reset members
+		const membersWrapper = modal.querySelector("#sendMailMembersWrapper");
+		const membersSelect = modal.querySelector("#sendMailMembersSelect");
+		const resultsWrapper = modal.querySelector("#sendMailResultsWrapper");
+		const resultsDiv = modal.querySelector("#sendMailResults");
+		if (membersWrapper) membersWrapper.style.display = "none";
+		if (membersSelect) membersSelect.innerHTML = "";
+		if (resultsWrapper) resultsWrapper.style.display = "none";
+		if (resultsDiv) resultsDiv.innerHTML = "";
+
+		modal.classList.add("open");
 	}
 
 	async function openTaskModal(task, status = "") {
@@ -4119,6 +4789,7 @@
 			is_milestone: getFormChecked(form, "is_milestone") ? 1 : 0,
 			is_blocked: getFormChecked(form, "is_blocked") ? 1 : 0,
 			pending_with: getFormValue(form, "pending_with"),
+			pending_from: getFormValue(form, "pending_from"),
 			guided_by: getFormValue(form, "guided_by"),
 			ticket_date: normalizeDateForPayload(getFormValue(form, "ticket_date")),
 			ticket_raised_by: getFormValue(form, "ticket_raised_by"),

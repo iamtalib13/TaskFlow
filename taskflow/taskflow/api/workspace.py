@@ -5,6 +5,7 @@ from typing import Any
 
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 TEAM_FIELDS = [
     "name",
@@ -522,6 +523,18 @@ def create_team(payload: str) -> dict[str, Any]:
     data = _parse_payload(payload)
     doc = frappe.new_doc("Taskflow Team")
     _apply_fields(doc, data, TEAM_WRITE_FIELDS)
+    
+    # Handle team_members child table
+    team_members = data.get("team_members") or []
+    for member in team_members:
+        if member.get("user"):
+            doc.append("team_members", {
+                "user": member.get("user"),
+                "team_role": member.get("team_role", "Team Member"),
+                "access_level": member.get("access_level", "Operate"),
+                "is_active": member.get("is_active", 1),
+            })
+    
     doc.insert(ignore_permissions=False)
     return {"name": doc.name}
 
@@ -532,6 +545,20 @@ def update_team(name: str, payload: str) -> dict[str, Any]:
     doc = frappe.get_doc("Taskflow Team", name)
     data = _parse_payload(payload)
     _apply_fields(doc, data, TEAM_WRITE_FIELDS)
+    
+    # Handle team_members child table
+    team_members = data.get("team_members")
+    if team_members is not None:
+        doc.set("team_members", [])
+        for member in team_members:
+            if member.get("user"):
+                doc.append("team_members", {
+                    "user": member.get("user"),
+                    "team_role": member.get("team_role", "Team Member"),
+                    "access_level": member.get("access_level", "Operate"),
+                    "is_active": member.get("is_active", 1),
+                })
+    
     doc.save(ignore_permissions=False)
     return {"name": doc.name}
 
@@ -646,4 +673,415 @@ def _sync_assignments(doc, new_assignees):
             })
         except Exception:
             pass
+
+
+@frappe.whitelist(methods=["POST"])
+def bulk_insert_tasks() -> dict[str, Any]:
+    """Bulk insert tasks from uploaded CSV or Excel file."""
+    _require_login()
+    
+    files = frappe.request.files
+    if not files:
+        frappe.throw("No file uploaded. Please select a file.")
+    
+    if "file" not in files:
+        frappe.throw("Invalid upload. Please try again.")
+    
+    file = files["file"]
+    if not file.filename:
+        frappe.throw("File has no name. Please try again.")
+    
+    filename = file.filename.lower()
+    print(f"[Bulk Insert] Processing file: {filename}")
+    
+    if not (filename.endswith(".csv") or filename.endswith(".xlsx")):
+        frappe.throw("Invalid file type. Please upload a CSV or Excel (.xlsx) file.")
+    
+    try:
+        if filename.endswith(".csv"):
+            rows = _parse_csv(file)
+        else:
+            rows = _parse_excel(file)
+    except Exception as e:
+        frappe.throw(f"Error parsing file: {str(e)}")
+    
+    if not rows:
+        frappe.throw("No data found in the file.")
+    
+    # Debug: return raw data to see what's happening
+    debug_info = {
+        "total_rows": len(rows),
+        "first_row_raw": [repr(h) for h in rows[0]] if rows else [],
+        "all_rows_count": len(rows),
+        "sample_rows": [[repr(v) for v in row[:3]] for row in rows[:5]],  # First 5 rows, first 3 cols
+    }
+    
+    # Get header row and map to field names
+    # Clean headers: strip whitespace, lowercase, replace spaces with underscores
+    headers = []
+    for h in rows[0]:
+        # Convert to string and handle different types
+        header_str = str(h) if h is not None else ""
+        # Remove single quotes if present
+        header_str = header_str.strip("'\"")
+        cleaned = header_str.strip().lower()
+        
+        # Fix Quoted-Printable encoding: +AF8 = _, +AC0 = -
+        import re
+        cleaned = _decode_qp(cleaned)
+        
+        # Handle child table notation: table_gqbl.user_id → keep table_gqbl prefix
+        if "." in cleaned:
+            parts = cleaned.split(".", 1)
+            table_name = parts[0].replace(" ", "_")
+            field_name = parts[1].replace(" ", "_")
+            cleaned = f"{table_name}.{field_name}"
+        else:
+            # Replace spaces and hyphens with underscores
+            cleaned = cleaned.replace(" ", "_").replace("-", "_")
+            # Remove any remaining special characters except underscore and dot
+            cleaned = re.sub(r'[^a-z0-9_.]', '', cleaned)
+            # Fix double underscores
+            cleaned = re.sub(r'_+', '_', cleaned)
+        headers.append(cleaned)
+    
+    debug_info["cleaned_headers"] = headers
+    
+    data_rows = rows[1:]
+    
+    # Valid fields for Taskflow Task
+    valid_fields = {
+        "task_title", "project", "team", "status", "priority", "task_type",
+        "assigned_to", "start_date", "due_date", "completed_on", "description",
+        "pending_from", "pending_with", "guided_by", "responsible_person",
+        "estimated_hours", "actual_hours", "progress_percent", "is_milestone",
+        "is_blocked", "sequence", "toll_id", "ticket_date", "ticket_id",
+        "ticket_raised_by", "ticket_description", "expected_resolution_date",
+        "estimated_completion_date", "parent_task",
+    }
+    
+    # Map headers to valid field names
+    # Handle table_gqbl.* prefixed headers (child table fields)
+    field_map = []
+    for header in headers:
+        mapped = None
+        # Direct match
+        if header in valid_fields:
+            mapped = header
+        # Handle table_gqbl.user_id → assigned_to
+        elif header.startswith("table_gqbl"):
+            mapped = "assigned_to"
+        # Handle child table notation: table_gqbl.user_id (before cleaning)
+        field_map.append(mapped)
+    
+    debug_info["field_map"] = field_map
+    
+    created_tasks = []
+    errors = []
+    
+    print(f"[Bulk Insert] Processing {len(data_rows)} data rows")
+    print(f"[Bulk Insert] Header count: {len(headers)}")
+    
+    for idx, row in enumerate(data_rows, start=2):
+        print(f"[Bulk Insert] Processing row {idx}: col_count={len(row)}, values={row}")
+        try:
+            task_data = {}
+            for col_idx, field_name in enumerate(field_map):
+                if field_name and col_idx < len(row):
+                    value = str(row[col_idx]).strip() if row[col_idx] else ""
+                    # Remove any remaining quotes
+                    value = value.strip("'\"")
+                    # Fix Quoted-Printable in values (dates, etc.)
+                    value = _decode_qp(value)
+                    if value:
+                        task_data[field_name] = value
+            
+            print(f"[Bulk Insert] Row {idx} task_data: {task_data}")
+            print(f"[Bulk Insert] Row {idx} all values by position:")
+            for col_idx, val in enumerate(row):
+                print(f"  col {col_idx}: {repr(val)}")
+            
+            if not task_data.get("task_title"):
+                print(f"[Bulk Insert] Row {idx}: No task_title found!")
+                errors.append(f"Row {idx}: Task title is required.")
+                continue
+            
+            # Create task
+            doc = frappe.new_doc("Taskflow Task")
+            
+            # Set basic fields
+            for field in ["task_title", "project", "team", "status", "priority", "task_type",
+                         "pending_from", "pending_with", "toll_id", "ticket_id", 
+                         "ticket_raised_by", "ticket_description"]:
+                if field in task_data:
+                    doc.set(field, task_data[field])
+            
+            # Set date fields
+            for field in ["start_date", "due_date", "completed_on", "expected_resolution_date", 
+                         "estimated_completion_date", "ticket_date"]:
+                if field in task_data:
+                    doc.set(field, task_data[field])
+            
+            # Set numeric fields
+            if "estimated_hours" in task_data:
+                doc.estimated_hours = flt(task_data["estimated_hours"])
+            if "actual_hours" in task_data:
+                doc.actual_hours = flt(task_data["actual_hours"])
+            if "progress_percent" in task_data:
+                doc.progress_percent = flt(task_data["progress_percent"])
+            if "sequence" in task_data:
+                doc.sequence = int(task_data["sequence"])
+            
+            # Set check fields
+            if "is_milestone" in task_data:
+                doc.is_milestone = 1 if task_data["is_milestone"] in ["1", "Yes", "yes", "true"] else 0
+            if "is_blocked" in task_data:
+                doc.is_blocked = 1 if task_data["is_blocked"] in ["1", "Yes", "yes", "true"] else 0
+            
+            # Set description (handle HTML content)
+            if "description" in task_data:
+                doc.description = task_data["description"]
+            
+            # Handle assigned_to - save ALL values to table_gqbl child table
+            if "assigned_to" in task_data:
+                assigned_to_str = task_data["assigned_to"]
+                # Split by comma and handle multiple users
+                assigned_users = [u.strip() for u in assigned_to_str.split(",") if u.strip()]
+                
+                if assigned_users:
+                    # Add all users to table_gqbl child table (NOT to assigned_to)
+                    for user_id in assigned_users:
+                        # Append @sahayog.com if not already an email
+                        if "@" not in user_id:
+                            user_id = f"{user_id}@sahayog.com"
+                        doc.append("table_gqbl", {
+                            "user_id": user_id,
+                        })
+            
+            # Set default status if not provided
+            if not doc.status:
+                doc.status = "Open"
+            if not doc.priority:
+                doc.priority = "Medium"
+            
+            print(f"[Bulk Insert] Row {idx}: Inserting task: {task_data.get('task_title')}")
+            doc.insert(ignore_permissions=True)
+            print(f"[Bulk Insert] Row {idx}: Created task {doc.name}")
+            created_tasks.append(doc.name)
+            
+        except Exception as e:
+            print(f"[Bulk Insert] Row {idx}: ERROR - {str(e)}")
+            errors.append(f"Row {idx}: {str(e)}")
+    
+    # Commit all created tasks
+    if created_tasks:
+        frappe.db.commit()
+    
+    message = f"Successfully created {len(created_tasks)} task(s)."
+    if errors:
+        message += f" {len(errors)} row(s) had errors."
+    
+    return {
+        "message": message,
+        "created_count": len(created_tasks),
+        "error_count": len(errors),
+        "created_tasks": created_tasks,
+        "errors": errors,
+        "debug": debug_info,
+    }
+
+
+def _decode_qp(text: str) -> str:
+    """Decode Quoted-Printable-like encoding used in the CSV.
+    Handles +AF8- → _, +AC0- → -, +ACI- → \", +IB0- → comma, +IBw- → \\, etc.
+    """
+    # Order matters: decode longer patterns first
+    text = text.replace("+AF8-", "_").replace("+AF8_", "_")
+    text = text.replace("+AC0-", "-").replace("+AC0_", "-")
+    text = text.replace("+IB0-", ",").replace("+IB0_", ",")
+    text = text.replace("+IBw-", "\\").replace("+IBw_", "\\")
+    text = text.replace("+ACI-", '"').replace("+ACI_", '"')
+    # Clean up: remove stray quote/backslash artifacts
+    text = text.replace('\\"', '"').replace('"', '')
+    text = text.replace("\\,", ",")
+    return text
+
+
+def _parse_csv(file) -> list[list[str]]:
+    """Parse CSV file and return list of rows.
+    
+    Handles the file format where:
+    - Each cell is individually wrapped in single quotes: 'val1','val2','val3'
+    - Cells may contain commas inside quotes: '3130,3131' should stay as one cell
+    - Values may have Quoted-Printable encoding: +AF8- → _, +AC0- → -
+    """
+    import re
+    
+    content = file.read()
+    print(f"[Bulk Insert] File size: {len(content)} bytes")
+    
+    for encoding in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
+        try:
+            decoded = content.decode(encoding)
+            print(f"[Bulk Insert] Decoded with {encoding}")
+            break
+        except (UnicodeDecodeError, AttributeError):
+            continue
+    else:
+        decoded = content.decode("utf-8", errors="ignore")
+    
+    if decoded.startswith("\ufeff"):
+        decoded = decoded[1:]
+    
+    decoded = decoded.replace("\r\n", "\n").replace("\r", "\n")
+    
+    print(f"[Bulk Insert] First 500 chars: {repr(decoded[:500])}")
+    
+    # Detect separator from first non-empty line
+    lines = [l for l in decoded.split("\n") if l.strip()]
+    if not lines:
+        return []
+    
+    first_line = lines[0]
+    tab_count = first_line.count("\t")
+    comma_count = first_line.count(",")
+    
+    if tab_count > comma_count:
+        separator = "\t"
+        print(f"[Bulk Insert] Detected TAB separator ({tab_count} tabs)")
+    else:
+        separator = ","
+        print(f"[Bulk Insert] Detected COMMA separator ({comma_count} commas)")
+    
+    rows = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Remove surrounding single quotes from entire line
+        if line.startswith("'") and line.endswith("'"):
+            line = line[1:-1]
+        
+        # Split by separator
+        raw_cells = line.split(separator)
+        
+        # Merge cells that are inside single quotes (e.g., '3130,3131' split into '3130 and 3131')
+        cells = []
+        current_cell = None
+        for cell in raw_cells:
+            cell = cell.strip()
+            if current_cell is not None:
+                # We're inside a quoted value, keep appending
+                current_cell += separator + cell
+                if cell.endswith("'"):
+                    # End of quoted value
+                    current_cell = current_cell.rstrip("'").lstrip("'")
+                    cells.append(current_cell)
+                    current_cell = None
+            elif cell.startswith("'") and not cell.endswith("'"):
+                # Start of quoted value that contains separator
+                current_cell = cell
+            else:
+                # Normal cell, strip quotes
+                cell = cell.strip("'\"")
+                cells.append(cell)
+        
+        # If we ended while inside a quoted value, add it
+        if current_cell is not None:
+            current_cell = current_cell.rstrip("'").lstrip("'")
+            cells.append(current_cell)
+        
+        # Decode QP encoding in each cell
+        cells = [_decode_qp(c) for c in cells]
+        
+        rows.append(cells)
+    
+    print(f"[Bulk Insert] Parsed {len(rows)} rows, {len(rows[0]) if rows else 0} cols")
+    for i, row in enumerate(rows[:5]):
+        print(f"[Bulk Insert] Row {i}: col_count={len(row)}, data={row}")
+    
+    return rows
+
+
+def _parse_excel(file) -> list[list[str]]:
+    """Parse Excel file and return list of rows."""
+    try:
+        import openpyxl
+    except ImportError:
+        frappe.throw("openpyxl is required to read Excel files.")
+    
+    wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+    ws = wb.active
+    
+    rows = []
+    for row in ws.iter_rows(values_only=True):
+        rows.append([str(cell) if cell is not None else "" for cell in row])
+    
+    wb.close()
+    return rows
+
+
+@frappe.whitelist(methods=["GET"])
+def get_completed_tasks_by_date(user_id: str | None = None, date: str = "", date_type: str = "today") -> list[dict]:
+    """Get completed tasks for a specific date.
+    
+    Args:
+        user_id: Employee ID or User ID (optional - if empty, returns all)
+        date: Date string (YYYY-MM-DD) for custom, ignored for today/yesterday
+        date_type: 'today', 'yesterday', or 'custom'
+    """
+    from frappe.utils import today, add_to_date, getdate
+    
+    _require_login()
+    
+    if date_type == "today":
+        target_date = getdate(today())
+    elif date_type == "yesterday":
+        target_date = getdate(add_to_date(today(), days=-1))
+    else:
+        target_date = getdate(date)
+    
+    filters = {
+        "status": "Completed",
+        "completed_on": ["between", [target_date, add_to_date(target_date, days=1)]],
+    }
+    
+    if user_id:
+        # Find tasks assigned to this user
+        todo_task_names = frappe.get_all(
+            "ToDo",
+            filters={
+                "allocated_to": user_id,
+                "reference_type": "Taskflow Task",
+                "status": ["!=", "Cancelled"],
+            },
+            pluck="reference_name",
+        )
+        child_task_names = frappe.get_all(
+            "Task Assignment",
+            filters={
+                "user_id": user_id,
+                "parenttype": "Taskflow Task",
+            },
+            pluck="parent",
+        )
+        task_names = list(set(todo_task_names + child_task_names))
+        
+        if not task_names:
+            return []
+        
+        filters["name"] = ["in", task_names]
+    
+    tasks = frappe.get_list(
+        "Taskflow Task",
+        fields=[
+            "name", "task_title", "project", "team", "status",
+            "priority", "completed_on", "description",
+        ],
+        filters=filters,
+        order_by="completed_on desc",
+    )
+    
+    return tasks
 
