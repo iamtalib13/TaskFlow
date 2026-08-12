@@ -3862,6 +3862,14 @@
 						</div>
 					</div>
 					<div style="flex: 1; border-left: 1px solid var(--taskflow-border); padding-left: 20px;">
+						<div style="margin-bottom: 12px;">
+							<label style="display: block; font-weight: 600; margin-bottom: 6px;">To</label>
+							<input type="email" id="sendMailTo" placeholder="recipient@example.com" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;" />
+						</div>
+						<div style="margin-bottom: 16px;">
+							<label style="display: block; font-weight: 600; margin-bottom: 6px;">CC</label>
+							<input type="email" id="sendMailCc" placeholder="cc@example.com" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;" />
+						</div>
 						<h3 style="margin-bottom: 12px;">Mail Preview</h3>
 						<div id="sendMailPreview" style="background: var(--taskflow-bg); border: 1px solid var(--taskflow-border); border-radius: 6px; padding: 16px; font-size: 14px; line-height: 1.6;">
 							<div style="font-weight: 700; font-size: 16px; margin-bottom: 8px;">Apptech Notification : Project Tracker</div>
