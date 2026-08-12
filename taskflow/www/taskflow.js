@@ -3830,7 +3830,17 @@
 						<button class="taskflow-modal-close" data-close-send-mail>&times;</button>
 					</div>
 					<div class="taskflow-modal-body">
-						<p style="color: var(--text-color-muted);">Send email notifications to team members.</p>
+						<div style="margin-bottom: 16px;">
+							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Select Team</label>
+							<select id="sendMailTeamSelect" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
+								<option value="">-- Select Team --</option>
+							</select>
+						</div>
+						<div style="margin-bottom: 16px; display: none;" id="sendMailMembersWrapper">
+							<label style="display: block; font-weight: 600; margin-bottom: 6px;">Select Members</label>
+							<select id="sendMailMembersSelect" style="width: 100%; padding: 8px 12px; border: 1px solid var(--taskflow-border); border-radius: 6px; font-size: 14px;">
+							</select>
+						</div>
 					</div>
 				</div>
 			`;
@@ -3843,7 +3853,59 @@
 					backdrop.classList.remove("open");
 				}
 			});
+
+			// Team change handler
+			const teamSelect = backdrop.querySelector("#sendMailTeamSelect");
+			const membersWrapper = backdrop.querySelector("#sendMailMembersWrapper");
+			const membersSelect = backdrop.querySelector("#sendMailMembersSelect");
+
+			teamSelect.addEventListener("change", async () => {
+				const team = teamSelect.value;
+				if (!team) {
+					membersWrapper.style.display = "none";
+					membersSelect.innerHTML = "";
+					return;
+				}
+				membersSelect.innerHTML = '<option value="">Loading...</option>';
+				membersWrapper.style.display = "block";
+				try {
+					const result = await apiCall("get_team_members", { team });
+					const members = result.team_members || [];
+					membersSelect.innerHTML = "";
+					members.forEach((m) => {
+						const option = document.createElement("option");
+						option.value = m.user || m.employee;
+						option.textContent = m.employee_name || m.user || m.employee;
+						membersSelect.appendChild(option);
+					});
+					if (members.length === 0) {
+						membersSelect.innerHTML = '<option value="">No members found</option>';
+					}
+				} catch (err) {
+					membersSelect.innerHTML = '<option value="">Error loading members</option>';
+				}
+			});
 		}
+
+		// Populate team options
+		const select = modal.querySelector("#sendMailTeamSelect");
+		if (select) {
+			select.innerHTML = '<option value="">-- Select Team --</option>';
+			const teams = (state.bootstrap && state.bootstrap.teams) || [];
+			teams.forEach((team) => {
+				const option = document.createElement("option");
+				option.value = team.name;
+				option.textContent = team.team_name || team.name;
+				select.appendChild(option);
+			});
+		}
+
+		// Reset members
+		const membersWrapper = modal.querySelector("#sendMailMembersWrapper");
+		const membersSelect = modal.querySelector("#sendMailMembersSelect");
+		if (membersWrapper) membersWrapper.style.display = "none";
+		if (membersSelect) membersSelect.innerHTML = "";
+
 		modal.classList.add("open");
 	}
 
