@@ -3165,15 +3165,13 @@ body.taskflow-dragging .taskflow-card-dragging {
 
 /* Bulk Insert Modal Styles */
 .taskflow-modal {
-	position: fixed;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	z-index: 9999;
+	position: relative;
+	max-height: 90vh;
+	overflow-y: auto;
+	background: var(--taskflow-bg);
+	border-radius: 12px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+	z-index: 10001;
 }
 
 .taskflow-modal-overlay {
