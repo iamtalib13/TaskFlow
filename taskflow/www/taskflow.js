@@ -879,14 +879,14 @@
 
 		function openBulkInsertModal() {
 			if (bulkInsertModal) {
-				bulkInsertModal.style.display = "flex";
+				bulkInsertModal.classList.add("open");
 				resetBulkUpload();
 			}
 		}
 
 		function closeBulkInsertModal() {
 			if (bulkInsertModal) {
-				bulkInsertModal.style.display = "none";
+				bulkInsertModal.classList.remove("open");
 				resetBulkUpload();
 			}
 		}
@@ -1032,6 +1032,13 @@
 
 		document.querySelectorAll('[data-close-modal="bulkInsertModal"]').forEach((btn) => {
 			btn.addEventListener("click", closeBulkInsertModal);
+		});
+
+		// Close bulk insert modal on backdrop click
+		bulkInsertModal?.addEventListener("click", (e) => {
+			if (e.target === bulkInsertModal) {
+				closeBulkInsertModal();
+			}
 		});
 
 		// Get Template Button Handler
@@ -3908,7 +3915,7 @@
 				const message = previewEl ? previewEl.innerHTML : "";
 
 				if (!to) {
-					frappe.msgprint("Please enter a recipient email in To field.");
+					frappe.show_alert({ message: "Please enter a recipient email in To field.", indicator: "red" });
 					return;
 				}
 
@@ -3922,10 +3929,10 @@
 						subject: "Apptech Notification : Project Tracker",
 						message: message,
 					}, "POST");
-					frappe.msgprint(result.message || "Mail sent successfully.");
+					frappe.show_alert({ message: result.message || "Mail sent successfully.", indicator: "green" });
 					backdrop.classList.remove("open");
 				} catch (err) {
-					frappe.msgprint("Failed to send mail. Please try again.");
+					frappe.show_alert({ message: "Failed to send mail. Please try again.", indicator: "red" });
 				} finally {
 					sendMailBtn.disabled = false;
 					sendMailBtn.textContent = "Send Mail";

@@ -851,6 +851,9 @@ def bulk_insert_tasks() -> dict[str, Any]:
                 if assigned_users:
                     # Add all users to table_gqbl child table (NOT to assigned_to)
                     for user_id in assigned_users:
+                        # Append @sahayog.com if not already an email
+                        if "@" not in user_id:
+                            user_id = f"{user_id}@sahayog.com"
                         doc.append("table_gqbl", {
                             "user_id": user_id,
                         })
