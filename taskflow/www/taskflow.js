@@ -3882,6 +3882,7 @@
 							<div style="margin-top: 12px; font-weight: 600;">Completed Tasks:</div>
 							<div id="previewTaskList" style="margin-top: 4px; padding-left: 16px;"></div>
 						</div>
+						<button id="sendMailBtn" style="width: 100%; margin-top: 16px; padding: 10px; background: #2490ef; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Send Mail</button>
 					</div>
 				</div>
 			`;
