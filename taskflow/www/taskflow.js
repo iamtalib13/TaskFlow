@@ -10,25 +10,42 @@
 		"Overdue",
 	];
 	const TASK_VIEWS = ["list", "kanban", "dashboard", "timeline", "files", "settings", "project-settings", "work-history"];
-	const NAV_MODES = ["dashboard", "my-tasks", "calendar", "reports", "team", "settings"];
-	const NAV_PLACEHOLDER_MODES = ["reports", "settings"];
-	const LIST_ROW_HEIGHT = 48;
-	const LIST_BUFFER_ROWS = 8;
-	const LIST_COLUMN_COUNT = 12;
-	const LIST_COLUMNS = [
-		{ key: null, label: "Sr No.", sortable: false },
-		{ key: "task_title", label: "Task" },
-		{ key: "project_title", label: "Project" },
-		{ key: "assigned_to_name", label: "Assignee" },
-		{ key: "status", label: "Status" },
-		{ key: "start_date", label: "Start Date" },
-		{ key: "due_date", label: "Due Date" },
-		{ key: "completed_date", label: "Completed On" },
-		{ key: "age", label: "Age" },
-		{ key: "priority", label: "Priority" },
-		{ key: "modified", label: "Last Modified" },
-		{ key: "task_type", label: "Type" },
-	];
+const NAV_MODES = ["dashboard", "my-tasks", "calendar", "reports", "team", "settings"];
+const NAV_PLACEHOLDER_MODES = ["reports", "settings"];
+const LIST_ROW_HEIGHT = 48;
+const LIST_BUFFER_ROWS = 8;
+
+const BASE_LIST_COLUMNS = [
+	{ key: "task_title", label: "Task" },
+	{ key: "project_title", label: "Project" },
+	{ key: "assigned_to_name", label: "Assignee" },
+	{ key: "status", label: "Status" },
+	{ key: "start_date", label: "Start Date" },
+	{ key: "due_date", label: "Due Date" },
+	{ key: "completed_date", label: "Completed On" },
+	{ key: "age", label: "Age" },
+	{ key: "priority", label: "Priority" },
+	{ key: "modified", label: "Last Modified" },
+	{ key: "task_type", label: "Type" },
+];
+
+function isAdmin() {
+	const user = state.bootstrap && state.bootstrap.user && state.bootstrap.user.user;
+	return user === "Administrator";
+}
+
+function getListColumns() {
+	const cols = [...BASE_LIST_COLUMNS];
+	if (isAdmin()) {
+		cols.unshift({ key: "select", label: "", sortable: false, width: "40px" });
+	}
+	cols.unshift({ key: null, label: "Sr No.", sortable: false, width: "50px" });
+	return cols;
+}
+
+function getColumnCount() {
+	return getListColumns().length;
+}
 
 	const state = {
 		bootstrap: null,
@@ -3083,7 +3100,7 @@
 					<table class="taskflow-super-table">
 						<thead>
 							<tr>
-								${LIST_COLUMNS.map(
+								${getListColumns().map(
 									(column) => `
 									<th>
 										<button type="button" class="taskflow-super-sort" data-sort-key="${column.key}" aria-sort="none">
@@ -3173,7 +3190,7 @@
 		if (!total) {
 			refs.listBody.innerHTML = `
 				<tr class="taskflow-super-empty-row">
-					<td colspan="${LIST_COLUMN_COUNT}">
+					<td colspan="${getColumnCount()}">
 						<div class="taskflow-empty" style="margin: 24px 0;">No tasks found.</div>
 					</td>
 				</tr>
@@ -3289,7 +3306,7 @@
 	}
 
 	function renderListSpacerRow(height) {
-		return `<tr class="taskflow-super-spacer" aria-hidden="true"><td colspan="${LIST_COLUMN_COUNT}" style="height:${height}px; padding:0; border:none;"></td></tr>`;
+		return `<tr class="taskflow-super-spacer" aria-hidden="true"><td colspan="${getColumnCount()}" style="height:${height}px; padding:0; border:none;"></td></tr>`;
 	}
 
 	function renderListRow(task, index) {
@@ -3338,6 +3355,7 @@
 
 		return `
 			<tr class="taskflow-super-row" data-task-row="${escapeHtml(task.name)}" tabindex="0" role="button" aria-label="${escapeHtml(`Open ${rowLabel}`)}">
+				${isAdmin() ? `<td class="taskflow-super-cell taskflow-super-cell--center"><input type="checkbox" class="taskflow-row-checkbox" data-task-name="${escapeHtml(task.name)}" /></td>` : ""}
 				<td class="taskflow-super-cell taskflow-super-cell--center taskflow-super-cell--index">${escapeHtml(String(index + 1))}</td>
 				<td class="taskflow-super-cell taskflow-super-cell--task">
 					<div class="taskflow-super-task">
