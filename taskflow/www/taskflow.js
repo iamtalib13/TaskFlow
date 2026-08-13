@@ -3094,6 +3094,9 @@ function getColumnCount() {
 						<strong data-task-table-count>${state.listTable.tasks.length}</strong>
 						<span>tasks</span>
 					</div>
+					${isAdmin() ? `<div class="taskflow-super-table-actions">
+						<button type="button" class="taskflow-button danger taskflow-delete-selected" data-delete-selected style="display: none;">Delete Selected</button>
+					</div>` : ""}
 					<div class="taskflow-super-table-status" data-task-table-range></div>
 				</div>
 				<div class="taskflow-super-table-scroll" data-task-table-scroll>
@@ -3133,6 +3136,14 @@ function getColumnCount() {
 
 		refs.listBody?.addEventListener("click", handleListRowActivation);
 		refs.listBody?.addEventListener("keydown", handleListRowKeydown);
+
+		// Admin checkbox selection + delete
+		refs.listBody?.addEventListener("change", handleListCheckboxChange);
+
+		const deleteBtn = refs.listView.querySelector("[data-delete-selected]");
+		if (deleteBtn) {
+			deleteBtn.addEventListener("click", handleDeleteSelectedTasks);
+		}
 
 		if (!state.listTable.resizeBound) {
 			window.addEventListener("resize", scheduleListRender);
@@ -3394,6 +3405,48 @@ function getColumnCount() {
 		event.preventDefault();
 		const task = findTask(row.dataset.taskRow);
 		if (task) openTaskModal(task);
+	}
+
+	function handleListCheckboxChange(event) {
+		if (!event.target.matches(".taskflow-row-checkbox")) return;
+		toggleDeleteSelectedButton();
+	}
+
+	function toggleDeleteSelectedButton() {
+		const deleteBtn = document.querySelector("[data-delete-selected]");
+		if (!deleteBtn) return;
+		const checked = document.querySelectorAll(".taskflow-row-checkbox:checked");
+		if (checked.length > 0) {
+			deleteBtn.style.display = "inline-block";
+		} else {
+			deleteBtn.style.display = "none";
+		}
+	}
+
+	async function handleDeleteSelectedTasks() {
+		if (!isAdmin()) return;
+		const checked = Array.from(document.querySelectorAll(".taskflow-row-checkbox:checked"));
+		if (checked.length === 0) return;
+
+		const names = checked.map((cb) => cb.dataset.taskName);
+		const count = names.length;
+		if (!confirm(`Delete ${count} selected task${count > 1 ? "s" : ""}? This cannot be undone.`)) {
+			return;
+		}
+
+		try {
+			await apiCall(
+				"delete_tasks",
+				{ payload: JSON.stringify({ names }) },
+				"POST",
+			);
+			showMessage(`Deleted ${count} task${count > 1 ? "s" : ""}.`);
+			await loadBootstrap(state.selectedProject, { updateUrl: false });
+			await loadStateFromUrl({ updateUrl: false });
+			toggleDeleteSelectedButton();
+		} catch (error) {
+			showMessage(error.message || "Failed to delete tasks.");
+		}
 	}
 
 	function getTaskAgeDays(task) {

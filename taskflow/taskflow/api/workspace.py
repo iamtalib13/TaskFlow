@@ -599,6 +599,25 @@ def delete_project(name: str) -> dict[str, Any]:
 
 
 @frappe.whitelist(methods=["POST"])
+def delete_tasks(payload: str) -> dict[str, Any]:
+    _require_login()
+    data = _parse_payload(payload)
+    names = data.get("names") or []
+    if not isinstance(names, list) or not names:
+        frappe.throw("No tasks selected to delete.")
+    deleted = []
+    for name in names:
+        name = _as_text(name)
+        if not name:
+            continue
+        doc = frappe.get_doc("Taskflow Task", name)
+        doc.check_permission("delete")
+        frappe.delete_doc("Taskflow Task", name, ignore_permissions=False)
+        deleted.append(name)
+    return {"deleted": deleted}
+
+
+@frappe.whitelist(methods=["POST"])
 def save_task(payload: str) -> dict[str, Any]:
     _require_login()
     data = _parse_payload(payload)
