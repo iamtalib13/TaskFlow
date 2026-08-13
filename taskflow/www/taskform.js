@@ -424,6 +424,8 @@
 					mentionDropdown.style.display = "none";
 					mentionActive = false;
 				}
+				const clearBtn = document.getElementById("clearCommentBtn");
+				if (clearBtn) clearBtn.style.display = val.trim() ? "" : "none";
 			});
 
 			refs.commentInput.addEventListener("keydown", (e) => {
