@@ -1920,7 +1920,9 @@
 							<div class="comment-compose-actions">
 								<button
 									class="btn btn-ghost btn-sm"
-									onclick="document.getElementById('commentInput').value = ''"
+									id="clearCommentBtn"
+									style="display: none;"
+									onclick="document.getElementById('commentInput').value = ''; this.style.display = 'none';"
 								>
 									Clear
 								</button>
