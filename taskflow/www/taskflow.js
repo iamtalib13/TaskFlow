@@ -5025,6 +5025,10 @@
 				toggleModal(modal, false);
 			}
 		}
+		if (name === "add-team") {
+			const modal = document.querySelector("[data-add-team-modal]");
+			if (modal) toggleModal(modal, false);
+		}
 	}
 
 	async function closeIframeModal() {
