@@ -3382,10 +3382,13 @@
 		if (!task || !task.start_date) return 0;
 		const startDate = parseDateValue(task.start_date);
 		if (!startDate) return 0;
-		// Use local midnight for today so we compare at the same boundary
-		const today = new Date();
-		const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-		const diff = todayMidnight - startDate;
+		// For completed tasks, use completed_date; otherwise use today
+		const endDate = task.completed_date
+			? parseDateValue(task.completed_date)
+			: new Date();
+		if (!endDate) return 0;
+		const endMidnight = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+		const diff = endMidnight - startDate;
 		return diff < 0 ? 0 : Math.floor(diff / (1000 * 60 * 60 * 24));
 	}
 

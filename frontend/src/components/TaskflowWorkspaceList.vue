@@ -229,14 +229,19 @@ function priorityClass(row) {
 }
 
 function ageLabel(row) {
-  const source = row.creation || row.start_date
+  const source = row.start_date
   if (!source) return '—'
 
-  const date = new Date(String(source).replace(' ', 'T'))
-  if (Number.isNaN(date.getTime())) return '—'
+  const startDate = new Date(String(source).replace(' ', 'T'))
+  if (Number.isNaN(startDate.getTime())) return '—'
 
-  const diff = Date.now() - date.getTime()
-  if (diff <= 0) return '0m'
+  // For completed tasks, use completed_on; otherwise use now
+  const endDateValue = row.completed_on || row.completed_date
+  const endDate = endDateValue ? new Date(String(endDateValue).replace(' ', 'T')) : new Date()
+  if (Number.isNaN(endDate.getTime())) return '—'
+
+  const diff = endDate - startDate
+  if (diff <= 0) return '0d'
 
   const days = Math.floor(diff / 86400000)
   if (days > 0) return `${days}d`
