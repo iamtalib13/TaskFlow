@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Any
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import flt, getdate
 
 TEAM_FIELDS = [
     "name",
@@ -816,11 +817,13 @@ def bulk_insert_tasks() -> dict[str, Any]:
                 if field in task_data:
                     doc.set(field, task_data[field])
             
-            # Set date fields
+            # Set date fields — flexible format, empty/invalid values are skipped
             for field in ["start_date", "due_date", "completed_on", "expected_resolution_date", 
                          "estimated_completion_date", "ticket_date"]:
                 if field in task_data:
-                    doc.set(field, task_data[field])
+                    normalized = _normalize_date(task_data[field])
+                    if normalized:
+                        doc.set(field, normalized)
             
             # Set numeric fields
             if "estimated_hours" in task_data:
@@ -889,6 +892,47 @@ def bulk_insert_tasks() -> dict[str, Any]:
         "errors": errors,
         "debug": debug_info,
     }
+
+
+def _normalize_date(value: Any) -> str | None:
+    """Normalize a date value from any common format to YYYY-MM-DD.
+
+    Accepts ISO dates (2026-08-16, 2026-08-16 10:30:00), DD-MM-YYYY,
+    MM/DD/YYYY, DD/MM/YYYY, and datetime objects. Returns None when the
+    value is empty or cannot be parsed, so invalid/empty cells are skipped.
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+
+    text = str(value).strip().strip("'\"")
+    if not text:
+        return None
+
+    try:
+        return getdate(text).isoformat()
+    except Exception:
+        pass
+
+    # DD-MM-YYYY / DD/MM/YYYY
+    for sep in ("-", "/", "."):
+        if sep in text:
+            parts = text.split(sep)
+            if len(parts) == 3:
+                a, b, c = parts
+                if len(a) == 4 and len(b) == 2 and len(c) == 2:
+                    year, month, day = a, b, c
+                elif len(a) == 2 and len(b) == 2 and len(c) == 4:
+                    day, month, year = a, b, c
+                else:
+                    continue
+                try:
+                    return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+                except ValueError:
+                    continue
+    return None
 
 
 def _decode_qp(text: str) -> str:
