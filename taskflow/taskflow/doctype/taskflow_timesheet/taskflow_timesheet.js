@@ -438,7 +438,7 @@ const TimesheetUI = {
 			TimesheetUI.update_summary(frm);
 		});
 
-		// Open Row Detail Edit Modal on row click / info button click using frappe.ui.Dialog
+		// Open Row Detail Edit Modal on row click / info button click using frappe.ui.Dialog (size: extra-large)
 		wrapper.off("click.tf_row_detail").on("click.tf_row_detail", ".tf-row-view-btn, .tf-row-num", function (e) {
 			e.stopPropagation();
 			const idx = $(this).data("idx");
@@ -684,6 +684,7 @@ const TimesheetUI = {
 
 		const d = new frappe.ui.Dialog({
 			title: `Edit Entry #${idx + 1}`,
+			size: "extra-large",
 			fields: [
 				{
 					label: "Activity Type",
