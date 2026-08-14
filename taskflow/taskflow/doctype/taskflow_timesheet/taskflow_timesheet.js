@@ -180,9 +180,14 @@ const TimesheetCalculation = {
 };
 
 /* ==========================================================================
-   Data Fetching Service
+   Data Fetching Service & Title Resolver Cache
    ========================================================================== */
 const TimesheetDataService = {
+	titles_cache: {
+		projects: {},
+		tasks: {},
+	},
+
 	fetch_recent_projects(search_txt, callback) {
 		const filters = [];
 		if (search_txt && search_txt.trim()) {
@@ -195,7 +200,12 @@ const TimesheetDataService = {
 				order_by: "modified desc",
 				limit: 20,
 			})
-			.then((projects) => callback(projects || []));
+			.then((projects) => {
+				(projects || []).forEach((p) => {
+					this.titles_cache.projects[p.name] = p.project_name || p.name;
+				});
+				callback(projects || []);
+			});
 	},
 
 	fetch_recent_tasks(project_name, search_txt, callback) {
@@ -214,7 +224,66 @@ const TimesheetDataService = {
 				order_by: "modified desc",
 				limit: 20,
 			})
-			.then((tasks) => callback(tasks || []));
+			.then((tasks) => {
+				(tasks || []).forEach((t) => {
+					this.titles_cache.tasks[t.name] = t.task_title || t.name;
+				});
+				callback(tasks || []);
+			});
+	},
+
+	ensure_titles_loaded(items, callback) {
+		const missing_projects = [];
+		const missing_tasks = [];
+
+		(items || []).forEach((item) => {
+			if (item.project && !this.titles_cache.projects[item.project]) {
+				missing_projects.push(item.project);
+			}
+			if (item.task && !this.titles_cache.tasks[item.task]) {
+				missing_tasks.push(item.task);
+			}
+		});
+
+		const promises = [];
+
+		if (missing_projects.length > 0) {
+			promises.push(
+				frappe.db
+					.get_list("Taskflow Project", {
+						filters: [["name", "in", missing_projects]],
+						fields: ["name", "project_name"],
+						limit: missing_projects.length,
+					})
+					.then((projects) => {
+						(projects || []).forEach((p) => {
+							this.titles_cache.projects[p.name] = p.project_name || p.name;
+						});
+					})
+			);
+		}
+
+		if (missing_tasks.length > 0) {
+			promises.push(
+				frappe.db
+					.get_list("Taskflow Task", {
+						filters: [["name", "in", missing_tasks]],
+						fields: ["name", "task_title"],
+						limit: missing_tasks.length,
+					})
+					.then((tasks) => {
+						(tasks || []).forEach((t) => {
+							this.titles_cache.tasks[t.name] = t.task_title || t.name;
+						});
+					})
+			);
+		}
+
+		if (promises.length > 0) {
+			Promise.all(promises).then(() => callback());
+		} else {
+			callback();
+		}
 	},
 };
 
@@ -438,6 +507,7 @@ const TimesheetUI = {
 			const p_name = $(this).data("name");
 			const p_title = $(this).data("title");
 
+			TimesheetDataService.titles_cache.projects[p_name] = p_title;
 			wrapper.find(`.tf-row-project-input[data-idx="${idx}"]`).val(p_title);
 			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
 			if (child) {
@@ -496,6 +566,7 @@ const TimesheetUI = {
 			const t_name = $(this).data("name");
 			const t_title = $(this).data("title");
 
+			TimesheetDataService.titles_cache.tasks[t_name] = t_title;
 			wrapper.find(`.tf-row-task-input[data-idx="${idx}"]`).val(t_title);
 			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
 			if (child) frappe.model.set_value(child.doctype, child.name, "task", t_name);
@@ -565,6 +636,13 @@ const TimesheetUI = {
 	},
 
 	update_table_rows(frm, wrapper) {
+		const items = frm.doc.table_pfiw || [];
+		TimesheetDataService.ensure_titles_loaded(items, () => {
+			this._render_table_rows_internal(frm, wrapper);
+		});
+	},
+
+	_render_table_rows_internal(frm, wrapper) {
 		const $tbody = wrapper.find("#tf-table-body");
 		$tbody.empty();
 
@@ -601,8 +679,9 @@ const TimesheetUI = {
 			const wt_meet_sel = work_type === "Meeting" ? "selected" : "";
 			const wt_res_sel = work_type === "Research" ? "selected" : "";
 
-			const proj_val = is_task ? item.project || "" : "";
-			const task_val = is_task ? item.task || "" : "";
+			// Resolve Title from Cache
+			const proj_display = is_task ? (TimesheetDataService.titles_cache.projects[item.project] || item.project || "") : "";
+			const task_display = is_task ? (TimesheetDataService.titles_cache.tasks[item.task] || item.task || "") : "";
 
 			const is_dis = is_submitted;
 			const proj_attrs = is_task && !is_dis
@@ -626,14 +705,14 @@ const TimesheetUI = {
 					</td>
 					<td>
 						<div class="tf-dropdown-container">
-							<input type="text" class="tf-dropdown-input tf-row-project-input" data-idx="${idx}" value="${frappe.utils.escape_html(proj_val)}" ${proj_attrs} autocomplete="off" />
+							<input type="text" class="tf-dropdown-input tf-row-project-input" data-idx="${idx}" value="${frappe.utils.escape_html(proj_display)}" ${proj_attrs} autocomplete="off" />
 							<svg class="tf-dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
 							<div class="tf-dropdown-menu tf-proj-menu-${idx}"></div>
 						</div>
 					</td>
 					<td>
 						<div class="tf-dropdown-container">
-							<input type="text" class="tf-dropdown-input tf-row-task-input" data-idx="${idx}" value="${frappe.utils.escape_html(task_val)}" ${task_attrs} autocomplete="off" />
+							<input type="text" class="tf-dropdown-input tf-row-task-input" data-idx="${idx}" value="${frappe.utils.escape_html(task_display)}" ${task_attrs} autocomplete="off" />
 							<svg class="tf-dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
 							<div class="tf-dropdown-menu tf-task-menu-${idx}"></div>
 						</div>
