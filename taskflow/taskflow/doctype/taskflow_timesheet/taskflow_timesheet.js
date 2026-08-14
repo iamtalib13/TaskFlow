@@ -96,7 +96,7 @@ const TimeUtils = {
 	hhmm_to_hours(hhmm) {
 		if (!hhmm) return 0;
 		const parts = String(hhmm).split(":");
-		if (parts.length === 2) {
+		if (parts.length >= 2) {
 			const h = parseFloat(parts[0]) || 0;
 			const m = parseFloat(parts[1]) || 0;
 			return h + m / 60;
@@ -109,8 +109,8 @@ const TimeUtils = {
 		const [f_h, f_m] = from_str.split(":").map(Number);
 		const [t_h, t_m] = to_str.split(":").map(Number);
 
-		let from_mins = f_h * 60 + (f_m || 0);
-		let to_mins = t_h * 60 + (t_m || 0);
+		let from_mins = (f_h || 0) * 60 + (f_m || 0);
+		let to_mins = (t_h || 0) * 60 + (t_m || 0);
 
 		if (to_mins < from_mins) {
 			to_mins += 24 * 60;
@@ -125,6 +125,21 @@ const TimeUtils = {
 			return time_val.split(" ")[1].substring(0, 5);
 		}
 		return String(time_val).substring(0, 5);
+	},
+
+	format_time_hhmmss(time_val) {
+		if (!time_val) return "00:00:00";
+		let str = String(time_val).trim();
+		if (str.includes(" ")) {
+			str = str.split(" ")[1];
+		}
+		const parts = str.split(":");
+		if (parts.length === 2) {
+			return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}:00`;
+		} else if (parts.length >= 3) {
+			return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}:${parts[2].padStart(2, "0")}`;
+		}
+		return "00:00:00";
 	},
 
 	format_date_ddmmyyyy(date_str) {
@@ -678,8 +693,8 @@ const TimesheetUI = {
 
 		const is_submitted = frm.doc.status === "Submitted";
 		const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
-		const from_val = TimeUtils.extract_time_str(child.from_time) || "10:00";
-		const to_val = TimeUtils.extract_time_str(child.to_time) || "18:00";
+		const from_val = TimeUtils.format_time_hhmmss(child.from_time) || "10:00:00";
+		const to_val = TimeUtils.format_time_hhmmss(child.to_time) || "18:00:00";
 		const duration_str = TimeUtils.hours_to_hhmm(child.hrs);
 
 		const d = new frappe.ui.Dialog({
@@ -795,13 +810,17 @@ const TimesheetUI = {
 				const act = values.activity_type || "Task";
 				const proj = act === "Task" ? values.project || "" : "";
 				const task = act === "Task" ? values.task || "" : "";
-				const f_time = values.from_time || "10:00";
-				const t_time = values.to_time || "18:00";
+				let f_time = values.from_time || "10:00:00";
+				let t_time = values.to_time || "18:00:00";
+
+				if (f_time.length === 5) f_time += ":00";
+				if (t_time.length === 5) t_time += ":00";
+
 				const hrs = TimeUtils.hhmm_to_hours(values.hrs_str || "00:00");
 				const desc = values.description || "";
 
-				const from_datetime = `${doc_date} ${f_time}:00`;
-				const to_datetime = `${doc_date} ${t_time}:00`;
+				const from_datetime = `${doc_date} ${f_time}`;
+				const to_datetime = `${doc_date} ${t_time}`;
 
 				const promises = [
 					frappe.model.set_value(child.doctype, child.name, "activity_type", act),
