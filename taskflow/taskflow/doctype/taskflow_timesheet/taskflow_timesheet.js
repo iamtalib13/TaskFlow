@@ -391,7 +391,7 @@ const TimesheetUI = {
 			TimesheetUI.update_bulk_delete_button(wrapper);
 		});
 
-		// Bulk delete button click
+		// Bulk delete button click (Only way to delete rows)
 		wrapper.off("click.tf_bulk_del").on("click.tf_bulk_del", "#tf-btn-delete-bulk", function () {
 			if (is_submitted()) return;
 			const selected_indices = [];
@@ -458,18 +458,6 @@ const TimesheetUI = {
 			e.stopPropagation();
 			const idx = $(this).data("idx");
 			TimesheetUI.show_row_detail_modal(frm, idx);
-		});
-
-		// Delegate Row Level Events
-		wrapper.off("click.tf_row_del").on("click.tf_row_del", ".tf-btn-delete-row", function () {
-			if (is_submitted()) return;
-			const idx = $(this).data("idx");
-			frm.doc.table_pfiw.splice(idx, 1);
-			frm.doc.table_pfiw.forEach((r, i) => (r.idx = i + 1));
-			frm.refresh_field("table_pfiw");
-			TimesheetCalculation.calculate_total_hours(frm);
-			TimesheetUI.update_table_rows(frm, wrapper);
-			TimesheetUI.update_summary(frm);
 		});
 
 		wrapper.off("change.tf_row_wt").on("change.tf_row_wt", ".tf-row-work-type", function () {
@@ -955,15 +943,10 @@ const TimesheetUI = {
 						</div>
 					</td>
 					<td>
-						<div style="display: flex; align-items: center; gap: 2px;">
+						<div style="display: flex; align-items: center; justify-content: center;">
 							<button class="tf-btn-icon tf-row-view-btn" data-idx="${idx}" title="Edit in Dialog" type="button" style="color: #2563eb;">
 								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
 							</button>
-							${!is_dis ? `
-							<button class="tf-btn-icon tf-btn-delete-row" data-idx="${idx}" title="Delete" type="button">
-								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-							</button>
-							` : ""}
 						</div>
 					</td>
 				</tr>
@@ -1508,7 +1491,7 @@ const TimesheetUI = {
 						<th style="width: 68px; text-align: center;">To</th>
 						<th style="width: 68px; text-align: center;">Duration</th>
 						<th style="width: 130px;">Description</th>
-						<th style="width: 55px;"></th>
+						<th style="width: 35px;"></th>
 					</tr>
 				</thead>
 				<tbody id="tf-table-body">
