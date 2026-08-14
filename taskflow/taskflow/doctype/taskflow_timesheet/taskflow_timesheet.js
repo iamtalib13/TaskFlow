@@ -751,7 +751,7 @@ const TimesheetUI = {
 		const status_val = frm.doc.status || "Draft";
 		const default_subject = `Timesheet Summary - ${doc_date} - ${emp_name}`;
 
-		// Pre-populate Hyper-Structured HTML Email Body with 12-Hour AM/PM Time Format
+		// Pre-populate Hyper-Structured HTML Email Body
 		const items = frm.doc.table_pfiw || [];
 		let total_hrs = 0;
 		const breakdown = { Task: 0, Meeting: 0, Research: 0 };
@@ -833,29 +833,8 @@ const TimesheetUI = {
 		</tr>
 	</table>
 
-	<!-- Activity Breakout Cards -->
-	<div style="margin-bottom: 20px;">
-		<div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">Activity Hours Breakdown</div>
-		<table style="width: 100%; border-collapse: separate; border-spacing: 8px 0;">
-			<tr>
-				<td style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 12px; width: 33.33%;">
-					<div style="font-size: 11px; font-weight: 700; color: #1d4ed8; text-transform: uppercase;">Task</div>
-					<div style="font-size: 18px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 2px;">${task_str} <span style="font-size: 11px; font-weight: 500; color: #64748b;">hrs</span></div>
-				</td>
-				<td style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 6px; padding: 10px 12px; width: 33.33%;">
-					<div style="font-size: 11px; font-weight: 700; color: #6d28d9; text-transform: uppercase;">Meeting</div>
-					<div style="font-size: 18px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 2px;">${meet_str} <span style="font-size: 11px; font-weight: 500; color: #64748b;">hrs</span></div>
-				</td>
-				<td style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 10px 12px; width: 33.33%;">
-					<div style="font-size: 11px; font-weight: 700; color: #047857; text-transform: uppercase;">Research</div>
-					<div style="font-size: 18px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 2px;">${res_str} <span style="font-size: 11px; font-weight: 500; color: #64748b;">hrs</span></div>
-				</td>
-			</tr>
-		</table>
-	</div>
-
 	<!-- Time Entries Detailed Breakout Table -->
-	<div style="margin-bottom: 24px;">
+	<div style="margin-bottom: 20px;">
 		<div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">Detailed Time Log Entries</div>
 		<table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
 			<tbody>
@@ -871,6 +850,29 @@ const TimesheetUI = {
 				</tr>
 				${table_rows}
 			</tbody>
+		</table>
+	</div>
+
+	<!-- Activity Breakdown Summary Block (Placed at the bottom before signature) -->
+	<div style="background: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+		<div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+			Activity Hours Summary & Breakout
+		</div>
+		<table style="width: 100%; border-collapse: separate; border-spacing: 10px 0;">
+			<tr>
+				<td style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 12px 14px; width: 33.33%; text-align: center;">
+					<div style="font-size: 11px; font-weight: 700; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.5px;">TASK</div>
+					<div style="font-size: 20px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 4px;">${task_str} <span style="font-size: 11px; font-weight: 600; color: #64748b;">hrs</span></div>
+				</td>
+				<td style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 6px; padding: 12px 14px; width: 33.33%; text-align: center;">
+					<div style="font-size: 11px; font-weight: 700; color: #6d28d9; text-transform: uppercase; letter-spacing: 0.5px;">MEETING</div>
+					<div style="font-size: 20px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 4px;">${meet_str} <span style="font-size: 11px; font-weight: 600; color: #64748b;">hrs</span></div>
+				</td>
+				<td style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 12px 14px; width: 33.33%; text-align: center;">
+					<div style="font-size: 11px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px;">RESEARCH</div>
+					<div style="font-size: 20px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 4px;">${res_str} <span style="font-size: 11px; font-weight: 600; color: #64748b;">hrs</span></div>
+				</td>
+			</tr>
 		</table>
 	</div>
 
