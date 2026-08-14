@@ -1026,10 +1026,14 @@ function get_widget_html(frm) {
 
   .tf-bottom-container {
     margin-top: 20px;
+    display: flex;
+    justify-content: flex-start;
   }
 
-  /* Sleek Modern Analytics Card */
+  /* Sleek Modern Analytics Card - Compact Left Aligned */
   .tf-analytics-card {
+    width: 340px;
+    max-width: 100%;
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
