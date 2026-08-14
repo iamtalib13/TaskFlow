@@ -839,19 +839,17 @@ const TimesheetUI = {
 	<div style="margin-bottom: 24px;">
 		<div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">Detailed Time Log Entries</div>
 		<table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
-			<thead>
-				<tr style="background: #f1f5f9; color: #334155; border-bottom: 2px solid #cbd5e1; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
-					<th style="padding: 10px 8px; text-align: center; width: 45px; border-right: 1px solid #cbd5e1;">Sr No</th>
-					<th style="padding: 10px 8px; width: 85px; border-right: 1px solid #cbd5e1;">Activity</th>
-					<th style="padding: 10px 8px; border-right: 1px solid #cbd5e1;">Project Name</th>
-					<th style="padding: 10px 8px; border-right: 1px solid #cbd5e1;">Task Title</th>
-					<th style="padding: 10px 8px; text-align: center; width: 55px; border-right: 1px solid #cbd5e1;">From</th>
-					<th style="padding: 10px 8px; text-align: center; width: 55px; border-right: 1px solid #cbd5e1;">To</th>
-					<th style="padding: 10px 8px; text-align: center; width: 65px; border-right: 1px solid #cbd5e1;">Hours</th>
-					<th style="padding: 10px 8px;">Work Notes</th>
-				</tr>
-			</thead>
 			<tbody>
+				<tr style="background: #0078d4; color: #ffffff; font-weight: 700; border-bottom: 2px solid #005a9e;">
+					<td style="padding: 10px 8px; text-align: center; width: 45px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Sr No</td>
+					<td style="padding: 10px 8px; width: 85px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Activity</td>
+					<td style="padding: 10px 8px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Project Name</td>
+					<td style="padding: 10px 8px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Task Title</td>
+					<td style="padding: 10px 8px; text-align: center; width: 55px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">From</td>
+					<td style="padding: 10px 8px; text-align: center; width: 55px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">To</td>
+					<td style="padding: 10px 8px; text-align: center; width: 65px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Hours</td>
+					<td style="padding: 10px 8px; font-weight: 700; background: #0078d4; color: #ffffff;">Work Notes</td>
+				</tr>
 				${table_rows}
 			</tbody>
 		</table>
