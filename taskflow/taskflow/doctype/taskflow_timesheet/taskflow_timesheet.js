@@ -454,7 +454,7 @@ const TimesheetUI = {
 		});
 
 		// Open Row Detail Edit Modal on row click / info button click using frappe.ui.Dialog (size: extra-large)
-		wrapper.off("click.tf_row_detail").on("click.tf_row_detail", ".tf-row-view-btn, .tf-row-num", function (e) {
+		wrapper.off("click.tf_row_detail").on("click.tf_row_detail", ".tf-row-view-btn, .tf-row-badge-idx", function (e) {
 			e.stopPropagation();
 			const idx = $(this).data("idx");
 			TimesheetUI.show_row_detail_modal(frm, idx);
@@ -846,11 +846,24 @@ const TimesheetUI = {
 
 		const is_submitted = frm.doc.status === "Submitted";
 		const items = frm.doc.table_pfiw || [];
+
 		if (items.length === 0) {
 			$tbody.append(`
-				<tr>
-					<td colspan="10" style="text-align: center; color: #94a3b8; padding: 20px; font-size: 13px;">
-						${is_submitted ? "No time entries recorded." : 'No time entries. Click <strong style="color: #2563eb; cursor: pointer;" id="tf-link-add">Add Entry</strong> to start.'}
+				<tr id="tf-empty-row">
+					<td colspan="10" style="text-align: center; padding: 36px 20px; background: #ffffff;">
+						<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+							<div style="width: 44px; height: 44px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #2563eb; margin-bottom: 4px;">
+								<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+							</div>
+							<span style="font-size: 14px; font-weight: 600; color: #334155;">No time entries recorded for this date</span>
+							<span style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Start tracking your work hours by adding a new entry row</span>
+							${!is_submitted ? `
+							<button class="tf-btn-add" id="tf-link-add" type="button" style="padding: 8px 16px; font-size: 13px;">
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+								Add Your First Entry
+							</button>
+							` : ''}
+						</div>
 					</td>
 				</tr>
 			`);
@@ -898,7 +911,7 @@ const TimesheetUI = {
 						${!is_dis ? `<input type="checkbox" class="tf-row-checkbox" data-idx="${idx}" />` : ''}
 					</td>
 					<td style="text-align: center;">
-						<span class="tf-row-num" data-idx="${idx}" title="Click to edit row in dialog" style="cursor: pointer; color: #2563eb; font-weight: 600; text-decoration: underline;">
+						<span class="tf-row-badge-idx" data-idx="${idx}" title="Click to edit row in dialog">
 							${idx + 1}
 						</span>
 					</td>
@@ -930,7 +943,7 @@ const TimesheetUI = {
 						<input type="time" class="tf-table-input tf-row-to-time" data-idx="${idx}" value="${to_val}" ${input_dis_style} />
 					</td>
 					<td>
-						<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} style="font-weight: 600; text-align: center; ${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
+						<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} style="${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
 					</td>
 					<td>
 						<div style="display: flex; align-items: center; gap: 4px;">
@@ -944,7 +957,7 @@ const TimesheetUI = {
 					</td>
 					<td>
 						<div style="display: flex; align-items: center; justify-content: center;">
-							<button class="tf-btn-icon tf-row-view-btn" data-idx="${idx}" title="Edit in Dialog" type="button" style="color: #2563eb;">
+							<button class="tf-btn-icon-view tf-row-view-btn" data-idx="${idx}" title="Edit in Dialog" type="button">
 								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
 							</button>
 						</div>
@@ -1155,10 +1168,10 @@ const TimesheetUI = {
 
   .tf-table-container {
     border: 1px solid #cbd5e1;
-    border-radius: 8px;
+    border-radius: 10px;
     background: #ffffff;
     overflow: hidden;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   }
 
   .tf-table {
@@ -1169,26 +1182,40 @@ const TimesheetUI = {
 
   .tf-table th {
     background: #f8fafc;
-    padding: 10px 8px;
+    padding: 10px 10px;
     font-size: 11px;
-    font-weight: 600;
-    color: #64748b;
-    border: 1px solid #cbd5e1;
+    font-weight: 700;
+    color: #475569;
+    border-bottom: 1.5px solid #cbd5e1;
+    border-right: 1px solid #e2e8f0;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
+  }
+
+  .tf-table th:last-child {
+    border-right: none;
   }
 
   .tf-table td {
-    padding: 5px 6px;
+    padding: 6px 8px;
     font-size: 13px;
     color: #334155;
-    border: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #f1f5f9;
     vertical-align: middle;
+  }
+
+  .tf-table td:last-child {
+    border-right: none;
   }
 
   .tf-table tbody tr {
     transition: all 0.15s ease-in-out;
     border-left: 3px solid transparent;
+  }
+
+  .tf-table tbody tr:nth-child(even) {
+    background-color: #fafafa;
   }
 
   .tf-table tbody tr:hover {
@@ -1197,61 +1224,96 @@ const TimesheetUI = {
   }
 
   .tf-table tr:last-child td {
-    border-bottom: 1px solid #cbd5e1;
+    border-bottom: none;
   }
 
-  .tf-table-select, .tf-table-input, .tf-dropdown-input {
+  .tf-row-checkbox, #tf-check-all {
+    accent-color: #2563eb;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    vertical-align: middle;
+  }
+
+  .tf-row-badge-idx {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #eff6ff;
+    color: #2563eb;
+    font-weight: 700;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .tf-row-badge-idx:hover {
+    background: #2563eb;
+    color: #ffffff;
+  }
+
+  .tf-table-select {
     width: 100%;
-    height: 34px;
-    padding: 4px 6px;
-    border: none !important;
-    border-radius: 0;
-    font-size: 13px;
-    color: #1e293b;
-    background: transparent;
+    height: 32px;
+    padding: 3px 8px;
+    border: 1px solid transparent !important;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
     outline: none;
+    cursor: pointer;
     box-sizing: border-box;
-    box-shadow: none !important;
+    transition: all 0.15s ease;
   }
 
-  .tf-dropdown-input {
-    padding-right: 20px !important;
-  }
-
-  .tf-dropdown-input::placeholder, .tf-table-input::placeholder {
-    color: #94a3b8;
-  }
-
-  .tf-row-from-time, .tf-row-to-time {
-    padding: 2px 4px !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    text-align: center !important;
-    color: #1e293b !important;
-    letter-spacing: -0.2px;
+  .tf-table-select:focus {
+    border-color: #2563eb !important;
+    background: #ffffff !important;
   }
 
   .tf-row-work-type[data-type="Task"] {
     background-color: #eff6ff !important;
     color: #1d4ed8 !important;
-    font-weight: 600;
   }
 
   .tf-row-work-type[data-type="Meeting"] {
     background-color: #f5f3ff !important;
     color: #6d28d9 !important;
-    font-weight: 600;
   }
 
   .tf-row-work-type[data-type="Research"] {
     background-color: #ecfdf5 !important;
     color: #047857 !important;
-    font-weight: 600;
   }
 
   .tf-dropdown-container {
     position: relative;
     width: 100%;
+  }
+
+  .tf-dropdown-input {
+    width: 100%;
+    height: 32px;
+    padding: 4px 22px 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 12.5px;
+    color: #1e293b;
+    background: transparent;
+    outline: none;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .tf-dropdown-input:focus {
+    border-color: #cbd5e1;
+    background: #ffffff;
   }
 
   .tf-dropdown-icon {
@@ -1303,6 +1365,49 @@ const TimesheetUI = {
     text-align: center;
   }
 
+  .tf-table-input {
+    width: 100%;
+    height: 32px;
+    padding: 4px 6px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 12.5px;
+    color: #1e293b;
+    background: transparent;
+    outline: none;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+  }
+
+  .tf-table-input:focus {
+    border-color: #cbd5e1;
+    background: #ffffff;
+  }
+
+  .tf-dropdown-input::placeholder, .tf-table-input::placeholder {
+    color: #94a3b8;
+  }
+
+  .tf-row-from-time, .tf-row-to-time {
+    padding: 2px 4px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    color: #1e293b !important;
+    font-family: monospace;
+    letter-spacing: -0.3px;
+  }
+
+  .tf-row-duration {
+    font-family: monospace;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    color: #1e293b !important;
+    background: #f8fafc !important;
+    border-radius: 4px !important;
+  }
+
   .tf-btn-icon {
     background: transparent;
     border: none;
@@ -1314,6 +1419,26 @@ const TimesheetUI = {
   }
   .tf-btn-icon:hover {
     color: #2563eb;
+  }
+
+  .tf-btn-icon-view {
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    color: #2563eb;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+
+  .tf-btn-icon-view:hover {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
   }
 
   .tf-btn-add {
@@ -1578,7 +1703,7 @@ const TimesheetUI = {
 						<th style="width: 25px; text-align: center;">
 							${!is_submitted ? '<input type="checkbox" id="tf-check-all" />' : ''}
 						</th>
-						<th style="width: 28px; text-align: center;">#</th>
+						<th style="width: 32px; text-align: center;">#</th>
 						<th style="width: 95px;">Activity</th>
 						<th style="width: 140px;">Project</th>
 						<th style="width: 260px;">Task</th>
@@ -1586,7 +1711,7 @@ const TimesheetUI = {
 						<th style="width: 68px; text-align: center;">To</th>
 						<th style="width: 68px; text-align: center;">Duration</th>
 						<th style="width: 130px;">Description</th>
-						<th style="width: 35px;"></th>
+						<th style="width: 40px; text-align: center;">View</th>
 					</tr>
 				</thead>
 				<tbody id="tf-table-body">
@@ -1667,7 +1792,7 @@ const TimesheetUI = {
 				</div>
 			</div>
 
-			<!-- Multi-segmented Progress Bar -->
+			<!-- Segmented Distribution Bar -->
 			<div class="tf-progress-track">
 				<div class="tf-progress-seg tf-seg-task" id="tf-seg-task" style="width: 0%;"></div>
 				<div class="tf-progress-seg tf-seg-meeting" id="tf-seg-meeting" style="width: 0%;"></div>
