@@ -18,6 +18,12 @@ frappe.ui.form.on("Taskflow Timesheet", {
 		TimesheetFormController.init_defaults(frm);
 		TimesheetFormController.handle_tab_visibility(frm);
 		TimesheetUI.render_widget(frm);
+
+		if (!frm.is_new()) {
+			frm.add_custom_button(__("Send Email"), () => {
+				TimesheetUI.show_send_email_dialog(frm);
+			}, __("Actions"));
+		}
 	},
 
 	"table_pfiw.from_time"(frm, cdt, cdn) {
@@ -379,6 +385,15 @@ const TimesheetUI = {
 			if (!is_submitted()) frm.set_value("user", $(this).val());
 		});
 
+		// Widget Send Email Button Click
+		wrapper.find("#tf-btn-send-email-widget").off("click.tf_email").on("click.tf_email", () => {
+			if (frm.is_new()) {
+				frappe.msgprint(__("Please save the timesheet before sending email."));
+				return;
+			}
+			TimesheetUI.show_send_email_dialog(frm);
+		});
+
 		// Check all checkbox
 		wrapper.off("change.tf_check_all").on("change.tf_check_all", "#tf-check-all", function () {
 			const checked = $(this).is(":checked");
@@ -701,6 +716,74 @@ const TimesheetUI = {
 		} else {
 			wrapper.find("#tf-btn-delete-bulk").hide();
 		}
+	},
+
+	show_send_email_dialog(frm) {
+		const default_subject = `Timesheet Summary - ${frm.doc.timesheet_date || frappe.datetime.get_today()} - ${frm.doc.employee_name || frm.doc.user}`;
+
+		const d = new frappe.ui.Dialog({
+			title: __("Send Timesheet Summary Email"),
+			fields: [
+				{
+					label: __("To Emails"),
+					fieldname: "to_emails",
+					fieldtype: "Small Text",
+					reqd: 1,
+					placeholder: "recipient1@example.com, recipient2@example.com",
+					description: "Enter email addresses separated by commas",
+				},
+				{
+					label: __("CC Emails"),
+					fieldname: "cc_emails",
+					fieldtype: "Small Text",
+					placeholder: "manager@example.com",
+					description: "Enter CC email addresses separated by commas (optional)",
+				},
+				{
+					fieldtype: "Section Break",
+				},
+				{
+					label: __("Subject"),
+					fieldname: "subject",
+					fieldtype: "Data",
+					default: default_subject,
+					reqd: 1,
+				},
+				{
+					label: __("Message / Note"),
+					fieldname: "custom_message",
+					fieldtype: "Small Text",
+					placeholder: "Add any optional message or note to include in the email...",
+				},
+			],
+			primary_action_label: __("Send Email"),
+			primary_action(values) {
+				frappe.call({
+					method: "taskflow.taskflow.doctype.taskflow_timesheet.taskflow_timesheet.send_timesheet_email",
+					args: {
+						timesheet_name: frm.doc.name,
+						to_emails: values.to_emails,
+						cc_emails: values.cc_emails,
+						subject: values.subject,
+						custom_message: values.custom_message,
+					},
+					freeze: true,
+					freeze_message: __("Sending Email..."),
+					callback(r) {
+						d.hide();
+						if (!r.exc) {
+							frappe.msgprint({
+								title: __("Success"),
+								indicator: "green",
+								message: __("Timesheet summary email sent successfully!"),
+							});
+						}
+					},
+				});
+			},
+		});
+
+		d.show();
 	},
 
 	show_row_detail_modal(frm, idx) {
@@ -1200,7 +1283,6 @@ const TimesheetUI = {
     font-size: 13px;
     font-weight: 700;
     color: #475569;
-    margin-bottom: 10px;
     letter-spacing: 0.2px;
   }
 
@@ -1504,6 +1586,26 @@ const TimesheetUI = {
     border-color: #bfdbfe;
   }
 
+  .tf-btn-send-email {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+    background: #f0f9ff;
+    color: #0284c7;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .tf-btn-send-email:hover {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+  }
+
   .tf-btn-delete-bulk {
     display: inline-flex;
     align-items: center;
@@ -1737,9 +1839,17 @@ const TimesheetUI = {
 		</div>
 	</div>
 
-	<!-- Time Entries Section -->
+	<!-- Time Entries Section Header -->
 	<div style="margin-bottom: 20px;">
-		<div class="tf-section-title">Time Entries</div>
+		<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+			<div class="tf-section-title">Time Entries</div>
+			${!frm.is_new() ? `
+			<button class="tf-btn-send-email" id="tf-btn-send-email-widget" type="button">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+				Send Email Summary
+			</button>
+			` : ''}
+		</div>
 		<div class="tf-table-container">
 			<table class="tf-table">
 				<thead>
