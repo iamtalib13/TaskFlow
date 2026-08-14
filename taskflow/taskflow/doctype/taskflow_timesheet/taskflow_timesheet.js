@@ -841,7 +841,7 @@ const TimesheetUI = {
 		<table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
 			<thead>
 				<tr style="background: #f1f5f9; color: #334155; border-bottom: 2px solid #cbd5e1; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
-					<th style="padding: 10px 8px; text-align: center; width: 28px; border-right: 1px solid #cbd5e1;">#</th>
+					<th style="padding: 10px 8px; text-align: center; width: 45px; border-right: 1px solid #cbd5e1;">Sr No</th>
 					<th style="padding: 10px 8px; width: 85px; border-right: 1px solid #cbd5e1;">Activity</th>
 					<th style="padding: 10px 8px; border-right: 1px solid #cbd5e1;">Project Name</th>
 					<th style="padding: 10px 8px; border-right: 1px solid #cbd5e1;">Task Title</th>
