@@ -631,7 +631,7 @@ function update_table_rows(frm, wrapper) {
 			});
 		}
 		return;
-	});
+	}
 
 	const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
 	const def_times = get_default_times_for_date(doc_date);
