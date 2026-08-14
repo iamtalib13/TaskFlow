@@ -1493,13 +1493,13 @@ const TimesheetUI = {
 							${!is_submitted ? '<input type="checkbox" id="tf-check-all" />' : ''}
 						</th>
 						<th style="width: 30px;">#</th>
-						<th style="width: 105px;">Activity</th>
-						<th style="width: 165px;">Project</th>
-						<th style="width: 165px;">Task</th>
-						<th style="width: 95px;">From</th>
-						<th style="width: 95px;">To</th>
-						<th style="width: 80px;">Duration</th>
-						<th>Description</th>
+						<th style="width: 100px;">Activity</th>
+						<th style="width: 150px;">Project</th>
+						<th style="width: 240px;">Task</th>
+						<th style="width: 85px;">From</th>
+						<th style="width: 85px;">To</th>
+						<th style="width: 75px;">Duration</th>
+						<th style="width: 140px;">Description</th>
 						<th style="width: 55px;"></th>
 					</tr>
 				</thead>
