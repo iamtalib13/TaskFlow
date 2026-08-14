@@ -719,32 +719,47 @@ const TimesheetUI = {
 	},
 
 	show_send_email_dialog(frm) {
-		const default_subject = `Timesheet Summary - ${frm.doc.timesheet_date || frappe.datetime.get_today()} - ${frm.doc.employee_name || frm.doc.user}`;
+		const doc_date = TimeUtils.format_date_ddmmyyyy(frm.doc.timesheet_date || frappe.datetime.get_today());
+		const default_subject = `Timesheet Summary - ${doc_date} - ${frm.doc.employee_name || frm.doc.user}`;
 
 		const d = new frappe.ui.Dialog({
-			title: __("Send Timesheet Summary Email"),
+			title: __("New Message — TaskFlow Email Compose"),
 			size: "extra-large",
 			fields: [
+				{
+					fieldname: "outlook_header_html",
+					fieldtype: "HTML",
+					options: `
+						<div style="background: #0078d4; color: #ffffff; padding: 12px 18px; border-radius: 8px 8px 0 0; margin: -15px -15px 15px -15px; display: flex; align-items: center; justify-content: space-between; font-family: 'Segoe UI', sans-serif;">
+							<div style="display: flex; align-items: center; gap: 10px;">
+								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+								<span style="font-weight: 700; font-size: 14px; letter-spacing: 0.2px;">Microsoft Outlook Style Compose</span>
+							</div>
+							<span style="font-size: 11px; background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 12px; font-weight: 600;">Timesheet Report</span>
+						</div>
+					`
+				},
 				{
 					label: __("Subject"),
 					fieldname: "subject",
 					fieldtype: "Data",
 					default: default_subject,
 					reqd: 1,
+					placeholder: "Add a subject...",
 				},
 				{
 					fieldtype: "Section Break",
 				},
 				{
-					label: __("To Emails"),
+					label: __("To (Recipients)"),
 					fieldname: "to_emails",
 					fieldtype: "Data",
 					reqd: 1,
 					placeholder: "recipient1@example.com, recipient2@example.com",
-					description: "Enter email addresses separated by commas",
+					description: "Enter primary recipient email addresses separated by commas",
 				},
 				{
-					label: __("CC Emails"),
+					label: __("Cc (Carbon Copy)"),
 					fieldname: "cc_emails",
 					fieldtype: "Data",
 					placeholder: "manager@example.com",
@@ -752,12 +767,13 @@ const TimesheetUI = {
 				},
 				{
 					fieldtype: "Section Break",
+					label: __("Message Note"),
 				},
 				{
-					label: __("Message / Note"),
+					label: __("Message / Note to Recipients"),
 					fieldname: "custom_message",
 					fieldtype: "Text Editor",
-					placeholder: "Add any optional message or note to include in the email...",
+					placeholder: "Type your message or notes here. The complete timesheet summary table and activity breakdown will automatically be attached to the email body...",
 				},
 			],
 			primary_action_label: __("Send Email"),
@@ -772,12 +788,12 @@ const TimesheetUI = {
 						custom_message: values.custom_message,
 					},
 					freeze: true,
-					freeze_message: __("Sending Email..."),
+					freeze_message: __("Sending Email via Outlook Service..."),
 					callback(r) {
 						d.hide();
 						if (!r.exc) {
 							frappe.msgprint({
-								title: __("Success"),
+								title: __("Email Sent"),
 								indicator: "green",
 								message: __("Timesheet summary email sent successfully!"),
 							});
@@ -785,6 +801,13 @@ const TimesheetUI = {
 					},
 				});
 			},
+		});
+
+		d.$wrapper.find(".btn-primary").css({
+			"background-color": "#0078d4",
+			"border-color": "#0078d4",
+			"font-weight": "600",
+			"padding": "6px 20px"
 		});
 
 		d.show();
@@ -1595,19 +1618,18 @@ const TimesheetUI = {
     align-items: center;
     gap: 6px;
     padding: 6px 14px;
-    border: 1px solid #bae6fd;
+    border: 1px solid #0078d4;
     border-radius: 6px;
-    background: #f0f9ff;
-    color: #0284c7;
+    background: #0078d4;
+    color: #ffffff;
     font-weight: 600;
     font-size: 12px;
     cursor: pointer;
     transition: all 0.15s ease;
   }
   .tf-btn-send-email:hover {
-    background: #0284c7;
-    color: #ffffff;
-    border-color: #0284c7;
+    background: #106ebe;
+    border-color: #106ebe;
   }
 
   .tf-btn-delete-bulk {
