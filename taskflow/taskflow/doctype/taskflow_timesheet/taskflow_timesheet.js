@@ -879,6 +879,14 @@ const TimesheetUI = {
     vertical-align: middle;
   }
 
+  .tf-table tbody tr {
+    transition: background-color 0.15s ease;
+  }
+
+  .tf-table tbody tr:hover {
+    background-color: #f8fafc;
+  }
+
   .tf-table tr:last-child td {
     border-bottom: none;
   }
