@@ -333,26 +333,37 @@ function render_timesheet_widget(frm) {
 		const idx = $(this).data("idx");
 		const val = $(this).val();
 		$(this).attr("data-type", val);
-		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
-			frm.doc.table_pfiw[idx].activity_type = val;
-			if (val !== "Task") {
-				frm.doc.table_pfiw[idx].project = "";
-				frm.doc.table_pfiw[idx].task = "";
-			}
-			update_table_rows(frm, wrapper);
-			update_widget_summary(frm);
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+		if (child) {
+			frappe.model.set_value(child.doctype, child.name, "activity_type", val).then(() => {
+				if (val !== "Task") {
+					frappe.model.set_value(child.doctype, child.name, "project", "");
+					frappe.model.set_value(child.doctype, child.name, "task", "");
+				}
+				update_table_rows(frm, wrapper);
+				update_widget_summary(frm);
+			});
+		}
+	});
+
+	// Direct typing in row description input
+	wrapper.on("change input", ".tf-row-desc-input", function () {
+		if (frm.doc.status === "Submitted") return;
+		const idx = $(this).data("idx");
+		const val = $(this).val();
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+		if (child) {
+			frappe.model.set_value(child.doctype, child.name, "description", val);
 		}
 	});
 
 	// Open Frappe Text Editor Dialog for row description editing
-	wrapper.on("click", ".tf-row-desc-btn, .tf-row-desc-input", function (e) {
+	wrapper.on("click", ".tf-row-desc-btn", function (e) {
 		e.preventDefault();
 		if (frm.doc.status === "Submitted") return;
 		const idx = $(this).data("idx");
-		const current_desc =
-			frm.doc.table_pfiw && frm.doc.table_pfiw[idx]
-				? frm.doc.table_pfiw[idx].description || ""
-				: "";
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+		const current_desc = child ? child.description || "" : "";
 
 		const d = new frappe.ui.Dialog({
 			title: `Edit Description (Row #${idx + 1})`,
@@ -366,13 +377,13 @@ function render_timesheet_widget(frm) {
 			],
 			primary_action_label: "Save",
 			primary_action(values) {
-				if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
-					frm.doc.table_pfiw[idx].description = values.description || "";
-					update_table_rows(frm, wrapper);
+				if (child) {
+					frappe.model.set_value(child.doctype, child.name, "description", values.description || "").then(() => {
+						update_table_rows(frm, wrapper);
+						frm.save();
+					});
 				}
 				d.hide();
-				// Auto-save form as soon as row description is added
-				frm.save();
 			},
 		});
 		d.show();
@@ -399,9 +410,10 @@ function render_timesheet_widget(frm) {
 		const idx = $(this).data("idx");
 		const $menu = wrapper.find(`.tf-proj-menu-${idx}`);
 		const search_txt = $(this).val();
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
 
-		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
-			frm.doc.table_pfiw[idx].project = search_txt;
+		if (child) {
+			frappe.model.set_value(child.doctype, child.name, "project", search_txt);
 		}
 
 		fetch_recent_projects(search_txt, (projects) => {
@@ -421,11 +433,13 @@ function render_timesheet_widget(frm) {
 		const $input = wrapper.find(`.tf-row-project-input[data-idx="${idx}"]`);
 		$input.val(p_title);
 
-		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
-			frm.doc.table_pfiw[idx].project = p_name;
-			frm.doc.table_pfiw[idx].task = "";
-			const $task_input = wrapper.find(`.tf-row-task-input[data-idx="${idx}"]`);
-			$task_input.val("");
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+		if (child) {
+			frappe.model.set_value(child.doctype, child.name, "project", p_name).then(() => {
+				frappe.model.set_value(child.doctype, child.name, "task", "");
+				const $task_input = wrapper.find(`.tf-row-task-input[data-idx="${idx}"]`);
+				$task_input.val("");
+			});
 		}
 
 		wrapper.find(`.tf-proj-menu-${idx}`).hide();
@@ -459,9 +473,10 @@ function render_timesheet_widget(frm) {
 		const $menu = wrapper.find(`.tf-task-menu-${idx}`);
 		const project_name = frm.doc.table_pfiw[idx] ? frm.doc.table_pfiw[idx].project : "";
 		const search_txt = $(this).val();
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
 
-		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
-			frm.doc.table_pfiw[idx].task = search_txt;
+		if (child) {
+			frappe.model.set_value(child.doctype, child.name, "task", search_txt);
 		}
 
 		if (!project_name) {
@@ -486,8 +501,9 @@ function render_timesheet_widget(frm) {
 		const $input = wrapper.find(`.tf-row-task-input[data-idx="${idx}"]`);
 		$input.val(t_title);
 
-		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
-			frm.doc.table_pfiw[idx].task = t_name;
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+		if (child) {
+			frappe.model.set_value(child.doctype, child.name, "task", t_name);
 		}
 
 		wrapper.find(`.tf-task-menu-${idx}`).hide();
@@ -503,18 +519,21 @@ function render_timesheet_widget(frm) {
 		if (is_submitted) return;
 		const idx = $(this).data("idx");
 		const from_val = $(this).val();
-		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+		if (child) {
 			const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
-			frm.doc.table_pfiw[idx].from_time = `${doc_date} ${from_val}:00`;
+			const from_datetime = `${doc_date} ${from_val}:00`;
 
-			const def_times = get_default_times_for_date(doc_date);
-			const to_val = extract_time_str(frm.doc.table_pfiw[idx].to_time) || def_times.to;
-			const hrs = calc_time_diff_hrs(from_val, to_val);
-			frm.doc.table_pfiw[idx].hrs = hrs;
-
-			wrapper.find(`.tf-row-duration[data-idx="${idx}"]`).val(hours_to_hhmm(hrs));
-			calculate_total_hours(frm);
-			update_widget_summary(frm);
+			frappe.model.set_value(child.doctype, child.name, "from_time", from_datetime).then(() => {
+				const def_times = get_default_times_for_date(doc_date);
+				const to_val = extract_time_str(child.to_time) || def_times.to;
+				const hrs = calc_time_diff_hrs(from_val, to_val);
+				frappe.model.set_value(child.doctype, child.name, "hrs", hrs).then(() => {
+					wrapper.find(`.tf-row-duration[data-idx="${idx}"]`).val(hours_to_hhmm(hrs));
+					calculate_total_hours(frm);
+					update_widget_summary(frm);
+				});
+			});
 		}
 	});
 
@@ -523,17 +542,20 @@ function render_timesheet_widget(frm) {
 		if (is_submitted) return;
 		const idx = $(this).data("idx");
 		const to_val = $(this).val();
-		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+		if (child) {
 			const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
-			frm.doc.table_pfiw[idx].to_time = `${doc_date} ${to_val}:00`;
+			const to_datetime = `${doc_date} ${to_val}:00`;
 
-			const from_val = extract_time_str(frm.doc.table_pfiw[idx].from_time) || "10:00";
-			const hrs = calc_time_diff_hrs(from_val, to_val);
-			frm.doc.table_pfiw[idx].hrs = hrs;
-
-			wrapper.find(`.tf-row-duration[data-idx="${idx}"]`).val(hours_to_hhmm(hrs));
-			calculate_total_hours(frm);
-			update_widget_summary(frm);
+			frappe.model.set_value(child.doctype, child.name, "to_time", to_datetime).then(() => {
+				const from_val = extract_time_str(child.from_time) || "10:00";
+				const hrs = calc_time_diff_hrs(from_val, to_val);
+				frappe.model.set_value(child.doctype, child.name, "hrs", hrs).then(() => {
+					wrapper.find(`.tf-row-duration[data-idx="${idx}"]`).val(hours_to_hhmm(hrs));
+					calculate_total_hours(frm);
+					update_widget_summary(frm);
+				});
+			});
 		}
 	});
 
@@ -543,10 +565,12 @@ function render_timesheet_widget(frm) {
 		const idx = $(this).data("idx");
 		const val = $(this).val();
 		const hrs = hhmm_to_hours(val);
-		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
-			frm.doc.table_pfiw[idx].hrs = hrs;
-			calculate_total_hours(frm);
-			update_widget_summary(frm);
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+		if (child) {
+			frappe.model.set_value(child.doctype, child.name, "hrs", hrs).then(() => {
+				calculate_total_hours(frm);
+				update_widget_summary(frm);
+			});
 		}
 	});
 
@@ -672,7 +696,7 @@ function update_table_rows(frm, wrapper) {
 				</td>
 				<td>
 					<div style="display: flex; align-items: center; gap: 4px;">
-						<input type="text" class="tf-table-input tf-row-desc-input" data-idx="${idx}" value="${frappe.utils.escape_html(desc)}" placeholder="Add note..." readonly style="cursor: ${is_dis ? "default" : "pointer"}; ${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
+						<input type="text" class="tf-table-input tf-row-desc-input" data-idx="${idx}" value="${frappe.utils.escape_html(desc)}" placeholder="Add note..." ${input_dis_style} />
 						${!is_dis ? `
 						<button class="tf-btn-icon tf-row-desc-btn" data-idx="${idx}" title="Open Text Editor" type="button">
 							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
