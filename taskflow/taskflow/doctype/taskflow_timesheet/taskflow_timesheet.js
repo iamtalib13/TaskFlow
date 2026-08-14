@@ -896,14 +896,15 @@ const TimesheetUI = {
 			const task_display = is_task ? (TimesheetDataService.titles_cache.tasks[item.task] || item.task || "") : "";
 
 			const is_dis = is_submitted;
-			const proj_attrs = is_task && !is_dis
-				? 'placeholder="Select project..."'
-				: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"';
-			const task_attrs = is_task && !is_dis
-				? 'placeholder="Select task..."'
-				: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"';
+			const proj_attrs = is_task
+				? (is_dis ? 'disabled style="background: transparent; color: #1e293b; cursor: default;"' : 'placeholder="Select project..."')
+				: 'placeholder="—" disabled style="background: transparent; color: #94a3b8; cursor: default;"';
 
-			const input_dis_style = is_dis ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
+			const task_attrs = is_task
+				? (is_dis ? 'disabled style="background: transparent; color: #1e293b; cursor: default;"' : 'placeholder="Select task..."')
+				: 'placeholder="—" disabled style="background: transparent; color: #94a3b8; cursor: default;"';
+
+			const input_dis_style = is_dis ? 'disabled style="background: transparent; color: #1e293b; opacity: 1; cursor: default;"' : '';
 
 			$tbody.append(`
 				<tr>
@@ -911,7 +912,7 @@ const TimesheetUI = {
 						${!is_dis ? `<input type="checkbox" class="tf-row-checkbox" data-idx="${idx}" />` : ''}
 					</td>
 					<td style="text-align: center;">
-						<span class="tf-row-badge-idx" data-idx="${idx}" title="Click to edit row in dialog">
+						<span class="tf-row-badge-idx" data-idx="${idx}" title="Click to view row in dialog">
 							${idx + 1}
 						</span>
 					</td>
@@ -943,7 +944,7 @@ const TimesheetUI = {
 						<input type="time" class="tf-table-input tf-row-to-time" data-idx="${idx}" value="${to_val}" ${input_dis_style} />
 					</td>
 					<td>
-						<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} style="${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
+						<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} />
 					</td>
 					<td>
 						<div style="display: flex; align-items: center; gap: 4px;">
@@ -957,7 +958,7 @@ const TimesheetUI = {
 					</td>
 					<td>
 						<div style="display: flex; align-items: center; justify-content: center;">
-							<button class="tf-btn-icon-view tf-row-view-btn" data-idx="${idx}" title="Edit in Dialog" type="button">
+							<button class="tf-btn-icon-view tf-row-view-btn" data-idx="${idx}" title="${is_dis ? "View Entry Detail" : "Edit in Dialog"}" type="button">
 								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
 							</button>
 						</div>
@@ -1084,8 +1085,8 @@ const TimesheetUI = {
 		const status_val = frm.doc.status || "Draft";
 		const is_submitted = status_val === "Submitted";
 
-		const emp_dis_style = is_submitted ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
-		const date_dis_style = is_submitted ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
+		const emp_dis_style = is_submitted ? 'disabled style="background: #ffffff; color: #1e293b; opacity: 1; cursor: default;"' : '';
+		const date_dis_style = is_submitted ? 'disabled style="background: #ffffff; color: #1e293b; opacity: 1; cursor: default;"' : '';
 
 		return `
 <style>
@@ -1096,6 +1097,13 @@ const TimesheetUI = {
     padding: 0;
     margin-bottom: 20px;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Prevent browser-default gray text override on disabled fields */
+  .tf-input:disabled, .tf-select:disabled, .tf-table-input:disabled, .tf-table-select:disabled, .tf-dropdown-input:disabled {
+    opacity: 1 !important;
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
   }
 
   .tf-top-bar {
@@ -1148,14 +1156,16 @@ const TimesheetUI = {
     background-color: #fffbeb !important;
     color: #b45309 !important;
     border-color: #fde68a !important;
-    font-weight: 600;
+    font-weight: 700;
+    -webkit-text-fill-color: #b45309 !important;
   }
 
   .tf-input-status[data-status="Submitted"] {
     background-color: #ecfdf5 !important;
     color: #047857 !important;
     border-color: #a7f3d0 !important;
-    font-weight: 600;
+    font-weight: 700;
+    -webkit-text-fill-color: #047857 !important;
   }
 
   .tf-section-title {
@@ -1277,16 +1287,19 @@ const TimesheetUI = {
   .tf-row-work-type[data-type="Task"] {
     background-color: #eff6ff !important;
     color: #1d4ed8 !important;
+    -webkit-text-fill-color: #1d4ed8 !important;
   }
 
   .tf-row-work-type[data-type="Meeting"] {
     background-color: #f5f3ff !important;
     color: #6d28d9 !important;
+    -webkit-text-fill-color: #6d28d9 !important;
   }
 
   .tf-row-work-type[data-type="Research"] {
     background-color: #ecfdf5 !important;
     color: #047857 !important;
+    -webkit-text-fill-color: #047857 !important;
   }
 
   .tf-dropdown-container {
@@ -1678,7 +1691,7 @@ const TimesheetUI = {
 		</div>
 		<div class="tf-field-group">
 			<label class="tf-label">User</label>
-			<input type="text" class="tf-input" id="tf-input-user" value="${frappe.utils.escape_html(user_id)}" readonly style="background: #f8fafc; color: #64748b; cursor: not-allowed;" />
+			<input type="text" class="tf-input" id="tf-input-user" value="${frappe.utils.escape_html(user_id)}" readonly style="background: #ffffff; color: #1e293b; opacity: 1; cursor: default;" />
 		</div>
 		<div class="tf-field-group">
 			<label class="tf-label">Date</label>
