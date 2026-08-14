@@ -1,53 +1,64 @@
 {
  "actions": [],
  "allow_rename": 1,
-"autoname": "",
-  "creation": "2026-08-14 11:01:10.602283",
-  "doctype": "DocType",
-  "engine": "InnoDB",
-  "field_order": [
-   "user",
-   "column_break_hrob",
-   "employee_name",
-   "section_break_esdi",
-   "table_pfiw"
-  ],
-  "fields": [
-   {
-    "fieldname": "user",
-    "fieldtype": "Link",
-    "label": "User",
-    "options": "User"
-   },
-   {
-    "fieldname": "column_break_hrob",
-    "fieldtype": "Column Break"
-   },
-   {
-    "fetch_from": "user.full_name",
-    "fieldname": "employee_name",
-    "fieldtype": "Data",
-    "label": "Employee Name "
-   },
-   {
-    "fieldname": "section_break_esdi",
-    "fieldtype": "Section Break"
-   },
-   {
-    "fieldname": "table_pfiw",
-    "fieldtype": "Table",
-    "options": "Taskflow Timesheet Item"
-   }
-  ],
-  "grid_page_length": 50,
-  "index_web_pages_for_search": 1,
-  "links": [],
-  "modified": "2026-08-14 12:02:37.283932",
-  "modified_by": "Administrator",
-  "module": "Taskflow",
-  "name": "Taskflow Timesheet",
-  "naming_rule": "By \"Naming Series\" field",
-  "owner": "Administrator",
+ "autoname": "{user}-dd-mm-yyyy",
+ "creation": "2026-08-14 11:01:10.602283",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "column_break_hrob",
+  "employee_name",
+  "section_break_esdi",
+  "table_pfiw",
+  "section_break_wwsx",
+  "total_working_hours"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_hrob",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "user.full_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name "
+  },
+  {
+   "fieldname": "section_break_esdi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "table_pfiw",
+   "fieldtype": "Table",
+   "options": "Taskflow Timesheet Item"
+  },
+  {
+   "fieldname": "section_break_wwsx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_working_hours",
+   "fieldtype": "Float",
+   "label": "Total Working Hours"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-14 12:13:38.189763",
+ "modified_by": "Administrator",
+ "module": "Taskflow",
+ "name": "Taskflow Timesheet",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
  "permissions": [
   {
    "create": 1,

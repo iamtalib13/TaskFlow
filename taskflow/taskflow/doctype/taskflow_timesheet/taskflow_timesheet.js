@@ -26,6 +26,12 @@ frappe.ui.form.on("Taskflow Timesheet", {
 	"table_pfiw.to_time"(frm, cdt, cdn) {
 		calculate_item_hours(frm, cdt, cdn);
 	},
+	"table_pfiw.hrs"(frm, cdt, cdn) {
+		calculate_total_hours(frm);
+	},
+	table_pfiw_remove(frm) {
+		calculate_total_hours(frm);
+	},
 });
 
 function calculate_item_hours(frm, cdt, cdn) {
@@ -34,5 +40,18 @@ function calculate_item_hours(frm, cdt, cdn) {
 		const diff = frappe.datetime.get_diff(row.to_time, row.from_time);
 		const hours = diff / 3600;
 		frappe.model.set_value(cdt, cdn, "hrs", hours);
+		calculate_total_hours(frm);
 	}
+}
+
+function calculate_total_hours(frm) {
+	let total = 0;
+	(frm.doc.table_pfiw || []).forEach(row => {
+		total += flt(row.hrs);
+	});
+	frm.set_value("total_working_hours", total);
+}
+
+function flt(val) {
+	return parseFloat(val) || 0;
 }
