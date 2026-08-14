@@ -214,6 +214,9 @@ function render_timesheet_widget(frm) {
 	const wrapper = $(frm.fields_dict.timesheet_widget.wrapper);
 	wrapper.empty();
 
+	const is_submitted = frm.doc.status === "Submitted";
+	frm.set_df_property("description", "read_only", is_submitted ? 1 : 0);
+
 	const html = get_widget_html(frm);
 	wrapper.html(html);
 
@@ -222,9 +225,17 @@ function render_timesheet_widget(frm) {
 		const $desc_field = $(frm.fields_dict.description.wrapper);
 		wrapper.find("#tf-native-description-container").empty().append($desc_field);
 
+		if (frm.fields_dict.description.editor) {
+			if (is_submitted) {
+				frm.fields_dict.description.editor.disable();
+			} else {
+				frm.fields_dict.description.editor.enable();
+			}
+		}
+
 		// Auto save form on Text Editor blur
 		$desc_field.off("blur.tf_save").on("blur.tf_save", ".ql-editor", function () {
-			if (frm.is_dirty()) {
+			if (!is_submitted && frm.is_dirty()) {
 				frm.save();
 			}
 		});
@@ -232,18 +243,26 @@ function render_timesheet_widget(frm) {
 
 	update_table_rows(frm, wrapper);
 
+	if (is_submitted) {
+		wrapper.find("#tf-btn-add-row").hide();
+	} else {
+		wrapper.find("#tf-btn-add-row").show();
+	}
+
 	// Bind Status change
 	wrapper.find("#tf-input-status").on("change", function () {
 		const val = $(this).val();
 		$(this).attr("data-status", val);
 		frm.set_value("status", val).then(() => {
-			frm.save();
+			frm.save().then(() => {
+				render_timesheet_widget(frm);
+			});
 		});
 	});
 
 	// Bind Datepicker in DD/MM/YYYY format
 	const $date_input = wrapper.find("#tf-input-date");
-	if ($date_input.datepicker) {
+	if (!is_submitted && $date_input.datepicker) {
 		$date_input.datepicker({
 			language: "en",
 			dateFormat: "dd/mm/yyyy",
@@ -263,6 +282,7 @@ function render_timesheet_widget(frm) {
 		});
 	}
 	$date_input.on("change input", function () {
+		if (is_submitted) return;
 		const val = $(this).val();
 		const db_date = parse_ddmmyyyy_to_yyyy_mm_dd(val);
 		if (db_date && db_date.length === 10) {
@@ -275,16 +295,19 @@ function render_timesheet_widget(frm) {
 
 	// Bind Employee changes
 	wrapper.find("#tf-input-employee").on("change", function () {
+		if (is_submitted) return;
 		frm.set_value("employee_name", $(this).val());
 	});
 
 	// Bind User changes
 	wrapper.find("#tf-input-user").on("change", function () {
+		if (is_submitted) return;
 		frm.set_value("user", $(this).val());
 	});
 
 	// Add Row Button
 	wrapper.find("#tf-btn-add-row").on("click", function () {
+		if (is_submitted) return;
 		const items = frm.doc.table_pfiw || [];
 		const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
 		const def_times = get_default_times_for_date(doc_date);
@@ -322,6 +345,7 @@ function render_timesheet_widget(frm) {
 
 	// Delete row handler
 	wrapper.on("click", ".tf-btn-delete-row", function () {
+		if (is_submitted) return;
 		const idx = $(this).data("idx");
 		frm.doc.table_pfiw.splice(idx, 1);
 		frm.doc.table_pfiw.forEach((r, i) => (r.idx = i + 1));
@@ -333,6 +357,7 @@ function render_timesheet_widget(frm) {
 
 	// Row level Activity change
 	wrapper.on("change", ".tf-row-work-type", function () {
+		if (is_submitted) return;
 		const idx = $(this).data("idx");
 		const val = $(this).val();
 		$(this).attr("data-type", val);
@@ -350,6 +375,7 @@ function render_timesheet_widget(frm) {
 	// Open Frappe Text Editor Dialog for row description editing
 	wrapper.on("click", ".tf-row-desc-btn, .tf-row-desc-input", function (e) {
 		e.preventDefault();
+		if (frm.doc.status === "Submitted") return;
 		const idx = $(this).data("idx");
 		const current_desc =
 			frm.doc.table_pfiw && frm.doc.table_pfiw[idx]
@@ -382,7 +408,7 @@ function render_timesheet_widget(frm) {
 
 	// Project Dropdown Focus / Click
 	wrapper.on("focus click", ".tf-row-project-input", function (e) {
-		if ($(this).is(":disabled")) return;
+		if ($(this).is(":disabled") || frm.doc.status === "Submitted") return;
 		e.stopPropagation();
 		wrapper.find(".tf-dropdown-menu").hide();
 		const idx = $(this).data("idx");
@@ -397,7 +423,7 @@ function render_timesheet_widget(frm) {
 
 	// Project Dropdown Typing / Search
 	wrapper.on("input", ".tf-row-project-input", function () {
-		if ($(this).is(":disabled")) return;
+		if ($(this).is(":disabled") || frm.doc.status === "Submitted") return;
 		const idx = $(this).data("idx");
 		const $menu = wrapper.find(`.tf-proj-menu-${idx}`);
 		const search_txt = $(this).val();
@@ -415,6 +441,7 @@ function render_timesheet_widget(frm) {
 	// Project Item Selection
 	wrapper.on("click", ".tf-proj-item", function (e) {
 		e.stopPropagation();
+		if (frm.doc.status === "Submitted") return;
 		const idx = $(this).data("idx");
 		const p_name = $(this).data("name");
 		const p_title = $(this).data("title");
@@ -434,7 +461,7 @@ function render_timesheet_widget(frm) {
 
 	// Task Dropdown Focus / Click
 	wrapper.on("focus click", ".tf-row-task-input", function (e) {
-		if ($(this).is(":disabled")) return;
+		if ($(this).is(":disabled") || frm.doc.status === "Submitted") return;
 		e.stopPropagation();
 		wrapper.find(".tf-dropdown-menu").hide();
 		const idx = $(this).data("idx");
@@ -455,7 +482,7 @@ function render_timesheet_widget(frm) {
 
 	// Task Dropdown Typing / Search
 	wrapper.on("input", ".tf-row-task-input", function () {
-		if ($(this).is(":disabled")) return;
+		if ($(this).is(":disabled") || frm.doc.status === "Submitted") return;
 		const idx = $(this).data("idx");
 		const $menu = wrapper.find(`.tf-task-menu-${idx}`);
 		const project_name = frm.doc.table_pfiw[idx] ? frm.doc.table_pfiw[idx].project : "";
@@ -479,6 +506,7 @@ function render_timesheet_widget(frm) {
 	// Task Item Selection
 	wrapper.on("click", ".tf-task-item", function (e) {
 		e.stopPropagation();
+		if (frm.doc.status === "Submitted") return;
 		const idx = $(this).data("idx");
 		const t_name = $(this).data("name");
 		const t_title = $(this).data("title");
@@ -500,6 +528,7 @@ function render_timesheet_widget(frm) {
 
 	// Row level From Time change
 	wrapper.on("change input", ".tf-row-from-time", function () {
+		if (is_submitted) return;
 		const idx = $(this).data("idx");
 		const from_val = $(this).val();
 		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
@@ -519,6 +548,7 @@ function render_timesheet_widget(frm) {
 
 	// Row level To Time change
 	wrapper.on("change input", ".tf-row-to-time", function () {
+		if (is_submitted) return;
 		const idx = $(this).data("idx");
 		const to_val = $(this).val();
 		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
@@ -537,6 +567,7 @@ function render_timesheet_widget(frm) {
 
 	// Row level Duration change
 	wrapper.on("change input", ".tf-row-duration", function () {
+		if (is_submitted) return;
 		const idx = $(this).data("idx");
 		const val = $(this).val();
 		const hrs = hhmm_to_hours(val);
@@ -587,18 +618,21 @@ function update_table_rows(frm, wrapper) {
 	const $tbody = wrapper.find("#tf-table-body");
 	$tbody.empty();
 
+	const is_submitted = frm.doc.status === "Submitted";
 	const items = frm.doc.table_pfiw || [];
 	if (items.length === 0) {
 		$tbody.append(`
 			<tr>
 				<td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px; font-size: 13px;">
-					No time entries. Click <strong style="color: #2563eb; cursor: pointer;" id="tf-link-add">Add Entry</strong> to start.
+					${is_submitted ? "No time entries recorded." : 'No time entries. Click <strong style="color: #2563eb; cursor: pointer;" id="tf-link-add">Add Entry</strong> to start.'}
 				</td>
 			</tr>
 		`);
-		wrapper.find("#tf-link-add").on("click", function () {
-			wrapper.find("#tf-btn-add-row").trigger("click");
-		});
+		if (!is_submitted) {
+			wrapper.find("#tf-link-add").on("click", function () {
+				wrapper.find("#tf-btn-add-row").trigger("click");
+			});
+		}
 		return;
 	}
 
@@ -621,18 +655,21 @@ function update_table_rows(frm, wrapper) {
 		const proj_val = is_task ? (item.project || "") : "";
 		const task_val = is_task ? (item.task || "") : "";
 
-		const proj_attrs = is_task
+		const is_dis = is_submitted;
+		const proj_attrs = is_task && !is_dis
 			? 'placeholder="Select project..."'
-			: 'placeholder="—" disabled style="background: #f8fafc; color: #94a3b8; cursor: not-allowed; border-color: #f1f5f9;"';
-		const task_attrs = is_task
+			: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #f1f5f9;"';
+		const task_attrs = is_task && !is_dis
 			? 'placeholder="Select task..."'
-			: 'placeholder="—" disabled style="background: #f8fafc; color: #94a3b8; cursor: not-allowed; border-color: #f1f5f9;"';
+			: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #f1f5f9;"';
+
+		const input_dis_style = is_dis ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
 
 		$tbody.append(`
 			<tr>
 				<td style="font-weight: 500; color: #94a3b8; font-size: 12px;">${idx + 1}</td>
 				<td>
-					<select class="tf-table-select tf-row-work-type" data-idx="${idx}" data-type="${work_type}">
+					<select class="tf-table-select tf-row-work-type" data-idx="${idx}" data-type="${work_type}" ${input_dis_style}>
 						<option value="Task" ${wt_task_sel} style="background:#ffffff; color:#1d4ed8; font-weight:600;">Task</option>
 						<option value="Meeting" ${wt_meet_sel} style="background:#ffffff; color:#6d28d9; font-weight:600;">Meeting</option>
 						<option value="Research" ${wt_res_sel} style="background:#ffffff; color:#047857; font-weight:600;">Research</option>
@@ -653,26 +690,30 @@ function update_table_rows(frm, wrapper) {
 					</div>
 				</td>
 				<td>
-					<input type="time" class="tf-table-input tf-row-from-time" data-idx="${idx}" value="${from_val}" />
+					<input type="time" class="tf-table-input tf-row-from-time" data-idx="${idx}" value="${from_val}" ${input_dis_style} />
 				</td>
 				<td>
-					<input type="time" class="tf-table-input tf-row-to-time" data-idx="${idx}" value="${to_val}" />
+					<input type="time" class="tf-table-input tf-row-to-time" data-idx="${idx}" value="${to_val}" ${input_dis_style} />
 				</td>
 				<td>
-					<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" style="font-weight: 600; text-align: center; width: 75px;" />
+					<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} style="font-weight: 600; text-align: center; width: 75px; ${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
 				</td>
 				<td>
 					<div style="display: flex; align-items: center; gap: 4px;">
-						<input type="text" class="tf-table-input tf-row-desc-input" data-idx="${idx}" value="${frappe.utils.escape_html(desc)}" placeholder="Add note..." readonly style="cursor: pointer;" />
+						<input type="text" class="tf-table-input tf-row-desc-input" data-idx="${idx}" value="${frappe.utils.escape_html(desc)}" placeholder="Add note..." readonly style="cursor: ${is_dis ? "default" : "pointer"}; ${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
+						${!is_dis ? `
 						<button class="tf-btn-icon tf-row-desc-btn" data-idx="${idx}" title="Open Text Editor" type="button">
 							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
 						</button>
+						` : ""}
 					</div>
 				</td>
 				<td>
+					${!is_dis ? `
 					<button class="tf-btn-icon tf-btn-delete-row" data-idx="${idx}" title="Delete" type="button">
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 					</button>
+					` : ""}
 				</td>
 			</tr>
 		`);
@@ -750,6 +791,10 @@ function get_widget_html(frm) {
 	const emp_name = frm.doc.employee_name || frappe.session.user_fullname || "Talib Sheikh";
 	const user_id = frm.doc.user || frappe.session.user || "";
 	const status_val = frm.doc.status || "Draft";
+	const is_submitted = status_val === "Submitted";
+
+	const emp_dis_style = is_submitted ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
+	const date_dis_style = is_submitted ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
 
 	return `
 <style>
@@ -1116,7 +1161,7 @@ function get_widget_html(frm) {
 	<div class="tf-top-bar">
 		<div class="tf-field-group">
 			<label class="tf-label">Employee</label>
-			<input type="text" class="tf-input" id="tf-input-employee" value="${frappe.utils.escape_html(emp_name)}" />
+			<input type="text" class="tf-input" id="tf-input-employee" value="${frappe.utils.escape_html(emp_name)}" ${emp_dis_style} />
 		</div>
 		<div class="tf-field-group">
 			<label class="tf-label">User</label>
@@ -1124,7 +1169,7 @@ function get_widget_html(frm) {
 		</div>
 		<div class="tf-field-group">
 			<label class="tf-label">Date</label>
-			<input type="text" class="tf-input" id="tf-input-date" value="${formatted_date_ddmmyyyy}" placeholder="DD/MM/YYYY" autocomplete="off" />
+			<input type="text" class="tf-input" id="tf-input-date" value="${formatted_date_ddmmyyyy}" placeholder="DD/MM/YYYY" autocomplete="off" ${date_dis_style} />
 		</div>
 		<div class="tf-field-group">
 			<label class="tf-label">Status</label>
