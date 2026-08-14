@@ -1053,7 +1053,7 @@ const TimesheetUI = {
 						<span style="font-weight: 500; color: #334155;">${frappe.utils.escape_html(key)}</span>
 					</div>
 					<div style="display: flex; align-items: center; gap: 8px;">
-						<span style="font-size: 11px; color: #94a3b8; font-weight: 500;">${pct}%</span>
+						<span style="font-size: 11px; color: #64748b; font-weight: 500;">${pct}%</span>
 						<span style="font-weight: 700; font-family: monospace; color: ${info.text}; background: ${info.bg}; padding: 2px 8px; border-radius: 4px;">
 							${hrs_str}
 						</span>
@@ -1077,11 +1077,12 @@ const TimesheetUI = {
 		return `
 <style>
   .tf-timesheet-wrapper {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background: transparent;
-    color: #1e293b;
+    color: #334155;
     padding: 0;
     margin-bottom: 20px;
+    -webkit-font-smoothing: antialiased;
   }
 
   .tf-top-bar {
@@ -1106,27 +1107,28 @@ const TimesheetUI = {
     font-size: 11px;
     font-weight: 600;
     color: #64748b;
-    margin-bottom: 4px;
+    margin-bottom: 5px;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.5px;
   }
 
   .tf-input, .tf-select {
     width: 100%;
     height: 36px;
-    padding: 6px 10px;
+    padding: 6px 12px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     font-size: 13px;
-    color: #0f172a;
+    color: #1e293b;
     background: #ffffff;
     outline: none;
-    transition: border-color 0.15s ease;
+    transition: all 0.15s ease-in-out;
     box-sizing: border-box;
   }
 
   .tf-input:focus, .tf-select:focus {
     border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 
   .tf-input-status[data-status="Draft"] {
@@ -1145,9 +1147,10 @@ const TimesheetUI = {
 
   .tf-section-title {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     color: #475569;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+    letter-spacing: 0.2px;
   }
 
   .tf-table-container {
@@ -1155,6 +1158,7 @@ const TimesheetUI = {
     border-radius: 8px;
     background: #ffffff;
     overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   }
 
   .tf-table {
@@ -1171,11 +1175,11 @@ const TimesheetUI = {
     color: #64748b;
     border: 1px solid #cbd5e1;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.5px;
   }
 
   .tf-table td {
-    padding: 4px 6px;
+    padding: 5px 6px;
     font-size: 13px;
     color: #334155;
     border: 1px solid #e2e8f0;
@@ -1193,7 +1197,7 @@ const TimesheetUI = {
   }
 
   .tf-table tr:last-child td {
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #cbd5e1;
   }
 
   .tf-table-select, .tf-table-input, .tf-dropdown-input {
@@ -1203,7 +1207,7 @@ const TimesheetUI = {
     border: none !important;
     border-radius: 0;
     font-size: 13px;
-    color: #0f172a;
+    color: #1e293b;
     background: transparent;
     outline: none;
     box-sizing: border-box;
@@ -1214,11 +1218,16 @@ const TimesheetUI = {
     padding-right: 20px !important;
   }
 
+  .tf-dropdown-input::placeholder, .tf-table-input::placeholder {
+    color: #94a3b8;
+  }
+
   .tf-row-from-time, .tf-row-to-time {
     padding: 2px 4px !important;
     font-size: 12px !important;
     font-weight: 600 !important;
     text-align: center !important;
+    color: #1e293b !important;
     letter-spacing: -0.2px;
   }
 
@@ -1261,28 +1270,30 @@ const TimesheetUI = {
     right: 0;
     background: #ffffff;
     border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
     max-height: 180px;
     overflow-y: auto;
     z-index: 9999;
     display: none;
-    padding: 2px 0;
+    padding: 4px 0;
   }
 
   .tf-dropdown-item {
-    padding: 6px 10px;
+    padding: 7px 12px;
     font-size: 12px;
     color: #334155;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: background 0.1s ease;
   }
 
   .tf-dropdown-item:hover {
     background: #f1f5f9;
     color: #2563eb;
+    font-weight: 500;
   }
 
   .tf-dropdown-no-res {
@@ -1299,7 +1310,7 @@ const TimesheetUI = {
     cursor: pointer;
     padding: 4px;
     border-radius: 4px;
-    transition: color 0.15s;
+    transition: color 0.15s ease;
   }
   .tf-btn-icon:hover {
     color: #2563eb;
@@ -1309,25 +1320,26 @@ const TimesheetUI = {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
-    border: 1px solid #e2e8f0;
+    padding: 7px 14px;
+    border: 1px solid #cbd5e1;
     border-radius: 6px;
     background: #ffffff;
     color: #2563eb;
-    font-weight: 500;
+    font-weight: 600;
     font-size: 12px;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: all 0.15s ease;
   }
   .tf-btn-add:hover {
-    background: #f8fafc;
+    background: #eff6ff;
+    border-color: #bfdbfe;
   }
 
   .tf-btn-delete-bulk {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
+    padding: 7px 14px;
     border: 1px solid #fca5a5;
     border-radius: 6px;
     background: #ef4444;
@@ -1370,18 +1382,18 @@ const TimesheetUI = {
   .tf-activity-stat-card {
     background: #ffffff;
     border-radius: 12px;
-    padding: 16px;
+    padding: 16px 18px;
     border: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .tf-activity-stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
   }
 
   .tf-stat-task {
@@ -1419,9 +1431,9 @@ const TimesheetUI = {
   }
 
   .tf-stat-card-val {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 800;
-    color: #0f172a;
+    color: #1e293b;
     letter-spacing: -0.5px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
   }
@@ -1429,7 +1441,7 @@ const TimesheetUI = {
   .tf-stat-card-unit {
     font-size: 11px;
     font-weight: 600;
-    color: #94a3b8;
+    color: #64748b;
   }
 
   .tf-stat-card-pct {
@@ -1445,7 +1457,7 @@ const TimesheetUI = {
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 16px 18px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
     box-sizing: border-box;
   }
 
@@ -1479,7 +1491,7 @@ const TimesheetUI = {
   .tf-total-number {
     font-size: 24px;
     font-weight: 800;
-    color: #0f172a;
+    color: #1e293b;
     letter-spacing: -0.6px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
   }
@@ -1515,14 +1527,14 @@ const TimesheetUI = {
     align-items: center;
     justify-content: space-between;
     font-size: 12px;
-    padding: 4px 8px;
+    padding: 5px 10px;
     border-radius: 6px;
     background: #f8fafc;
   }
 
   .tf-dot {
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     display: inline-block;
     margin-right: 8px;
@@ -1655,7 +1667,7 @@ const TimesheetUI = {
 				</div>
 			</div>
 
-			<!-- Segmented Distribution Bar -->
+			<!-- Multi-segmented Progress Bar -->
 			<div class="tf-progress-track">
 				<div class="tf-progress-seg tf-seg-task" id="tf-seg-task" style="width: 0%;"></div>
 				<div class="tf-progress-seg tf-seg-meeting" id="tf-seg-meeting" style="width: 0%;"></div>
