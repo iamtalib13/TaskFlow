@@ -19,7 +19,8 @@
    "fieldname": "user",
    "fieldtype": "Link",
    "label": "User",
-   "options": "User"
+   "options": "User",
+   "read_only_depends_on": "eval:!frappe.user.has_role(\"System Manager\")"
   },
   {
    "fieldname": "column_break_hrob",
@@ -53,7 +54,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-14 12:13:38.189763",
+ "modified": "2026-08-14 12:26:33.548672",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Timesheet",
