@@ -500,7 +500,18 @@ const TimesheetUI = {
 			if ($(this).is(":disabled") || is_submitted()) return;
 			e.stopPropagation();
 			wrapper.find(".tf-dropdown-menu").hide();
+			wrapper.find(".tf-dropdown-container").css("z-index", "");
+			wrapper.find("tr, td").css("z-index", "");
+
 			const idx = $(this).data("idx");
+			const $container = $(this).closest(".tf-dropdown-container");
+			const $tr = $(this).closest("tr");
+			const $td = $(this).closest("td");
+
+			$tr.css({ "position": "relative", "z-index": "1000" });
+			$td.css({ "position": "relative", "z-index": "1000" });
+			$container.css({ "position": "relative", "z-index": "1000" });
+
 			const $menu = wrapper.find(`.tf-proj-menu-${idx}`);
 			TimesheetDataService.fetch_recent_projects($(this).val(), (projects) => {
 				TimesheetUI.render_project_dropdown_items($menu, projects, idx);
@@ -539,6 +550,8 @@ const TimesheetUI = {
 				});
 			}
 			wrapper.find(`.tf-proj-menu-${idx}`).hide();
+			wrapper.find(".tf-dropdown-container").css("z-index", "");
+			wrapper.find("tr, td").css("z-index", "");
 		});
 
 		// Task search dropdown
@@ -546,7 +559,18 @@ const TimesheetUI = {
 			if ($(this).is(":disabled") || is_submitted()) return;
 			e.stopPropagation();
 			wrapper.find(".tf-dropdown-menu").hide();
+			wrapper.find(".tf-dropdown-container").css("z-index", "");
+			wrapper.find("tr, td").css("z-index", "");
+
 			const idx = $(this).data("idx");
+			const $container = $(this).closest(".tf-dropdown-container");
+			const $tr = $(this).closest("tr");
+			const $td = $(this).closest("td");
+
+			$tr.css({ "position": "relative", "z-index": "1000" });
+			$td.css({ "position": "relative", "z-index": "1000" });
+			$container.css({ "position": "relative", "z-index": "1000" });
+
 			const $menu = wrapper.find(`.tf-task-menu-${idx}`);
 			const project_name = frm.doc.table_pfiw[idx] ? frm.doc.table_pfiw[idx].project : "";
 
@@ -593,11 +617,15 @@ const TimesheetUI = {
 			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
 			if (child) frappe.model.set_value(child.doctype, child.name, "task", t_name);
 			wrapper.find(`.tf-task-menu-${idx}`).hide();
+			wrapper.find(".tf-dropdown-container").css("z-index", "");
+			wrapper.find("tr, td").css("z-index", "");
 		});
 
 		// Global click to close dropdown menus
 		$(document).off("click.tf_dropdown").on("click.tf_dropdown", () => {
 			wrapper.find(".tf-dropdown-menu").hide();
+			wrapper.find(".tf-dropdown-container").css("z-index", "");
+			wrapper.find("tr, td").css("z-index", "");
 		});
 
 		// From & To time inputs
@@ -1180,7 +1208,8 @@ const TimesheetUI = {
     border: 1px solid #cbd5e1;
     border-radius: 10px;
     background: #ffffff;
-    overflow: hidden;
+    overflow: visible !important;
+    position: relative;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   }
 
@@ -1340,39 +1369,41 @@ const TimesheetUI = {
 
   .tf-dropdown-menu {
     position: absolute;
-    top: calc(100% + 2px);
+    top: calc(100% + 4px);
     left: 0;
-    right: 0;
+    min-width: 220px;
+    width: max-content;
+    max-width: 320px;
     background: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
-    max-height: 180px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
+    max-height: 200px;
     overflow-y: auto;
-    z-index: 9999;
+    z-index: 999999 !important;
     display: none;
     padding: 4px 0;
   }
 
   .tf-dropdown-item {
-    padding: 7px 12px;
-    font-size: 12px;
-    color: #334155;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    color: #1e293b;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: background 0.1s ease;
+    transition: all 0.1s ease;
   }
 
   .tf-dropdown-item:hover {
-    background: #f1f5f9;
+    background: #eff6ff;
     color: #2563eb;
-    font-weight: 500;
+    font-weight: 600;
   }
 
   .tf-dropdown-no-res {
-    padding: 8px 10px;
+    padding: 10px 12px;
     font-size: 12px;
     color: #94a3b8;
     text-align: center;
