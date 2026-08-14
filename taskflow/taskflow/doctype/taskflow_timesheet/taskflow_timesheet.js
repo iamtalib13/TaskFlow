@@ -750,7 +750,7 @@ const TimesheetUI = {
 		const user_id = frm.doc.user || frappe.session.user || "";
 		const default_subject = `Timesheet Summary - ${doc_date} - ${emp_name}`;
 
-		// Pre-populate Hyper-Structured HTML Email Body with Compact From, To, and Hours Column Widths
+		// Pre-populate Hyper-Structured HTML Email Body with Compact Sr No and Expanded Task Title Column Widths
 		const items = frm.doc.table_pfiw || [];
 		let total_hrs = 0;
 		const breakdown = { Task: 0, Meeting: 0, Research: 0 };
@@ -778,15 +778,15 @@ const TimesheetUI = {
 
 			table_rows += `
 				<tr style="${bg_style} border-bottom: 1px solid #e2e8f0;">
-					<td style="padding: 8px 4px; text-align: center; font-weight: 700; color: #64748b; border-right: 1px solid #e2e8f0;">${idx + 1}</td>
-					<td style="padding: 8px 6px; border-right: 1px solid #e2e8f0;">
-						<span style="font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; ${badge_style}">${act}</span>
+					<td style="padding: 8px 2px; text-align: center; font-weight: 700; color: #64748b; border-right: 1px solid #e2e8f0; width: 28px;">${idx + 1}</td>
+					<td style="padding: 8px 4px; border-right: 1px solid #e2e8f0; width: 70px;">
+						<span style="font-size: 10.5px; font-weight: 700; padding: 2px 5px; border-radius: 4px; ${badge_style}">${act}</span>
 					</td>
-					<td style="padding: 8px 6px; color: #1e293b; font-weight: 600; border-right: 1px solid #e2e8f0;">${frappe.utils.escape_html(proj_display)}</td>
-					<td style="padding: 8px 6px; color: #334155; border-right: 1px solid #e2e8f0;">${frappe.utils.escape_html(task_display)}</td>
-					<td style="padding: 8px 4px; text-align: center; font-family: monospace; color: #1e293b; border-right: 1px solid #e2e8f0; font-size: 11px; white-space: nowrap;">${from_val}</td>
-					<td style="padding: 8px 4px; text-align: center; font-family: monospace; color: #1e293b; border-right: 1px solid #e2e8f0; font-size: 11px; white-space: nowrap;">${to_val}</td>
-					<td style="padding: 8px 4px; text-align: center; font-family: monospace; font-weight: 700; color: #0078d4; border-right: 1px solid #e2e8f0;">${dur_val}</td>
+					<td style="padding: 8px 6px; color: #1e293b; font-weight: 600; border-right: 1px solid #e2e8f0; width: 110px;">${frappe.utils.escape_html(proj_display)}</td>
+					<td style="padding: 8px 6px; color: #334155; border-right: 1px solid #e2e8f0; width: 160px; font-weight: 600;">${frappe.utils.escape_html(task_display)}</td>
+					<td style="padding: 8px 3px; text-align: center; font-family: monospace; color: #1e293b; border-right: 1px solid #e2e8f0; font-size: 11px; white-space: nowrap; width: 60px;">${from_val}</td>
+					<td style="padding: 8px 3px; text-align: center; font-family: monospace; color: #1e293b; border-right: 1px solid #e2e8f0; font-size: 11px; white-space: nowrap; width: 60px;">${to_val}</td>
+					<td style="padding: 8px 3px; text-align: center; font-family: monospace; font-weight: 700; color: #0078d4; border-right: 1px solid #e2e8f0; width: 48px;">${dur_val}</td>
 					<td style="padding: 8px 6px; color: #475569;">${frappe.utils.escape_html(desc_val)}</td>
 				</tr>
 			`;
@@ -831,19 +831,19 @@ const TimesheetUI = {
 		</tr>
 	</table>
 
-	<!-- Time Entries Detailed Breakout Table with Compact From, To, and Hours Column Widths -->
+	<!-- Time Entries Detailed Breakout Table with Compact Sr No and Expanded Task Title Column Widths -->
 	<div style="margin-bottom: 20px;">
 		<div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">Detailed Time Log Entries</div>
 		<table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
 			<tbody>
 				<tr style="background: #0078d4; color: #ffffff; font-weight: 700; border-bottom: 2px solid #005a9e;">
-					<td style="padding: 9px 4px; text-align: center; width: 40px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Sr No</td>
-					<td style="padding: 9px 6px; width: 75px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Activity</td>
-					<td style="padding: 9px 6px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Project Name</td>
-					<td style="padding: 9px 6px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Task Title</td>
-					<td style="padding: 9px 4px; text-align: center; width: 62px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">From</td>
-					<td style="padding: 9px 4px; text-align: center; width: 62px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">To</td>
-					<td style="padding: 9px 4px; text-align: center; width: 50px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Hours</td>
+					<td style="padding: 9px 2px; text-align: center; width: 28px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Sr No</td>
+					<td style="padding: 9px 4px; width: 70px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Activity</td>
+					<td style="padding: 9px 6px; width: 110px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Project Name</td>
+					<td style="padding: 9px 6px; width: 160px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Task Title</td>
+					<td style="padding: 9px 3px; text-align: center; width: 60px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">From</td>
+					<td style="padding: 9px 3px; text-align: center; width: 60px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">To</td>
+					<td style="padding: 9px 3px; text-align: center; width: 48px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Hours</td>
 					<td style="padding: 9px 6px; font-weight: 700; background: #0078d4; color: #ffffff;">Work Notes</td>
 				</tr>
 				${table_rows}
@@ -1302,7 +1302,7 @@ const TimesheetUI = {
 	},
 
 	update_summary(frm) {
-		const wrapper = $(frm.fields_dict.timesheet_widget.wrapper);
+		const wrapper = $(frm.fields_dict.timesheet_wrapper.wrapper);
 		const items = frm.doc.table_pfiw || [];
 
 		let total_hrs = 0;
