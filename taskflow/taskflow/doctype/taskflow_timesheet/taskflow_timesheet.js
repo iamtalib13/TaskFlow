@@ -401,6 +401,13 @@ const TimesheetUI = {
 			TimesheetUI.update_summary(frm);
 		});
 
+		// Open Row Detail Modal on row click / info button click
+		wrapper.off("click.tf_row_detail").on("click.tf_row_detail", ".tf-row-view-btn, .tf-row-num", function (e) {
+			e.stopPropagation();
+			const idx = $(this).data("idx");
+			TimesheetUI.show_row_detail_modal(frm, idx);
+		});
+
 		// Delegate Row Level Events
 		wrapper.off("click.tf_row_del").on("click.tf_row_del", ".tf-btn-delete-row", function () {
 			if (is_submitted()) return;
@@ -635,6 +642,99 @@ const TimesheetUI = {
 		});
 	},
 
+	show_row_detail_modal(frm, idx) {
+		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+		if (!child) return;
+
+		const work_type = child.activity_type || "Task";
+		const proj_title = TimesheetDataService.titles_cache.projects[child.project] || child.project || "—";
+		const task_title = TimesheetDataService.titles_cache.tasks[child.task] || child.task || "—";
+		const from_val = TimeUtils.extract_time_str(child.from_time) || "10:00";
+		const to_val = TimeUtils.extract_time_str(child.to_time) || "18:00";
+		const duration_str = TimeUtils.hours_to_hhmm(child.hrs);
+		const desc = child.description ? child.description.replace(/<[^>]*>?/gm, "") : "No description provided.";
+
+		const color_map = {
+			Task: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
+			Meeting: { bg: "#f5f3ff", text: "#6d28d9", border: "#ddd6fe" },
+			Research: { bg: "#ecfdf5", text: "#047857", border: "#a7f3d0" },
+		};
+		const style_info = color_map[work_type] || color_map.Task;
+
+		const modal_html = `
+<div class="tf-modal-overlay" id="tf-row-modal-overlay">
+  <div class="tf-modal-card">
+    <div class="tf-modal-header">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="background: ${style_info.bg}; color: ${style_info.text}; border: 1px solid ${style_info.border}; font-weight: 700; padding: 4px 10px; border-radius: 99px; font-size: 12px;">
+          ${frappe.utils.escape_html(work_type)}
+        </span>
+        <span style="font-size: 15px; font-weight: 700; color: #0f172a;">Time Entry #${idx + 1}</span>
+      </div>
+      <button type="button" class="tf-modal-close" id="tf-modal-close-btn">&times;</button>
+    </div>
+
+    <div class="tf-modal-body">
+      <div class="tf-modal-grid">
+        <div class="tf-modal-field">
+          <label class="tf-modal-label">Project</label>
+          <div class="tf-modal-val">${frappe.utils.escape_html(proj_title)}</div>
+        </div>
+
+        <div class="tf-modal-field">
+          <label class="tf-modal-label">Task</label>
+          <div class="tf-modal-val">${frappe.utils.escape_html(task_title)}</div>
+        </div>
+      </div>
+
+      <div class="tf-modal-grid" style="margin-top: 14px;">
+        <div class="tf-modal-field">
+          <label class="tf-modal-label">From Time</label>
+          <div class="tf-modal-val" style="font-family: monospace; font-weight: 600;">${from_val}</div>
+        </div>
+
+        <div class="tf-modal-field">
+          <label class="tf-modal-label">To Time</label>
+          <div class="tf-modal-val" style="font-family: monospace; font-weight: 600;">${to_val}</div>
+        </div>
+
+        <div class="tf-modal-field">
+          <label class="tf-modal-label">Duration</label>
+          <div class="tf-modal-val" style="font-family: monospace; font-weight: 700; color: #2563eb;">${duration_str} hrs</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px;">
+        <label class="tf-modal-label">Description / Notes</label>
+        <div class="tf-modal-notes">${frappe.utils.escape_html(desc)}</div>
+      </div>
+    </div>
+
+    <div class="tf-modal-footer">
+      <button type="button" class="tf-btn-modal-close" id="tf-modal-done-btn">Close</button>
+    </div>
+  </div>
+</div>
+`;
+
+		$("#tf-row-modal-overlay").remove();
+		$("body").append(modal_html);
+
+		$("#tf-modal-close-btn, #tf-modal-done-btn").off("click").on("click", () => {
+			$("#tf-row-modal-overlay").fadeOut(150, function () {
+				$(this).remove();
+			});
+		});
+
+		$("#tf-row-modal-overlay").off("click").on("click", function (e) {
+			if (e.target === this) {
+				$(this).fadeOut(150, function () {
+					$(this).remove();
+				});
+			}
+		});
+	},
+
 	update_table_rows(frm, wrapper) {
 		const items = frm.doc.table_pfiw || [];
 		TimesheetDataService.ensure_titles_loaded(items, () => {
@@ -695,7 +795,11 @@ const TimesheetUI = {
 
 			$tbody.append(`
 				<tr>
-					<td style="font-weight: 500; color: #94a3b8; font-size: 12px;">${idx + 1}</td>
+					<td>
+						<span class="tf-row-num" data-idx="${idx}" title="Click to view row details" style="cursor: pointer; color: #2563eb; font-weight: 600; text-decoration: underline;">
+							${idx + 1}
+						</span>
+					</td>
 					<td>
 						<select class="tf-table-select tf-row-work-type" data-idx="${idx}" data-type="${work_type}" ${input_dis_style}>
 							<option value="Task" ${wt_task_sel} style="background:#ffffff; color:#1d4ed8; font-weight:600;">Task</option>
@@ -737,11 +841,16 @@ const TimesheetUI = {
 						</div>
 					</td>
 					<td>
-						${!is_dis ? `
-						<button class="tf-btn-icon tf-btn-delete-row" data-idx="${idx}" title="Delete" type="button">
-							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-						</button>
-						` : ""}
+						<div style="display: flex; align-items: center; gap: 2px;">
+							<button class="tf-btn-icon tf-row-view-btn" data-idx="${idx}" title="View Details" type="button" style="color: #2563eb;">
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+							</button>
+							${!is_dis ? `
+							<button class="tf-btn-icon tf-btn-delete-row" data-idx="${idx}" title="Delete" type="button">
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+							</button>
+							` : ""}
+						</div>
 					</td>
 				</tr>
 			`);
@@ -1214,6 +1323,123 @@ const TimesheetUI = {
   .tf-dot-task { background: #2563eb; }
   .tf-dot-meeting { background: #8b5cf6; }
   .tf-dot-research { background: #10b981; }
+
+  /* Blurred Backdrop Detail View Modal */
+  .tf-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    animation: tfFadeIn 0.18s ease-out;
+  }
+
+  @keyframes tfFadeIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .tf-modal-card {
+    background: #ffffff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .tf-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .tf-modal-close {
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    color: #94a3b8;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .tf-modal-close:hover { color: #0f172a; }
+
+  .tf-modal-body {
+    padding: 16px 0;
+  }
+
+  .tf-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+  }
+
+  .tf-modal-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .tf-modal-val {
+    font-size: 13px;
+    color: #0f172a;
+    font-weight: 500;
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #f1f5f9;
+  }
+
+  .tf-modal-notes {
+    font-size: 13px;
+    color: #334155;
+    background: #f8fafc;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    min-height: 60px;
+    max-height: 160px;
+    overflow-y: auto;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  .tf-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 14px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .tf-btn-modal-close {
+    padding: 8px 20px;
+    border-radius: 8px;
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .tf-btn-modal-close:hover {
+    background: #1d4ed8;
+  }
 </style>
 
 <div class="tf-timesheet-wrapper">
@@ -1255,7 +1481,7 @@ const TimesheetUI = {
 						<th style="width: 95px;">To</th>
 						<th style="width: 80px;">Duration</th>
 						<th>Description</th>
-						<th style="width: 35px;"></th>
+						<th style="width: 55px;"></th>
 					</tr>
 				</thead>
 				<tbody id="tf-table-body">
