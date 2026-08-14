@@ -133,6 +133,25 @@ const TimeUtils = {
 		return String(time_val).substring(0, 5);
 	},
 
+	format_time_12h(time_val) {
+		if (!time_val) return "—";
+		let time_str = this.extract_time_str(time_val);
+		if (!time_str || !time_str.includes(":")) return time_val || "—";
+
+		const parts = time_str.split(":");
+		let h = parseInt(parts[0], 10);
+		const m = parts[1] || "00";
+
+		if (isNaN(h)) return time_val;
+
+		const ampm = h >= 12 ? "PM" : "AM";
+		h = h % 12;
+		if (h === 0) h = 12;
+
+		const h_str = String(h).padStart(2, "0");
+		return `${h_str}:${m} ${ampm}`;
+	},
+
 	format_time_hhmmss(time_val) {
 		if (!time_val) return "00:00:00";
 		let str = String(time_val).trim();
@@ -732,7 +751,7 @@ const TimesheetUI = {
 		const status_val = frm.doc.status || "Draft";
 		const default_subject = `Timesheet Summary - ${doc_date} - ${emp_name}`;
 
-		// Pre-populate Hyper-Structured HTML Email Body
+		// Pre-populate Hyper-Structured HTML Email Body with 12-Hour AM/PM Time Format
 		const items = frm.doc.table_pfiw || [];
 		let total_hrs = 0;
 		const breakdown = { Task: 0, Meeting: 0, Research: 0 };
@@ -747,8 +766,8 @@ const TimesheetUI = {
 			const is_task = act === "Task";
 			const proj_display = is_task ? (TimesheetDataService.titles_cache.projects[item.project] || item.project || "—") : "—";
 			const task_display = is_task ? (TimesheetDataService.titles_cache.tasks[item.task] || item.task || "—") : "—";
-			const from_val = TimeUtils.extract_time_str(item.from_time) || "—";
-			const to_val = TimeUtils.extract_time_str(item.to_time) || "—";
+			const from_val = TimeUtils.format_time_12h(item.from_time);
+			const to_val = TimeUtils.format_time_12h(item.to_time);
 			const dur_val = TimeUtils.hours_to_hhmm(hrs);
 			const desc_val = item.description ? item.description.replace(/<[^>]*>?/gm, "") : "—";
 
@@ -766,8 +785,8 @@ const TimesheetUI = {
 					</td>
 					<td style="padding: 9px 8px; color: #1e293b; font-weight: 600; border-right: 1px solid #e2e8f0;">${frappe.utils.escape_html(proj_display)}</td>
 					<td style="padding: 9px 8px; color: #334155; border-right: 1px solid #e2e8f0;">${frappe.utils.escape_html(task_display)}</td>
-					<td style="padding: 9px 6px; text-align: center; font-family: monospace; color: #1e293b; border-right: 1px solid #e2e8f0;">${from_val}</td>
-					<td style="padding: 9px 6px; text-align: center; font-family: monospace; color: #1e293b; border-right: 1px solid #e2e8f0;">${to_val}</td>
+					<td style="padding: 9px 6px; text-align: center; font-family: monospace; color: #1e293b; border-right: 1px solid #e2e8f0; font-size: 11.5px;">${from_val}</td>
+					<td style="padding: 9px 6px; text-align: center; font-family: monospace; color: #1e293b; border-right: 1px solid #e2e8f0; font-size: 11.5px;">${to_val}</td>
 					<td style="padding: 9px 6px; text-align: center; font-family: monospace; font-weight: 700; color: #0078d4; border-right: 1px solid #e2e8f0;">${dur_val}</td>
 					<td style="padding: 9px 8px; color: #475569;">${frappe.utils.escape_html(desc_val)}</td>
 				</tr>
@@ -845,8 +864,8 @@ const TimesheetUI = {
 					<td style="padding: 10px 8px; width: 85px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Activity</td>
 					<td style="padding: 10px 8px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Project Name</td>
 					<td style="padding: 10px 8px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Task Title</td>
-					<td style="padding: 10px 8px; text-align: center; width: 55px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">From</td>
-					<td style="padding: 10px 8px; text-align: center; width: 55px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">To</td>
+					<td style="padding: 10px 8px; text-align: center; width: 75px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">From</td>
+					<td style="padding: 10px 8px; text-align: center; width: 75px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">To</td>
 					<td style="padding: 10px 8px; text-align: center; width: 65px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Hours</td>
 					<td style="padding: 10px 8px; font-weight: 700; background: #0078d4; color: #ffffff;">Work Notes</td>
 				</tr>
