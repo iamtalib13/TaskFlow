@@ -192,6 +192,15 @@ const TimeUtils = {
 		const day = new Date(date_str).getDay();
 		return day === 6 ? { from: "10:00", to: "16:00" } : { from: "10:00", to: "18:00" };
 	},
+
+	clean_text_for_html(raw_html) {
+		if (!raw_html) return "—";
+		let text = raw_html.replace(/<[^>]*>?/gm, "").trim();
+		if (!text) return "—";
+		// Unescape common HTML entities if present to avoid double escaping (&amp; -> &)
+		text = text.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"');
+		return frappe.utils.escape_html(text);
+	},
 };
 
 /* ==========================================================================
@@ -750,7 +759,7 @@ const TimesheetUI = {
 		const user_id = frm.doc.user || frappe.session.user || "";
 		const default_subject = `Timesheet Summary - ${doc_date} - ${emp_name}`;
 
-		// Pre-populate Hyper-Structured HTML Email Body with Mysahayog.com branding signature
+		// Pre-populate Hyper-Structured HTML Email Body (Clean email client rendering with border & double-escaping fixes)
 		const items = frm.doc.table_pfiw || [];
 		let total_hrs = 0;
 		const breakdown = { Task: 0, Meeting: 0, Research: 0 };
@@ -768,26 +777,26 @@ const TimesheetUI = {
 			const from_val = TimeUtils.format_time_12h(item.from_time);
 			const to_val = TimeUtils.format_time_12h(item.to_time);
 			const dur_val = TimeUtils.hours_to_hhmm(hrs);
-			const desc_val = item.description ? item.description.replace(/<[^>]*>?/gm, "") : "—";
+			const desc_val = TimeUtils.clean_text_for_html(item.description);
 
-			let badge_style = 'background: #eff6ff; color: #1d4ed8;';
-			if (act === 'Meeting') badge_style = 'background: #f5f3ff; color: #6d28d9;';
-			if (act === 'Research') badge_style = 'background: #ecfdf5; color: #047857;';
+			let badge_style = 'background-color: #eff6ff; color: #1d4ed8;';
+			if (act === 'Meeting') badge_style = 'background-color: #f5f3ff; color: #6d28d9;';
+			if (act === 'Research') badge_style = 'background-color: #ecfdf5; color: #047857;';
 
-			const bg_style = idx % 2 === 1 ? 'background: #fafafa;' : 'background: #ffffff;';
+			const row_bg = idx % 2 === 1 ? '#fafafa' : '#ffffff';
 
 			table_rows += `
-				<tr style="${bg_style} border-bottom: 1px solid #e2e8f0;">
-					<td style="padding: 8px 2px; text-align: center; font-weight: 700; color: #64748b; border-right: 1px solid #e2e8f0; width: 28px;">${idx + 1}</td>
-					<td style="padding: 8px 4px; border-right: 1px solid #e2e8f0; width: 70px;">
-						<span style="font-size: 10.5px; font-weight: 700; padding: 2px 5px; border-radius: 4px; ${badge_style}">${act}</span>
+				<tr>
+					<td style="padding: 8px 4px; text-align: center; font-weight: 700; color: #64748b; background-color: ${row_bg}; border: none; border-bottom: 1px solid #e2e8f0; width: 28px;">${idx + 1}</td>
+					<td style="padding: 8px 4px; background-color: ${row_bg}; border: none; border-bottom: 1px solid #e2e8f0; width: 70px;">
+						<span style="font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; ${badge_style}">${act}</span>
 					</td>
-					<td style="padding: 8px 6px; color: #1e293b; font-weight: 600; border-right: 1px solid #e2e8f0; width: 110px;">${frappe.utils.escape_html(proj_display)}</td>
-					<td style="padding: 8px 6px; color: #334155; border-right: 1px solid #e2e8f0; width: 160px; font-weight: 600;">${frappe.utils.escape_html(task_display)}</td>
-					<td style="padding: 8px 3px; text-align: center; font-family: monospace; color: #1e293b; border-right: 1px solid #e2e8f0; font-size: 11px; white-space: nowrap; width: 60px;">${from_val}</td>
-					<td style="padding: 8px 3px; text-align: center; font-family: monospace; color: #1e293b; border-right: 1px solid #e2e8f0; font-size: 11px; white-space: nowrap; width: 60px;">${to_val}</td>
-					<td style="padding: 8px 3px; text-align: center; font-family: monospace; font-weight: 700; color: #0078d4; border-right: 1px solid #e2e8f0; width: 48px;">${dur_val}</td>
-					<td style="padding: 8px 6px; color: #475569;">${frappe.utils.escape_html(desc_val)}</td>
+					<td style="padding: 8px 6px; color: #1e293b; font-weight: 600; background-color: ${row_bg}; border: none; border-bottom: 1px solid #e2e8f0; width: 110px;">${frappe.utils.escape_html(proj_display)}</td>
+					<td style="padding: 8px 6px; color: #334155; font-weight: 600; background-color: ${row_bg}; border: none; border-bottom: 1px solid #e2e8f0; width: 160px;">${frappe.utils.escape_html(task_display)}</td>
+					<td style="padding: 8px 3px; text-align: center; font-family: monospace; color: #1e293b; font-size: 11px; white-space: nowrap; background-color: ${row_bg}; border: none; border-bottom: 1px solid #e2e8f0; width: 60px;">${from_val}</td>
+					<td style="padding: 8px 3px; text-align: center; font-family: monospace; color: #1e293b; font-size: 11px; white-space: nowrap; background-color: ${row_bg}; border: none; border-bottom: 1px solid #e2e8f0; width: 60px;">${to_val}</td>
+					<td style="padding: 8px 3px; text-align: center; font-family: monospace; font-weight: 700; color: #0078d4; background-color: ${row_bg}; border: none; border-bottom: 1px solid #e2e8f0; width: 48px;">${dur_val}</td>
+					<td style="padding: 8px 6px; color: #475569; background-color: ${row_bg}; border: none; border-bottom: 1px solid #e2e8f0;">${desc_val}</td>
 				</tr>
 			`;
 		});
@@ -798,35 +807,33 @@ const TimesheetUI = {
 		const res_str = TimeUtils.hours_to_hhmm(breakdown.Research || 0);
 
 		const default_message_body = `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 680px; margin: 0 auto; background: #ffffff; padding: 4px;">
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 680px; margin: 0 auto; background-color: #ffffff; padding: 4px;">
 	
 	<!-- Greeting & Intro -->
 	<p style="font-size: 14px; color: #334155; margin-bottom: 16px; line-height: 1.5;">
 		Dear Team,<br>Please review the daily timesheet summary and activity breakout details recorded for <strong>${doc_date}</strong>:
 	</p>
 
-	<!-- Employee Metadata & Perfectly Centered Total Work Hours Card (No Status Badge) -->
-	<table style="width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+	<!-- Employee Metadata & Perfectly Centered Total Work Hours Card -->
+	<table style="width: 100%; border-collapse: collapse; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
 		<tr>
-			<td style="padding: 16px 20px; vertical-align: middle; width: 62%;">
-				<table style="width: 100%; border-collapse: collapse;">
-					<tr>
-						<td style="padding: 4px 0; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; width: 120px;">Employee Name:</td>
-						<td style="padding: 4px 0; color: #0f172a; font-weight: 700; font-size: 13.5px;">${frappe.utils.escape_html(emp_name)}</td>
-					</tr>
-					<tr>
-						<td style="padding: 4px 0; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Employee Code:</td>
-						<td style="padding: 4px 0; color: #334155; font-weight: 600; font-size: 13px; font-family: monospace;">${frappe.utils.escape_html(user_id)}</td>
-					</tr>
-					<tr>
-						<td style="padding: 4px 0; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Timesheet Date:</td>
-						<td style="padding: 4px 0; color: #334155; font-weight: 600; font-size: 13px;">${doc_date}</td>
-					</tr>
-				</table>
+			<td style="padding: 16px 20px; vertical-align: middle; width: 60%; color: #1e293b; background-color: #f8fafc; border: none;">
+				<div style="margin-bottom: 6px; color: #1e293b;">
+					<span style="color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; width: 120px;">Employee Name:</span>
+					<strong style="color: #0f172a; font-size: 13.5px;">${frappe.utils.escape_html(emp_name)}</strong>
+				</div>
+				<div style="margin-bottom: 6px; color: #1e293b;">
+					<span style="color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; width: 120px;">Employee Code:</span>
+					<span style="color: #334155; font-weight: 600; font-size: 13px; font-family: monospace;">${frappe.utils.escape_html(user_id)}</span>
+				</div>
+				<div style="color: #1e293b;">
+					<span style="color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; width: 120px;">Timesheet Date:</span>
+					<span style="color: #334155; font-weight: 600; font-size: 13px;">${doc_date}</span>
+				</div>
 			</td>
-			<td style="padding: 16px 24px; vertical-align: middle; text-align: center; border-left: 1px dashed #cbd5e1; background: #ffffff; border-radius: 0 8px 8px 0; width: 38%;">
-				<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px;">Total Work Hours</div>
-				<div style="font-size: 30px; font-weight: 800; color: #0078d4; font-family: monospace; letter-spacing: -0.5px; line-height: 1;">${formatted_total_str} <span style="font-size: 13px; font-weight: 600; color: #64748b;">hrs</span></div>
+			<td style="padding: 16px 20px; vertical-align: middle; text-align: center; width: 40%; background-color: #ffffff; border-left: 1px dashed #cbd5e1; border-top: none; border-right: none; border-bottom: none;">
+				<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px;">Total Work Hours</div>
+				<div style="font-size: 28px; font-weight: 800; color: #0078d4; font-family: monospace; letter-spacing: -0.5px; line-height: 1;">${formatted_total_str} <span style="font-size: 12px; font-weight: 600; color: #64748b;">hrs</span></div>
 			</td>
 		</tr>
 	</table>
@@ -834,47 +841,51 @@ const TimesheetUI = {
 	<!-- Time Entries Detailed Breakout Table -->
 	<div style="margin-bottom: 20px;">
 		<div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">Detailed Time Log Entries</div>
-		<table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
-			<tbody>
-				<tr style="background: #0078d4; color: #ffffff; font-weight: 700; border-bottom: 2px solid #005a9e;">
-					<td style="padding: 9px 2px; text-align: center; width: 28px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Sr No</td>
-					<td style="padding: 9px 4px; width: 70px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Activity</td>
-					<td style="padding: 9px 6px; width: 110px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Project Name</td>
-					<td style="padding: 9px 6px; width: 160px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Task Title</td>
-					<td style="padding: 9px 3px; text-align: center; width: 60px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">From</td>
-					<td style="padding: 9px 3px; text-align: center; width: 60px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">To</td>
-					<td style="padding: 9px 3px; text-align: center; width: 48px; border-right: 1px solid rgba(255,255,255,0.3); font-weight: 700; background: #0078d4; color: #ffffff;">Hours</td>
-					<td style="padding: 9px 6px; font-weight: 700; background: #0078d4; color: #ffffff;">Work Notes</td>
+		<table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background-color: #ffffff;">
+			<thead>
+				<tr style="background-color: #0078d4; color: #ffffff; font-weight: 700;">
+					<th style="padding: 9px 2px; text-align: center; width: 28px; background-color: #0078d4; color: #ffffff; font-weight: 700; border: none;">Sr No</th>
+					<th style="padding: 9px 4px; width: 70px; background-color: #0078d4; color: #ffffff; font-weight: 700; border: none;">Activity</th>
+					<th style="padding: 9px 6px; width: 110px; background-color: #0078d4; color: #ffffff; font-weight: 700; border: none;">Project Name</th>
+					<th style="padding: 9px 6px; width: 160px; background-color: #0078d4; color: #ffffff; font-weight: 700; border: none;">Task Title</th>
+					<th style="padding: 9px 3px; text-align: center; width: 60px; background-color: #0078d4; color: #ffffff; font-weight: 700; border: none;">From</th>
+					<th style="padding: 9px 3px; text-align: center; width: 60px; background-color: #0078d4; color: #ffffff; font-weight: 700; border: none;">To</th>
+					<th style="padding: 9px 3px; text-align: center; width: 48px; background-color: #0078d4; color: #ffffff; font-weight: 700; border: none;">Hours</th>
+					<th style="padding: 9px 6px; background-color: #0078d4; color: #ffffff; font-weight: 700; border: none;">Work Notes</th>
 				</tr>
+			</thead>
+			<tbody>
 				${table_rows}
 			</tbody>
 		</table>
 	</div>
 
-	<!-- Activity Breakdown Summary Block (Placed at the bottom before signature) -->
-	<div style="background: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+	<!-- Activity Breakdown Summary Block -->
+	<div style="background-color: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
 		<div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
 			Activity Hours Summary & Breakout
 		</div>
-		<table style="width: 100%; border-collapse: separate; border-spacing: 10px 0;">
+		<table style="width: 100%; border-collapse: collapse; border: none;">
 			<tr>
-				<td style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 12px 14px; width: 33.33%; text-align: center;">
+				<td style="width: 32%; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 12px; text-align: center;">
 					<div style="font-size: 11px; font-weight: 700; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.5px;">TASK</div>
-					<div style="font-size: 20px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 4px;">${task_str} <span style="font-size: 11px; font-weight: 600; color: #64748b;">hrs</span></div>
+					<div style="font-size: 18px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 2px;">${task_str} <span style="font-size: 11px; font-weight: 600; color: #64748b;">hrs</span></div>
 				</td>
-				<td style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 6px; padding: 12px 14px; width: 33.33%; text-align: center;">
+				<td style="width: 2%;"></td>
+				<td style="width: 32%; background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 6px; padding: 10px 12px; text-align: center;">
 					<div style="font-size: 11px; font-weight: 700; color: #6d28d9; text-transform: uppercase; letter-spacing: 0.5px;">MEETING</div>
-					<div style="font-size: 20px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 4px;">${meet_str} <span style="font-size: 11px; font-weight: 600; color: #64748b;">hrs</span></div>
+					<div style="font-size: 18px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 2px;">${meet_str} <span style="font-size: 11px; font-weight: 600; color: #64748b;">hrs</span></div>
 				</td>
-				<td style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 12px 14px; width: 33.33%; text-align: center;">
+				<td style="width: 2%;"></td>
+				<td style="width: 32%; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 10px 12px; text-align: center;">
 					<div style="font-size: 11px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px;">RESEARCH</div>
-					<div style="font-size: 20px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 4px;">${res_str} <span style="font-size: 11px; font-weight: 600; color: #64748b;">hrs</span></div>
+					<div style="font-size: 18px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 2px;">${res_str} <span style="font-size: 11px; font-weight: 600; color: #64748b;">hrs</span></div>
 				</td>
 			</tr>
 		</table>
 	</div>
 
-	<!-- Signature with Mysahayog.com -->
+	<!-- Signature -->
 	<div style="border-top: 1px solid #e2e8f0; padding-top: 14px; font-size: 12.5px; color: #475569;">
 		Best regards,<br>
 		<strong style="color: #0f172a; font-size: 13.5px;">${frappe.utils.escape_html(emp_name)}</strong><br>
