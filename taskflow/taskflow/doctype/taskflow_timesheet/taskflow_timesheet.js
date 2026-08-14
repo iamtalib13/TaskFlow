@@ -377,13 +377,14 @@ function render_timesheet_widget(frm) {
 			],
 			primary_action_label: "Save",
 			primary_action(values) {
+				const val = values.description || "";
+				d.hide();
 				if (child) {
-					frappe.model.set_value(child.doctype, child.name, "description", values.description || "").then(() => {
+					frappe.model.set_value(child.doctype, child.name, "description", val).then(() => {
 						update_table_rows(frm, wrapper);
 						frm.save();
 					});
 				}
-				d.hide();
 			},
 		});
 		d.show();
@@ -630,7 +631,7 @@ function update_table_rows(frm, wrapper) {
 			});
 		}
 		return;
-	}
+	});
 
 	const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
 	const def_times = get_default_times_for_date(doc_date);
