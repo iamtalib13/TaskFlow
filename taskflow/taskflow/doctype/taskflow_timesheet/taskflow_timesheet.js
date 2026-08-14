@@ -1006,12 +1006,28 @@ const TimesheetUI = {
 			}
 		});
 
-		wrapper.find("#tf-summary-total-hours").text(TimeUtils.hours_to_hhmm(total_hrs));
+		const formatted_total = TimeUtils.hours_to_hhmm(total_hrs);
+		wrapper.find("#tf-summary-total-hours").text(formatted_total);
 
-		const task_pct = total_hrs > 0 ? (breakdown.Task / total_hrs) * 100 : 0;
-		const meet_pct = total_hrs > 0 ? (breakdown.Meeting / total_hrs) * 100 : 0;
-		const res_pct = total_hrs > 0 ? (breakdown.Research / total_hrs) * 100 : 0;
+		const task_hrs = breakdown.Task || 0;
+		const meet_hrs = breakdown.Meeting || 0;
+		const res_hrs = breakdown.Research || 0;
 
+		const task_pct = total_hrs > 0 ? (task_hrs / total_hrs) * 100 : 0;
+		const meet_pct = total_hrs > 0 ? (meet_hrs / total_hrs) * 100 : 0;
+		const res_pct = total_hrs > 0 ? (res_hrs / total_hrs) * 100 : 0;
+
+		// Update 3 Left Stat Cards
+		wrapper.find("#tf-stat-task-val").text(TimeUtils.hours_to_hhmm(task_hrs));
+		wrapper.find("#tf-stat-task-pct").text(`${Math.round(task_pct)}% of total`);
+
+		wrapper.find("#tf-stat-meet-val").text(TimeUtils.hours_to_hhmm(meet_hrs));
+		wrapper.find("#tf-stat-meet-pct").text(`${Math.round(meet_pct)}% of total`);
+
+		wrapper.find("#tf-stat-res-val").text(TimeUtils.hours_to_hhmm(res_hrs));
+		wrapper.find("#tf-stat-res-pct").text(`${Math.round(res_pct)}% of total`);
+
+		// Update Right Progress Track
 		wrapper.find("#tf-seg-task").css("width", `${task_pct}%`);
 		wrapper.find("#tf-seg-meeting").css("width", `${meet_pct}%`);
 		wrapper.find("#tf-seg-research").css("width", `${res_pct}%`);
@@ -1327,26 +1343,117 @@ const TimesheetUI = {
 
   .tf-bottom-container {
     margin-top: 20px;
-    display: flex;
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 16px;
+    align-items: stretch;
   }
 
-  /* Sleek Modern Analytics Card - Compact Left Aligned */
+  @media (max-width: 900px) {
+    .tf-bottom-container {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .tf-activity-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+
+  @media (max-width: 600px) {
+    .tf-activity-cards-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .tf-activity-stat-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .tf-activity-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  .tf-stat-task {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+    border-color: #bae6fd;
+  }
+  .tf-stat-meet {
+    background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
+    border-color: #e9d5ff;
+  }
+  .tf-stat-res {
+    background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%);
+    border-color: #a7f3d0;
+  }
+
+  .tf-stat-card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .tf-stat-card-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .tf-stat-card-val-group {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  .tf-stat-card-val {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+  }
+
+  .tf-stat-card-unit {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+  }
+
+  .tf-stat-card-pct {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+  }
+
+  /* Right Analytics Card */
   .tf-analytics-card {
-    width: 340px;
-    max-width: 100%;
+    width: 100%;
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 18px 20px;
+    padding: 16px 18px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-sizing: border-box;
   }
 
   .tf-analytics-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 
   .tf-analytics-title {
@@ -1364,13 +1471,13 @@ const TimesheetUI = {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    padding-bottom: 10px;
+    padding-bottom: 8px;
     border-bottom: 1px solid #f1f5f9;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 
   .tf-total-number {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 800;
     color: #0f172a;
     letter-spacing: -0.6px;
@@ -1385,7 +1492,7 @@ const TimesheetUI = {
     border-radius: 99px;
     overflow: hidden;
     display: flex;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
   .tf-progress-seg {
@@ -1487,8 +1594,51 @@ const TimesheetUI = {
 		</div>
 	</div>
 
-	<!-- Analytics Summary Card -->
+	<!-- Bottom Section: 3 Left Activity Cards + Right Analytics Card -->
 	<div class="tf-bottom-container">
+		<!-- Left Side: 3 Activity Stat Cards -->
+		<div class="tf-activity-cards-grid">
+			<!-- Task Stat Card -->
+			<div class="tf-activity-stat-card tf-stat-task">
+				<div class="tf-stat-card-header">
+					<span class="tf-dot tf-dot-task"></span>
+					<span class="tf-stat-card-title">Task</span>
+				</div>
+				<div class="tf-stat-card-val-group">
+					<span class="tf-stat-card-val" id="tf-stat-task-val">00:00</span>
+					<span class="tf-stat-card-unit">hrs</span>
+				</div>
+				<div class="tf-stat-card-pct" id="tf-stat-task-pct">0% of total</div>
+			</div>
+
+			<!-- Meeting Stat Card -->
+			<div class="tf-activity-stat-card tf-stat-meet">
+				<div class="tf-stat-card-header">
+					<span class="tf-dot tf-dot-meeting"></span>
+					<span class="tf-stat-card-title">Meeting</span>
+				</div>
+				<div class="tf-stat-card-val-group">
+					<span class="tf-stat-card-val" id="tf-stat-meet-val">00:00</span>
+					<span class="tf-stat-card-unit">hrs</span>
+				</div>
+				<div class="tf-stat-card-pct" id="tf-stat-meet-pct">0% of total</div>
+			</div>
+
+			<!-- Research Stat Card -->
+			<div class="tf-activity-stat-card tf-stat-res">
+				<div class="tf-stat-card-header">
+					<span class="tf-dot tf-dot-research"></span>
+					<span class="tf-stat-card-title">Research</span>
+				</div>
+				<div class="tf-stat-card-val-group">
+					<span class="tf-stat-card-val" id="tf-stat-res-val">00:00</span>
+					<span class="tf-stat-card-unit">hrs</span>
+				</div>
+				<div class="tf-stat-card-pct" id="tf-stat-res-pct">0% of total</div>
+			</div>
+		</div>
+
+		<!-- Right Side: Analytics Card -->
 		<div class="tf-analytics-card">
 			<div class="tf-analytics-header">
 				<div class="tf-analytics-title">
