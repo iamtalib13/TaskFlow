@@ -20,4 +20,19 @@ frappe.ui.form.on("Taskflow Timesheet", {
 			frm.set_value("user", frappe.session.user);
 		}
 	},
+	"table_pfiw.from_time"(frm, cdt, cdn) {
+		calculate_item_hours(frm, cdt, cdn);
+	},
+	"table_pfiw.to_time"(frm, cdt, cdn) {
+		calculate_item_hours(frm, cdt, cdn);
+	},
 });
+
+function calculate_item_hours(frm, cdt, cdn) {
+	const row = frappe.get_doc(cdt, cdn);
+	if (row.from_time && row.to_time) {
+		const diff = frappe.datetime.get_diff(row.to_time, row.from_time);
+		const hours = diff / 3600;
+		frappe.model.set_value(cdt, cdn, "hrs", hours);
+	}
+}
