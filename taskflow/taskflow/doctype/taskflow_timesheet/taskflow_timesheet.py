@@ -83,7 +83,7 @@ def send_timesheet_email(timesheet_name, to_emails, cc_emails=None, subject=None
 
 			<!-- Outlook Email Footer -->
 			<div style="border-top: 1px solid #edebe9; margin-top: 24px; padding-top: 16px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #a19f9d;">
-				<div>Generated automatically via <strong>TaskFlow</strong> Timesheet Management</div>
+				<div>Generated automatically via <strong>Mysahayog.com</strong> Timesheet Management</div>
 				<div>{doc.name}</div>
 			</div>
 		</div>

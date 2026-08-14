@@ -750,7 +750,7 @@ const TimesheetUI = {
 		const user_id = frm.doc.user || frappe.session.user || "";
 		const default_subject = `Timesheet Summary - ${doc_date} - ${emp_name}`;
 
-		// Pre-populate Hyper-Structured HTML Email Body with Compact Sr No and Expanded Task Title Column Widths
+		// Pre-populate Hyper-Structured HTML Email Body with Mysahayog.com branding signature
 		const items = frm.doc.table_pfiw || [];
 		let total_hrs = 0;
 		const breakdown = { Task: 0, Meeting: 0, Research: 0 };
@@ -831,7 +831,7 @@ const TimesheetUI = {
 		</tr>
 	</table>
 
-	<!-- Time Entries Detailed Breakout Table with Compact Sr No and Expanded Task Title Column Widths -->
+	<!-- Time Entries Detailed Breakout Table -->
 	<div style="margin-bottom: 20px;">
 		<div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">Detailed Time Log Entries</div>
 		<table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
@@ -874,11 +874,11 @@ const TimesheetUI = {
 		</table>
 	</div>
 
-	<!-- Signature -->
+	<!-- Signature with Mysahayog.com -->
 	<div style="border-top: 1px solid #e2e8f0; padding-top: 14px; font-size: 12.5px; color: #475569;">
 		Best regards,<br>
 		<strong style="color: #0f172a; font-size: 13.5px;">${frappe.utils.escape_html(emp_name)}</strong><br>
-		<span style="font-size: 11px; color: #64748b;">Submitted via TaskFlow Application</span>
+		<span style="font-size: 11px; color: #64748b;">Submitted via Mysahayog.com</span>
 	</div>
 </div>
 		`;
@@ -1302,7 +1302,7 @@ const TimesheetUI = {
 	},
 
 	update_summary(frm) {
-		const wrapper = $(frm.fields_dict.timesheet_wrapper.wrapper);
+		const wrapper = $(frm.fields_dict.timesheet_widget.wrapper);
 		const items = frm.doc.table_pfiw || [];
 
 		let total_hrs = 0;
