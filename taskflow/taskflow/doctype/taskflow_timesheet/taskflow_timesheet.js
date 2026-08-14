@@ -303,6 +303,7 @@ const TimesheetUI = {
 
 		if (is_submitted) {
 			wrapper.find("#tf-btn-add-row").hide();
+			wrapper.find("#tf-btn-delete-bulk").hide();
 		} else {
 			wrapper.find("#tf-btn-add-row").show();
 		}
@@ -361,6 +362,42 @@ const TimesheetUI = {
 		});
 		wrapper.find("#tf-input-user").off("change.tf").on("change.tf", function () {
 			if (!is_submitted()) frm.set_value("user", $(this).val());
+		});
+
+		// Check all checkbox
+		wrapper.off("change.tf_check_all").on("change.tf_check_all", "#tf-check-all", function () {
+			const checked = $(this).is(":checked");
+			wrapper.find(".tf-row-checkbox").prop("checked", checked);
+			TimesheetUI.update_bulk_delete_button(wrapper);
+		});
+
+		// Row checkbox change
+		wrapper.off("change.tf_row_check").on("change.tf_row_check", ".tf-row-checkbox", function () {
+			TimesheetUI.update_bulk_delete_button(wrapper);
+		});
+
+		// Bulk delete button click
+		wrapper.off("click.tf_bulk_del").on("click.tf_bulk_del", "#tf-btn-delete-bulk", function () {
+			if (is_submitted()) return;
+			const selected_indices = [];
+			wrapper.find(".tf-row-checkbox:checked").each(function () {
+				selected_indices.push($(this).data("idx"));
+			});
+
+			if (selected_indices.length === 0) return;
+
+			frappe.confirm(`Are you sure you want to delete ${selected_indices.length} selected row(s)?`, () => {
+				selected_indices.sort((a, b) => b - a).forEach((idx) => {
+					frm.doc.table_pfiw.splice(idx, 1);
+				});
+				frm.doc.table_pfiw.forEach((r, i) => (r.idx = i + 1));
+				frm.refresh_field("table_pfiw");
+
+				TimesheetCalculation.calculate_total_hours(frm);
+				TimesheetUI.update_table_rows(frm, wrapper);
+				TimesheetUI.update_summary(frm);
+				frm.save();
+			});
 		});
 
 		// Add Row Button
@@ -617,6 +654,24 @@ const TimesheetUI = {
 		});
 	},
 
+	update_bulk_delete_button(wrapper) {
+		const checked_count = wrapper.find(".tf-row-checkbox:checked").length;
+		const total_count = wrapper.find(".tf-row-checkbox").length;
+
+		if (total_count > 0 && checked_count === total_count) {
+			wrapper.find("#tf-check-all").prop("checked", true);
+		} else {
+			wrapper.find("#tf-check-all").prop("checked", false);
+		}
+
+		if (checked_count > 0) {
+			wrapper.find("#tf-selected-count").text(checked_count);
+			wrapper.find("#tf-btn-delete-bulk").css("display", "inline-flex");
+		} else {
+			wrapper.find("#tf-btn-delete-bulk").hide();
+		}
+	},
+
 	show_row_detail_modal(frm, idx) {
 		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
 		if (!child) return;
@@ -786,7 +841,7 @@ const TimesheetUI = {
 		if (items.length === 0) {
 			$tbody.append(`
 				<tr>
-					<td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px; font-size: 13px;">
+					<td colspan="10" style="text-align: center; color: #94a3b8; padding: 20px; font-size: 13px;">
 						${is_submitted ? "No time entries recorded." : 'No time entries. Click <strong style="color: #2563eb; cursor: pointer;" id="tf-link-add">Add Entry</strong> to start.'}
 					</td>
 				</tr>
@@ -796,6 +851,7 @@ const TimesheetUI = {
 					wrapper.find("#tf-btn-add-row").trigger("click");
 				});
 			}
+			this.update_bulk_delete_button(wrapper);
 			return;
 		}
 
@@ -830,6 +886,9 @@ const TimesheetUI = {
 
 			$tbody.append(`
 				<tr>
+					<td style="width: 25px; text-align: center;">
+						${!is_dis ? `<input type="checkbox" class="tf-row-checkbox" data-idx="${idx}" />` : ''}
+					</td>
 					<td>
 						<span class="tf-row-num" data-idx="${idx}" title="Click to edit row in dialog" style="cursor: pointer; color: #2563eb; font-weight: 600; text-decoration: underline;">
 							${idx + 1}
@@ -890,6 +949,8 @@ const TimesheetUI = {
 				</tr>
 			`);
 		});
+
+		this.update_bulk_delete_button(wrapper);
 	},
 
 	render_project_dropdown_items($menu, projects, idx) {
@@ -1245,7 +1306,6 @@ const TimesheetUI = {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin-top: 10px;
     padding: 6px 12px;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
@@ -1258,6 +1318,24 @@ const TimesheetUI = {
   }
   .tf-btn-add:hover {
     background: #f8fafc;
+  }
+
+  .tf-btn-delete-bulk {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    background: #ef4444;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .tf-btn-delete-bulk:hover {
+    background: #dc2626;
   }
 
   .tf-bottom-container {
@@ -1391,6 +1469,9 @@ const TimesheetUI = {
 			<table class="tf-table">
 				<thead>
 					<tr>
+						<th style="width: 25px; text-align: center;">
+							${!is_submitted ? '<input type="checkbox" id="tf-check-all" />' : ''}
+						</th>
 						<th style="width: 30px;">#</th>
 						<th style="width: 105px;">Activity</th>
 						<th style="width: 165px;">Project</th>
@@ -1406,10 +1487,17 @@ const TimesheetUI = {
 				</tbody>
 			</table>
 		</div>
-		<button class="tf-btn-add" id="tf-btn-add-row" type="button">
-			<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-			Add Row
-		</button>
+
+		<div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+			<button class="tf-btn-add" id="tf-btn-add-row" type="button">
+				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+				Add Row
+			</button>
+			<button class="tf-btn-delete-bulk" id="tf-btn-delete-bulk" type="button" style="display: none;">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+				Delete Selected (<span id="tf-selected-count">0</span>)
+			</button>
+		</div>
 	</div>
 
 	<!-- Analytics Summary Card -->
