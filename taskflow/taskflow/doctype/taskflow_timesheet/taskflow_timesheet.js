@@ -942,7 +942,7 @@ const TimesheetUI = {
 						<input type="time" class="tf-table-input tf-row-to-time" data-idx="${idx}" value="${to_val}" ${input_dis_style} />
 					</td>
 					<td>
-						<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} style="font-weight: 600; text-align: center; width: 75px; ${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
+						<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} style="font-weight: 600; text-align: center; width: 68px; ${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
 					</td>
 					<td>
 						<div style="display: flex; align-items: center; gap: 4px;">
@@ -1166,7 +1166,7 @@ const TimesheetUI = {
 
   .tf-table th {
     background: #f8fafc;
-    padding: 10px 10px;
+    padding: 10px 8px;
     font-size: 11px;
     font-weight: 600;
     color: #64748b;
@@ -1176,7 +1176,7 @@ const TimesheetUI = {
   }
 
   .tf-table td {
-    padding: 8px 10px;
+    padding: 8px 8px;
     font-size: 13px;
     color: #334155;
     border-bottom: 1px solid #f1f5f9;
@@ -1209,6 +1209,14 @@ const TimesheetUI = {
     outline: none;
     box-sizing: border-box;
     transition: all 0.15s;
+  }
+
+  .tf-row-from-time, .tf-row-to-time {
+    padding: 2px 4px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    letter-spacing: -0.2px;
   }
 
   .tf-row-work-type[data-type="Task"] {
@@ -1492,14 +1500,14 @@ const TimesheetUI = {
 						<th style="width: 25px; text-align: center;">
 							${!is_submitted ? '<input type="checkbox" id="tf-check-all" />' : ''}
 						</th>
-						<th style="width: 30px;">#</th>
-						<th style="width: 100px;">Activity</th>
-						<th style="width: 150px;">Project</th>
-						<th style="width: 240px;">Task</th>
-						<th style="width: 85px;">From</th>
-						<th style="width: 85px;">To</th>
-						<th style="width: 75px;">Duration</th>
-						<th style="width: 140px;">Description</th>
+						<th style="width: 28px;">#</th>
+						<th style="width: 95px;">Activity</th>
+						<th style="width: 140px;">Project</th>
+						<th style="width: 260px;">Task</th>
+						<th style="width: 68px; text-align: center;">From</th>
+						<th style="width: 68px; text-align: center;">To</th>
+						<th style="width: 68px; text-align: center;">Duration</th>
+						<th style="width: 130px;">Description</th>
 						<th style="width: 55px;"></th>
 					</tr>
 				</thead>
