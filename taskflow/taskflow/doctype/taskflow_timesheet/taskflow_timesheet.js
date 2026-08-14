@@ -32,6 +32,9 @@ frappe.ui.form.on("Taskflow Timesheet", {
 	table_pfiw_remove(frm) {
 		calculate_total_hours(frm);
 	},
+	table_pfiw_add(frm, cdt, cdn) {
+		calculate_total_hours(frm);
+	},
 });
 
 function calculate_item_hours(frm, cdt, cdn) {
