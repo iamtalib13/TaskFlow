@@ -723,11 +723,12 @@ const TimesheetUI = {
 
 		const d = new frappe.ui.Dialog({
 			title: __("Send Timesheet Summary Email"),
+			size: "extra-large",
 			fields: [
 				{
 					label: __("To Emails"),
 					fieldname: "to_emails",
-					fieldtype: "Small Text",
+					fieldtype: "Data",
 					reqd: 1,
 					placeholder: "recipient1@example.com, recipient2@example.com",
 					description: "Enter email addresses separated by commas",
@@ -735,7 +736,7 @@ const TimesheetUI = {
 				{
 					label: __("CC Emails"),
 					fieldname: "cc_emails",
-					fieldtype: "Small Text",
+					fieldtype: "Data",
 					placeholder: "manager@example.com",
 					description: "Enter CC email addresses separated by commas (optional)",
 				},
@@ -752,7 +753,7 @@ const TimesheetUI = {
 				{
 					label: __("Message / Note"),
 					fieldname: "custom_message",
-					fieldtype: "Small Text",
+					fieldtype: "Text Editor",
 					placeholder: "Add any optional message or note to include in the email...",
 				},
 			],
