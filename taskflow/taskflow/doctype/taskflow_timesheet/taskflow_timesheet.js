@@ -1,21 +1,54 @@
 // Copyright (c) 2026, Talib Sheikh and contributors
 // For license information, please see license.txt
 
+/**
+ * Taskflow Timesheet Client Script
+ * Modern, hyper-minimal HTML widget for time tracking & analytics.
+ */
+
 frappe.ui.form.on("Taskflow Timesheet", {
 	setup(frm) {
 		frm.set_query("task", "table_pfiw", (doc, cdt, cdn) => {
 			const row = frappe.get_doc(cdt, cdn);
-			if (row.project) {
-				return {
-					filters: {
-						project: row.project,
-					},
-				};
-			}
-			return { filters: {} };
+			return row.project ? { filters: { project: row.project } } : { filters: {} };
 		});
 	},
+
 	refresh(frm) {
+		TimesheetFormController.init_defaults(frm);
+		TimesheetFormController.handle_tab_visibility(frm);
+		TimesheetUI.render_widget(frm);
+	},
+
+	"table_pfiw.from_time"(frm, cdt, cdn) {
+		TimesheetCalculation.calculate_item_hours(frm, cdt, cdn);
+	},
+
+	"table_pfiw.to_time"(frm, cdt, cdn) {
+		TimesheetCalculation.calculate_item_hours(frm, cdt, cdn);
+	},
+
+	"table_pfiw.hrs"(frm) {
+		TimesheetCalculation.calculate_total_hours(frm);
+		TimesheetUI.update_summary(frm);
+	},
+
+	table_pfiw_remove(frm) {
+		TimesheetCalculation.calculate_total_hours(frm);
+		TimesheetUI.update_summary(frm);
+	},
+
+	table_pfiw_add(frm) {
+		TimesheetCalculation.calculate_total_hours(frm);
+		TimesheetUI.update_summary(frm);
+	},
+});
+
+/* ==========================================================================
+   Form Controller & Permissions Helper
+   ========================================================================== */
+const TimesheetFormController = {
+	init_defaults(frm) {
 		if (frm.is_new() && !frm.doc.user) {
 			frm.set_value("user", frappe.session.user);
 		}
@@ -28,8 +61,9 @@ frappe.ui.form.on("Taskflow Timesheet", {
 		if (!frm.doc.status) {
 			frm.set_value("status", "Draft");
 		}
+	},
 
-		// Details tab is only visible to System Manager role
+	handle_tab_visibility(frm) {
 		const is_system_manager = frappe.user.has_role("System Manager");
 		frm.toggle_display("details_tab", is_system_manager);
 		frm.toggle_display(
@@ -44,756 +78,700 @@ frappe.ui.form.on("Taskflow Timesheet", {
 			],
 			is_system_manager
 		);
-
-		render_timesheet_widget(frm);
 	},
-	"table_pfiw.from_time"(frm, cdt, cdn) {
-		calculate_item_hours(frm, cdt, cdn);
+};
+
+/* ==========================================================================
+   Time Utilities
+   ========================================================================== */
+const TimeUtils = {
+	hours_to_hhmm(hrs) {
+		if (!hrs && hrs !== 0) return "00:00";
+		const total_mins = Math.round(parseFloat(hrs) * 60);
+		const h = Math.floor(total_mins / 60);
+		const m = total_mins % 60;
+		return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
 	},
-	"table_pfiw.to_time"(frm, cdt, cdn) {
-		calculate_item_hours(frm, cdt, cdn);
-	},
-	"table_pfiw.hrs"(frm) {
-		calculate_total_hours(frm);
-		update_widget_summary(frm);
-	},
-	table_pfiw_remove(frm) {
-		calculate_total_hours(frm);
-		update_widget_summary(frm);
-	},
-	table_pfiw_add(frm) {
-		calculate_total_hours(frm);
-		update_widget_summary(frm);
-	},
-});
 
-function calculate_item_hours(frm, cdt, cdn) {
-	const row = frappe.get_doc(cdt, cdn);
-	if (row.from_time && row.to_time) {
-		const diff = frappe.datetime.get_diff(row.to_time, row.from_time);
-		const hours = diff / 3600;
-		frappe.model.set_value(cdt, cdn, "hrs", hours).then(() => {
-			calculate_total_hours(frm);
-			update_widget_summary(frm);
-		});
-	}
-}
-
-function calculate_total_hours(frm) {
-	let total = 0;
-	(frm.doc.table_pfiw || []).forEach((row) => {
-		total += parseFloat(row.hrs) || 0;
-	});
-	frm.set_value("total_working_hours", total);
-}
-
-function hours_to_hhmm(hrs) {
-	if (!hrs && hrs !== 0) return "00:00";
-	const total_mins = Math.round(parseFloat(hrs) * 60);
-	const h = Math.floor(total_mins / 60);
-	const m = total_mins % 60;
-	return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
-}
-
-function hhmm_to_hours(hhmm) {
-	if (!hhmm) return 0;
-	const parts = String(hhmm).split(":");
-	if (parts.length === 2) {
-		const h = parseFloat(parts[0]) || 0;
-		const m = parseFloat(parts[1]) || 0;
-		return h + m / 60;
-	}
-	return parseFloat(hhmm) || 0;
-}
-
-function calc_time_diff_hrs(from_str, to_str) {
-	if (!from_str || !to_str) return 0;
-	const [f_h, f_m] = from_str.split(":").map(Number);
-	const [t_h, t_m] = to_str.split(":").map(Number);
-
-	let from_mins = f_h * 60 + (f_m || 0);
-	let to_mins = t_h * 60 + (t_m || 0);
-
-	if (to_mins < from_mins) {
-		to_mins += 24 * 60;
-	}
-
-	const diff_mins = to_mins - from_mins;
-	return diff_mins / 60;
-}
-
-function extract_time_str(time_val) {
-	if (!time_val) return "";
-	if (typeof time_val === "string" && time_val.includes(" ")) {
-		return time_val.split(" ")[1].substring(0, 5);
-	}
-	return String(time_val).substring(0, 5);
-}
-
-function format_date_ddmmyyyy(date_str) {
-	if (!date_str) return "";
-	const parts = date_str.split("-");
-	if (parts.length === 3) {
-		return `${parts[2]}/${parts[1]}/${parts[0]}`;
-	}
-	return date_str;
-}
-
-function parse_ddmmyyyy_to_yyyy_mm_dd(user_str) {
-	if (!user_str) return "";
-	if (user_str.includes("/")) {
-		const parts = user_str.split("/");
-		if (parts.length === 3) {
-			const d = parts[0].padStart(2, "0");
-			const m = parts[1].padStart(2, "0");
-			const y = parts[2];
-			return `${y}-${m}-${d}`;
+	hhmm_to_hours(hhmm) {
+		if (!hhmm) return 0;
+		const parts = String(hhmm).split(":");
+		if (parts.length === 2) {
+			const h = parseFloat(parts[0]) || 0;
+			const m = parseFloat(parts[1]) || 0;
+			return h + m / 60;
 		}
-	}
-	return user_str;
-}
+		return parseFloat(hhmm) || 0;
+	},
 
-// Saturday: 10:00 to 16:00 (4 PM) | Mon-Fri: 10:00 to 18:00 (6 PM)
-function get_default_times_for_date(date_str) {
-	if (!date_str) return { from: "10:00", to: "18:00" };
-	const d = new Date(date_str);
-	const day = d.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-	if (day === 6) {
-		return { from: "10:00", to: "16:00" };
-	}
-	return { from: "10:00", to: "18:00" };
-}
+	calc_time_diff_hrs(from_str, to_str) {
+		if (!from_str || !to_str) return 0;
+		const [f_h, f_m] = from_str.split(":").map(Number);
+		const [t_h, t_m] = to_str.split(":").map(Number);
 
-// Fetch top 20 recent projects
-function fetch_recent_projects(search_txt, callback) {
-	const filters = [];
-	if (search_txt && search_txt.trim()) {
-		filters.push(["project_name", "like", "%" + search_txt.trim() + "%"]);
-	}
-	frappe.db
-		.get_list("Taskflow Project", {
-			filters: filters,
-			fields: ["name", "project_name"],
-			order_by: "modified desc",
-			limit: 20,
-		})
-		.then((projects) => {
-			callback(projects || []);
-		});
-}
+		let from_mins = f_h * 60 + (f_m || 0);
+		let to_mins = t_h * 60 + (t_m || 0);
 
-// Fetch top 20 recent tasks for project
-function fetch_recent_tasks(project_name, search_txt, callback) {
-	if (!project_name) {
-		callback([]);
-		return;
-	}
-	const filters = [["project", "=", project_name]];
-	if (search_txt && search_txt.trim()) {
-		filters.push(["task_title", "like", "%" + search_txt.trim() + "%"]);
-	}
-	frappe.db
-		.get_list("Taskflow Task", {
-			filters: filters,
-			fields: ["name", "task_title"],
-			order_by: "modified desc",
-			limit: 20,
-		})
-		.then((tasks) => {
-			callback(tasks || []);
-		});
-}
-
-function render_timesheet_widget(frm) {
-	const wrapper = $(frm.fields_dict.timesheet_widget.wrapper);
-	wrapper.empty();
-
-	const is_submitted = frm.doc.status === "Submitted";
-
-	const html = get_widget_html(frm);
-	wrapper.html(html);
-
-	update_table_rows(frm, wrapper);
-
-	if (is_submitted) {
-		wrapper.find("#tf-btn-add-row").hide();
-	} else {
-		wrapper.find("#tf-btn-add-row").show();
-	}
-
-	// Bind Status change
-	wrapper.find("#tf-input-status").on("change", function () {
-		const val = $(this).val();
-		$(this).attr("data-status", val);
-		frm.set_value("status", val).then(() => {
-			frm.save().then(() => {
-				render_timesheet_widget(frm);
-			});
-		});
-	});
-
-	// Bind Datepicker in DD/MM/YYYY format
-	const $date_input = wrapper.find("#tf-input-date");
-	if (!is_submitted && $date_input.datepicker) {
-		$date_input.datepicker({
-			language: "en",
-			dateFormat: "dd/mm/yyyy",
-			autoClose: true,
-			onSelect: function (formattedDate, date) {
-				if (date) {
-					const y = date.getFullYear();
-					const m = String(date.getMonth() + 1).padStart(2, "0");
-					const d = String(date.getDate()).padStart(2, "0");
-					const db_date = `${y}-${m}-${d}`;
-					frm.set_value("timesheet_date", db_date).then(() => {
-						update_table_rows(frm, wrapper);
-						update_widget_summary(frm);
-					});
-				}
-			},
-		});
-	}
-	$date_input.on("change input", function () {
-		if (is_submitted) return;
-		const val = $(this).val();
-		const db_date = parse_ddmmyyyy_to_yyyy_mm_dd(val);
-		if (db_date && db_date.length === 10) {
-			frm.set_value("timesheet_date", db_date).then(() => {
-				update_table_rows(frm, wrapper);
-				update_widget_summary(frm);
-			});
+		if (to_mins < from_mins) {
+			to_mins += 24 * 60;
 		}
-	});
 
-	// Bind Employee changes
-	wrapper.find("#tf-input-employee").on("change", function () {
-		if (is_submitted) return;
-		frm.set_value("employee_name", $(this).val());
-	});
+		return (to_mins - from_mins) / 60;
+	},
 
-	// Bind User changes
-	wrapper.find("#tf-input-user").on("change", function () {
-		if (is_submitted) return;
-		frm.set_value("user", $(this).val());
-	});
+	extract_time_str(time_val) {
+		if (!time_val) return "";
+		if (typeof time_val === "string" && time_val.includes(" ")) {
+			return time_val.split(" ")[1].substring(0, 5);
+		}
+		return String(time_val).substring(0, 5);
+	},
 
-	// Add Row Button
-	wrapper.find("#tf-btn-add-row").on("click", function () {
-		if (is_submitted) return;
-		const items = frm.doc.table_pfiw || [];
-		const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
-		const def_times = get_default_times_for_date(doc_date);
+	format_date_ddmmyyyy(date_str) {
+		if (!date_str) return "";
+		const parts = date_str.split("-");
+		return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : date_str;
+	},
 
-		let default_from = def_times.from;
-		let default_to = def_times.to;
-
-		if (items.length > 0) {
-			const prev_to = extract_time_str(items[items.length - 1].to_time);
-			if (prev_to) {
-				default_from = prev_to;
-				const [h, m] = prev_to.split(":").map(Number);
-				const max_h = def_times.to.split(":")[0];
-				const new_h = Math.min(parseInt(max_h), h + 2);
-				default_to = `${String(new_h).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`;
+	parse_ddmmyyyy_to_yyyy_mm_dd(user_str) {
+		if (!user_str) return "";
+		if (user_str.includes("/")) {
+			const parts = user_str.split("/");
+			if (parts.length === 3) {
+				const d = parts[0].padStart(2, "0");
+				const m = parts[1].padStart(2, "0");
+				const y = parts[2];
+				return `${y}-${m}-${d}`;
 			}
 		}
+		return user_str;
+	},
 
-		const hrs = calc_time_diff_hrs(default_from, default_to);
+	get_default_times_for_date(date_str) {
+		if (!date_str) return { from: "10:00", to: "18:00" };
+		const day = new Date(date_str).getDay();
+		return day === 6 ? { from: "10:00", to: "16:00" } : { from: "10:00", to: "18:00" };
+	},
+};
 
-		frm.add_child("table_pfiw", {
-			activity_type: "Task",
-			project: items.length > 0 ? items[items.length - 1].project : "",
-			task: "",
-			from_time: `${doc_date} ${default_from}:00`,
-			to_time: `${doc_date} ${default_to}:00`,
-			hrs: hrs,
-			description: "",
-		});
-
-		calculate_total_hours(frm);
-		update_table_rows(frm, wrapper);
-		update_widget_summary(frm);
-	});
-
-	// Delete row handler
-	wrapper.on("click", ".tf-btn-delete-row", function () {
-		if (is_submitted) return;
-		const idx = $(this).data("idx");
-		frm.doc.table_pfiw.splice(idx, 1);
-		frm.doc.table_pfiw.forEach((r, i) => (r.idx = i + 1));
-		frm.refresh_field("table_pfiw");
-		calculate_total_hours(frm);
-		update_table_rows(frm, wrapper);
-		update_widget_summary(frm);
-	});
-
-	// Row level Activity change
-	wrapper.on("change", ".tf-row-work-type", function () {
-		if (is_submitted) return;
-		const idx = $(this).data("idx");
-		const val = $(this).val();
-		$(this).attr("data-type", val);
-		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
-		if (child) {
-			frappe.model.set_value(child.doctype, child.name, "activity_type", val).then(() => {
-				if (val !== "Task") {
-					frappe.model.set_value(child.doctype, child.name, "project", "");
-					frappe.model.set_value(child.doctype, child.name, "task", "");
-				}
-				update_table_rows(frm, wrapper);
-				update_widget_summary(frm);
+/* ==========================================================================
+   Calculations Helper
+   ========================================================================== */
+const TimesheetCalculation = {
+	calculate_item_hours(frm, cdt, cdn) {
+		const row = frappe.get_doc(cdt, cdn);
+		if (row.from_time && row.to_time) {
+			const diff = frappe.datetime.get_diff(row.to_time, row.from_time);
+			const hours = diff / 3600;
+			frappe.model.set_value(cdt, cdn, "hrs", hours).then(() => {
+				this.calculate_total_hours(frm);
+				TimesheetUI.update_summary(frm);
 			});
 		}
-	});
+	},
 
-	// Direct typing in row description input
-	wrapper.on("change input", ".tf-row-desc-input", function () {
-		if (frm.doc.status === "Submitted") return;
-		const idx = $(this).data("idx");
-		const val = $(this).val();
-		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
-		if (child) {
-			frappe.model.set_value(child.doctype, child.name, "description", val);
+	calculate_total_hours(frm) {
+		let total = 0;
+		(frm.doc.table_pfiw || []).forEach((row) => {
+			total += parseFloat(row.hrs) || 0;
+		});
+		frm.set_value("total_working_hours", total);
+	},
+};
+
+/* ==========================================================================
+   Data Fetching Service
+   ========================================================================== */
+const TimesheetDataService = {
+	fetch_recent_projects(search_txt, callback) {
+		const filters = [];
+		if (search_txt && search_txt.trim()) {
+			filters.push(["project_name", "like", "%" + search_txt.trim() + "%"]);
 		}
-	});
+		frappe.db
+			.get_list("Taskflow Project", {
+				filters: filters,
+				fields: ["name", "project_name"],
+				order_by: "modified desc",
+				limit: 20,
+			})
+			.then((projects) => callback(projects || []));
+	},
 
-	// Open Frappe Text Editor Dialog for row description editing
-	wrapper.on("click", ".tf-row-desc-btn", function (e) {
-		e.preventDefault();
-		if (frm.doc.status === "Submitted") return;
-		const idx = $(this).data("idx");
-		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
-		const current_desc = child ? child.description || "" : "";
+	fetch_recent_tasks(project_name, search_txt, callback) {
+		if (!project_name) {
+			callback([]);
+			return;
+		}
+		const filters = [["project", "=", project_name]];
+		if (search_txt && search_txt.trim()) {
+			filters.push(["task_title", "like", "%" + search_txt.trim() + "%"]);
+		}
+		frappe.db
+			.get_list("Taskflow Task", {
+				filters: filters,
+				fields: ["name", "task_title"],
+				order_by: "modified desc",
+				limit: 20,
+			})
+			.then((tasks) => callback(tasks || []));
+	},
+};
 
-		const d = new frappe.ui.Dialog({
-			title: `Edit Description (Row #${idx + 1})`,
-			fields: [
-				{
-					label: "Description",
-					fieldname: "description",
-					fieldtype: "Text Editor",
-					default: current_desc,
+/* ==========================================================================
+   Timesheet UI Rendering & Event Handling
+   ========================================================================== */
+const TimesheetUI = {
+	render_widget(frm) {
+		const wrapper = $(frm.fields_dict.timesheet_widget.wrapper);
+		wrapper.empty();
+
+		const is_submitted = frm.doc.status === "Submitted";
+		const html = this.get_template_html(frm);
+		wrapper.html(html);
+
+		this.update_table_rows(frm, wrapper);
+
+		if (is_submitted) {
+			wrapper.find("#tf-btn-add-row").hide();
+		} else {
+			wrapper.find("#tf-btn-add-row").show();
+		}
+
+		this.bind_events(frm, wrapper);
+		this.update_summary(frm);
+	},
+
+	bind_events(frm, wrapper) {
+		const is_submitted = () => frm.doc.status === "Submitted";
+
+		// Status dropdown
+		wrapper.find("#tf-input-status").off("change.tf").on("change.tf", function () {
+			const val = $(this).val();
+			$(this).attr("data-status", val);
+			frm.set_value("status", val).then(() => {
+				frm.save().then(() => TimesheetUI.render_widget(frm));
+			});
+		});
+
+		// Datepicker
+		const $date_input = wrapper.find("#tf-input-date");
+		if (!is_submitted() && $date_input.datepicker) {
+			$date_input.datepicker({
+				language: "en",
+				dateFormat: "dd/mm/yyyy",
+				autoClose: true,
+				onSelect: (formattedDate, date) => {
+					if (date) {
+						const y = date.getFullYear();
+						const m = String(date.getMonth() + 1).padStart(2, "0");
+						const d = String(date.getDate()).padStart(2, "0");
+						const db_date = `${y}-${m}-${d}`;
+						frm.set_value("timesheet_date", db_date).then(() => {
+							TimesheetUI.update_table_rows(frm, wrapper);
+							TimesheetUI.update_summary(frm);
+						});
+					}
 				},
-			],
-			primary_action_label: "Save",
-			primary_action(values) {
-				const val = values.description || "";
-				d.hide();
-				if (child) {
-					frappe.model.set_value(child.doctype, child.name, "description", val).then(() => {
-						update_table_rows(frm, wrapper);
-						frm.save();
-					});
+			});
+		}
+		$date_input.off("change.tf input.tf").on("change.tf input.tf", function () {
+			if (is_submitted()) return;
+			const db_date = TimeUtils.parse_ddmmyyyy_to_yyyy_mm_dd($(this).val());
+			if (db_date && db_date.length === 10) {
+				frm.set_value("timesheet_date", db_date).then(() => {
+					TimesheetUI.update_table_rows(frm, wrapper);
+					TimesheetUI.update_summary(frm);
+				});
+			}
+		});
+
+		// Employee & User changes
+		wrapper.find("#tf-input-employee").off("change.tf").on("change.tf", function () {
+			if (!is_submitted()) frm.set_value("employee_name", $(this).val());
+		});
+		wrapper.find("#tf-input-user").off("change.tf").on("change.tf", function () {
+			if (!is_submitted()) frm.set_value("user", $(this).val());
+		});
+
+		// Add Row Button
+		wrapper.find("#tf-btn-add-row").off("click.tf").on("click.tf", () => {
+			if (is_submitted()) return;
+			const items = frm.doc.table_pfiw || [];
+			const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
+			const def_times = TimeUtils.get_default_times_for_date(doc_date);
+
+			let default_from = def_times.from;
+			let default_to = def_times.to;
+
+			if (items.length > 0) {
+				const prev_to = TimeUtils.extract_time_str(items[items.length - 1].to_time);
+				if (prev_to) {
+					default_from = prev_to;
+					const [h, m] = prev_to.split(":").map(Number);
+					const max_h = def_times.to.split(":")[0];
+					const new_h = Math.min(parseInt(max_h), h + 2);
+					default_to = `${String(new_h).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`;
 				}
-			},
-		});
-		d.show();
-	});
+			}
 
-	// Project Dropdown Focus / Click
-	wrapper.on("focus click", ".tf-row-project-input", function (e) {
-		if ($(this).is(":disabled") || frm.doc.status === "Submitted") return;
-		e.stopPropagation();
-		wrapper.find(".tf-dropdown-menu").hide();
-		const idx = $(this).data("idx");
-		const $menu = wrapper.find(`.tf-proj-menu-${idx}`);
-		const search_txt = $(this).val();
+			const hrs = TimeUtils.calc_time_diff_hrs(default_from, default_to);
 
-		fetch_recent_projects(search_txt, (projects) => {
-			render_project_dropdown_items($menu, projects, idx);
-			$menu.show();
-		});
-	});
-
-	// Project Dropdown Typing / Search
-	wrapper.on("input", ".tf-row-project-input", function () {
-		if ($(this).is(":disabled") || frm.doc.status === "Submitted") return;
-		const idx = $(this).data("idx");
-		const $menu = wrapper.find(`.tf-proj-menu-${idx}`);
-		const search_txt = $(this).val();
-		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
-
-		if (child) {
-			frappe.model.set_value(child.doctype, child.name, "project", search_txt);
-		}
-
-		fetch_recent_projects(search_txt, (projects) => {
-			render_project_dropdown_items($menu, projects, idx);
-			$menu.show();
-		});
-	});
-
-	// Project Item Selection
-	wrapper.on("click", ".tf-proj-item", function (e) {
-		e.stopPropagation();
-		if (frm.doc.status === "Submitted") return;
-		const idx = $(this).data("idx");
-		const p_name = $(this).data("name");
-		const p_title = $(this).data("title");
-
-		const $input = wrapper.find(`.tf-row-project-input[data-idx="${idx}"]`);
-		$input.val(p_title);
-
-		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
-		if (child) {
-			frappe.model.set_value(child.doctype, child.name, "project", p_name).then(() => {
-				frappe.model.set_value(child.doctype, child.name, "task", "");
-				const $task_input = wrapper.find(`.tf-row-task-input[data-idx="${idx}"]`);
-				$task_input.val("");
+			frm.add_child("table_pfiw", {
+				activity_type: "Task",
+				project: items.length > 0 ? items[items.length - 1].project : "",
+				task: "",
+				from_time: `${doc_date} ${default_from}:00`,
+				to_time: `${doc_date} ${default_to}:00`,
+				hrs: hrs,
+				description: "",
 			});
-		}
 
-		wrapper.find(`.tf-proj-menu-${idx}`).hide();
-	});
+			TimesheetCalculation.calculate_total_hours(frm);
+			TimesheetUI.update_table_rows(frm, wrapper);
+			TimesheetUI.update_summary(frm);
+		});
 
-	// Task Dropdown Focus / Click
-	wrapper.on("focus click", ".tf-row-task-input", function (e) {
-		if ($(this).is(":disabled") || frm.doc.status === "Submitted") return;
-		e.stopPropagation();
-		wrapper.find(".tf-dropdown-menu").hide();
-		const idx = $(this).data("idx");
-		const $menu = wrapper.find(`.tf-task-menu-${idx}`);
-		const project_name = frm.doc.table_pfiw[idx] ? frm.doc.table_pfiw[idx].project : "";
-		const search_txt = $(this).val();
+		// Delegate Row Level Events
+		wrapper.off("click.tf_row_del").on("click.tf_row_del", ".tf-btn-delete-row", function () {
+			if (is_submitted()) return;
+			const idx = $(this).data("idx");
+			frm.doc.table_pfiw.splice(idx, 1);
+			frm.doc.table_pfiw.forEach((r, i) => (r.idx = i + 1));
+			frm.refresh_field("table_pfiw");
+			TimesheetCalculation.calculate_total_hours(frm);
+			TimesheetUI.update_table_rows(frm, wrapper);
+			TimesheetUI.update_summary(frm);
+		});
 
-		if (!project_name) {
-			$menu.html(`<div class="tf-dropdown-no-res">Select a project first</div>`).show();
+		wrapper.off("change.tf_row_wt").on("change.tf_row_wt", ".tf-row-work-type", function () {
+			if (is_submitted()) return;
+			const idx = $(this).data("idx");
+			const val = $(this).val();
+			$(this).attr("data-type", val);
+			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+			if (child) {
+				frappe.model.set_value(child.doctype, child.name, "activity_type", val).then(() => {
+					if (val !== "Task") {
+						frappe.model.set_value(child.doctype, child.name, "project", "");
+						frappe.model.set_value(child.doctype, child.name, "task", "");
+					}
+					TimesheetUI.update_table_rows(frm, wrapper);
+					TimesheetUI.update_summary(frm);
+				});
+			}
+		});
+
+		wrapper.off("change.tf_row_desc input.tf-row_desc").on("change.tf_row_desc input.tf_row_desc", ".tf-row-desc-input", function () {
+			if (is_submitted()) return;
+			const idx = $(this).data("idx");
+			const val = $(this).val();
+			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+			if (child) {
+				frappe.model.set_value(child.doctype, child.name, "description", val);
+			}
+		});
+
+		wrapper.off("click.tf_row_desc_btn").on("click.tf_row_desc_btn", ".tf-row-desc-btn", function (e) {
+			e.preventDefault();
+			if (is_submitted()) return;
+			const idx = $(this).data("idx");
+			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+			const current_desc = child ? child.description || "" : "";
+
+			const d = new frappe.ui.Dialog({
+				title: `Edit Description (Row #${idx + 1})`,
+				fields: [
+					{
+						label: "Description",
+						fieldname: "description",
+						fieldtype: "Text Editor",
+						default: current_desc,
+					},
+				],
+				primary_action_label: "Save",
+				primary_action(values) {
+					const val = values.description || "";
+					d.hide();
+					if (child) {
+						frappe.model.set_value(child.doctype, child.name, "description", val).then(() => {
+							TimesheetUI.update_table_rows(frm, wrapper);
+							frm.save();
+						});
+					}
+				},
+			});
+			d.show();
+		});
+
+		// Project search dropdown
+		wrapper.off("focus.tf_proj click.tf_proj").on("focus.tf_proj click.tf_proj", ".tf-row-project-input", function (e) {
+			if ($(this).is(":disabled") || is_submitted()) return;
+			e.stopPropagation();
+			wrapper.find(".tf-dropdown-menu").hide();
+			const idx = $(this).data("idx");
+			const $menu = wrapper.find(`.tf-proj-menu-${idx}`);
+			TimesheetDataService.fetch_recent_projects($(this).val(), (projects) => {
+				TimesheetUI.render_project_dropdown_items($menu, projects, idx);
+				$menu.show();
+			});
+		});
+
+		wrapper.off("input.tf_proj").on("input.tf_proj", ".tf-row-project-input", function () {
+			if ($(this).is(":disabled") || is_submitted()) return;
+			const idx = $(this).data("idx");
+			const $menu = wrapper.find(`.tf-proj-menu-${idx}`);
+			const search_txt = $(this).val();
+			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+
+			if (child) frappe.model.set_value(child.doctype, child.name, "project", search_txt);
+			TimesheetDataService.fetch_recent_projects(search_txt, (projects) => {
+				TimesheetUI.render_project_dropdown_items($menu, projects, idx);
+				$menu.show();
+			});
+		});
+
+		wrapper.off("click.tf_proj_item").on("click.tf_proj_item", ".tf-proj-item", function (e) {
+			e.stopPropagation();
+			if (is_submitted()) return;
+			const idx = $(this).data("idx");
+			const p_name = $(this).data("name");
+			const p_title = $(this).data("title");
+
+			wrapper.find(`.tf-row-project-input[data-idx="${idx}"]`).val(p_title);
+			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+			if (child) {
+				frappe.model.set_value(child.doctype, child.name, "project", p_name).then(() => {
+					frappe.model.set_value(child.doctype, child.name, "task", "");
+					wrapper.find(`.tf-row-task-input[data-idx="${idx}"]`).val("");
+				});
+			}
+			wrapper.find(`.tf-proj-menu-${idx}`).hide();
+		});
+
+		// Task search dropdown
+		wrapper.off("focus.tf_task click.tf_task").on("focus.tf_task click.tf_task", ".tf-row-task-input", function (e) {
+			if ($(this).is(":disabled") || is_submitted()) return;
+			e.stopPropagation();
+			wrapper.find(".tf-dropdown-menu").hide();
+			const idx = $(this).data("idx");
+			const $menu = wrapper.find(`.tf-task-menu-${idx}`);
+			const project_name = frm.doc.table_pfiw[idx] ? frm.doc.table_pfiw[idx].project : "";
+
+			if (!project_name) {
+				$menu.html(`<div class="tf-dropdown-no-res">Select a project first</div>`).show();
+				return;
+			}
+
+			TimesheetDataService.fetch_recent_tasks(project_name, $(this).val(), (tasks) => {
+				TimesheetUI.render_task_dropdown_items($menu, tasks, idx);
+				$menu.show();
+			});
+		});
+
+		wrapper.off("input.tf_task").on("input.tf_task", ".tf-row-task-input", function () {
+			if ($(this).is(":disabled") || is_submitted()) return;
+			const idx = $(this).data("idx");
+			const $menu = wrapper.find(`.tf-task-menu-${idx}`);
+			const project_name = frm.doc.table_pfiw[idx] ? frm.doc.table_pfiw[idx].project : "";
+			const search_txt = $(this).val();
+			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+
+			if (child) frappe.model.set_value(child.doctype, child.name, "task", search_txt);
+			if (!project_name) {
+				$menu.html(`<div class="tf-dropdown-no-res">Select a project first</div>`).show();
+				return;
+			}
+
+			TimesheetDataService.fetch_recent_tasks(project_name, search_txt, (tasks) => {
+				TimesheetUI.render_task_dropdown_items($menu, tasks, idx);
+				$menu.show();
+			});
+		});
+
+		wrapper.off("click.tf_task_item").on("click.tf_task_item", ".tf-task-item", function (e) {
+			e.stopPropagation();
+			if (is_submitted()) return;
+			const idx = $(this).data("idx");
+			const t_name = $(this).data("name");
+			const t_title = $(this).data("title");
+
+			wrapper.find(`.tf-row-task-input[data-idx="${idx}"]`).val(t_title);
+			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+			if (child) frappe.model.set_value(child.doctype, child.name, "task", t_name);
+			wrapper.find(`.tf-task-menu-${idx}`).hide();
+		});
+
+		// Global click to close dropdown menus
+		$(document).off("click.tf_dropdown").on("click.tf_dropdown", () => {
+			wrapper.find(".tf-dropdown-menu").hide();
+		});
+
+		// From & To time inputs
+		wrapper.off("change.tf_from input.tf_from").on("change.tf_from input.tf_from", ".tf-row-from-time", function () {
+			if (is_submitted()) return;
+			const idx = $(this).data("idx");
+			const from_val = $(this).val();
+			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+			if (child) {
+				const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
+				const from_datetime = `${doc_date} ${from_val}:00`;
+				frappe.model.set_value(child.doctype, child.name, "from_time", from_datetime).then(() => {
+					const def_times = TimeUtils.get_default_times_for_date(doc_date);
+					const to_val = TimeUtils.extract_time_str(child.to_time) || def_times.to;
+					const hrs = TimeUtils.calc_time_diff_hrs(from_val, to_val);
+					frappe.model.set_value(child.doctype, child.name, "hrs", hrs).then(() => {
+						wrapper.find(`.tf-row-duration[data-idx="${idx}"]`).val(TimeUtils.hours_to_hhmm(hrs));
+						TimesheetCalculation.calculate_total_hours(frm);
+						TimesheetUI.update_summary(frm);
+					});
+				});
+			}
+		});
+
+		wrapper.off("change.tf_to input.tf_to").on("change.tf_to input.tf_to", ".tf-row-to-time", function () {
+			if (is_submitted()) return;
+			const idx = $(this).data("idx");
+			const to_val = $(this).val();
+			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+			if (child) {
+				const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
+				const to_datetime = `${doc_date} ${to_val}:00`;
+				frappe.model.set_value(child.doctype, child.name, "to_time", to_datetime).then(() => {
+					const from_val = TimeUtils.extract_time_str(child.from_time) || "10:00";
+					const hrs = TimeUtils.calc_time_diff_hrs(from_val, to_val);
+					frappe.model.set_value(child.doctype, child.name, "hrs", hrs).then(() => {
+						wrapper.find(`.tf-row-duration[data-idx="${idx}"]`).val(TimeUtils.hours_to_hhmm(hrs));
+						TimesheetCalculation.calculate_total_hours(frm);
+						TimesheetUI.update_summary(frm);
+					});
+				});
+			}
+		});
+
+		// Duration input
+		wrapper.off("change.tf_dur input.tf_dur").on("change.tf_dur input.tf_dur", ".tf-row-duration", function () {
+			if (is_submitted()) return;
+			const idx = $(this).data("idx");
+			const hrs = TimeUtils.hhmm_to_hours($(this).val());
+			const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+			if (child) {
+				frappe.model.set_value(child.doctype, child.name, "hrs", hrs).then(() => {
+					TimesheetCalculation.calculate_total_hours(frm);
+					TimesheetUI.update_summary(frm);
+				});
+			}
+		});
+	},
+
+	update_table_rows(frm, wrapper) {
+		const $tbody = wrapper.find("#tf-table-body");
+		$tbody.empty();
+
+		const is_submitted = frm.doc.status === "Submitted";
+		const items = frm.doc.table_pfiw || [];
+		if (items.length === 0) {
+			$tbody.append(`
+				<tr>
+					<td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px; font-size: 13px;">
+						${is_submitted ? "No time entries recorded." : 'No time entries. Click <strong style="color: #2563eb; cursor: pointer;" id="tf-link-add">Add Entry</strong> to start.'}
+					</td>
+				</tr>
+			`);
+			if (!is_submitted) {
+				wrapper.find("#tf-link-add").off("click").on("click", () => {
+					wrapper.find("#tf-btn-add-row").trigger("click");
+				});
+			}
 			return;
 		}
 
-		fetch_recent_tasks(project_name, search_txt, (tasks) => {
-			render_task_dropdown_items($menu, tasks, idx);
-			$menu.show();
-		});
-	});
+		const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
+		const def_times = TimeUtils.get_default_times_for_date(doc_date);
 
-	// Task Dropdown Typing / Search
-	wrapper.on("input", ".tf-row-task-input", function () {
-		if ($(this).is(":disabled") || frm.doc.status === "Submitted") return;
-		const idx = $(this).data("idx");
-		const $menu = wrapper.find(`.tf-task-menu-${idx}`);
-		const project_name = frm.doc.table_pfiw[idx] ? frm.doc.table_pfiw[idx].project : "";
-		const search_txt = $(this).val();
-		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
+		items.forEach((item, idx) => {
+			const work_type = item.activity_type || "Task";
+			const is_task = work_type === "Task";
+			const desc = item.description ? item.description.replace(/<[^>]*>?/gm, "") : "";
+			const duration = TimeUtils.hours_to_hhmm(item.hrs);
+			const from_val = TimeUtils.extract_time_str(item.from_time) || (idx === 0 ? def_times.from : "12:30");
+			const to_val = TimeUtils.extract_time_str(item.to_time) || def_times.to;
 
-		if (child) {
-			frappe.model.set_value(child.doctype, child.name, "task", search_txt);
-		}
+			const wt_task_sel = work_type === "Task" ? "selected" : "";
+			const wt_meet_sel = work_type === "Meeting" ? "selected" : "";
+			const wt_res_sel = work_type === "Research" ? "selected" : "";
 
-		if (!project_name) {
-			$menu.html(`<div class="tf-dropdown-no-res">Select a project first</div>`).show();
-			return;
-		}
+			const proj_val = is_task ? item.project || "" : "";
+			const task_val = is_task ? item.task || "" : "";
 
-		fetch_recent_tasks(project_name, search_txt, (tasks) => {
-			render_task_dropdown_items($menu, tasks, idx);
-			$menu.show();
-		});
-	});
+			const is_dis = is_submitted;
+			const proj_attrs = is_task && !is_dis
+				? 'placeholder="Select project..."'
+				: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #f1f5f9;"';
+			const task_attrs = is_task && !is_dis
+				? 'placeholder="Select task..."'
+				: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #f1f5f9;"';
 
-	// Task Item Selection
-	wrapper.on("click", ".tf-task-item", function (e) {
-		e.stopPropagation();
-		if (frm.doc.status === "Submitted") return;
-		const idx = $(this).data("idx");
-		const t_name = $(this).data("name");
-		const t_title = $(this).data("title");
+			const input_dis_style = is_dis ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
 
-		const $input = wrapper.find(`.tf-row-task-input[data-idx="${idx}"]`);
-		$input.val(t_title);
-
-		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
-		if (child) {
-			frappe.model.set_value(child.doctype, child.name, "task", t_name);
-		}
-
-		wrapper.find(`.tf-task-menu-${idx}`).hide();
-	});
-
-	// Global click to close dropdown menus
-	$(document).off("click.tf_dropdown").on("click.tf_dropdown", function () {
-		wrapper.find(".tf-dropdown-menu").hide();
-	});
-
-	// Row level From Time change
-	wrapper.on("change input", ".tf-row-from-time", function () {
-		if (is_submitted) return;
-		const idx = $(this).data("idx");
-		const from_val = $(this).val();
-		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
-		if (child) {
-			const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
-			const from_datetime = `${doc_date} ${from_val}:00`;
-
-			frappe.model.set_value(child.doctype, child.name, "from_time", from_datetime).then(() => {
-				const def_times = get_default_times_for_date(doc_date);
-				const to_val = extract_time_str(child.to_time) || def_times.to;
-				const hrs = calc_time_diff_hrs(from_val, to_val);
-				frappe.model.set_value(child.doctype, child.name, "hrs", hrs).then(() => {
-					wrapper.find(`.tf-row-duration[data-idx="${idx}"]`).val(hours_to_hhmm(hrs));
-					calculate_total_hours(frm);
-					update_widget_summary(frm);
-				});
-			});
-		}
-	});
-
-	// Row level To Time change
-	wrapper.on("change input", ".tf-row-to-time", function () {
-		if (is_submitted) return;
-		const idx = $(this).data("idx");
-		const to_val = $(this).val();
-		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
-		if (child) {
-			const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
-			const to_datetime = `${doc_date} ${to_val}:00`;
-
-			frappe.model.set_value(child.doctype, child.name, "to_time", to_datetime).then(() => {
-				const from_val = extract_time_str(child.from_time) || "10:00";
-				const hrs = calc_time_diff_hrs(from_val, to_val);
-				frappe.model.set_value(child.doctype, child.name, "hrs", hrs).then(() => {
-					wrapper.find(`.tf-row-duration[data-idx="${idx}"]`).val(hours_to_hhmm(hrs));
-					calculate_total_hours(frm);
-					update_widget_summary(frm);
-				});
-			});
-		}
-	});
-
-	// Row level Duration change
-	wrapper.on("change input", ".tf-row-duration", function () {
-		if (is_submitted) return;
-		const idx = $(this).data("idx");
-		const val = $(this).val();
-		const hrs = hhmm_to_hours(val);
-		const child = frm.doc.table_pfiw && frm.doc.table_pfiw[idx];
-		if (child) {
-			frappe.model.set_value(child.doctype, child.name, "hrs", hrs).then(() => {
-				calculate_total_hours(frm);
-				update_widget_summary(frm);
-			});
-		}
-	});
-
-	// Initial populate
-	update_widget_summary(frm);
-}
-
-function render_project_dropdown_items($menu, projects, idx) {
-	$menu.empty();
-	if (!projects || projects.length === 0) {
-		$menu.html(`<div class="tf-dropdown-no-res">No projects found</div>`);
-		return;
-	}
-	projects.forEach((p) => {
-		const display_name = p.project_name || p.name;
-		$menu.append(`
-			<div class="tf-dropdown-item tf-proj-item" data-idx="${idx}" data-name="${frappe.utils.escape_html(p.name)}" data-title="${frappe.utils.escape_html(display_name)}">
-				${frappe.utils.escape_html(display_name)}
-			</div>
-		`);
-	});
-}
-
-function render_task_dropdown_items($menu, tasks, idx) {
-	$menu.empty();
-	if (!tasks || tasks.length === 0) {
-		$menu.html(`<div class="tf-dropdown-no-res">No tasks found for this project</div>`);
-		return;
-	}
-	tasks.forEach((t) => {
-		const display_name = t.task_title || t.name;
-		$menu.append(`
-			<div class="tf-dropdown-item tf-task-item" data-idx="${idx}" data-name="${frappe.utils.escape_html(t.name)}" data-title="${frappe.utils.escape_html(display_name)}">
-				${frappe.utils.escape_html(display_name)}
-			</div>
-		`);
-	});
-}
-
-function update_table_rows(frm, wrapper) {
-	const $tbody = wrapper.find("#tf-table-body");
-	$tbody.empty();
-
-	const is_submitted = frm.doc.status === "Submitted";
-	const items = frm.doc.table_pfiw || [];
-	if (items.length === 0) {
-		$tbody.append(`
-			<tr>
-				<td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px; font-size: 13px;">
-					${is_submitted ? "No time entries recorded." : 'No time entries. Click <strong style="color: #2563eb; cursor: pointer;" id="tf-link-add">Add Entry</strong> to start.'}
-				</td>
-			</tr>
-		`);
-		if (!is_submitted) {
-			wrapper.find("#tf-link-add").on("click", function () {
-				wrapper.find("#tf-btn-add-row").trigger("click");
-			});
-		}
-		return;
-	}
-
-	const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
-	const def_times = get_default_times_for_date(doc_date);
-
-	items.forEach((item, idx) => {
-		const work_type = item.activity_type || "Task";
-		const is_task = work_type === "Task";
-		const desc = item.description ? item.description.replace(/<[^>]*>?/gm, "") : "";
-		const duration = hours_to_hhmm(item.hrs);
-		const from_val = extract_time_str(item.from_time) || (idx === 0 ? def_times.from : "12:30");
-		const to_val = extract_time_str(item.to_time) || def_times.to;
-
-		// Build Work Type options
-		const wt_task_sel = work_type === "Task" ? "selected" : "";
-		const wt_meet_sel = work_type === "Meeting" ? "selected" : "";
-		const wt_res_sel = work_type === "Research" ? "selected" : "";
-
-		const proj_val = is_task ? (item.project || "") : "";
-		const task_val = is_task ? (item.task || "") : "";
-
-		const is_dis = is_submitted;
-		const proj_attrs = is_task && !is_dis
-			? 'placeholder="Select project..."'
-			: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #f1f5f9;"';
-		const task_attrs = is_task && !is_dis
-			? 'placeholder="Select task..."'
-			: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #f1f5f9;"';
-
-		const input_dis_style = is_dis ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
-
-		$tbody.append(`
-			<tr>
-				<td style="font-weight: 500; color: #94a3b8; font-size: 12px;">${idx + 1}</td>
-				<td>
-					<select class="tf-table-select tf-row-work-type" data-idx="${idx}" data-type="${work_type}" ${input_dis_style}>
-						<option value="Task" ${wt_task_sel} style="background:#ffffff; color:#1d4ed8; font-weight:600;">Task</option>
-						<option value="Meeting" ${wt_meet_sel} style="background:#ffffff; color:#6d28d9; font-weight:600;">Meeting</option>
-						<option value="Research" ${wt_res_sel} style="background:#ffffff; color:#047857; font-weight:600;">Research</option>
-					</select>
-				</td>
-				<td>
-					<div class="tf-dropdown-container">
-						<input type="text" class="tf-dropdown-input tf-row-project-input" data-idx="${idx}" value="${frappe.utils.escape_html(proj_val)}" ${proj_attrs} autocomplete="off" />
-						<svg class="tf-dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-						<div class="tf-dropdown-menu tf-proj-menu-${idx}"></div>
-					</div>
-				</td>
-				<td>
-					<div class="tf-dropdown-container">
-						<input type="text" class="tf-dropdown-input tf-row-task-input" data-idx="${idx}" value="${frappe.utils.escape_html(task_val)}" ${task_attrs} autocomplete="off" />
-						<svg class="tf-dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-						<div class="tf-dropdown-menu tf-task-menu-${idx}"></div>
-					</div>
-				</td>
-				<td>
-					<input type="time" class="tf-table-input tf-row-from-time" data-idx="${idx}" value="${from_val}" ${input_dis_style} />
-				</td>
-				<td>
-					<input type="time" class="tf-table-input tf-row-to-time" data-idx="${idx}" value="${to_val}" ${input_dis_style} />
-				</td>
-				<td>
-					<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} style="font-weight: 600; text-align: center; width: 75px; ${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
-				</td>
-				<td>
-					<div style="display: flex; align-items: center; gap: 4px;">
-						<input type="text" class="tf-table-input tf-row-desc-input" data-idx="${idx}" value="${frappe.utils.escape_html(desc)}" placeholder="Add note..." ${input_dis_style} />
+			$tbody.append(`
+				<tr>
+					<td style="font-weight: 500; color: #94a3b8; font-size: 12px;">${idx + 1}</td>
+					<td>
+						<select class="tf-table-select tf-row-work-type" data-idx="${idx}" data-type="${work_type}" ${input_dis_style}>
+							<option value="Task" ${wt_task_sel} style="background:#ffffff; color:#1d4ed8; font-weight:600;">Task</option>
+							<option value="Meeting" ${wt_meet_sel} style="background:#ffffff; color:#6d28d9; font-weight:600;">Meeting</option>
+							<option value="Research" ${wt_res_sel} style="background:#ffffff; color:#047857; font-weight:600;">Research</option>
+						</select>
+					</td>
+					<td>
+						<div class="tf-dropdown-container">
+							<input type="text" class="tf-dropdown-input tf-row-project-input" data-idx="${idx}" value="${frappe.utils.escape_html(proj_val)}" ${proj_attrs} autocomplete="off" />
+							<svg class="tf-dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+							<div class="tf-dropdown-menu tf-proj-menu-${idx}"></div>
+						</div>
+					</td>
+					<td>
+						<div class="tf-dropdown-container">
+							<input type="text" class="tf-dropdown-input tf-row-task-input" data-idx="${idx}" value="${frappe.utils.escape_html(task_val)}" ${task_attrs} autocomplete="off" />
+							<svg class="tf-dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+							<div class="tf-dropdown-menu tf-task-menu-${idx}"></div>
+						</div>
+					</td>
+					<td>
+						<input type="time" class="tf-table-input tf-row-from-time" data-idx="${idx}" value="${from_val}" ${input_dis_style} />
+					</td>
+					<td>
+						<input type="time" class="tf-table-input tf-row-to-time" data-idx="${idx}" value="${to_val}" ${input_dis_style} />
+					</td>
+					<td>
+						<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} style="font-weight: 600; text-align: center; width: 75px; ${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
+					</td>
+					<td>
+						<div style="display: flex; align-items: center; gap: 4px;">
+							<input type="text" class="tf-table-input tf-row-desc-input" data-idx="${idx}" value="${frappe.utils.escape_html(desc)}" placeholder="Add note..." ${input_dis_style} />
+							${!is_dis ? `
+							<button class="tf-btn-icon tf-row-desc-btn" data-idx="${idx}" title="Open Text Editor" type="button">
+								<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+							</button>
+							` : ""}
+						</div>
+					</td>
+					<td>
 						${!is_dis ? `
-						<button class="tf-btn-icon tf-row-desc-btn" data-idx="${idx}" title="Open Text Editor" type="button">
-							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+						<button class="tf-btn-icon tf-btn-delete-row" data-idx="${idx}" title="Delete" type="button">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 						</button>
 						` : ""}
-					</div>
-				</td>
-				<td>
-					${!is_dis ? `
-					<button class="tf-btn-icon tf-btn-delete-row" data-idx="${idx}" title="Delete" type="button">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-					</button>
-					` : ""}
-				</td>
-			</tr>
-		`);
-	});
-}
+					</td>
+				</tr>
+			`);
+		});
+	},
 
-function update_widget_summary(frm) {
-	const wrapper = $(frm.fields_dict.timesheet_widget.wrapper);
-	const items = frm.doc.table_pfiw || [];
-
-	let total_hrs = 0;
-
-	const breakdown = {
-		Task: 0,
-		Meeting: 0,
-		Research: 0,
-	};
-
-	items.forEach((item) => {
-		const h = parseFloat(item.hrs) || 0;
-		total_hrs += h;
-		const type = item.activity_type || "Task";
-		if (breakdown[type] !== undefined) {
-			breakdown[type] += h;
-		} else {
-			breakdown[type] = h;
+	render_project_dropdown_items($menu, projects, idx) {
+		$menu.empty();
+		if (!projects || projects.length === 0) {
+			$menu.html(`<div class="tf-dropdown-no-res">No projects found</div>`);
+			return;
 		}
-	});
-
-	wrapper.find("#tf-summary-total-hours").text(hours_to_hhmm(total_hrs));
-
-	// Calculate percentages for segment bar
-	const task_pct = total_hrs > 0 ? (breakdown.Task / total_hrs) * 100 : 0;
-	const meet_pct = total_hrs > 0 ? (breakdown.Meeting / total_hrs) * 100 : 0;
-	const res_pct = total_hrs > 0 ? (breakdown.Research / total_hrs) * 100 : 0;
-
-	wrapper.find("#tf-seg-task").css("width", `${task_pct}%`);
-	wrapper.find("#tf-seg-meeting").css("width", `${meet_pct}%`);
-	wrapper.find("#tf-seg-research").css("width", `${res_pct}%`);
-
-	const $bd = wrapper.find("#tf-summary-breakdown");
-	$bd.empty();
-
-	const color_map = {
-		Task: { dot: "tf-dot-task", bg: "#eff6ff", text: "#1d4ed8" },
-		Meeting: { dot: "tf-dot-meeting", bg: "#f5f3ff", text: "#6d28d9" },
-		Research: { dot: "tf-dot-research", bg: "#ecfdf5", text: "#047857" },
-	};
-
-	Object.keys(breakdown).forEach((key) => {
-		const info = color_map[key] || { dot: "tf-dot-task", bg: "#f8fafc", text: "#334155" };
-		const hrs_str = hours_to_hhmm(breakdown[key]);
-		const pct = total_hrs > 0 ? Math.round((breakdown[key] / total_hrs) * 100) : 0;
-
-		$bd.append(`
-			<div class="tf-breakdown-row">
-				<div style="display: flex; align-items: center;">
-					<span class="tf-dot ${info.dot}"></span>
-					<span style="font-weight: 500; color: #334155;">${frappe.utils.escape_html(key)}</span>
+		projects.forEach((p) => {
+			const display_name = p.project_name || p.name;
+			$menu.append(`
+				<div class="tf-dropdown-item tf-proj-item" data-idx="${idx}" data-name="${frappe.utils.escape_html(p.name)}" data-title="${frappe.utils.escape_html(display_name)}">
+					${frappe.utils.escape_html(display_name)}
 				</div>
-				<div style="display: flex; align-items: center; gap: 8px;">
-					<span style="font-size: 11px; color: #94a3b8; font-weight: 500;">${pct}%</span>
-					<span style="font-weight: 700; font-family: monospace; color: ${info.text}; background: ${info.bg}; padding: 2px 8px; border-radius: 4px;">
-						${hrs_str}
-					</span>
+			`);
+		});
+	},
+
+	render_task_dropdown_items($menu, tasks, idx) {
+		$menu.empty();
+		if (!tasks || tasks.length === 0) {
+			$menu.html(`<div class="tf-dropdown-no-res">No tasks found for this project</div>`);
+			return;
+		}
+		tasks.forEach((t) => {
+			const display_name = t.task_title || t.name;
+			$menu.append(`
+				<div class="tf-dropdown-item tf-task-item" data-idx="${idx}" data-name="${frappe.utils.escape_html(t.name)}" data-title="${frappe.utils.escape_html(display_name)}">
+					${frappe.utils.escape_html(display_name)}
 				</div>
-			</div>
-		`);
-	});
-}
+			`);
+		});
+	},
 
-function get_widget_html(frm) {
-	const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
-	const formatted_date_ddmmyyyy = format_date_ddmmyyyy(doc_date);
-	const emp_name = frm.doc.employee_name || frappe.session.user_fullname || "Talib Sheikh";
-	const user_id = frm.doc.user || frappe.session.user || "";
-	const status_val = frm.doc.status || "Draft";
-	const is_submitted = status_val === "Submitted";
+	update_summary(frm) {
+		const wrapper = $(frm.fields_dict.timesheet_widget.wrapper);
+		const items = frm.doc.table_pfiw || [];
 
-	const emp_dis_style = is_submitted ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
-	const date_dis_style = is_submitted ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
+		let total_hrs = 0;
+		const breakdown = { Task: 0, Meeting: 0, Research: 0 };
 
-	return `
+		items.forEach((item) => {
+			const h = parseFloat(item.hrs) || 0;
+			total_hrs += h;
+			const type = item.activity_type || "Task";
+			if (breakdown[type] !== undefined) {
+				breakdown[type] += h;
+			} else {
+				breakdown[type] = h;
+			}
+		});
+
+		wrapper.find("#tf-summary-total-hours").text(TimeUtils.hours_to_hhmm(total_hrs));
+
+		const task_pct = total_hrs > 0 ? (breakdown.Task / total_hrs) * 100 : 0;
+		const meet_pct = total_hrs > 0 ? (breakdown.Meeting / total_hrs) * 100 : 0;
+		const res_pct = total_hrs > 0 ? (breakdown.Research / total_hrs) * 100 : 0;
+
+		wrapper.find("#tf-seg-task").css("width", `${task_pct}%`);
+		wrapper.find("#tf-seg-meeting").css("width", `${meet_pct}%`);
+		wrapper.find("#tf-seg-research").css("width", `${res_pct}%`);
+
+		const $bd = wrapper.find("#tf-summary-breakdown");
+		$bd.empty();
+
+		const color_map = {
+			Task: { dot: "tf-dot-task", bg: "#eff6ff", text: "#1d4ed8" },
+			Meeting: { dot: "tf-dot-meeting", bg: "#f5f3ff", text: "#6d28d9" },
+			Research: { dot: "tf-dot-research", bg: "#ecfdf5", text: "#047857" },
+		};
+
+		Object.keys(breakdown).forEach((key) => {
+			const info = color_map[key] || { dot: "tf-dot-task", bg: "#f8fafc", text: "#334155" };
+			const hrs_str = TimeUtils.hours_to_hhmm(breakdown[key]);
+			const pct = total_hrs > 0 ? Math.round((breakdown[key] / total_hrs) * 100) : 0;
+
+			$bd.append(`
+				<div class="tf-breakdown-row">
+					<div style="display: flex; align-items: center;">
+						<span class="tf-dot ${info.dot}"></span>
+						<span style="font-weight: 500; color: #334155;">${frappe.utils.escape_html(key)}</span>
+					</div>
+					<div style="display: flex; align-items: center; gap: 8px;">
+						<span style="font-size: 11px; color: #94a3b8; font-weight: 500;">${pct}%</span>
+						<span style="font-weight: 700; font-family: monospace; color: ${info.text}; background: ${info.bg}; padding: 2px 8px; border-radius: 4px;">
+							${hrs_str}
+						</span>
+					</div>
+				</div>
+			`);
+		});
+	},
+
+	get_template_html(frm) {
+		const doc_date = frm.doc.timesheet_date || frappe.datetime.get_today();
+		const formatted_date_ddmmyyyy = TimeUtils.format_date_ddmmyyyy(doc_date);
+		const emp_name = frm.doc.employee_name || frappe.session.user_fullname || "";
+		const user_id = frm.doc.user || frappe.session.user || "";
+		const status_val = frm.doc.status || "Draft";
+		const is_submitted = status_val === "Submitted";
+
+		const emp_dis_style = is_submitted ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
+		const date_dis_style = is_submitted ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
+
+		return `
 <style>
   .tf-timesheet-wrapper {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -1232,4 +1210,5 @@ function get_widget_html(frm) {
 	</div>
 </div>
 `;
-}
+	},
+};
