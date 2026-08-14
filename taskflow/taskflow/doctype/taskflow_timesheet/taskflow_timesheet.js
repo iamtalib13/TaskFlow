@@ -885,10 +885,10 @@ const TimesheetUI = {
 			const is_dis = is_submitted;
 			const proj_attrs = is_task && !is_dis
 				? 'placeholder="Select project..."'
-				: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #f1f5f9;"';
+				: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"';
 			const task_attrs = is_task && !is_dis
 				? 'placeholder="Select task..."'
-				: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #f1f5f9;"';
+				: 'placeholder="—" disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"';
 
 			const input_dis_style = is_dis ? 'disabled style="background: #f8fafc; color: #64748b; cursor: not-allowed;"' : '';
 
@@ -897,7 +897,7 @@ const TimesheetUI = {
 					<td style="width: 25px; text-align: center;">
 						${!is_dis ? `<input type="checkbox" class="tf-row-checkbox" data-idx="${idx}" />` : ''}
 					</td>
-					<td>
+					<td style="text-align: center;">
 						<span class="tf-row-num" data-idx="${idx}" title="Click to edit row in dialog" style="cursor: pointer; color: #2563eb; font-weight: 600; text-decoration: underline;">
 							${idx + 1}
 						</span>
@@ -930,7 +930,7 @@ const TimesheetUI = {
 						<input type="time" class="tf-table-input tf-row-to-time" data-idx="${idx}" value="${to_val}" ${input_dis_style} />
 					</td>
 					<td>
-						<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} style="font-weight: 600; text-align: center; width: 68px; ${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
+						<input type="text" class="tf-table-input tf-row-duration" data-idx="${idx}" value="${duration}" placeholder="02:30" ${input_dis_style} style="font-weight: 600; text-align: center; ${is_dis ? "background: #f8fafc; color: #64748b;" : ""}" />
 					</td>
 					<td>
 						<div style="display: flex; align-items: center; gap: 4px;">
@@ -1099,7 +1099,7 @@ const TimesheetUI = {
     width: 100%;
     height: 36px;
     padding: 6px 10px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     border-radius: 6px;
     font-size: 13px;
     color: #0f172a;
@@ -1135,10 +1135,10 @@ const TimesheetUI = {
   }
 
   .tf-table-container {
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     border-radius: 8px;
     background: #ffffff;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .tf-table {
@@ -1153,16 +1153,16 @@ const TimesheetUI = {
     font-size: 11px;
     font-weight: 600;
     color: #64748b;
-    border-bottom: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     text-transform: uppercase;
     letter-spacing: 0.3px;
   }
 
   .tf-table td {
-    padding: 8px 8px;
+    padding: 4px 6px;
     font-size: 13px;
     color: #334155;
-    border-bottom: 1px solid #f1f5f9;
+    border: 1px solid #e2e8f0;
     vertical-align: middle;
   }
 
@@ -1177,21 +1177,25 @@ const TimesheetUI = {
   }
 
   .tf-table tr:last-child td {
-    border-bottom: none;
+    border-bottom: 1px solid #e2e8f0;
   }
 
-  .tf-table-select, .tf-table-input {
+  .tf-table-select, .tf-table-input, .tf-dropdown-input {
     width: 100%;
     height: 34px;
-    padding: 4px 8px;
-    border: 1px solid #e2e8f0;
-    border-radius: 5px;
+    padding: 4px 6px;
+    border: none !important;
+    border-radius: 0;
     font-size: 13px;
     color: #0f172a;
-    background: #ffffff;
+    background: transparent;
     outline: none;
     box-sizing: border-box;
-    transition: all 0.15s;
+    box-shadow: none !important;
+  }
+
+  .tf-dropdown-input {
+    padding-right: 20px !important;
   }
 
   .tf-row-from-time, .tf-row-to-time {
@@ -1205,26 +1209,19 @@ const TimesheetUI = {
   .tf-row-work-type[data-type="Task"] {
     background-color: #eff6ff !important;
     color: #1d4ed8 !important;
-    border-color: #bfdbfe !important;
     font-weight: 600;
   }
 
   .tf-row-work-type[data-type="Meeting"] {
     background-color: #f5f3ff !important;
     color: #6d28d9 !important;
-    border-color: #ddd6fe !important;
     font-weight: 600;
   }
 
   .tf-row-work-type[data-type="Research"] {
     background-color: #ecfdf5 !important;
     color: #047857 !important;
-    border-color: #a7f3d0 !important;
     font-weight: 600;
-  }
-
-  .tf-table-select:focus, .tf-table-input:focus {
-    border-color: #2563eb;
   }
 
   .tf-dropdown-container {
@@ -1232,30 +1229,9 @@ const TimesheetUI = {
     width: 100%;
   }
 
-  .tf-dropdown-input {
-    width: 100%;
-    height: 34px;
-    padding: 4px 24px 4px 8px;
-    border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    font-size: 13px;
-    color: #0f172a;
-    background: #ffffff;
-    outline: none;
-    box-sizing: border-box;
-    transition: border-color 0.15s;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-  }
-
-  .tf-dropdown-input:focus {
-    border-color: #2563eb;
-  }
-
   .tf-dropdown-icon {
     position: absolute;
-    right: 8px;
+    right: 6px;
     top: 50%;
     transform: translateY(-50%);
     pointer-events: none;
@@ -1268,7 +1244,7 @@ const TimesheetUI = {
     left: 0;
     right: 0;
     background: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     border-radius: 6px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
     max-height: 180px;
@@ -1310,7 +1286,7 @@ const TimesheetUI = {
     transition: color 0.15s;
   }
   .tf-btn-icon:hover {
-    color: #ef4444;
+    color: #2563eb;
   }
 
   .tf-btn-add {
@@ -1483,7 +1459,7 @@ const TimesheetUI = {
 						<th style="width: 25px; text-align: center;">
 							${!is_submitted ? '<input type="checkbox" id="tf-check-all" />' : ''}
 						</th>
-						<th style="width: 28px;">#</th>
+						<th style="width: 28px; text-align: center;">#</th>
 						<th style="width: 95px;">Activity</th>
 						<th style="width: 140px;">Project</th>
 						<th style="width: 260px;">Task</th>
