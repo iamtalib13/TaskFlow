@@ -322,6 +322,7 @@ function render_timesheet_widget(frm) {
 	wrapper.on("change", ".tf-row-work-type", function () {
 		const idx = $(this).data("idx");
 		const val = $(this).val();
+		$(this).attr("data-type", val);
 		if (frm.doc.table_pfiw && frm.doc.table_pfiw[idx]) {
 			frm.doc.table_pfiw[idx].activity_type = val;
 			if (val !== "Task") {
@@ -618,10 +619,10 @@ function update_table_rows(frm, wrapper) {
 			<tr>
 				<td style="font-weight: 500; color: #94a3b8; font-size: 12px;">${idx + 1}</td>
 				<td>
-					<select class="tf-table-select tf-row-work-type" data-idx="${idx}">
-						<option value="Task" ${wt_task_sel}>Task</option>
-						<option value="Meeting" ${wt_meet_sel}>Meeting</option>
-						<option value="Research" ${wt_res_sel}>Research</option>
+					<select class="tf-table-select tf-row-work-type" data-idx="${idx}" data-type="${work_type}">
+						<option value="Task" ${wt_task_sel} style="background:#ffffff; color:#1d4ed8; font-weight:600;">Task</option>
+						<option value="Meeting" ${wt_meet_sel} style="background:#ffffff; color:#6d28d9; font-weight:600;">Meeting</option>
+						<option value="Research" ${wt_res_sel} style="background:#ffffff; color:#047857; font-weight:600;">Research</option>
 					</select>
 				</td>
 				<td>
@@ -845,7 +846,28 @@ function get_widget_html(frm) {
     background: #ffffff;
     outline: none;
     box-sizing: border-box;
-    transition: border-color 0.15s;
+    transition: all 0.15s;
+  }
+
+  .tf-row-work-type[data-type="Task"] {
+    background-color: #eff6ff !important;
+    color: #1d4ed8 !important;
+    border-color: #bfdbfe !important;
+    font-weight: 600;
+  }
+
+  .tf-row-work-type[data-type="Meeting"] {
+    background-color: #f5f3ff !important;
+    color: #6d28d9 !important;
+    border-color: #ddd6fe !important;
+    font-weight: 600;
+  }
+
+  .tf-row-work-type[data-type="Research"] {
+    background-color: #ecfdf5 !important;
+    color: #047857 !important;
+    border-color: #a7f3d0 !important;
+    font-weight: 600;
   }
 
   .tf-table-select:focus, .tf-table-input:focus {
@@ -1109,9 +1131,6 @@ function get_widget_html(frm) {
 	<!-- Detailed Description & Analytics Summary -->
 	<div class="tf-bottom-grid">
 		<div>
-			<label class="tf-label" style="margin-bottom: 6px; display: block;">
-				Detailed Notes
-			</label>
 			<div id="tf-native-description-container"></div>
 		</div>
 
