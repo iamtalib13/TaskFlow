@@ -25,6 +25,9 @@ frappe.ui.form.on("Taskflow Timesheet", {
 		if (!frm.doc.timesheet_date) {
 			frm.set_value("timesheet_date", frappe.datetime.get_today());
 		}
+		if (!frm.doc.status) {
+			frm.set_value("status", "Draft");
+		}
 
 		// Details tab is only visible to System Manager role
 		const is_system_manager = frappe.user.has_role("System Manager");
@@ -37,6 +40,7 @@ frappe.ui.form.on("Taskflow Timesheet", {
 				"table_pfiw",
 				"section_break_wwsx",
 				"total_working_hours",
+				"status",
 			],
 			is_system_manager
 		);
@@ -227,6 +231,15 @@ function render_timesheet_widget(frm) {
 	}
 
 	update_table_rows(frm, wrapper);
+
+	// Bind Status change
+	wrapper.find("#tf-input-status").on("change", function () {
+		const val = $(this).val();
+		$(this).attr("data-status", val);
+		frm.set_value("status", val).then(() => {
+			frm.save();
+		});
+	});
 
 	// Bind Datepicker in DD/MM/YYYY format
 	const $date_input = wrapper.find("#tf-input-date");
@@ -736,6 +749,7 @@ function get_widget_html(frm) {
 	const formatted_date_ddmmyyyy = format_date_ddmmyyyy(doc_date);
 	const emp_name = frm.doc.employee_name || frappe.session.user_fullname || "Talib Sheikh";
 	const user_id = frm.doc.user || frappe.session.user || "";
+	const status_val = frm.doc.status || "Draft";
 
 	return `
 <style>
@@ -749,14 +763,14 @@ function get_widget_html(frm) {
 
   .tf-top-bar {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     margin-bottom: 20px;
   }
 
-  @media (max-width: 800px) {
+  @media (max-width: 900px) {
     .tf-top-bar {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 1fr;
     }
   }
 
@@ -790,6 +804,20 @@ function get_widget_html(frm) {
 
   .tf-input:focus, .tf-select:focus {
     border-color: #2563eb;
+  }
+
+  .tf-input-status[data-status="Draft"] {
+    background-color: #fffbeb !important;
+    color: #b45309 !important;
+    border-color: #fde68a !important;
+    font-weight: 600;
+  }
+
+  .tf-input-status[data-status="Submitted"] {
+    background-color: #ecfdf5 !important;
+    color: #047857 !important;
+    border-color: #a7f3d0 !important;
+    font-weight: 600;
   }
 
   .tf-section-title {
@@ -1097,6 +1125,13 @@ function get_widget_html(frm) {
 		<div class="tf-field-group">
 			<label class="tf-label">Date</label>
 			<input type="text" class="tf-input" id="tf-input-date" value="${formatted_date_ddmmyyyy}" placeholder="DD/MM/YYYY" autocomplete="off" />
+		</div>
+		<div class="tf-field-group">
+			<label class="tf-label">Status</label>
+			<select class="tf-select tf-input-status" id="tf-input-status" data-status="${status_val}">
+				<option value="Draft" ${status_val === "Draft" ? "selected" : ""}>Draft</option>
+				<option value="Submitted" ${status_val === "Submitted" ? "selected" : ""}>Submitted</option>
+			</select>
 		</div>
 	</div>
 
