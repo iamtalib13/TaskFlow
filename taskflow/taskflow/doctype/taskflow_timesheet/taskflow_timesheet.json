@@ -17,8 +17,7 @@
   "section_break_esdi",
   "table_pfiw",
   "section_break_wwsx",
-  "total_working_hours",
-  "description"
+  "total_working_hours"
  ],
  "fields": [
   {
@@ -73,11 +72,6 @@
    "precision": "2"
   },
   {
-   "fieldname": "description",
-   "fieldtype": "Text Editor",
-   "label": "Description"
-  },
-  {
    "fieldname": "timesheet_tab",
    "fieldtype": "Tab Break",
    "label": "Timesheet"
@@ -98,7 +92,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 0,
  "links": [],
- "modified": "2026-08-14 16:27:00.000000",
+ "modified": "2026-08-14 16:31:50.000000",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Timesheet",

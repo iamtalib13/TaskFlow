@@ -44,14 +44,8 @@ frappe.ui.form.on("Taskflow Timesheet", {
 			],
 			is_system_manager
 		);
-		frm.toggle_display("description", true);
 
 		render_timesheet_widget(frm);
-	},
-	description(frm) {
-		if (frm.is_dirty()) {
-			frm.save();
-		}
 	},
 	"table_pfiw.from_time"(frm, cdt, cdn) {
 		calculate_item_hours(frm, cdt, cdn);
@@ -215,31 +209,9 @@ function render_timesheet_widget(frm) {
 	wrapper.empty();
 
 	const is_submitted = frm.doc.status === "Submitted";
-	frm.set_df_property("description", "read_only", is_submitted ? 1 : 0);
 
 	const html = get_widget_html(frm);
 	wrapper.html(html);
-
-	// Embed Frappe's native Text Editor field for Detailed Description / Notes
-	if (frm.fields_dict.description && frm.fields_dict.description.wrapper) {
-		const $desc_field = $(frm.fields_dict.description.wrapper);
-		wrapper.find("#tf-native-description-container").empty().append($desc_field);
-
-		if (frm.fields_dict.description.editor) {
-			if (is_submitted) {
-				frm.fields_dict.description.editor.disable();
-			} else {
-				frm.fields_dict.description.editor.enable();
-			}
-		}
-
-		// Auto save form on Text Editor blur
-		$desc_field.off("blur.tf_save").on("blur.tf_save", ".ql-editor", function () {
-			if (!is_submitted && frm.is_dirty()) {
-				frm.save();
-			}
-		});
-	}
 
 	update_table_rows(frm, wrapper);
 
@@ -1052,16 +1024,8 @@ function get_widget_html(frm) {
     background: #f8fafc;
   }
 
-  .tf-bottom-grid {
-    display: grid;
-    grid-template-columns: 1fr 310px;
-    gap: 16px;
+  .tf-bottom-container {
     margin-top: 20px;
-  }
-  @media (max-width: 800px) {
-    .tf-bottom-grid {
-      grid-template-columns: 1fr;
-    }
   }
 
   /* Sleek Modern Analytics Card */
@@ -1208,13 +1172,8 @@ function get_widget_html(frm) {
 		</button>
 	</div>
 
-	<!-- Detailed Description & Analytics Summary -->
-	<div class="tf-bottom-grid">
-		<div>
-			<div id="tf-native-description-container"></div>
-		</div>
-
-		<!-- Sleek Analytics Summary Card -->
+	<!-- Analytics Summary Card -->
+	<div class="tf-bottom-container">
 		<div class="tf-analytics-card">
 			<div class="tf-analytics-header">
 				<div class="tf-analytics-title">
