@@ -719,8 +719,114 @@ const TimesheetUI = {
 	},
 
 	show_send_email_dialog(frm) {
+		const items = frm.doc.table_pfiw || [];
+		TimesheetDataService.ensure_titles_loaded(items, () => {
+			TimesheetUI._show_send_email_dialog_internal(frm);
+		});
+	},
+
+	_show_send_email_dialog_internal(frm) {
 		const doc_date = TimeUtils.format_date_ddmmyyyy(frm.doc.timesheet_date || frappe.datetime.get_today());
-		const default_subject = `Timesheet Summary - ${doc_date} - ${frm.doc.employee_name || frm.doc.user}`;
+		const emp_name = frm.doc.employee_name || frappe.session.user_fullname || "";
+		const user_id = frm.doc.user || frappe.session.user || "";
+		const default_subject = `Timesheet Summary - ${doc_date} - ${emp_name}`;
+
+		// Pre-populate Outlook Email Body HTML with Employee Code, Employee Name, Total Hours, and Items Breakout
+		const items = frm.doc.table_pfiw || [];
+		let total_hrs = 0;
+		const breakdown = { Task: 0, Meeting: 0, Research: 0 };
+
+		let table_rows = "";
+		items.forEach((item, idx) => {
+			const act = item.activity_type || "Task";
+			const hrs = parseFloat(item.hrs) || 0;
+			total_hrs += hrs;
+			breakdown[act] = (breakdown[act] || 0) + hrs;
+
+			const is_task = act === "Task";
+			const proj_display = is_task ? (TimesheetDataService.titles_cache.projects[item.project] || item.project || "-") : "-";
+			const task_display = is_task ? (TimesheetDataService.titles_cache.tasks[item.task] || item.task || "-") : "-";
+			const from_val = TimeUtils.extract_time_str(item.from_time) || "-";
+			const to_val = TimeUtils.extract_time_str(item.to_time) || "-";
+			const dur_val = TimeUtils.hours_to_hhmm(hrs);
+			const desc_val = item.description ? item.description.replace(/<[^>]*>?/gm, "") : "-";
+
+			table_rows += `
+				<tr style="border-bottom: 1px solid #edebe9;">
+					<td style="padding: 8px; text-align: center;">${idx + 1}</td>
+					<td style="padding: 8px;"><strong>${act}</strong></td>
+					<td style="padding: 8px;">${frappe.utils.escape_html(proj_display)}</td>
+					<td style="padding: 8px;">${frappe.utils.escape_html(task_display)}</td>
+					<td style="padding: 8px; text-align: center; font-family: monospace;">${from_val}</td>
+					<td style="padding: 8px; text-align: center; font-family: monospace;">${to_val}</td>
+					<td style="padding: 8px; text-align: center; font-weight: bold; color: #0078d4; font-family: monospace;">${dur_val}</td>
+					<td style="padding: 8px;">${frappe.utils.escape_html(desc_val)}</td>
+				</tr>
+			`;
+		});
+
+		const formatted_total_str = TimeUtils.hours_to_hhmm(total_hrs);
+		const task_str = TimeUtils.hours_to_hhmm(breakdown.Task || 0);
+		const meet_str = TimeUtils.hours_to_hhmm(breakdown.Meeting || 0);
+		const res_str = TimeUtils.hours_to_hhmm(breakdown.Research || 0);
+
+		const default_message_body = `
+			<p>Hello Team,</p>
+			<p>Please find below the timesheet summary report for <strong>${doc_date}</strong>.</p>
+			
+			<div style="background: #faf9f8; border: 1px solid #e1dfdd; border-radius: 6px; padding: 14px 18px; margin: 15px 0;">
+				<table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+					<tr>
+						<td style="padding: 4px 0; color: #605e5c; font-weight: 600;">Employee Name:</td>
+						<td style="padding: 4px 0; color: #201f1e; font-weight: 700;">${frappe.utils.escape_html(emp_name)}</td>
+						<td style="padding: 4px 0; color: #605e5c; font-weight: 600;">Employee Code / User:</td>
+						<td style="padding: 4px 0; color: #201f1e; font-weight: 700;">${frappe.utils.escape_html(user_id)}</td>
+					</tr>
+					<tr>
+						<td style="padding: 4px 0; color: #605e5c; font-weight: 600;">Timesheet Date:</td>
+						<td style="padding: 4px 0; color: #201f1e;">${doc_date}</td>
+						<td style="padding: 4px 0; color: #605e5c; font-weight: 600;">Total Working Hours:</td>
+						<td style="padding: 4px 0; color: #0078d4; font-weight: 800; font-size: 15px;">${formatted_total_str} hrs</td>
+					</tr>
+				</table>
+			</div>
+
+			<h4 style="color: #605e5c; margin: 15px 0 8px 0; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">Activity Breakout Summary</h4>
+			<div style="display: flex; gap: 10px; margin-bottom: 15px;">
+				<div style="flex: 1; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; padding: 8px 12px;">
+					<div style="font-size: 11px; font-weight: 700; color: #1d4ed8;">TASK</div>
+					<div style="font-size: 16px; font-weight: 800; color: #1e293b;">${task_str} hrs</div>
+				</div>
+				<div style="flex: 1; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 4px; padding: 8px 12px;">
+					<div style="font-size: 11px; font-weight: 700; color: #6d28d9;">MEETING</div>
+					<div style="font-size: 16px; font-weight: 800; color: #1e293b;">${meet_str} hrs</div>
+				</div>
+				<div style="flex: 1; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 8px 12px;">
+					<div style="font-size: 11px; font-weight: 700; color: #047857;">RESEARCH</div>
+					<div style="font-size: 16px; font-weight: 800; color: #1e293b;">${res_str} hrs</div>
+				</div>
+			</div>
+
+			<h4 style="color: #605e5c; margin: 15px 0 8px 0; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">Detailed Time Entries (Breakout)</h4>
+			<table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #e1dfdd; margin-bottom: 15px;">
+				<thead>
+					<tr style="background: #f3f2f1; color: #323130; border-bottom: 2px solid #e1dfdd; text-align: left;">
+						<th style="padding: 8px; text-align: center; width: 30px;">#</th>
+						<th style="padding: 8px; width: 90px;">Activity</th>
+						<th style="padding: 8px;">Project</th>
+						<th style="padding: 8px;">Task</th>
+						<th style="padding: 8px; text-align: center; width: 60px;">From</th>
+						<th style="padding: 8px; text-align: center; width: 60px;">To</th>
+						<th style="padding: 8px; text-align: center; width: 70px;">Duration</th>
+						<th style="padding: 8px;">Notes</th>
+					</tr>
+				</thead>
+				<tbody>
+					${table_rows}
+				</tbody>
+			</table>
+			<p>Best regards,<br><strong>${frappe.utils.escape_html(emp_name)}</strong></p>
+		`;
 
 		const d = new frappe.ui.Dialog({
 			title: __("New Message — TaskFlow Email Compose"),
@@ -767,13 +873,13 @@ const TimesheetUI = {
 				},
 				{
 					fieldtype: "Section Break",
-					label: __("Message Note"),
+					label: __("Email Body & Timesheet Breakout"),
 				},
 				{
 					label: __("Message / Note to Recipients"),
 					fieldname: "custom_message",
 					fieldtype: "Text Editor",
-					placeholder: "Type your message or notes here. The complete timesheet summary table and activity breakdown will automatically be attached to the email body...",
+					default: default_message_body,
 				},
 			],
 			primary_action_label: __("Send Email"),
