@@ -880,11 +880,13 @@ const TimesheetUI = {
   }
 
   .tf-table tbody tr {
-    transition: background-color 0.15s ease;
+    transition: all 0.15s ease-in-out;
+    border-left: 3px solid transparent;
   }
 
   .tf-table tbody tr:hover {
-    background-color: #f8fafc;
+    background-color: #f1f5f9;
+    border-left-color: #2563eb;
   }
 
   .tf-table tr:last-child td {
