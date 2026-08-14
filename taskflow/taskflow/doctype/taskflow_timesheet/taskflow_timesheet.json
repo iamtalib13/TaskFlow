@@ -6,13 +6,18 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "timesheet_tab",
+  "timesheet_widget",
+  "details_tab",
   "user",
   "column_break_hrob",
   "employee_name",
+  "timesheet_date",
   "section_break_esdi",
   "table_pfiw",
   "section_break_wwsx",
-  "total_working_hours"
+  "total_working_hours",
+  "amended_from"
  ],
  "fields": [
   {
@@ -33,6 +38,12 @@
    "label": "Employee Name "
   },
   {
+   "default": "Today",
+   "fieldname": "timesheet_date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
    "fieldname": "section_break_esdi",
    "fieldtype": "Section Break"
   },
@@ -48,13 +59,40 @@
   {
    "fieldname": "total_working_hours",
    "fieldtype": "Float",
-   "label": "Total Working Hours"
+   "label": "Total Working Hours",
+   "precision": "2"
+  },
+  {
+   "fieldname": "timesheet_tab",
+   "fieldtype": "Tab Break",
+   "label": "Timesheet"
+  },
+  {
+   "fieldname": "timesheet_widget",
+   "fieldtype": "HTML",
+   "label": "timesheet_widget"
+  },
+  {
+   "fieldname": "details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Taskflow Timesheet",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-08-14 12:26:33.548672",
+ "modified": "2026-08-14 15:52:55.220101",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Timesheet",
@@ -74,6 +112,7 @@
    "write": 1
   },
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -84,6 +123,7 @@
    "report": 1,
    "role": "Employee",
    "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],

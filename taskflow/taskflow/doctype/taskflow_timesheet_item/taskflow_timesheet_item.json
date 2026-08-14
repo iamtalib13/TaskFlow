@@ -23,7 +23,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Activity Type",
-   "options": "\nTask\nMeting\nResearch"
+   "options": "\nTask\nMeeting\nResearch"
   },
   {
    "fieldname": "from_time",
@@ -65,8 +65,8 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Task",
-   "options": "Taskflow Task",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.activity_type==\"Task\"",
+   "options": "Taskflow Task"
   },
   {
    "fieldname": "section_break_apkr",
@@ -83,7 +83,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-08-14 12:19:20.170583",
+ "modified": "2026-08-14 15:50:26.062605",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Timesheet Item",
