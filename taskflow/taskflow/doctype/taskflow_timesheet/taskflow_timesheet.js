@@ -42,8 +42,9 @@ function calculate_item_hours(frm, cdt, cdn) {
 	if (row.from_time && row.to_time) {
 		const diff = frappe.datetime.get_diff(row.to_time, row.from_time);
 		const hours = diff / 3600;
-		frappe.model.set_value(cdt, cdn, "hrs", hours);
-		calculate_total_hours(frm);
+		frappe.model.set_value(cdt, cdn, "hrs", hours).then(() => {
+			calculate_total_hours(frm);
+		});
 	}
 }
 
