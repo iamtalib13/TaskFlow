@@ -748,7 +748,6 @@ const TimesheetUI = {
 		const doc_date = TimeUtils.format_date_ddmmyyyy(frm.doc.timesheet_date || frappe.datetime.get_today());
 		const emp_name = frm.doc.employee_name || frappe.session.user_fullname || "";
 		const user_id = frm.doc.user || frappe.session.user || "";
-		const status_val = frm.doc.status || "Draft";
 		const default_subject = `Timesheet Summary - ${doc_date} - ${emp_name}`;
 
 		// Pre-populate Hyper-Structured HTML Email Body
@@ -806,29 +805,28 @@ const TimesheetUI = {
 		Dear Team,<br>Please review the daily timesheet summary and activity breakout details recorded for <strong>${doc_date}</strong>:
 	</p>
 
-	<!-- Employee Metadata & Hero Total Card -->
+	<!-- Employee Metadata & Perfectly Centered Total Work Hours Card (No Status Badge) -->
 	<table style="width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
 		<tr>
-			<td style="padding: 16px 20px; vertical-align: top; width: 60%;">
+			<td style="padding: 16px 20px; vertical-align: middle; width: 62%;">
 				<table style="width: 100%; border-collapse: collapse;">
 					<tr>
-						<td style="padding: 3px 0; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; width: 120px;">Employee Name:</td>
-						<td style="padding: 3px 0; color: #0f172a; font-weight: 700; font-size: 13px;">${frappe.utils.escape_html(emp_name)}</td>
+						<td style="padding: 4px 0; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; width: 120px;">Employee Name:</td>
+						<td style="padding: 4px 0; color: #0f172a; font-weight: 700; font-size: 13.5px;">${frappe.utils.escape_html(emp_name)}</td>
 					</tr>
 					<tr>
-						<td style="padding: 3px 0; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Employee Code:</td>
-						<td style="padding: 3px 0; color: #334155; font-weight: 600; font-size: 13px; font-family: monospace;">${frappe.utils.escape_html(user_id)}</td>
+						<td style="padding: 4px 0; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Employee Code:</td>
+						<td style="padding: 4px 0; color: #334155; font-weight: 600; font-size: 13px; font-family: monospace;">${frappe.utils.escape_html(user_id)}</td>
 					</tr>
 					<tr>
-						<td style="padding: 3px 0; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Timesheet Date:</td>
-						<td style="padding: 3px 0; color: #334155; font-weight: 600; font-size: 13px;">${doc_date}</td>
+						<td style="padding: 4px 0; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Timesheet Date:</td>
+						<td style="padding: 4px 0; color: #334155; font-weight: 600; font-size: 13px;">${doc_date}</td>
 					</tr>
 				</table>
 			</td>
-			<td style="padding: 16px 20px; vertical-align: middle; text-align: right; border-left: 1px dashed #cbd5e1; background: #ffffff; border-radius: 0 8px 8px 0;">
-				<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Total Work Hours</div>
-				<div style="font-size: 28px; font-weight: 800; color: #0078d4; font-family: monospace; letter-spacing: -0.5px;">${formatted_total_str}</div>
-				<div style="font-size: 11px; color: #047857; font-weight: 700; background: #ecfdf5; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-top: 4px;">${status_val}</div>
+			<td style="padding: 16px 24px; vertical-align: middle; text-align: center; border-left: 1px dashed #cbd5e1; background: #ffffff; border-radius: 0 8px 8px 0; width: 38%;">
+				<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px;">Total Work Hours</div>
+				<div style="font-size: 30px; font-weight: 800; color: #0078d4; font-family: monospace; letter-spacing: -0.5px; line-height: 1;">${formatted_total_str} <span style="font-size: 13px; font-weight: 600; color: #64748b;">hrs</span></div>
 			</td>
 		</tr>
 	</table>
