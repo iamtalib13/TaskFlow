@@ -699,7 +699,14 @@ def _sync_assignments(doc, new_assignees):
 def bulk_insert_tasks() -> dict[str, Any]:
     """Bulk insert tasks from uploaded CSV or Excel file."""
     _require_login()
-    
+
+    user = frappe.session.user
+    if user != "Administrator" and not {"System Manager", "Taskflow Admin"} & set(frappe.get_roles(user)):
+        frappe.throw(
+            _("Only administrators can perform bulk insert of tasks."),
+            frappe.PermissionError,
+        )
+
     files = frappe.request.files
     if not files:
         frappe.throw("No file uploaded. Please select a file.")

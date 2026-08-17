@@ -34,6 +34,13 @@ function isAdmin() {
 	return user === "Administrator";
 }
 
+function setBulkInsertVisibility() {
+	const btn = document.querySelector("[data-bulk-insert-button]");
+	if (btn) {
+		btn.style.display = isAdmin() ? "" : "none";
+	}
+}
+
 function getListColumns() {
 	const cols = [...BASE_LIST_COLUMNS];
 	if (isAdmin()) {
@@ -1156,6 +1163,7 @@ function getColumnCount() {
 			state.selectedTeam = state.selectedTeam || "all";
 			normalizeSelectedTeam();
 			renderBootstrap();
+			setBulkInsertVisibility();
 
 			if (refs.teamSwitcher) {
 				refs.teamSwitcher.value = state.selectedTeam;
