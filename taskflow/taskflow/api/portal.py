@@ -56,7 +56,6 @@ _TASK_FIELDS = [
 _PROJECT_FIELDS = [
     "name",
     "project_name",
-    "project_code",
     "team",
     "status",
     "priority",
@@ -70,7 +69,6 @@ _PROJECT_FIELDS = [
 
 _ALLOWED_PROJECT_FIELDS = [
     "project_name",
-    "project_code",
     "team",
     "parent_project",
     "status",
@@ -191,6 +189,34 @@ def _get_user_profile() -> dict:
         "user_image": details.get("user_image"),
         "roles": frappe.get_roles(user),
     }
+
+
+def _get_visible_project_names() -> list[str]:
+    """Return names of projects the current user can see.
+
+    A project is visible only when the user is listed in the project's own
+    team-members child table (project_team_members), matched by user id or
+    by their linked Employee.
+    """
+    user = frappe.session.user
+    if user == "Administrator":
+        return [row.name for row in frappe.get_all("Taskflow Project", fields=["name"])]
+
+    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+
+    project_members = frappe.get_all(
+        "Taskflow Team Member",
+        filters={"parenttype": "Taskflow Project"},
+        fields=["parent", "user", "employee"],
+        ignore_permissions=True,
+    )
+
+    visible: set[str] = set()
+    for row in project_members:
+        if row.user == user or (employee and row.employee == employee):
+            visible.add(row.parent)
+
+    return sorted(visible)
 
 
 def _get_accessible_teams() -> list[dict]:
@@ -466,10 +492,13 @@ def get_portal_bootstrap() -> dict:
     """Return the Taskflow portal bootstrap payload."""
     _require_login()
 
+    visible_projects = _get_visible_project_names()
     projects = frappe.get_list(
         "Taskflow Project",
         fields=_PROJECT_FIELDS,
+        filters={"name": ["in", visible_projects]} if visible_projects else {"name": "__missing__"},
         order_by="modified desc",
+        ignore_permissions=True,
     )
     project_names = [project.name for project in projects]
     project_map = {project.name: project.project_name for project in projects}
@@ -569,7 +598,8 @@ def get_project_workspace(project: str) -> dict:
         frappe.throw(_("Invalid project identifier"), frappe.ValidationError)
 
     project_doc = frappe.get_doc("Taskflow Project", project)
-    project_doc.check_permission("read")
+    if project not in _get_visible_project_names():
+        frappe.throw(_("You do not have permission to access this project"), frappe.PermissionError)
 
     tasks = frappe.get_list(
         "Taskflow Task",
