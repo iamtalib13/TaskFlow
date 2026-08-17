@@ -1054,6 +1054,8 @@ function getColumnCount() {
 
 		bulkUploadBtn?.addEventListener("click", uploadBulkFile);
 
+		document.getElementById("taskLoadMoreBtn")?.addEventListener("click", loadMoreProjectTasks);
+
 		document.querySelectorAll('[data-close-modal="bulkInsertModal"]').forEach((btn) => {
 			btn.addEventListener("click", closeBulkInsertModal);
 		});
@@ -1204,9 +1206,15 @@ function getColumnCount() {
 
 		if (options.updateUrl !== false) updateUrlState();
 		try {
-			const workspace = await apiCall("get_project_workspace", { project: projectName });
+			const workspace = await apiCall("get_project_workspace", {
+				project: projectName,
+				start: 0,
+				page_length: 20,
+			});
 			if (requestId !== state.projectRequestId) return;
 			state.projectWorkspace = workspace;
+			state.projectTaskPage = 0;
+			state.projectHasMore = Boolean(workspace && workspace.has_more);
 			renderProjectWorkspace();
 		} catch (error) {
 			if (requestId !== state.projectRequestId) return;
@@ -1804,7 +1812,7 @@ function getColumnCount() {
 		});
 	}
 
-	function renderKpiCards(tasks) {
+	function renderKpiCards(tasks, statusCounts) {
 		if (refs.projectKpis) {
 			const statusList = [
 				"Open",
@@ -1817,10 +1825,16 @@ function getColumnCount() {
 			];
 			const counts = {};
 			statusList.forEach((s) => (counts[s] = 0));
-			(tasks || []).forEach((t) => {
-				const status = t.status || "Open";
-				counts[status] = (counts[status] || 0) + 1;
-			});
+			if (statusCounts) {
+				statusList.forEach((s) => {
+					counts[s] = statusCounts[s] || 0;
+				});
+			} else {
+				(tasks || []).forEach((t) => {
+					const status = t.status || "Open";
+					counts[status] = (counts[status] || 0) + 1;
+				});
+			}
 			const statusColors = {
 				Completed: "#10b981",
 				"In Progress": "#3b82f6",
@@ -1982,9 +1996,9 @@ function getColumnCount() {
 		const alertEmployee = state.selectedMember || null;
 		renderOldestTaskAlert(tasks, alertEmployee);
 
-		const totalTasks = tasks.length;
-		const completedTasks = tasks.filter((t) => t.status === "Completed").length;
-		const pendingCount = totalTasks - completedTasks;
+		const totalTasks = project.total_tasks || 0;
+		const completedTasks = project.completed_tasks || 0;
+		const pendingCount = Math.max(totalTasks - completedTasks, 0);
 
 		refs.projectTitle.innerHTML = `
 			${escapeHtml(project.project_name)}
@@ -1993,7 +2007,7 @@ function getColumnCount() {
 			</span>
 		`;
 
-		renderKpiCards(tasks);
+		renderKpiCards(tasks, project.status_counts);
 		if (breadcrumb) breadcrumb.textContent = project.project_name;
 		refs.newTaskButton.disabled = !(
 			project.permissions.can_manage_team || project.permissions.can_operate_team
@@ -2485,6 +2499,7 @@ function getColumnCount() {
 		}
 
 		if (emptyMessage) {
+			hideLoadMore();
 			renderActiveEmptyState(emptyMessage);
 		} else if (state.taskView === "list") {
 			renderList(visibleTasks);
@@ -2504,6 +2519,62 @@ function getColumnCount() {
 			renderProjectSettingsView();
 		} else if (state.taskView === "work-history") {
 			renderWorkHistoryView();
+		}
+		updateLoadMoreButton();
+	}
+
+	function updateLoadMoreButton() {
+		const show =
+			state.navMode === "dashboard" &&
+			Boolean(state.projectWorkspace) &&
+			Boolean(state.projectHasMore) &&
+			["list", "kanban", "dashboard", "timeline"].includes(state.taskView);
+		const outerWrapper = document.querySelector("[data-task-load-more]");
+		if (outerWrapper) outerWrapper.style.display = show && state.taskView !== "list" ? "" : "none";
+		const tableWrapper = document.querySelector("[data-task-table-load-more]");
+		if (tableWrapper) tableWrapper.style.display = show && state.taskView === "list" ? "" : "none";
+		document.querySelectorAll("[data-load-more-btn]").forEach((btn) => {
+			btn.disabled = !show;
+		});
+	}
+
+	function hideLoadMore() {
+		const wrapper = document.querySelector("[data-task-load-more]");
+		if (wrapper) wrapper.style.display = "none";
+	}
+
+	async function loadMoreProjectTasks() {
+		if (!state.projectWorkspace || !state.projectWorkspace.project) return;
+		if (state.projectLoadingMore) return;
+		const nextStart = (state.projectTaskPage || 0) + 1;
+		state.projectLoadingMore = true;
+		const buttons = document.querySelectorAll("[data-load-more-btn]");
+		buttons.forEach((btn) => {
+			btn.disabled = true;
+			btn.textContent = "Loading...";
+		});
+		try {
+			const workspace = await apiCall("get_project_workspace", {
+				project: state.projectWorkspace.project.name,
+				start: nextStart * 20,
+				page_length: 20,
+			});
+			if (!workspace || !state.projectWorkspace) return;
+			const existing = state.projectWorkspace.tasks || [];
+			const seen = new Set(existing.map((t) => t.name));
+			const fresh = (workspace.tasks || []).filter((t) => !seen.has(t.name));
+			state.projectWorkspace.tasks = existing.concat(fresh);
+			state.projectTaskPage = nextStart;
+			state.projectHasMore = Boolean(workspace.has_more);
+			renderTaskArea(state.projectWorkspace.tasks || []);
+		} catch (error) {
+			showMessage(error.message || "Unable to load more tasks.");
+		} finally {
+			state.projectLoadingMore = false;
+			document.querySelectorAll("[data-load-more-btn]").forEach((btn) => {
+				btn.disabled = !state.projectHasMore;
+				btn.textContent = "Load More";
+			});
 		}
 	}
 
@@ -3125,6 +3196,9 @@ function getColumnCount() {
 						</thead>
 						<tbody data-task-table-body></tbody>
 					</table>
+					<div data-task-table-load-more style="text-align: center; padding: 12px 0; display: none;">
+						<button type="button" data-load-more-btn class="taskflow-btn-secondary" style="padding: 8px 24px; border: 1px solid var(--taskflow-border); border-radius: 8px; background: var(--taskflow-primary); color: #fff; font-weight: 600; cursor: pointer;">Load More</button>
+					</div>
 				</div>
 			</div>
 		`;
@@ -3133,6 +3207,8 @@ function getColumnCount() {
 		refs.listBody = refs.listView.querySelector("[data-task-table-body]");
 		refs.listRange = refs.listView.querySelector("[data-task-table-range]");
 		refs.listSortButtons = refs.listView.querySelectorAll("[data-sort-key]");
+
+		refs.listView.querySelector("[data-load-more-btn]")?.addEventListener("click", loadMoreProjectTasks);
 
 		if (refs.listScroll) {
 			refs.listScroll.addEventListener("scroll", scheduleListRender, { passive: true });

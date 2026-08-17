@@ -299,7 +299,7 @@ def _get_team_member_options(team_names: list[str]) -> list[dict]:
 
 
 def _get_project_task_counts(project_names: list[str]) -> dict[str, dict]:
-    """Return {project: {total, open, completed}} in a single query."""
+    """Return {project: {total, open, completed, statuses}} in a single query."""
     if not project_names:
         return {}
 
@@ -309,12 +309,17 @@ def _get_project_task_counts(project_names: list[str]) -> dict[str, dict]:
         fields=["project", "status"],
         limit_page_length=0,
     )
-    counts: dict[str, dict] = defaultdict(lambda: {"total": 0, "open": 0, "completed": 0})
+    counts: dict[str, dict] = defaultdict(
+        lambda: {"total": 0, "open": 0, "completed": 0, "statuses": {}}
+    )
     for row in rows:
         counts[row.project]["total"] += 1
-        if row.status == "Completed":
+        status = row.status or "Open"
+        statuses = counts[row.project]["statuses"]
+        statuses[status] = statuses.get(status, 0) + 1
+        if status == "Completed":
             counts[row.project]["completed"] += 1
-        elif row.status != "Cancelled":
+        elif status != "Cancelled":
             counts[row.project]["open"] += 1
     return counts
 
@@ -358,6 +363,7 @@ def _serialize_project(
         "total_tasks": task_count.get("total", 0),
         "open_tasks": task_count.get("open", 0),
         "completed_tasks": task_count.get("completed", 0),
+        "status_counts": task_count.get("statuses", {}),
         "permissions": {
             "can_read": has_taskflow_project_permission(project, user, "read"),
             "can_write": has_taskflow_project_permission(project, user, "write"),
@@ -614,8 +620,8 @@ def get_work_history_tasks(project=None, member=None, start=0, page_length=20) -
 
 
 @frappe.whitelist()
-def get_project_workspace(project: str) -> dict:
-    """Return full workspace data for a single project."""
+def get_project_workspace(project: str, start: int = 0, page_length: int = 20) -> dict:
+    """Return workspace data for a single project, with paginated tasks."""
     _require_login()
     if not isinstance(project, str):
         frappe.throw(_("Invalid project identifier"), frappe.ValidationError)
@@ -624,14 +630,21 @@ def get_project_workspace(project: str) -> dict:
     if project not in _get_visible_project_names():
         frappe.throw(_("You do not have permission to access this project"), frappe.PermissionError)
 
+    start = int(start or 0)
+    page_length = int(page_length or 20)
+
     tasks = frappe.get_list(
         "Taskflow Task",
         fields=_TASK_FIELDS,
         filters={"project": project},
         order_by="sequence asc, modified desc",
-        limit_page_length=200,
+        start=start,
+        limit_page_length=page_length,
     )
     task_docs = [frappe.get_doc("Taskflow Task", task.name) for task in tasks]
+    total = len(
+        frappe.get_list("Taskflow Task", filters={"project": project}, pluck="name", limit_page_length=0)
+    )
 
     task_employee_name_map = _bulk_employee_names([task.assigned_to for task in tasks if task.assigned_to])
     task_user_image_map = _bulk_user_images([task.assigned_to_user for task in tasks if task.assigned_to_user])
@@ -670,6 +683,9 @@ def get_project_workspace(project: str) -> dict:
             for task_doc in task_docs
         ],
         "team_members": team_member_data,
+        "total": total,
+        "start": start,
+        "has_more": start + len(tasks) < total,
     }
 
 
