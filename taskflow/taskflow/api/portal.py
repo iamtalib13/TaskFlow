@@ -220,30 +220,52 @@ def _get_visible_project_names() -> list[str]:
 
 
 def _get_accessible_teams() -> list[dict]:
-    """Return all active teams with permission flags for the current user."""
+    """Return active teams the current user can interact with.
+
+    Includes teams the user can read/manage/operate, plus teams that own a
+    project the user is a member of (so project-only members still get the
+    team context and its assignees).
+    """
     teams = frappe.get_list(
         "Taskflow Team",
-        fields=["name", "team_name", "team_code", "team_lead", "visibility_scope", "is_active"],
+        fields=["name", "team_name", "team_lead", "visibility_scope", "is_active"],
         filters={"is_active": 1},
         order_by="team_name asc",
+        ignore_permissions=True,
     )
     user = frappe.session.user
 
-    return [
-        {
-            "name": team.name,
-            "team_name": team.team_name,
-            "team_code": team.team_code,
-            "team_lead": team.team_lead,
-            "visibility_scope": team.visibility_scope,
-            "permissions": {
-                "can_read": has_taskflow_team_permission(frappe.get_doc("Taskflow Team", team.name)),
-                "can_manage": can_manage_team(user, team.name),
-                "can_operate": can_operate_team(user, team.name),
-            },
+    visible_projects = _get_visible_project_names()
+    member_project_teams = {
+        p["team"]
+        for p in frappe.get_all(
+            "Taskflow Project",
+            fields=["name", "team"],
+            filters={"name": ["in", visible_projects]} if visible_projects else {"name": "__missing__"},
+            ignore_permissions=True,
+        )
+        if p.get("team")
+    }
+
+    accessible = []
+    for team in teams:
+        permissions = {
+            "can_read": has_taskflow_team_permission(frappe.get_doc("Taskflow Team", team.name)),
+            "can_manage": can_manage_team(user, team.name),
+            "can_operate": can_operate_team(user, team.name),
         }
-        for team in teams
-    ]
+        if permissions["can_read"] or permissions["can_manage"] or permissions["can_operate"] or team.name in member_project_teams:
+            accessible.append(
+                {
+                    "name": team.name,
+                    "team_name": team.team_name,
+                    "team_lead": team.team_lead,
+                    "visibility_scope": team.visibility_scope,
+                    "permissions": permissions,
+                }
+            )
+
+    return accessible
 
 
 def _get_team_member_options(team_names: list[str]) -> list[dict]:
@@ -256,6 +278,7 @@ def _get_team_member_options(team_names: list[str]) -> list[dict]:
         filters={"parent": ["in", team_names], "is_active": 1},
         fields=["parent", "employee", "user", "team_role", "access_level"],
         order_by="idx asc",
+        ignore_permissions=True,
     )
 
     employee_name_map = _bulk_employee_names([row.employee for row in rows if row.employee])
