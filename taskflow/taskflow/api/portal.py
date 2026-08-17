@@ -944,6 +944,14 @@ def save_task(payload: str) -> dict:
     try:
         name = data.get("name")
         is_new = not name or name == "undefined"
+        if is_new:
+            if not data.get("project"):
+                frappe.throw(_("Project is required"))
+            if data.get("project") not in _get_visible_project_names():
+                frappe.throw(
+                    _("You do not have permission to create tasks in this project"),
+                    frappe.PermissionError,
+                )
         doc = frappe.new_doc("Taskflow Task") if is_new else frappe.get_doc("Taskflow Task", name)
         if not is_new:
             doc.check_permission("write")

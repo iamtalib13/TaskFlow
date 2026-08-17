@@ -4182,12 +4182,16 @@ function getColumnCount() {
 					state.projectWorkspace && state.projectWorkspace.project
 						? state.projectWorkspace.project.name
 						: "";
-				projSelect.innerHTML = state.bootstrap.projects
+				const projectOptions = currentProjName
+					? (state.bootstrap.projects || []).filter((p) => p.name === currentProjName)
+					: state.bootstrap.projects || [];
+				projSelect.innerHTML = projectOptions
 					.map(
 						(p) =>
 							`<option value="${p.name}" ${p.name === currentProjName ? "selected" : ""}>${p.project_name}</option>`,
 					)
 					.join("");
+				projSelect.disabled = Boolean(currentProjName);
 
 				populateQuickTaskAssignees();
 

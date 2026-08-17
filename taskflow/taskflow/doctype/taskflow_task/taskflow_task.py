@@ -116,6 +116,9 @@ class TaskflowTask(Document):
 			frappe.throw(_("Team is required to create or update a task."))
 
 		if not (can_manage_team(user, self.team) or can_operate_team(user, self.team)):
-			frappe.throw(_("You can only create or update tasks for teams you belong to."))
+			from taskflow.permissions import is_project_member
+
+			if not is_project_member(user, self.project):
+				frappe.throw(_("You can only create or update tasks for teams you belong to."))
 
 
