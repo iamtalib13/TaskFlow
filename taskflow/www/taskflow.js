@@ -4991,8 +4991,8 @@ function getColumnCount() {
 		formData.append("file", file);
 		formData.append("is_private", "1");
 		formData.append("folder", "Home/Attachments");
-		formData.append("attached_to_doctype", "Taskflow Task");
-		formData.append("attached_to_name", taskName);
+		formData.append("doctype", "Taskflow Task");
+		formData.append("docname", taskName);
 
 		const response = await fetch("/api/method/upload_file", {
 			method: "POST",
@@ -5042,6 +5042,7 @@ function getColumnCount() {
 			} else {
 				updateUrlState();
 			}
+			return savedName;
 		} catch (error) {
 			if (!options.isAutoSave) {
 				showMessage(error.message || "Unable to save task.");
