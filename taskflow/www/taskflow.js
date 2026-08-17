@@ -4771,7 +4771,16 @@ function getColumnCount() {
 			const payload = getTaskFormPayload(form);
 			// saveTask handles: closing modal, loadBootstrap, and setNavMode(returnMode)
 			// so My Tasks view is automatically re-rendered after save
-			await saveTask(payload);
+			const savedName = await saveTask(payload);
+
+			const attachmentInput = form.querySelector('input[name="attachment"]');
+			if (savedName && attachmentInput && attachmentInput.files && attachmentInput.files.length) {
+				try {
+					await uploadTaskAttachment(attachmentInput.files[0], savedName);
+				} catch (error) {
+					showMessage("Task saved, but attachment upload failed: " + (error.message || error));
+				}
+			}
 		} finally {
 			submitBtn.textContent = originalText;
 			submitBtn.disabled = false;
@@ -4977,13 +4986,44 @@ function getColumnCount() {
 		}
 	}
 
+	async function uploadTaskAttachment(file, taskName) {
+		const formData = new FormData();
+		formData.append("file", file);
+		formData.append("is_private", "1");
+		formData.append("folder", "Home/Attachments");
+		formData.append("attached_to_doctype", "Taskflow Task");
+		formData.append("attached_to_name", taskName);
+
+		const response = await fetch("/api/method/upload_file", {
+			method: "POST",
+			headers: {
+				"X-Frappe-CSRF-Token": window.csrf_token || "",
+			},
+			credentials: "same-origin",
+			body: formData,
+		});
+
+		let payload;
+		try {
+			payload = await response.json();
+		} catch (_) {
+			throw new Error("Invalid server response while uploading attachment.");
+		}
+
+		if (!response.ok || payload.exc || payload._server_messages) {
+			throw new Error(extractError(payload));
+		}
+		return payload.message;
+	}
+
 	async function saveTask(payload, options = {}) {
 		try {
 			const returnMode = state.navMode;
-			await apiCall("save_task", { payload: JSON.stringify(payload) }, "POST");
+			const result = await apiCall("save_task", { payload: JSON.stringify(payload) }, "POST");
+			const savedName = (result && result.name) || payload.name || null;
 			if (options.isAutoSave) {
 				console.log("[Taskflow Checklist] Auto-save success", {
-					task: payload.name || null,
+					task: savedName,
 					checklistCount: Array.isArray(payload.checklist)
 						? payload.checklist.length
 						: 0,
@@ -5014,6 +5054,7 @@ function getColumnCount() {
 					checklist: payload.checklist,
 				});
 			}
+			return null;
 		}
 	}
 
