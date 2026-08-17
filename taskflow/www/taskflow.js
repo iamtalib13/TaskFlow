@@ -4795,8 +4795,8 @@ function getColumnCount() {
 		const status = getFormValue(form, "status");
 
 		if (status === "Completed" && !completedDate) {
-			showMessage("Completed Date is mandatory when marking a task as Completed.");
-			return false;
+			const completedInput = form.querySelector('input[name="completed_date"]');
+			if (completedInput) completedInput.value = formatLocalDate(new Date());
 		}
 
 		if (startDate && dueDate) {

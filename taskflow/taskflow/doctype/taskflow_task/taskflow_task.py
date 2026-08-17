@@ -84,18 +84,22 @@ class TaskflowTask(Document):
 		if self.progress_percent is None:
 			self.progress_percent = 0
 
+		# A set completion date implies the task is completed.
+		if self.completed_on and self.status not in ("Completed", "Cancelled"):
+			self.status = "Completed"
+
 		if self.status == "Completed":
 			self.progress_percent = 100
 			if not self.completed_on:
 				self.completed_on = frappe.utils.now_datetime()
-			
+
 			# Checklist validation
 			for item in self.checklist:
 				if not item.is_completed:
 					frappe.throw(_("Cannot complete task while checklist items are pending."))
 		elif self.progress_percent == 100 and self.status != "Completed":
 			self.status = "Completed"
-            # Checklist validation for auto-completion
+			# Checklist validation for auto-completion
 			for item in self.checklist:
 				if not item.is_completed:
 					frappe.throw(_("Cannot complete task while checklist items are pending."))

@@ -324,7 +324,14 @@
 		refs.pendingWithSelect?.addEventListener("input", () => triggerAutoSave());
 		refs.pendingFromInput?.addEventListener("input", () => triggerAutoSave());
 		refs.guidedBySelect?.addEventListener("input", () => triggerAutoSave());
-		refs.completedOnInput?.addEventListener("change", () => triggerAutoSave());
+		refs.completedOnInput?.addEventListener("change", () => {
+			if (refs.completedOnInput.value && refs.statusSelect) {
+				refs.statusSelect.value = "Completed";
+				updateStatusChip(refs.statusSelect);
+				updateDueDateStatusBadge();
+			}
+			triggerAutoSave();
+		});
 
 		// Basic inputs trigger auto-save
 		[
@@ -342,6 +349,9 @@
 		});
 
 		refs.statusSelect?.addEventListener("change", () => {
+			if (refs.statusSelect.value !== "Completed" && refs.completedOnInput) {
+				refs.completedOnInput.value = "";
+			}
 			updateDueDateStatusBadge();
 		});
 		refs.dueDateInput?.addEventListener("change", () => {
@@ -1168,8 +1178,9 @@
 		const status = refs.statusSelect?.value;
 
 		if (status === "Completed" && !completedOnDate) {
-			showMessage("Completed Date is mandatory when marking a task as Completed.");
-			return false;
+			if (refs.completedOnInput) {
+				refs.completedOnInput.value = formatLocalDate(new Date());
+			}
 		}
 
 		if (startDate && dueDate) {
