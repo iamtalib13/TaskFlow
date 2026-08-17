@@ -2676,7 +2676,7 @@ function getColumnCount() {
 		}
 
 		renderTaskArea(tasks);
-		renderKpiCards(tasks);
+		renderKpiCards(tasks, state.projectWorkspace ? state.projectWorkspace.project.status_counts : null);
 		updateKpiHighlights();
 	}
 
