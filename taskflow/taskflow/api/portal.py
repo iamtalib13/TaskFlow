@@ -125,6 +125,15 @@ def _require_login() -> None:
         frappe.throw(_("Login required"), frappe.PermissionError)
 
 
+from taskflow.taskflow.api.workspace import delete_tasks as _workspace_delete_tasks
+
+
+@frappe.whitelist(methods=["POST"])
+def delete_tasks(payload: str) -> dict:
+    """Delete selected Taskflow Tasks (exposed here for the workspace frontend)."""
+    return _workspace_delete_tasks(payload)
+
+
 def _bulk_employee_names(employee_ids: list[str]) -> dict[str, str]:
     """Return {employee_id: employee_name} map."""
     employee_ids = [employee_id for employee_id in employee_ids if employee_id]
