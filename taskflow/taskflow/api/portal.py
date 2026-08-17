@@ -56,7 +56,6 @@ _TASK_FIELDS = [
 _PROJECT_FIELDS = [
     "name",
     "project_name",
-    "project_code",
     "team",
     "status",
     "priority",
@@ -70,7 +69,6 @@ _PROJECT_FIELDS = [
 
 _ALLOWED_PROJECT_FIELDS = [
     "project_name",
-    "project_code",
     "team",
     "parent_project",
     "status",
@@ -123,6 +121,15 @@ def _require_login() -> None:
     """Throw PermissionError for Guest users."""
     if frappe.session.user == "Guest":
         frappe.throw(_("Login required"), frappe.PermissionError)
+
+
+from taskflow.taskflow.api.workspace import delete_tasks as _workspace_delete_tasks
+
+
+@frappe.whitelist(methods=["POST"])
+def delete_tasks(payload: str) -> dict:
+    """Delete selected Taskflow Tasks (exposed here for the workspace frontend)."""
+    return _workspace_delete_tasks(payload)
 
 
 def _bulk_employee_names(employee_ids: list[str]) -> dict[str, str]:
@@ -184,31 +191,81 @@ def _get_user_profile() -> dict:
     }
 
 
+def _get_visible_project_names() -> list[str]:
+    """Return names of projects the current user can see.
+
+    A project is visible only when the user is listed in the project's own
+    team-members child table (project_team_members), matched by user id or
+    by their linked Employee.
+    """
+    user = frappe.session.user
+    if user == "Administrator":
+        return [row.name for row in frappe.get_all("Taskflow Project", fields=["name"])]
+
+    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+
+    project_members = frappe.get_all(
+        "Taskflow Team Member",
+        filters={"parenttype": "Taskflow Project"},
+        fields=["parent", "user", "employee"],
+        ignore_permissions=True,
+    )
+
+    visible: set[str] = set()
+    for row in project_members:
+        if row.user == user or (employee and row.employee == employee):
+            visible.add(row.parent)
+
+    return sorted(visible)
+
+
 def _get_accessible_teams() -> list[dict]:
-    """Return all active teams with permission flags for the current user."""
+    """Return active teams the current user can interact with.
+
+    Includes teams the user can read/manage/operate, plus teams that own a
+    project the user is a member of (so project-only members still get the
+    team context and its assignees).
+    """
     teams = frappe.get_list(
         "Taskflow Team",
-        fields=["name", "team_name", "team_code", "team_lead", "visibility_scope", "is_active"],
+        fields=["name", "team_name", "team_lead", "visibility_scope", "is_active"],
         filters={"is_active": 1},
         order_by="team_name asc",
+        ignore_permissions=True,
     )
     user = frappe.session.user
 
-    return [
-        {
-            "name": team.name,
-            "team_name": team.team_name,
-            "team_code": team.team_code,
-            "team_lead": team.team_lead,
-            "visibility_scope": team.visibility_scope,
-            "permissions": {
-                "can_read": has_taskflow_team_permission(frappe.get_doc("Taskflow Team", team.name)),
-                "can_manage": can_manage_team(user, team.name),
-                "can_operate": can_operate_team(user, team.name),
-            },
+    visible_projects = _get_visible_project_names()
+    member_project_teams = {
+        p["team"]
+        for p in frappe.get_all(
+            "Taskflow Project",
+            fields=["name", "team"],
+            filters={"name": ["in", visible_projects]} if visible_projects else {"name": "__missing__"},
+            ignore_permissions=True,
+        )
+        if p.get("team")
+    }
+
+    accessible = []
+    for team in teams:
+        permissions = {
+            "can_read": has_taskflow_team_permission(frappe.get_doc("Taskflow Team", team.name)),
+            "can_manage": can_manage_team(user, team.name),
+            "can_operate": can_operate_team(user, team.name),
         }
-        for team in teams
-    ]
+        if permissions["can_read"] or permissions["can_manage"] or permissions["can_operate"] or team.name in member_project_teams:
+            accessible.append(
+                {
+                    "name": team.name,
+                    "team_name": team.team_name,
+                    "team_lead": team.team_lead,
+                    "visibility_scope": team.visibility_scope,
+                    "permissions": permissions,
+                }
+            )
+
+    return accessible
 
 
 def _get_team_member_options(team_names: list[str]) -> list[dict]:
@@ -221,6 +278,7 @@ def _get_team_member_options(team_names: list[str]) -> list[dict]:
         filters={"parent": ["in", team_names], "is_active": 1},
         fields=["parent", "employee", "user", "team_role", "access_level"],
         order_by="idx asc",
+        ignore_permissions=True,
     )
 
     employee_name_map = _bulk_employee_names([row.employee for row in rows if row.employee])
@@ -241,7 +299,7 @@ def _get_team_member_options(team_names: list[str]) -> list[dict]:
 
 
 def _get_project_task_counts(project_names: list[str]) -> dict[str, dict]:
-    """Return {project: {total, open, completed}} in a single query."""
+    """Return {project: {total, open, completed, statuses}} in a single query."""
     if not project_names:
         return {}
 
@@ -251,12 +309,17 @@ def _get_project_task_counts(project_names: list[str]) -> dict[str, dict]:
         fields=["project", "status"],
         limit_page_length=0,
     )
-    counts: dict[str, dict] = defaultdict(lambda: {"total": 0, "open": 0, "completed": 0})
+    counts: dict[str, dict] = defaultdict(
+        lambda: {"total": 0, "open": 0, "completed": 0, "statuses": {}}
+    )
     for row in rows:
         counts[row.project]["total"] += 1
-        if row.status == "Completed":
+        status = row.status or "Open"
+        statuses = counts[row.project]["statuses"]
+        statuses[status] = statuses.get(status, 0) + 1
+        if status == "Completed":
             counts[row.project]["completed"] += 1
-        elif row.status != "Cancelled":
+        elif status != "Cancelled":
             counts[row.project]["open"] += 1
     return counts
 
@@ -300,6 +363,7 @@ def _serialize_project(
         "total_tasks": task_count.get("total", 0),
         "open_tasks": task_count.get("open", 0),
         "completed_tasks": task_count.get("completed", 0),
+        "status_counts": task_count.get("statuses", {}),
         "permissions": {
             "can_read": has_taskflow_project_permission(project, user, "read"),
             "can_write": has_taskflow_project_permission(project, user, "write"),
@@ -457,10 +521,13 @@ def get_portal_bootstrap() -> dict:
     """Return the Taskflow portal bootstrap payload."""
     _require_login()
 
+    visible_projects = _get_visible_project_names()
     projects = frappe.get_list(
         "Taskflow Project",
         fields=_PROJECT_FIELDS,
+        filters={"name": ["in", visible_projects]} if visible_projects else {"name": "__missing__"},
         order_by="modified desc",
+        ignore_permissions=True,
     )
     project_names = [project.name for project in projects]
     project_map = {project.name: project.project_name for project in projects}
@@ -553,23 +620,31 @@ def get_work_history_tasks(project=None, member=None, start=0, page_length=20) -
 
 
 @frappe.whitelist()
-def get_project_workspace(project: str) -> dict:
-    """Return full workspace data for a single project."""
+def get_project_workspace(project: str, start: int = 0, page_length: int = 20) -> dict:
+    """Return workspace data for a single project, with paginated tasks."""
     _require_login()
     if not isinstance(project, str):
         frappe.throw(_("Invalid project identifier"), frappe.ValidationError)
 
     project_doc = frappe.get_doc("Taskflow Project", project)
-    project_doc.check_permission("read")
+    if project not in _get_visible_project_names():
+        frappe.throw(_("You do not have permission to access this project"), frappe.PermissionError)
+
+    start = int(start or 0)
+    page_length = int(page_length or 20)
 
     tasks = frappe.get_list(
         "Taskflow Task",
         fields=_TASK_FIELDS,
         filters={"project": project},
         order_by="sequence asc, modified desc",
-        limit_page_length=200,
+        start=start,
+        limit_page_length=page_length,
     )
     task_docs = [frappe.get_doc("Taskflow Task", task.name) for task in tasks]
+    total = len(
+        frappe.get_list("Taskflow Task", filters={"project": project}, pluck="name", limit_page_length=0)
+    )
 
     task_employee_name_map = _bulk_employee_names([task.assigned_to for task in tasks if task.assigned_to])
     task_user_image_map = _bulk_user_images([task.assigned_to_user for task in tasks if task.assigned_to_user])
@@ -608,6 +683,9 @@ def get_project_workspace(project: str) -> dict:
             for task_doc in task_docs
         ],
         "team_members": team_member_data,
+        "total": total,
+        "start": start,
+        "has_more": start + len(tasks) < total,
     }
 
 
@@ -905,6 +983,14 @@ def save_task(payload: str) -> dict:
     try:
         name = data.get("name")
         is_new = not name or name == "undefined"
+        if is_new:
+            if not data.get("project"):
+                frappe.throw(_("Project is required"))
+            if data.get("project") not in _get_visible_project_names():
+                frappe.throw(
+                    _("You do not have permission to create tasks in this project"),
+                    frappe.PermissionError,
+                )
         doc = frappe.new_doc("Taskflow Task") if is_new else frappe.get_doc("Taskflow Task", name)
         if not is_new:
             doc.check_permission("write")

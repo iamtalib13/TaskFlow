@@ -84,18 +84,22 @@ class TaskflowTask(Document):
 		if self.progress_percent is None:
 			self.progress_percent = 0
 
+		# A set completion date implies the task is completed.
+		if self.completed_on and self.status not in ("Completed", "Cancelled"):
+			self.status = "Completed"
+
 		if self.status == "Completed":
 			self.progress_percent = 100
 			if not self.completed_on:
 				self.completed_on = frappe.utils.now_datetime()
-			
+
 			# Checklist validation
 			for item in self.checklist:
 				if not item.is_completed:
 					frappe.throw(_("Cannot complete task while checklist items are pending."))
 		elif self.progress_percent == 100 and self.status != "Completed":
 			self.status = "Completed"
-            # Checklist validation for auto-completion
+			# Checklist validation for auto-completion
 			for item in self.checklist:
 				if not item.is_completed:
 					frappe.throw(_("Cannot complete task while checklist items are pending."))
@@ -112,6 +116,9 @@ class TaskflowTask(Document):
 			frappe.throw(_("Team is required to create or update a task."))
 
 		if not (can_manage_team(user, self.team) or can_operate_team(user, self.team)):
-			frappe.throw(_("You can only create or update tasks for teams you belong to."))
+			from taskflow.permissions import is_project_member
+
+			if not is_project_member(user, self.project):
+				frappe.throw(_("You can only create or update tasks for teams you belong to."))
 
 

@@ -6,6 +6,7 @@ from taskflow.taskflow.service.project_access import (
 	get_project_permission_condition,
 	get_task_permission_condition,
 	get_team_permission_condition,
+	is_project_member,
 )
 from taskflow.taskflow.service.team_hierarchy import can_manage_team, can_operate_team, can_view_team
 
@@ -65,7 +66,7 @@ def has_taskflow_project_permission(doc, user=None, permission_type=None):
 		return True
 
 	if permission_type == "read":
-		return can_view_team(user, doc.team) or doc.project_lead_user == user
+		return can_view_team(user, doc.team) or doc.project_lead_user == user or is_project_member(user, doc.name)
 
 	if permission_type in {"create", "write", "delete"}:
 		return can_manage_team(user, doc.team)
@@ -84,13 +85,16 @@ def has_taskflow_task_permission(doc, user=None, permission_type=None):
 		return True
 
 	if permission_type == "create":
-		return can_operate_team(user, doc.team) or can_manage_team(user, doc.team)
+		return can_operate_team(user, doc.team) or can_manage_team(user, doc.team) or is_project_member(user, doc.project)
 
 	if permission_type in {"read", "write", "delete"}:
 		if permission_type == "read" and can_view_team(user, doc.team):
 			return True
 
 		if can_manage_team(user, doc.team):
+			return True
+
+		if is_project_member(user, doc.project):
 			return True
 
 		return (

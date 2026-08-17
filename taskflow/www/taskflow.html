@@ -446,6 +446,10 @@
 				<div class="taskflow-board" data-task-board></div>
 			</div>
 
+			<div data-task-load-more class="taskflow-load-more-wrap" style="display: none; text-align: center; padding: 16px 0;">
+				<button id="taskLoadMoreBtn" type="button" data-load-more-btn class="taskflow-btn-secondary" style="padding: 8px 24px; border: 1px solid var(--taskflow-border); border-radius: 8px; background: var(--taskflow-primary); color: #fff; font-weight: 600; cursor: pointer;">Load More</button>
+			</div>
+
 			<!-- Dashboard View -->
 			<div
 				class="taskflow-dashboard-view taskflow-view-content taskflow-hidden"
@@ -1304,6 +1308,11 @@
 						<label
 							>Expected Resolution Date
 							<input type="date" name="expected_resolution_date" />
+						</label>
+
+						<label
+							>Attachment
+							<input type="file" name="attachment" id="quickTaskAttachment" />
 						</label>
 					</div>
 				</div>

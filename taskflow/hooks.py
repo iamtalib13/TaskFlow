@@ -162,6 +162,12 @@ scheduler_events = {
 	"daily": [
 		"taskflow.tasks.mark_overdue_tasks"
 	],
+	"cron": {
+		# Every day at 7:00 PM — send completed task email for teams with send_email=1
+		"0 19 * * *": [
+			"taskflow.tasks.send_daily_completed_task_email"
+		],
+	},
 }
 
 # Testing
