@@ -14,6 +14,7 @@
   "team_lead",
   "visibility_scope",
   "allow_cross_team_collaboration",
+  "send_email",
   "description",
   "team_members"
  ],
@@ -80,11 +81,17 @@
    "fieldtype": "Table",
    "label": "Team Members",
    "options": "Taskflow Team Member"
+  },
+  {
+   "default": "0",
+   "fieldname": "send_email",
+   "fieldtype": "Check",
+   "label": "Send Email"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-22 14:51:23.302355",
+ "modified": "2026-08-17 16:14:02.694215",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Team",
