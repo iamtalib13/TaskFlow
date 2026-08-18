@@ -458,6 +458,7 @@ def _serialize_task(
         "modified_by": task.modified_by,
         "modified_by_name": modified_by_name,
         "modified_by_image": modified_by_image,
+        "pending_from": task.pending_from,
         "pending_with": task.pending_with,
         "guided_by": task.guided_by,
         "guided_by_name": guided_by_name,
