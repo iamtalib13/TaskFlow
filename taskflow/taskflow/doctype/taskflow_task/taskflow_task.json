@@ -56,7 +56,9 @@
   "ticket_date",
   "ticket_id",
   "ticket_raised_by",
-  "ticket_description"
+  "ticket_description",
+  "task_tab",
+  "html_pmcr"
  ],
  "fields": [
   {
@@ -339,11 +341,20 @@
    "fieldtype": "Link",
    "label": "Department",
    "options": "Department"
+  },
+  {
+   "fieldname": "task_tab",
+   "fieldtype": "Tab Break",
+   "label": "Task"
+  },
+  {
+   "fieldname": "html_pmcr",
+   "fieldtype": "HTML"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-14 11:29:20.140069",
+ "modified": "2026-08-18 14:02:54.677499",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",
