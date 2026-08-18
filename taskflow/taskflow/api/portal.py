@@ -105,6 +105,7 @@ _ALLOWED_TASK_FIELDS = [
     "is_milestone",
     "is_blocked",
     "sequence",
+    "pending_from",
     "pending_with",
     "guided_by",
     "ticket_date",
