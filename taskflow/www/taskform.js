@@ -322,7 +322,7 @@
 			}
 		});
 		refs.pendingWithSelect?.addEventListener("input", () => triggerAutoSave());
-		refs.pendingFromInput?.addEventListener("input", () => triggerAutoSave());
+		refs.pendingFromInput?.addEventListener("change", () => triggerAutoSave());
 		refs.guidedBySelect?.addEventListener("input", () => triggerAutoSave());
 		refs.completedOnInput?.addEventListener("change", () => {
 			if (refs.completedOnInput.value && refs.statusSelect) {
