@@ -4293,13 +4293,11 @@ function getColumnCount() {
 						.join("");
 			}
 
-			const responsibleSelect = document.getElementById("quickTaskResponsiblePerson");
-			if (responsibleSelect && state.bootstrap && state.bootstrap.team_members) {
-				responsibleSelect.innerHTML = '<option value="">Select...</option>' +
-					state.bootstrap.team_members
-						.filter((m) => m.employee)
-						.map((m) => `<option value="${m.employee}">${m.label || m.employee}</option>`)
-						.join("");
+			renderQuickResponsiblePerson();
+
+			if (!projSelect.dataset.responsibleListenerBound) {
+				projSelect.addEventListener("change", renderQuickResponsiblePerson);
+				projSelect.dataset.responsibleListenerBound = "1";
 			}
 
 		const form = refs.taskFormQuick;
@@ -4390,6 +4388,31 @@ function getColumnCount() {
 			}
 		}
 		renderQuickAssigneeWidget();
+	}
+
+	function renderQuickResponsiblePerson() {
+		const responsibleSelect = document.getElementById("quickTaskResponsiblePerson");
+		if (!responsibleSelect || !state.bootstrap) return;
+
+		const projSelect = document.getElementById("quickTaskProjectSelect");
+		const selectedProjName = projSelect ? projSelect.value : "";
+		const projectObj = (state.bootstrap.projects || []).find(
+			(p) => p.name === selectedProjName,
+		);
+		const teamName = projectObj ? projectObj.team : "";
+
+		const members = (state.bootstrap.team_members || []).filter(
+			(m) => m.team === teamName && m.employee,
+		);
+
+		responsibleSelect.innerHTML =
+			'<option value="">Select...</option>' +
+			members
+				.map(
+					(m) =>
+						`<option value="${escapeHtml(m.employee || "")}">${escapeHtml(m.label || m.employee)}</option>`,
+				)
+				.join("");
 	}
 
 	function renderQuickAssigneeWidget() {
