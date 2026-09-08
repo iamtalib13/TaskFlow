@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col flex-1 min-w-0 bg-white border border-gray-200/80 rounded-xl shadow-xs overflow-hidden">
+  <div class="flex flex-col flex-1 min-w-0 bg-white overflow-hidden">
     <!-- Optional Toolbar Slot (above the table) -->
     <div v-if="$slots.toolbar" class="p-3 border-b border-gray-100 bg-white">
       <slot name="toolbar" />

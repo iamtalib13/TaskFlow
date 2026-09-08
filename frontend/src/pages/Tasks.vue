@@ -45,7 +45,7 @@ const loading = ref(false)
 const tasks = ref([])
 const projects = ref([])
 const people = ref([])
-const statuses = ref(['Open', 'In Progress', 'Review', 'Completed', 'On Hold', 'Cancelled'])
+const statuses = ref(['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue'])
 const priorities = ref(['Critical', 'High', 'Medium', 'Low'])
 
 // Active Navigation: ONLY Task, Timesheet, Project, Team
@@ -175,16 +175,33 @@ const tablePageSize = ref(20)
 const sortKey = ref('creation')
 const sortOrder = ref('desc')
 
+// Status theme mapping for badges
+const getStatusTheme = (status) => {
+  switch (status) {
+    case 'Completed':
+      return 'green'
+    case 'In Progress':
+      return 'blue'
+    case 'Review':
+      return 'purple'
+    case 'On Hold':
+      return 'amber'
+    case 'Overdue':
+      return 'red'
+    case 'Cancelled':
+      return 'gray'
+    case 'Open':
+    default:
+      return 'gray'
+  }
+}
+
 // Filtered tasks based on feed tab
 const visibleTasks = computed(() => {
   let list = [...tasks.value]
 
-  if (feedTab.value === 'In Progress') {
-    list = list.filter((t) => t.status === 'In Progress')
-  } else if (feedTab.value === 'Review') {
-    list = list.filter((t) => t.status === 'Review')
-  } else if (feedTab.value === 'Completed') {
-    list = list.filter((t) => t.status === 'Completed')
+  if (feedTab.value && feedTab.value !== 'All') {
+    list = list.filter((t) => t.status === feedTab.value)
   }
 
   return list
@@ -531,9 +548,13 @@ onMounted(() => {
               v-model="feedTab"
               :options="[
                 { label: 'All', value: 'All' },
+                { label: 'Open', value: 'Open' },
                 { label: 'In Progress', value: 'In Progress' },
                 { label: 'Review', value: 'Review' },
+                { label: 'On Hold', value: 'On Hold' },
                 { label: 'Completed', value: 'Completed' },
+                { label: 'Cancelled', value: 'Cancelled' },
+                { label: 'Overdue', value: 'Overdue' },
               ]"
             />
             <div class="flex items-center gap-3 text-sm text-ink-gray-5">
@@ -545,7 +566,7 @@ onMounted(() => {
           <div v-if="currentView === 'feed'">
             <List
               :columns="['auto', 'minmax(0, 1fr)', 'auto']"
-              class="-mx-3 sm:list-gap-2 bg-surface-base rounded-xl border border-outline-gray-2 shadow-xs p-1"
+              class="-mx-3 sm:list-gap-2"
             >
               <ListRow
                 v-for="task in visibleTasks"
@@ -610,7 +631,7 @@ onMounted(() => {
                       {{ task.priority }}
                     </Badge>
                     <Badge
-                      :theme="task.status === 'Completed' ? 'green' : task.status === 'In Progress' ? 'blue' : task.status === 'Review' ? 'purple' : 'gray'"
+                      :theme="getStatusTheme(task.status)"
                       variant="subtle"
                       size="sm"
                     >
@@ -676,7 +697,7 @@ onMounted(() => {
 
               <template #cell-status="{ row }">
                 <Badge
-                  :theme="row.status === 'Completed' ? 'green' : row.status === 'In Progress' ? 'blue' : row.status === 'Review' ? 'purple' : 'gray'"
+                  :theme="getStatusTheme(row.status)"
                   variant="subtle"
                   size="sm"
                 >
