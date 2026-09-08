@@ -630,17 +630,23 @@
         <Divider class="xl:hidden" />
 
         <!-- COLUMN 3: RIGHT SIDEBAR (Comments & Activity Audit) -->
-        <aside class="w-full xl:w-[320px] 2xl:w-[350px] shrink-0 flex flex-col bg-white overflow-hidden">
+        <aside class="w-full xl:w-[320px] 2xl:w-[360px] shrink-0 flex flex-col bg-white overflow-hidden h-full">
           <!-- Top Tabs Header -->
-          <div class="flex items-center justify-between px-4 pt-3 pb-2.5 shrink-0 select-none">
-            <div class="flex items-center gap-4">
+          <div class="flex items-center justify-between px-3.5 py-2.5 shrink-0 select-none bg-white">
+            <div class="flex items-center gap-3">
               <button
                 type="button"
                 class="pb-1 text-xs font-bold transition border-b-2 cursor-pointer inline-flex items-center gap-1.5"
                 :class="activeRightTab === 'comments' ? 'border-[#417c7d] text-[#417c7d]' : 'border-transparent text-gray-500 hover:text-gray-800'"
                 @click="activeRightTab === 'comments'"
               >
-                <span>Comments ({{ comments.length }})</span>
+                <span>Comments</span>
+                <span
+                  class="px-1.5 py-0.2 rounded-full text-[10px] font-semibold"
+                  :class="activeRightTab === 'comments' ? 'bg-[#417c7d]/10 text-[#417c7d]' : 'bg-gray-100 text-gray-500'"
+                >
+                  {{ comments.length }}
+                </span>
                 <Loader2 v-if="loadingComments" class="size-3 animate-spin text-[#417c7d]" />
               </button>
               <button
@@ -653,7 +659,7 @@
               </button>
             </div>
 
-            <button type="button" class="text-gray-400 hover:text-gray-700 cursor-pointer" title="Timeline options">
+            <button type="button" class="text-gray-400 hover:text-gray-700 cursor-pointer p-1 rounded hover:bg-gray-100" title="Timeline options">
               <SlidersHorizontal class="size-3.5" />
             </button>
           </div>
@@ -661,65 +667,100 @@
           <Divider />
 
           <!-- Comments Feed Tab Content -->
-          <div v-if="activeRightTab === 'comments'" class="flex-1 overflow-y-auto p-4 space-y-3.5 min-h-[300px]">
+          <div
+            v-if="activeRightTab === 'comments'"
+            ref="commentsContainer"
+            class="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-0 text-xs"
+          >
             <!-- Loading indicator when fetching comments -->
-            <div v-if="loadingComments && comments.length === 0" class="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
-              <Loader2 class="size-5 animate-spin text-[#417c7d]" />
+            <div v-if="loadingComments && comments.length === 0" class="py-8 flex flex-col items-center justify-center gap-1.5 text-gray-400">
+              <Loader2 class="size-4.5 animate-spin text-[#417c7d]" />
               <span class="text-xs text-gray-500 font-medium">Loading comments...</span>
             </div>
 
             <!-- Empty state when no comments exist -->
-            <div v-else-if="comments.length === 0" class="py-12 text-center text-gray-400 space-y-1.5 select-none">
-              <MessageSquare class="size-6 mx-auto stroke-1 text-gray-300 mb-1" />
+            <div v-else-if="comments.length === 0" class="py-8 text-center text-gray-400 space-y-1 select-none">
+              <MessageSquare class="size-5 mx-auto stroke-1 text-gray-300 mb-1" />
               <p class="text-xs font-semibold text-gray-600">No comments yet</p>
-              <p class="text-[11px] text-gray-400">Be the first to leave a comment or note.</p>
+              <p class="text-[11px] text-gray-400">Send a comment below to start the conversation.</p>
             </div>
 
-            <!-- Comments List -->
+            <!-- Comments List: Chat style with current user on right, others on left -->
             <template v-else v-for="(cmt, idx) in comments" :key="cmt.id || idx">
-              <div v-if="!cmt.isDivider" class="space-y-1 text-xs group">
-                <div class="flex items-center justify-between text-gray-500">
-                  <div class="flex items-center gap-2 min-w-0">
-                    <span
-                      class="size-5 rounded-full text-white font-bold text-[9px] flex items-center justify-center shrink-0"
-                      :class="getAvatarColor(cmt.author)"
-                    >
-                      {{ getInitials(cmt.author) }}
-                    </span>
-                    <span class="font-bold text-gray-800 truncate max-w-[150px]">{{ cmt.author }}</span>
-                  </div>
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-[10px] text-gray-400">{{ cmt.time }}</span>
-                    <button
-                      v-if="cmt.can_delete || cmt.id"
-                      type="button"
-                      class="opacity-0 group-hover:opacity-100 transition p-1 rounded hover:bg-rose-50 text-gray-400 hover:text-rose-600 cursor-pointer"
-                      title="Delete comment"
-                      @click="deleteComment(cmt.id, idx)"
-                    >
-                      <Trash2 class="size-3" />
-                    </button>
-                  </div>
+              <!-- Status Change / Divider -->
+              <div v-if="cmt.isDivider" class="flex items-center justify-center my-2">
+                <span class="bg-gray-100 text-gray-500 text-[10px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider select-none border border-gray-200/60">
+                  {{ cmt.text }}
+                </span>
+              </div>
+
+              <!-- CURRENT USER MESSAGE (Aligned to RIGHT) -->
+              <div
+                v-else-if="isCurrentUser(cmt)"
+                class="flex flex-col items-end group"
+              >
+                <!-- Meta: Delete Button, Time, Author Name, Avatar -->
+                <div class="flex items-center gap-1.5 mb-1 text-[10px] text-gray-400 justify-end">
+                  <button
+                    v-if="cmt.can_delete || cmt.id"
+                    type="button"
+                    class="opacity-0 group-hover:opacity-100 transition p-0.5 rounded hover:bg-rose-50 text-gray-400 hover:text-rose-600 cursor-pointer"
+                    title="Delete comment"
+                    @click="deleteComment(cmt.id, idx)"
+                  >
+                    <Trash2 class="size-3" />
+                  </button>
+                  <span>{{ cmt.time || 'Just now' }}</span>
+                  <span class="font-semibold text-[#417c7d]">You</span>
+                  <span class="size-4 rounded-full bg-[#417c7d] text-white font-bold text-[8px] flex items-center justify-center shrink-0">
+                    {{ getInitials(cmt.author || 'You') }}
+                  </span>
                 </div>
-                <div class="ml-7 p-2.5 bg-gray-50/80 hover:bg-gray-100/70 border border-gray-200 rounded-xl text-gray-700 leading-relaxed transition whitespace-pre-wrap">
+
+                <!-- Right-aligned Bubble: Brand Accent -->
+                <div class="max-w-[85%] bg-[#417c7d] text-white rounded-2xl rounded-tr-xs px-3 py-2 text-xs shadow-2xs leading-relaxed break-words whitespace-pre-wrap select-text">
                   {{ cmt.text }}
                 </div>
               </div>
 
-              <!-- Status Change Divider -->
-              <div v-else class="relative py-2 flex items-center justify-center">
-                <div class="border-t border-gray-200 w-full absolute"></div>
-                <span class="relative bg-white px-2.5 text-[10px] font-bold tracking-wider text-gray-400 uppercase select-none">
+              <!-- OTHER USERS MESSAGE (Aligned to LEFT) -->
+              <div
+                v-else
+                class="flex flex-col items-start group"
+              >
+                <!-- Meta: Avatar, Author Name, Time, Delete Button -->
+                <div class="flex items-center gap-1.5 mb-1 text-[10px] text-gray-400 justify-start">
+                  <span
+                    class="size-4 rounded-full text-white font-bold text-[8px] flex items-center justify-center shrink-0"
+                    :class="getAvatarColor(cmt.author)"
+                  >
+                    {{ getInitials(cmt.author) }}
+                  </span>
+                  <span class="font-semibold text-gray-800 truncate max-w-[130px]">{{ cmt.author }}</span>
+                  <span>{{ cmt.time }}</span>
+                  <button
+                    v-if="cmt.can_delete"
+                    type="button"
+                    class="opacity-0 group-hover:opacity-100 transition p-0.5 rounded hover:bg-rose-50 text-gray-400 hover:text-rose-600 cursor-pointer"
+                    title="Delete comment"
+                    @click="deleteComment(cmt.id, idx)"
+                  >
+                    <Trash2 class="size-3" />
+                  </button>
+                </div>
+
+                <!-- Left-aligned Bubble: Subtle gray with clean border -->
+                <div class="max-w-[85%] bg-gray-100/90 hover:bg-gray-100 text-gray-800 border border-gray-200/70 rounded-2xl rounded-tl-xs px-3 py-2 text-xs leading-relaxed break-words whitespace-pre-wrap select-text">
                   {{ cmt.text }}
-                </span>
+                </div>
               </div>
             </template>
           </div>
 
           <!-- Activity Audit Tab Content -->
-          <div v-else class="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] text-xs">
-            <div v-if="activityLog.length === 0" class="py-12 text-center text-gray-400 space-y-1.5 select-none">
-              <Clock class="size-6 mx-auto stroke-1 text-gray-300 mb-1" />
+          <div v-else class="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-0 text-xs">
+            <div v-if="activityLog.length === 0" class="py-8 text-center text-gray-400 space-y-1 select-none">
+              <Clock class="size-5 mx-auto stroke-1 text-gray-300 mb-1" />
               <p class="text-xs font-semibold text-gray-600">No activity logged</p>
               <p class="text-[11px] text-gray-400">Activity changes will appear here.</p>
             </div>
@@ -739,35 +780,36 @@
 
           <Divider />
 
-          <!-- Comment Input Box (Pinned at bottom) -->
-          <div class="p-3 bg-gray-50/50 space-y-2 shrink-0">
+          <!-- Comment Input Box (Pinned at bottom, compact, no extra gap) -->
+          <div class="p-2.5 bg-gray-50/60 space-y-1.5 shrink-0">
             <textarea
               v-model="newComment"
-              rows="3"
-              placeholder="Write a comment or type @ to mention..."
-              class="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs text-gray-800 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition resize-none placeholder-gray-400"
+              rows="2"
+              placeholder="Write a comment... (Enter to send, Shift+Enter for newline)"
+              class="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#417c7d] focus:ring-2 focus:ring-[#417c7d]/15 rounded-xl px-2.5 py-1.5 text-xs text-gray-800 outline-none transition resize-none placeholder-gray-400 leading-normal"
+              @keydown.enter.exact.prevent="addComment"
               @keydown.meta.enter="addComment"
               @keydown.ctrl.enter="addComment"
             ></textarea>
 
             <div class="flex items-center justify-between">
               <!-- Mention, Attach, Emoji Actions -->
-              <div class="flex items-center gap-1 text-gray-400">
+              <div class="flex items-center gap-0.5 text-gray-400">
                 <button
                   type="button"
-                  class="p-1 hover:text-gray-700 hover:bg-gray-200/70 rounded-md transition cursor-pointer"
+                  class="p-1 hover:text-gray-700 hover:bg-gray-200/60 rounded-md transition cursor-pointer"
                   title="Mention someone (@)"
                   @click="insertMentionShortcut"
                 >
                   <AtSign class="size-3.5" />
                 </button>
-                <label class="p-1 hover:text-gray-700 hover:bg-gray-200/70 rounded-md transition cursor-pointer" title="Attach file">
+                <label class="p-1 hover:text-gray-700 hover:bg-gray-200/60 rounded-md transition cursor-pointer" title="Attach file">
                   <Paperclip class="size-3.5" />
                   <input type="file" class="sr-only" @change="handleFileUpload" />
                 </label>
                 <button
                   type="button"
-                  class="p-1 hover:text-gray-700 hover:bg-gray-200/70 rounded-md transition cursor-pointer"
+                  class="p-1 hover:text-gray-700 hover:bg-gray-200/60 rounded-md transition cursor-pointer"
                   title="Add emoji"
                 >
                   <Smile class="size-3.5" />
@@ -778,12 +820,12 @@
               <button
                 type="button"
                 :disabled="!newComment.trim() || submittingComment"
-                class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] disabled:opacity-40 text-white font-semibold text-xs rounded-lg shadow-xs transition cursor-pointer"
+                class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] disabled:opacity-40 text-white font-semibold text-xs rounded-lg shadow-2xs transition cursor-pointer"
                 @click="addComment"
               >
                 <Loader2 v-if="submittingComment" class="size-3 animate-spin" />
-                <span>{{ submittingComment ? 'Posting...' : 'Comment' }}</span>
-                <kbd v-if="!submittingComment" class="text-[10px] bg-white/20 px-1 py-0.2 rounded font-mono">⌘↵</kbd>
+                <Send v-else class="size-3" />
+                <span>{{ submittingComment ? 'Sending...' : 'Send' }}</span>
               </button>
             </div>
           </div>
@@ -838,6 +880,7 @@ import {
   Ticket,
   MessageSquare,
   Loader2,
+  Send,
 } from 'lucide-vue-next'
 
 export default {
@@ -875,11 +918,16 @@ export default {
     Ticket,
     MessageSquare,
     Loader2,
+    Send,
   },
   props: {
     modelValue: {
       type: Boolean,
       default: false,
+    },
+    currentUser: {
+      type: String,
+      default: '',
     },
     task: {
       type: Object,
@@ -1195,6 +1243,9 @@ export default {
         const comments = await fetchTaskComments(taskId)
         if (Array.isArray(comments) && comments.length > 0) {
           this.comments = comments
+          this.$nextTick(() => {
+            this.scrollToBottom()
+          })
         }
       } catch (err) {
         console.warn('Failed to load actual comments:', err)
@@ -1210,26 +1261,29 @@ export default {
       const parts = String(isoDate).split('-')
       if (parts.length === 3) {
         const [y, m, d] = parts
-        if (y.length === 4) return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`
+        return `${d}-${m}-${y}`
       }
       return isoDate
     },
-    parseDateInput(val) {
-      if (!val) return ''
-      const parts = String(val).trim().split(/[-/]/)
+    parseDisplayDate(displayDate) {
+      if (!displayDate) return ''
+      const parts = String(displayDate).trim().split(/[-/]/)
       if (parts.length === 3) {
         const [d, m, y] = parts
         if (y && y.length === 4) {
           return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
         }
       }
-      return val
+      return displayDate
     },
-    onStartDateChange(e) {
-      this.form.start_date = e.target.value
+    parseDateInput(val) {
+      return this.parseDisplayDate(val)
     },
     onNativeDateChange(e) {
       this.form.due_date = e.target.value
+    },
+    onStartDateChange(e) {
+      this.form.start_date = e.target.value
     },
     getInitials(name) {
       if (!name) return 'U'
@@ -1249,6 +1303,25 @@ export default {
       ]
       const charCode = (name || '').charCodeAt(0) || 0
       return colors[charCode % colors.length]
+    },
+    isCurrentUser(cmt) {
+      if (!cmt) return false
+      if (cmt.is_current_user) return true
+      if (cmt.author === 'You') return true
+      const me = (this.currentUser || window.frappe?.session?.user || window.frappe_user || '').toLowerCase().trim()
+      if (me) {
+        if (cmt.author_email && cmt.author_email.toLowerCase().trim() === me) return true
+        if (cmt.owner && cmt.owner.toLowerCase().trim() === me) return true
+        if (cmt.comment_by && cmt.comment_by.toLowerCase().trim() === me) return true
+        if (cmt.author && cmt.author.toLowerCase().trim() === me) return true
+      }
+      return false
+    },
+    scrollToBottom() {
+      const el = this.$refs.commentsContainer
+      if (el) {
+        el.scrollTop = el.scrollHeight
+      }
     },
     close() {
       this.$emit('update:modelValue', false)
@@ -1279,6 +1352,7 @@ export default {
             time: 'Just now',
             text: text,
             can_delete: true,
+            is_current_user: true,
           }
         }
         this.comments.push(added)
@@ -1288,6 +1362,9 @@ export default {
           time: 'Just now',
         })
         this.newComment = ''
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
       } catch (e) {
         console.error('Error posting comment:', e)
       } finally {
