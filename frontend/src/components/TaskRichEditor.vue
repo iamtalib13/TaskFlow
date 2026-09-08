@@ -127,7 +127,7 @@ const uploadFunction = async (file) => ({
       <template #default>
         <!-- Inside <Editor>, the building blocks read the editor from context — no :editor prop needed -->
         <div
-          class="overflow-hidden rounded-6 border border-outline-gray-2 bg-surface-base shadow-2xs focus-within:ring-2 focus-within:ring-black focus-within:border-black transition"
+          class="overflow-hidden rounded-xl border border-gray-200 bg-surface-base shadow-2xs focus-within:ring-2 focus-within:ring-purple-200 focus-within:border-purple-400 transition"
         >
           <EditorBubbleMenu :items="bubbleToolbar" />
           <EditorFloatingMenu :items="toolbar" />
@@ -142,3 +142,13 @@ const uploadFunction = async (file) => ({
     </Editor>
   </div>
 </template>
+
+<style scoped>
+:deep(.ProseMirror) {
+  outline: none !important;
+}
+:deep(.ProseMirror:focus) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+</style>

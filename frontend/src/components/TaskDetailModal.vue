@@ -48,7 +48,7 @@
           <div class="relative">
             <select
               v-model="form.status"
-              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-purple-600 outline-none"
+              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
               :class="getStatusSelectClass(form.status)"
             >
               <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
@@ -64,7 +64,7 @@
           <div class="relative">
             <select
               v-model="form.priority"
-              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-purple-600 outline-none bg-blue-50/60 text-blue-700 border-blue-200"
+              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none bg-blue-50/60 text-blue-700 border-blue-200"
             >
               <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
             </select>
@@ -134,7 +134,7 @@
                 <div class="relative flex-1 min-w-[90px]">
                   <select
                     v-model="form.assigned_to"
-                    class="w-full text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-dashed border-gray-300 rounded-lg px-2 py-1 outline-none cursor-pointer transition"
+                    class="w-full text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-dashed border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 cursor-pointer transition"
                   >
                     <option value="">+ Assign</option>
                     <option v-for="person in people" :key="person.email" :value="person.name">
@@ -151,7 +151,7 @@
               <div class="relative">
                 <select
                   v-model="form.pending_with"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-purple-600 outline-none"
+                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
                 >
                   <option value="">Unassigned</option>
                   <option value="Talib Sheikh (Tech Lead)">Talib Sheikh (Tech Lead)</option>
@@ -170,7 +170,7 @@
               <div class="relative">
                 <select
                   v-model="form.pending_from"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-purple-600 outline-none"
+                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
                 >
                   <option value="Frontend Architecture Team">Frontend Architecture Team</option>
                   <option value="Core Engineering">Core Engineering</option>
@@ -187,7 +187,7 @@
               <div class="relative">
                 <select
                   v-model="form.guided_by"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-purple-600 outline-none"
+                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
                 >
                   <option value="Sarah Chen (Principal Arch)">Sarah Chen (Principal Arch)</option>
                   <option value="Talib Sheikh (Tech Lead)">Talib Sheikh (Tech Lead)</option>
@@ -227,7 +227,7 @@
                   v-model="displayStartDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-purple-600 outline-none"
+                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
                 />
                 <label class="absolute right-2.5 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <Calendar class="size-3.5" />
@@ -255,7 +255,7 @@
                   type="text"
                   placeholder="DD-MM-YYYY"
                   class="w-full rounded-lg pl-2.5 pr-8 py-1.5 text-xs font-mono outline-none transition"
-                  :class="isOverdue ? 'bg-rose-50/50 border border-rose-300 text-rose-700 font-semibold focus:ring-2 focus:ring-rose-500' : 'bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-purple-600'"
+                  :class="isOverdue ? 'bg-rose-50/50 border border-rose-300 text-rose-700 font-semibold focus:ring-2 focus:ring-rose-200 focus:border-rose-400' : 'bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-purple-200 focus:border-purple-400'"
                 />
                 <label class="absolute right-2.5 cursor-pointer">
                   <AlertTriangle v-if="isOverdue" class="size-3.5 text-rose-600" />
@@ -278,7 +278,7 @@
                   v-model="displayResolutionDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-purple-600 outline-none"
+                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
                 />
                 <label class="absolute right-2.5 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <Calendar class="size-3.5" />
@@ -518,7 +518,7 @@
               v-model="newComment"
               rows="3"
               placeholder="Write a comment or type @ to mention..."
-              class="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs text-gray-800 outline-none focus:ring-2 focus:ring-purple-600 focus:border-purple-600 transition resize-none placeholder-gray-400"
+              class="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs text-gray-800 outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition resize-none placeholder-gray-400"
               @keydown.meta.enter="addComment"
               @keydown.ctrl.enter="addComment"
             ></textarea>
