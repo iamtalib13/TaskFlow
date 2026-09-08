@@ -1867,15 +1867,18 @@ export default {
         attachments: this.attachments,
       }
       try {
+        let res = null
         if (this.onSave) {
-          await this.onSave(updated)
+          res = await this.onSave(updated)
         } else {
-          await saveTask(updated)
-          this.$emit('save', updated)
+          res = await saveTask(updated)
+          this.$emit('save', res || updated)
           toast.success('Task saved successfully')
         }
+        if (res && res.id && !this.form.id) {
+          this.form.id = res.id
+        }
         this.saving = false
-        this.close()
       } catch (err) {
         this.saving = false
         const msg = getErrorMessage(err, 'Failed to save task')
