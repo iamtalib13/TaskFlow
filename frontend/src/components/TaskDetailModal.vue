@@ -625,20 +625,16 @@
           </div>
         </main>
 
-        <!-- Vertical Divider between Column 2 and Column 3 -->
-        <Divider orientation="vertical" flex-item class="hidden xl:block" />
-        <Divider class="xl:hidden" />
-
         <!-- COLUMN 3: RIGHT SIDEBAR (Comments & Activity Audit) -->
-        <aside class="w-full xl:w-[320px] 2xl:w-[360px] shrink-0 flex flex-col bg-white overflow-hidden h-full">
+        <aside class="w-full xl:w-[320px] 2xl:w-[360px] shrink-0 flex flex-col bg-white overflow-hidden h-full border-t xl:border-t-0 xl:border-l border-gray-200">
           <!-- Top Tabs Header -->
-          <div class="flex items-center justify-between px-3.5 py-2.5 shrink-0 select-none bg-white">
+          <div class="flex items-center justify-between px-3.5 py-2.5 shrink-0 select-none bg-white border-b border-gray-200">
             <div class="flex items-center gap-3">
               <button
                 type="button"
                 class="pb-1 text-xs font-bold transition border-b-2 cursor-pointer inline-flex items-center gap-1.5"
                 :class="activeRightTab === 'comments' ? 'border-[#417c7d] text-[#417c7d]' : 'border-transparent text-gray-500 hover:text-gray-800'"
-                @click="activeRightTab === 'comments'"
+                @click="activeRightTab = 'comments'"
               >
                 <span>Comments</span>
                 <span
@@ -653,7 +649,7 @@
                 type="button"
                 class="pb-1 text-xs font-bold transition border-b-2 cursor-pointer"
                 :class="activeRightTab === 'activity' ? 'border-[#417c7d] text-[#417c7d]' : 'border-transparent text-gray-500 hover:text-gray-800'"
-                @click="activeRightTab === 'activity'"
+                @click="activeRightTab = 'activity'"
               >
                 Activity Audit
               </button>
@@ -664,13 +660,11 @@
             </button>
           </div>
 
-          <Divider />
-
           <!-- Comments Feed Tab Content -->
           <div
             v-if="activeRightTab === 'comments'"
             ref="commentsContainer"
-            class="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-0 text-xs"
+            class="flex-1 overflow-y-auto p-3 space-y-3 min-h-0 text-xs"
           >
             <!-- Loading indicator when fetching comments -->
             <div v-if="loadingComments && comments.length === 0" class="py-8 flex flex-col items-center justify-center gap-1.5 text-gray-400">
@@ -687,71 +681,58 @@
 
             <!-- Comments List: Chat style with current user on right, others on left -->
             <template v-else v-for="(cmt, idx) in comments" :key="cmt.id || idx">
-              <!-- Status Change / Divider -->
-              <div v-if="cmt.isDivider" class="flex items-center justify-center my-2">
-                <span class="bg-gray-100 text-gray-500 text-[10px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider select-none border border-gray-200/60">
-                  {{ cmt.text }}
-                </span>
-              </div>
-
-              <!-- CURRENT USER MESSAGE (Aligned to RIGHT) -->
+              <!-- CURRENT USER MESSAGE (Right-Aligned) -->
               <div
-                v-else-if="isCurrentUser(cmt)"
-                class="flex flex-col items-end group"
+                v-if="isCurrentUser(cmt)"
+                class="flex flex-col items-end group max-w-[85%] ml-auto"
               >
-                <!-- Meta: Delete Button, Time, Author Name, Avatar -->
-                <div class="flex items-center gap-1.5 mb-1 text-[10px] text-gray-400 justify-end">
+                <div class="bg-[#417c7d] text-white rounded-2xl rounded-br-xs px-3.5 py-2 text-xs shadow-xs leading-relaxed break-words whitespace-pre-wrap select-text">
+                  {{ cmt.text }}
+                </div>
+                <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-gray-400">
+                  <span>{{ cmt.time || 'Just now' }}</span>
                   <button
                     v-if="cmt.can_delete || cmt.id"
                     type="button"
-                    class="opacity-0 group-hover:opacity-100 transition p-0.5 rounded hover:bg-rose-50 text-gray-400 hover:text-rose-600 cursor-pointer"
+                    class="opacity-0 group-hover:opacity-100 transition hover:text-rose-600 text-gray-400 cursor-pointer p-0.5"
                     title="Delete comment"
                     @click="deleteComment(cmt.id, idx)"
                   >
-                    <Trash2 class="size-3" />
+                    <Trash2 class="size-2.5" />
                   </button>
-                  <span>{{ cmt.time || 'Just now' }}</span>
-                  <span class="font-semibold text-[#417c7d]">You</span>
-                  <span class="size-4 rounded-full bg-[#417c7d] text-white font-bold text-[8px] flex items-center justify-center shrink-0">
-                    {{ getInitials(cmt.author || 'You') }}
-                  </span>
-                </div>
-
-                <!-- Right-aligned Bubble: Brand Accent -->
-                <div class="max-w-[85%] bg-[#417c7d] text-white rounded-2xl rounded-tr-xs px-3 py-2 text-xs shadow-2xs leading-relaxed break-words whitespace-pre-wrap select-text">
-                  {{ cmt.text }}
                 </div>
               </div>
 
-              <!-- OTHER USERS MESSAGE (Aligned to LEFT) -->
+              <!-- OTHER USERS MESSAGE (Left-Aligned) -->
               <div
                 v-else
-                class="flex flex-col items-start group"
+                class="flex items-start gap-2 group max-w-[88%] mr-auto"
               >
-                <!-- Meta: Avatar, Author Name, Time, Delete Button -->
-                <div class="flex items-center gap-1.5 mb-1 text-[10px] text-gray-400 justify-start">
-                  <span
-                    class="size-4 rounded-full text-white font-bold text-[8px] flex items-center justify-center shrink-0"
-                    :class="getAvatarColor(cmt.author)"
-                  >
-                    {{ getInitials(cmt.author) }}
+                <span
+                  class="size-5 rounded-full text-white font-bold text-[9px] flex items-center justify-center shrink-0 mt-0.5"
+                  :class="getAvatarColor(cmt.author)"
+                >
+                  {{ getInitials(cmt.author) }}
+                </span>
+                <div class="flex flex-col items-start min-w-0">
+                  <span class="text-[10px] font-semibold text-gray-600 mb-0.5 truncate max-w-[150px]">
+                    {{ cmt.author }}
                   </span>
-                  <span class="font-semibold text-gray-800 truncate max-w-[130px]">{{ cmt.author }}</span>
-                  <span>{{ cmt.time }}</span>
-                  <button
-                    v-if="cmt.can_delete"
-                    type="button"
-                    class="opacity-0 group-hover:opacity-100 transition p-0.5 rounded hover:bg-rose-50 text-gray-400 hover:text-rose-600 cursor-pointer"
-                    title="Delete comment"
-                    @click="deleteComment(cmt.id, idx)"
-                  >
-                    <Trash2 class="size-3" />
-                  </button>
-                </div>
-
-                <!-- Left-aligned Bubble: Subtle gray with clean border -->
-                <div class="max-w-[85%] bg-gray-100/90 hover:bg-gray-100 text-gray-800 border border-gray-200/70 rounded-2xl rounded-tl-xs px-3 py-2 text-xs leading-relaxed break-words whitespace-pre-wrap select-text">
-                  {{ cmt.text }}
+                  <div class="bg-gray-100 hover:bg-gray-100/90 text-gray-800 border border-gray-200/80 rounded-2xl rounded-tl-xs px-3.5 py-2 text-xs leading-relaxed break-words whitespace-pre-wrap select-text">
+                    {{ cmt.text }}
+                  </div>
+                  <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-gray-400">
+                    <span>{{ cmt.time }}</span>
+                    <button
+                      v-if="cmt.can_delete"
+                      type="button"
+                      class="opacity-0 group-hover:opacity-100 transition hover:text-rose-600 text-gray-400 cursor-pointer p-0.5"
+                      title="Delete comment"
+                      @click="deleteComment(cmt.id, idx)"
+                    >
+                      <Trash2 class="size-2.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </template>
@@ -778,10 +759,8 @@
             </div>
           </div>
 
-          <Divider />
-
-          <!-- Comment Input Box (Pinned at bottom, compact, no extra gap) -->
-          <div class="p-2.5 bg-gray-50/60 space-y-1.5 shrink-0">
+          <!-- Comment Input Box (Pinned at bottom, compact, no extra gap, clean border-t) -->
+          <div class="p-2.5 bg-gray-50/60 space-y-1.5 shrink-0 border-t border-gray-200">
             <textarea
               v-model="newComment"
               rows="2"
@@ -820,7 +799,7 @@
               <button
                 type="button"
                 :disabled="!newComment.trim() || submittingComment"
-                class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] disabled:opacity-40 text-white font-semibold text-xs rounded-lg shadow-2xs transition cursor-pointer"
+                class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] disabled:opacity-40 text-white font-semibold text-xs rounded-lg shadow-xs transition cursor-pointer"
                 @click="addComment"
               >
                 <Loader2 v-if="submittingComment" class="size-3 animate-spin" />

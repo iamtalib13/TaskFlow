@@ -420,10 +420,12 @@ export async function addTaskComment(taskId, text) {
 
   return {
     id: `temp-${Date.now()}`,
-    author: 'Administrator',
+    author: 'You',
+    author_email: '',
     time: 'Just now',
     text,
     can_delete: true,
+    is_current_user: true,
   }
 }
 
