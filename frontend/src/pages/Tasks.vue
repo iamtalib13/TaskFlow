@@ -538,12 +538,12 @@ onMounted(() => {
         </div>
       </PageHeader>
 
-      <!-- Main Body Container -->
-      <div class="mx-auto mt-5 w-full max-w-[1280px] px-4 pb-10 sm:px-6">
+      <!-- Main Body Container: Full width, minor padding, no unnecessary gaps -->
+      <div class="w-full px-3 pt-3 pb-8">
         <!-- 1. TASK VIEW -->
         <template v-if="activeSection === 'Task'">
           <!-- Sub-Header Tabs & Task Count -->
-          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <TabButtons
               v-model="feedTab"
               :options="[

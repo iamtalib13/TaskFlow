@@ -11,7 +11,7 @@
       class="relative flex-1 overflow-x-auto overflow-y-auto min-h-[380px]"
       @scroll="handleScroll"
     >
-      <table class="w-full text-left border-collapse text-xs select-text min-w-[1280px]">
+      <table class="w-full text-left border-collapse text-xs select-text">
         <!-- Table Header -->
         <thead class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200 text-gray-600 font-semibold tracking-wide uppercase text-[11px]">
           <tr>
@@ -20,7 +20,7 @@
               v-if="selectable"
               scope="col"
               :class="[
-                'w-12 px-3.5 py-2.5 text-center bg-gray-50 border-r border-gray-200/60',
+                'w-9 px-2 py-2 text-center bg-gray-50 border-r border-gray-200/60',
                 isCheckboxSticky ? 'sticky left-0 z-40' : '',
               ]"
             >
@@ -45,7 +45,7 @@
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
-                'px-4 py-2.5 whitespace-nowrap transition-colors select-none',
+                'px-3 py-2 whitespace-nowrap transition-colors select-none',
                 col.sticky ? 'sticky z-40 bg-gray-50 border-r border-gray-200/70' : '',
                 col.sortable ? 'cursor-pointer hover:text-gray-900' : '',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
@@ -107,7 +107,7 @@
             <td
               v-if="selectable"
               :class="[
-                'w-12 px-3.5 py-2.5 text-center bg-white group-hover:bg-gray-50/90 border-r border-gray-100 transition-colors',
+                'w-9 px-2 py-2 text-center bg-white group-hover:bg-gray-50/90 border-r border-gray-100 transition-colors',
                 isCheckboxSticky ? 'sticky left-0 z-20' : '',
                 isRowSelected(row) ? '!bg-blue-50/60' : '',
               ]"
@@ -132,7 +132,7 @@
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
-                'px-4 py-2.5 whitespace-nowrap text-gray-700 text-xs',
+                'px-3 py-2 whitespace-nowrap text-gray-700 text-xs',
                 col.sticky ? 'sticky z-20 bg-white group-hover:bg-gray-50/90 border-r border-gray-100 font-medium' : '',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
                 isRowSelected(row) && col.sticky ? '!bg-blue-50/60' : '',
@@ -158,7 +158,7 @@
             <td
               v-if="selectable"
               :class="[
-                'px-3.5 py-2.5 text-center bg-gray-50 border-r border-gray-200/60 font-bold uppercase text-[10px] tracking-wider text-gray-500',
+                'px-2 py-2 text-center bg-gray-50 border-r border-gray-200/60 font-bold uppercase text-[10px] tracking-wider text-gray-500',
                 isCheckboxSticky ? 'sticky left-0 z-20' : '',
               ]"
             >
@@ -169,7 +169,7 @@
               :key="'total-' + col.key"
               :style="{ left: col.sticky ? col.stickyLeft || '48px' : 'auto' }"
               :class="[
-                'px-4 py-2.5 whitespace-nowrap text-gray-800 text-xs',
+                'px-3 py-2 whitespace-nowrap text-gray-800 text-xs',
                 col.sticky ? 'sticky z-20 bg-gray-50 border-r border-gray-200/60' : '',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
               ]"
