@@ -173,7 +173,7 @@
               <Info class="size-3.5 text-gray-400 hover:text-gray-600 cursor-pointer" title="Assignment details" />
             </div>
 
-            <!-- Project & Team selectors -->
+            <!-- Project selector -->
             <div class="space-y-2.5 pb-1">
               <div>
                 <label class="block font-medium text-[11px] text-gray-700 mb-1">Project</label>
@@ -187,43 +187,6 @@
                     {{ p.display_name || p.name }}
                   </option>
                 </select>
-              </div>
-
-              <div>
-                <div class="flex items-center justify-between mb-1">
-                  <label class="block font-medium text-[11px] text-gray-700">Team</label>
-                  <span v-if="effectiveTeam" class="text-[10px] font-semibold text-[#417c7d] bg-[#417c7d]/10 px-1.5 py-0.5 rounded">
-                    {{ effectiveTeam }}
-                  </span>
-                </div>
-                <select
-                  v-model="form.team"
-                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                  @change="onTeamChange"
-                >
-                  <option value="">Select Team</option>
-                  <option v-for="t in teams" :key="t.name || t" :value="t.name || t">
-                    {{ t.team_name || t.name || t }}
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block font-medium text-[11px] text-gray-700 mb-1">Task Type</label>
-                <div class="relative flex items-center">
-                  <select
-                    v-model="form.task_type"
-                    class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-7 pr-7 py-1.5 text-xs text-gray-900 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
-                  >
-                    <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
-                  </select>
-                  <component
-                    :is="getTaskTypeIcon(form.task_type)"
-                    class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
-                    :class="getTaskTypeIconClass(form.task_type)"
-                  />
-                  <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none text-gray-400" />
-                </div>
               </div>
             </div>
 
@@ -558,22 +521,6 @@
                     </button>
                   </template>
                 </DatePicker>
-              </div>
-            </div>
-
-            <!-- Time Estimate -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Time Estimate</label>
-              <div class="relative flex items-center">
-                <input
-                  v-model.number="form.estimated_hours"
-                  type="number"
-                  step="0.25"
-                  min="0"
-                  placeholder="0.00"
-                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-2.5 pr-9 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                />
-                <span class="absolute right-2 text-[10px] font-semibold text-gray-400 pointer-events-none">hrs</span>
               </div>
             </div>
           </div>
