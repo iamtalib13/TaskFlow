@@ -43,7 +43,7 @@
             required
             type="text"
             placeholder="e.g. Implement Responsive Table View"
-            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition"
           />
         </div>
 
@@ -53,7 +53,7 @@
             <label class="block font-medium text-gray-600 mb-1">Project</label>
             <select
               v-model="form.project"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-black outline-none"
+              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
             >
               <option value="">Select Project</option>
               <option v-for="p in projects" :key="p.name" :value="p.name">
@@ -66,7 +66,7 @@
             <label class="block font-medium text-gray-600 mb-1">Assigned To</label>
             <select
               v-model="form.assigned_to"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-black outline-none"
+              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
             >
               <option value="">Unassigned</option>
               <option v-for="u in people" :key="u.email" :value="u.name">
@@ -79,7 +79,7 @@
             <label class="block font-medium text-gray-600 mb-1">Status</label>
             <select
               v-model="form.status"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-black outline-none"
+              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
             >
               <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
             </select>
@@ -89,7 +89,7 @@
             <label class="block font-medium text-gray-600 mb-1">Priority</label>
             <select
               v-model="form.priority"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-black outline-none"
+              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
             >
               <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
             </select>
@@ -106,7 +106,7 @@
                 type="text"
                 placeholder="DD-MM-YYYY"
                 maxlength="10"
-                class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-black outline-none"
+                class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
               />
               <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer" title="Pick date">
                 <Calendar class="size-4" />
