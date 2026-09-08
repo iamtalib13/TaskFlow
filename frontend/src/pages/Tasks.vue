@@ -392,6 +392,44 @@ watch([statusTab, selectedProjects, showAssignedToMe], () => {
   tasksDisplayLimit.value = 20
 })
 
+function formatDueDate(dateVal) {
+  if (!dateVal) return '—'
+  const str = String(dateVal).trim().split(' ')[0]
+  const parts = str.split('-')
+  if (parts.length === 3) {
+    const [y, m, d] = parts
+    if (y.length === 4) {
+      return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`
+    }
+    if (d.length === 4) {
+      return `${y.padStart(2, '0')}-${m.padStart(2, '0')}-${d}`
+    }
+  }
+  const slashParts = str.split('/')
+  if (slashParts.length === 3) {
+    const [p1, p2, p3] = slashParts
+    if (p3.length === 4) {
+      return `${p1.padStart(2, '0')}-${p2.padStart(2, '0')}-${p3}`
+    }
+    if (p1.length === 4) {
+      return `${p3.padStart(2, '0')}-${p2.padStart(2, '0')}-${p1}`
+    }
+  }
+  return dateVal
+}
+
+function isTaskOverdue(row) {
+  if (!row?.due_date) return false
+  if (['Completed', 'Cancelled'].includes(row.status)) return false
+  const today = new Date().toISOString().split('T')[0]
+  let isoDate = String(row.due_date).trim().split(' ')[0]
+  const parts = isoDate.split('-')
+  if (parts.length === 3 && parts[2].length === 4) {
+    isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+  }
+  return isoDate < today
+}
+
 function formatPrettyDate(row) {
   if (row?.modified_pretty) {
     const p = String(row.modified_pretty).trim()
@@ -1650,8 +1688,13 @@ onUnmounted(() => {
               </template>
 
               <template #cell-due_date="{ row }">
-                <span v-if="row.due_date" class="font-mono text-xs text-ink-gray-6">
-                  {{ row.due_date }}
+                <span
+                  v-if="row.due_date"
+                  class="font-mono text-xs"
+                  :class="isTaskOverdue(row) ? 'text-rose-600 font-bold' : 'text-ink-gray-6'"
+                  :title="isTaskOverdue(row) ? 'Task is overdue' : ''"
+                >
+                  {{ formatDueDate(row.due_date) }}
                 </span>
                 <span v-else class="text-ink-gray-4">—</span>
               </template>
@@ -2052,6 +2095,13 @@ onUnmounted(() => {
                   </div>
                   <span class="text-xs font-mono text-ink-gray-6 w-8 text-right">{{ row.progress }}%</span>
                 </div>
+              </template>
+
+              <template #cell-due_date="{ row }">
+                <span v-if="row.due_date" class="font-mono text-xs text-ink-gray-6">
+                  {{ formatDueDate(row.due_date) }}
+                </span>
+                <span v-else class="text-ink-gray-4">—</span>
               </template>
             </CommonListView>
           </div>
