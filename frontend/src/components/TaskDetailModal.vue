@@ -286,7 +286,7 @@ export default {
     },
     statuses: {
       type: Array,
-      default: () => ['Open', 'In Progress', 'Review', 'Completed', 'On Hold', 'Cancelled'],
+      default: () => ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue'],
     },
     priorities: {
       type: Array,
