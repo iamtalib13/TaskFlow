@@ -258,8 +258,45 @@ export const mockBootstrap = {
   ],
 }
 
+import { call as frappeCall } from 'frappe-ui'
+
+export function getErrorMessage(error, defaultMsg = 'An unexpected error occurred') {
+  if (!error) return defaultMsg
+  if (Array.isArray(error.messages) && error.messages.length) {
+    return error.messages.filter(Boolean).join('\n')
+  }
+  if (error._server_messages) {
+    try {
+      const parsed = typeof error._server_messages === 'string' ? JSON.parse(error._server_messages) : error._server_messages
+      if (Array.isArray(parsed)) {
+        const msgs = parsed.map((m) => {
+          try {
+            const item = typeof m === 'string' ? JSON.parse(m) : m
+            return item.message || m
+          } catch {
+            return m
+          }
+        }).filter(Boolean)
+        if (msgs.length) return msgs.join('\n')
+      }
+    } catch {}
+  }
+  if (error.message) return error.message
+  if (typeof error === 'string') return error
+  return defaultMsg
+}
+
 // Fetch bootstrap data
 export async function fetchBootstrap() {
+  try {
+    const res = await frappeCall('taskflow.taskflow.api.spa.get_spa_bootstrap')
+    if (res && res.tasks && res.tasks.length > 0) {
+      return res
+    }
+  } catch (e) {
+    console.warn('frappe-ui call failed, trying fallback...', e)
+  }
+
   if (typeof window !== 'undefined' && window.frappe && window.frappe.call) {
     try {
       const res = await window.frappe.call({
@@ -295,40 +332,23 @@ export async function fetchBootstrap() {
   return mockBootstrap
 }
 
-// Save or create task
+// Save or create task using Frappe UI standard call
 export async function saveTask(taskData) {
-  if (typeof window !== 'undefined' && window.frappe && window.frappe.call) {
-    try {
-      const res = await window.frappe.call({
-        method: 'taskflow.taskflow.api.spa.save_task',
-        args: { payload: JSON.stringify(taskData) },
-      })
-      if (res && res.message) return res.message
-    } catch (e) {
-      console.error('Failed to save task via Frappe API', e)
-    }
-  }
+  return await callFrappe(
+    'taskflow.taskflow.api.spa.save_task',
+    { payload: JSON.stringify(taskData) },
+    'POST'
+  )
+}
 
-  try {
-    const csrfToken = window.csrf_token || ''
-    const resp = await fetch('/api/method/taskflow.taskflow.api.spa.save_task', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-Frappe-CSRF-Token': csrfToken,
-      },
-      body: JSON.stringify({ payload: JSON.stringify(taskData) }),
-    })
-    if (resp.ok) {
-      const json = await resp.json()
-      return json.message
-    }
-  } catch (e) {
-    // Fallback local save
-  }
-
-  return { ok: true, task: taskData }
+// Delete task using Frappe UI standard call
+export async function deleteTask(taskId) {
+  if (!taskId) return false
+  return await callFrappe(
+    'taskflow.taskflow.api.spa.delete_task',
+    { task_id: taskId },
+    'POST'
+  )
 }
 
 // Fetch actual comments for a task
@@ -409,15 +429,27 @@ export async function addTaskComment(taskId, text) {
 
 // --- Team API Functions ---
 
-async function callFrappe(method, args = {}, methodType = 'GET') {
-  // Try frappe.call first (works inside Frappe bench)
+async function callFrappe(method, args = {}, methodType = 'POST') {
+  // Try frappe-ui standard call first
+  try {
+    const res = await frappeCall(method, args)
+    return res
+  } catch (e) {
+    if (e && (e.response || e.status || e.messages || e._server_messages)) {
+      const msg = getErrorMessage(e)
+      const err = new Error(msg)
+      err.messages = e.messages
+      throw err
+    }
+  }
+
+  // Fallback: window.frappe.call (if desk context)
   if (typeof window !== 'undefined' && window.frappe && window.frappe.call) {
     try {
       const res = await window.frappe.call({ method, args, type: methodType })
       if (res && res.message) return res.message
       return res
     } catch (e) {
-      // Extract meaningful error message from Frappe exception
       const msg = e?.message || e?.exc?.[1]?.split('Msg: ')?.[1] || String(e)
       throw new Error(msg)
     }
@@ -452,7 +484,7 @@ async function callFrappe(method, args = {}, methodType = 'GET') {
     const data = await resp.json()
 
     if (!resp.ok) {
-      const msg = data?.exc?.[1]?.split('Msg: ')?.[1] || data?.message || `Request failed (${resp.status})`
+      const msg = getErrorMessage(data) || data?.exc?.[1]?.split('Msg: ')?.[1] || data?.message || `Request failed (${resp.status})`
       throw new Error(msg)
     }
 
@@ -572,6 +604,31 @@ export async function fetchMemberTimesheets(user, fromDate = '', toDate = '') {
   return callFrappe(
     'taskflow.taskflow.api.portal.get_member_timesheets',
     { user, from_date: fromDate, to_date: toDate },
+    'POST',
+  )
+}
+
+export async function fetchAllTimesheets(fromDate = '', toDate = '', user = '') {
+  return callFrappe(
+    'taskflow.taskflow.api.portal.get_all_timesheets',
+    { from_date: fromDate, to_date: toDate, user },
+    'POST',
+  )
+}
+
+export async function saveTimesheet(date, items = [], status = 'Draft') {
+  return callFrappe(
+    'taskflow.taskflow.api.portal.save_timesheet',
+    { date, items, status },
+    'POST',
+  )
+}
+
+export async function deleteTimesheet(timesheetName) {
+  if (!timesheetName) return false
+  return callFrappe(
+    'taskflow.taskflow.api.portal.delete_timesheet',
+    { timesheet_name: timesheetName },
     'POST',
   )
 }

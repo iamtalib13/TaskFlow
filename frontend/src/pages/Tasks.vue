@@ -33,6 +33,7 @@ import {
   Textarea,
   TextInput,
   Tooltip,
+  toast,
 } from 'frappe-ui'
 import {
   CheckSquare,
@@ -57,6 +58,7 @@ import {
   UserPlus,
   MoreHorizontal,
   LayoutDashboard,
+  UserCheck,
 } from 'lucide-vue-next'
 
 import CommonListView from '@/components/CommonListView.vue'
@@ -65,6 +67,8 @@ import TaskCreateModal from '@/components/TaskCreateModal.vue'
 import {
   fetchBootstrap,
   saveTask,
+  deleteTask,
+  getErrorMessage,
   fetchTeams,
   fetchTeamMembers,
   createTeam,
@@ -73,6 +77,9 @@ import {
   fetchEmployees,
   addTeamMember,
   fetchMemberTimesheets,
+  fetchAllTimesheets,
+  saveTimesheet,
+  deleteTimesheet,
 } from '@/data/api.js'
 import TimesheetCalendar from '@/components/TimesheetCalendar.vue'
 
@@ -155,12 +162,80 @@ const onPopState = () => {
   } catch {}
 }
 
-const navItems = computed(() => [
-  { id: 'Task', label: 'Task', icon: CheckSquare, badge: visibleTasks.value.length },
-  { id: 'Timesheet', label: 'Timesheet', icon: Clock, badge: timesheetData.value.length },
-  { id: 'Project', label: 'Project', icon: FolderKanban, badge: projectsData.value.length },
-  { id: 'Team', label: 'Team', icon: Users, badge: teamData.value.length },
-])
+// User Profile Settings State
+const settingsTab = ref('profile')
+const firstName = ref('Talib')
+const lastName = ref('Sheikh')
+const bio = ref('Product & Engineering. Building high-performance task management.')
+const fullName = computed(() => `${firstName.value} ${lastName.value}`.trim())
+const userImage = 'https://avatars.githubusercontent.com/u/499550?v=4'
+const currentUserEmail = ref('')
+
+// Active status tab filter
+const statusTab = ref('All')
+const showAssignedToMe = ref(true)
+
+function isAssignedToCurrentUser(t) {
+  if (!t) return false
+  const userEmail = (currentUserEmail.value || '').toLowerCase().trim()
+  const userName = (fullName.value || '').toLowerCase().trim()
+  if (!userEmail && !userName) return true
+
+  // 1. Array assignees (strings or objects)
+  if (Array.isArray(t.assignees) && t.assignees.length > 0) {
+    const matched = t.assignees.some((a) => {
+      if (!a) return false
+      if (typeof a === 'string') {
+        const val = a.toLowerCase().trim()
+        return (userEmail && val === userEmail) || (userName && val === userName)
+      }
+      if (typeof a === 'object') {
+        const uid = (a.user_id || a.email || a.name || '').toLowerCase().trim()
+        const uname = (a.full_name || a.name || '').toLowerCase().trim()
+        return (userEmail && (uid === userEmail || uname === userEmail)) || (userName && uname === userName)
+      }
+      return false
+    })
+    if (matched) return true
+  }
+
+  // 2. Child table_gqbl
+  if (Array.isArray(t.table_gqbl) && t.table_gqbl.length > 0) {
+    const matched = t.table_gqbl.some((r) => {
+      if (!r) return false
+      const uid = (r.user_id || r.email || '').toLowerCase().trim()
+      const uname = (r.employee_name || '').toLowerCase().trim()
+      return (userEmail && (uid === userEmail || uname === userEmail)) || (userName && uname === userName)
+    })
+    if (matched) return true
+  }
+
+  // 3. assigned_to field (comma separated string or single name/email)
+  if (typeof t.assigned_to === 'string' && t.assigned_to.trim()) {
+    const parts = t.assigned_to.split(',').map((p) => p.toLowerCase().trim())
+    if (userEmail && parts.includes(userEmail)) return true
+    if (userName && parts.includes(userName)) return true
+  }
+
+  return false
+}
+
+const navItems = computed(() => {
+  let taskCount = tasks.value
+  if (showAssignedToMe.value) {
+    taskCount = taskCount.filter(isAssignedToCurrentUser)
+  }
+  if (selectedProjects.value && selectedProjects.value.length > 0) {
+    taskCount = taskCount.filter((t) => selectedProjects.value.includes(t.project))
+  }
+
+  return [
+    { id: 'Task', label: 'Task', icon: CheckSquare, badge: taskCount.length },
+    { id: 'Timesheet', label: 'Timesheet', icon: Clock, badge: timesheetListData.value.length },
+    { id: 'Project', label: 'Project', icon: FolderKanban, badge: projectsData.value.length },
+    { id: 'Team', label: 'Team', icon: Users, badge: teamData.value.length },
+  ]
+})
 
 const currentBreadcrumbs = computed(() => {
   const sectionLabel = {
@@ -187,8 +262,14 @@ const userMenu = [
   { label: 'Log out', icon: LogOut },
 ]
 
-// Active status tab filter
-const statusTab = ref('All')
+// Toast notification
+const toastMessage = ref('')
+const toastVisible = ref(false)
+function showToast(msg) {
+  toastMessage.value = msg
+  toastVisible.value = true
+  setTimeout(() => { toastVisible.value = false }, 3000)
+}
 
 // Multi-select project filter
 const selectedProjects = ref([])
@@ -218,14 +299,6 @@ const activeTask = ref(null)
 const createModalOpen = ref(false)
 const showSettings = ref(false)
 
-// User Profile Settings State
-const settingsTab = ref('profile')
-const firstName = ref('Talib')
-const lastName = ref('Sheikh')
-const bio = ref('Product & Engineering. Building high-performance task management.')
-const fullName = computed(() => `${firstName.value} ${lastName.value}`.trim())
-const userImage = 'https://avatars.githubusercontent.com/u/499550?v=4'
-
 // Preferences
 const theme = ref('system')
 const cursorStyle = ref('pointer')
@@ -246,48 +319,23 @@ const spaceActions = [
 ]
 
 // Members list in Settings & Avatar lookup
-const members = [
-  {
-    name: 'Talib Sheikh',
-    email: 'talib@example.com',
-    role: 'Admin',
-    image: 'https://avatars.githubusercontent.com/u/499550?v=4',
-  },
-  {
-    name: 'Sarah Chen',
-    email: 'sarah.chen@example.com',
-    role: 'Tech Lead',
-    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-  },
-  {
-    name: 'Marcus Brody',
-    email: 'marcus.brody@example.com',
-    role: 'Engineer',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-  },
-  {
-    name: 'Elena Rostova',
-    email: 'elena.rostova@example.com',
-    role: 'Product Designer',
-    image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-  },
-  {
-    name: 'Devon Vance',
-    email: 'devon.vance@example.com',
-    role: 'DevOps Lead',
-    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-  },
-]
+const members = computed(() => {
+  return (people.value || []).map((p) => ({
+    name: p.name,
+    email: p.email,
+    image: p.image || '',
+  }))
+})
 
-const getAssignee = (name) => {
-  if (!name) return { name: 'Unassigned', image: '' }
-  const found = members.find(
-    (m) => m.name.toLowerCase() === name.toLowerCase() || m.email.toLowerCase() === name.toLowerCase()
+const getAssignee = (email) => {
+  if (!email) return { name: 'Unassigned', image: '' }
+  const found = members.value.find(
+    (m) => m.email.toLowerCase() === email.toLowerCase()
   )
   if (found) return found
   return {
-    name,
-    image: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e2e8f0&color=334155&size=128`,
+    name: email,
+    image: '',
   }
 }
 
@@ -313,7 +361,7 @@ function handleSortChange({ key, order }) {
   sortOrder.value = order
 }
 
-watch([statusTab, selectedProjects], () => {
+watch([statusTab, selectedProjects, showAssignedToMe], () => {
   tasksDisplayLimit.value = 20
 })
 
@@ -405,6 +453,26 @@ const getStatusBadgeClass = (status) => {
   }
 }
 
+const statusThemeMap = {
+  'Open': 'blue',
+  'In Progress': 'indigo',
+  'Review': 'purple',
+  'On Hold': 'amber',
+  'Completed': 'green',
+  'Cancelled': 'gray',
+  'Overdue': 'red',
+}
+
+const statusDotClassMap = {
+  'Open': 'bg-surface-blue-7',
+  'In Progress': 'bg-surface-indigo-7',
+  'Review': 'bg-surface-purple-7',
+  'On Hold': 'bg-surface-amber-7',
+  'Completed': 'bg-surface-green-7',
+  'Cancelled': 'bg-surface-gray-8',
+  'Overdue': 'bg-surface-red-7',
+}
+
 const getStatusDotClass = (status) => {
   switch (status) {
     case 'Completed':
@@ -453,9 +521,16 @@ const statusOptions = computed(() => {
     Overdue: 0,
   }
 
-  const baseTasks = selectedProjects.value && selectedProjects.value.length > 0
-    ? tasks.value.filter((t) => selectedProjects.value.includes(t.project))
-    : tasks.value
+  let baseTasks = tasks.value
+
+  // When "Assigned to Me" is checked, only count user's tasks in all status badges
+  if (showAssignedToMe.value) {
+    baseTasks = baseTasks.filter(isAssignedToCurrentUser)
+  }
+
+  if (selectedProjects.value && selectedProjects.value.length > 0) {
+    baseTasks = baseTasks.filter((t) => selectedProjects.value.includes(t.project))
+  }
 
   counts.All = baseTasks.length
 
@@ -481,6 +556,11 @@ const statusOptions = computed(() => {
 // Filtered tasks based on status tab, project filter, and sort
 const visibleTasks = computed(() => {
   let list = [...tasks.value]
+
+  // Assigned to Me filter — checks user assignment via table_gqbl, assignees, or assigned_to
+  if (showAssignedToMe.value) {
+    list = list.filter(isAssignedToCurrentUser)
+  }
 
   if (selectedProjects.value && selectedProjects.value.length > 0) {
     list = list.filter((t) => selectedProjects.value.includes(t.project))
@@ -622,36 +702,139 @@ const teamData = computed(() => {
 
 // --- 4. Timesheet List View State & Columns ---
 const selectedTimesheetKeys = ref([])
+const timesheetListData = ref([])
+const timesheetListLoading = ref(false)
+const selectedTimesheet = ref(null)
+const timesheetCalendarEvents = ref([])
+const timesheetCalendarLoading = ref(false)
+const selectedTsDayDate = ref('')
+const selectedTsDayEntries = ref([])
+const timesheetFormOpen = ref(false)
+const timesheetFormDate = ref('')
+const timesheetFormItems = ref([])
+const timesheetFormStatus = ref('Draft')
+const timesheetFormSaving = ref(false)
+
 const timesheetColumns = [
-  { key: 'id', label: 'ENTRY ID', width: '130px', minWidth: '110px', sortable: true, visible: true },
-  { key: 'date', label: 'DATE', width: '120px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'user', label: 'USER', width: '180px', minWidth: '150px', sortable: true, visible: true },
-  { key: 'task_title', label: 'TASK', width: '260px', minWidth: '200px', sortable: true, visible: true },
-  { key: 'project', label: 'PROJECT', width: '140px', minWidth: '120px', sortable: true, visible: true },
-  { key: 'activity_type', label: 'ACTIVITY', width: '140px', minWidth: '120px', sortable: true, visible: true },
-  { key: 'hours', label: 'HOURS', width: '100px', minWidth: '80px', align: 'right', sortable: true, visible: true },
+  { key: 'employee_name', label: 'USER', width: '200px', minWidth: '160px', sortable: true, visible: true },
+  { key: 'timesheet_date', label: 'DATE', width: '120px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'total_working_hours', label: 'HOURS', width: '100px', minWidth: '80px', align: 'right', sortable: true, visible: true },
   { key: 'status', label: 'STATUS', width: '110px', minWidth: '90px', sortable: true, visible: true },
 ]
 
-const timesheetData = computed(() => {
-  const entries = []
-  tasks.value.forEach((t, i) => {
-    if (t.logged_hours > 0 || i < 6) {
-      entries.push({
-        id: `TS-2026-${String(1001 + i).padStart(4, '0')}`,
-        task_id: t.id,
-        task_title: t.title,
-        project: t.project,
-        user: t.assigned_to || 'Talib Sheikh',
-        date: t.due_date || '2026-09-08',
-        activity_type: i % 3 === 0 ? 'Development' : i % 3 === 1 ? 'Code Review' : 'UI/UX Design',
-        hours: t.logged_hours || (4 + (i % 5)),
-        status: i % 4 === 0 ? 'Submitted' : 'Approved',
-      })
+async function loadTimesheetList() {
+  timesheetListLoading.value = true
+  try {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    timesheetListData.value = await fetchAllTimesheets(fromDate, toDate) || []
+  } catch (e) {
+    console.error('Failed to load timesheets', e)
+    timesheetListData.value = []
+  } finally {
+    timesheetListLoading.value = false
+  }
+}
+
+function selectTimesheet(ts) {
+  selectedTimesheet.value = ts
+  loadTimesheetCalendar(ts.user)
+}
+
+function backToTimesheetList() {
+  selectedTimesheet.value = null
+  timesheetCalendarEvents.value = []
+  selectedTsDayDate.value = ''
+  selectedTsDayEntries.value = []
+}
+
+async function loadTimesheetCalendar(user) {
+  if (!user) return
+  timesheetCalendarLoading.value = true
+  try {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    const data = await fetchMemberTimesheets(user, fromDate, toDate)
+    timesheetCalendarEvents.value = (data || []).map((ts) => ({
+      id: ts.name,
+      title: `${ts.total_hours}h logged`,
+      fromDate: ts.date,
+      toDate: ts.date,
+      fromTime: '00:00',
+      toTime: '23:59',
+      isFullDay: true,
+      color: ts.status === 'Submitted' ? 'green' : 'blue',
+      _ts: ts,
+      _hours: ts.total_hours || 0,
+    }))
+  } catch (e) {
+    console.error('Failed to load timesheet calendar', e)
+    timesheetCalendarEvents.value = []
+  } finally {
+    timesheetCalendarLoading.value = false
+  }
+}
+
+function handleTsCalendarClick(dateStr) {
+  selectedTsDayDate.value = dateStr
+  selectedTsDayEntries.value = timesheetCalendarEvents.value
+    .filter((ev) => ev.fromDate === dateStr)
+    .map((ev) => ev._ts)
+    .filter(Boolean)
+}
+
+function openTimesheetForm(date) {
+  timesheetFormDate.value = date || new Date().toISOString().slice(0, 10)
+  timesheetFormStatus.value = 'Draft'
+  timesheetFormItems.value = [{ activity_type: 'Task', project: '', task: '', from_time: '', to_time: '', description: '' }]
+  timesheetFormOpen.value = true
+}
+
+function addTsFormItem() {
+  timesheetFormItems.value.push({ activity_type: 'Task', project: '', task: '', from_time: '', to_time: '', description: '' })
+}
+
+function removeTsFormItem(idx) {
+  timesheetFormItems.value.splice(idx, 1)
+}
+
+async function submitTimesheet() {
+  timesheetFormSaving.value = true
+  try {
+    const items = timesheetFormItems.value.filter((item) => item.from_time && item.to_time)
+    await saveTimesheet(timesheetFormDate.value, items, timesheetFormStatus.value)
+    timesheetFormOpen.value = false
+    await loadTimesheetList()
+    if (selectedTimesheet.value) {
+      await loadTimesheetCalendar(selectedTimesheet.value.user)
     }
-  })
-  return entries
-})
+  } catch (e) {
+    console.error('Failed to save timesheet', e)
+  } finally {
+    timesheetFormSaving.value = false
+  }
+}
+
+async function deleteTimesheetConfirm(ts) {
+  if (!ts || !ts.name) return
+  try {
+    await deleteTimesheet(ts.name)
+    if (selectedTimesheet.value && selectedTimesheet.value.name === ts.name) {
+      backToTimesheetList()
+    }
+    await loadTimesheetList()
+  } catch (e) {
+    console.error('Failed to delete timesheet', e)
+  }
+}
 
 // Load bootstrap data
 async function loadData() {
@@ -661,8 +844,17 @@ async function loadData() {
     tasks.value = data.tasks || []
     projects.value = data.projects || []
     people.value = data.people || []
+    if (data.teams && data.teams.length > 0) {
+      teams.value = data.teams
+    }
+    if (data.team_members && data.team_members.length > 0) {
+      teamMembers.value = data.team_members
+    }
     statuses.value = data.statuses || statuses.value
     priorities.value = data.priorities || priorities.value
+    if (data.me) {
+      currentUserEmail.value = data.me.email || ''
+    }
   } catch (e) {
     console.error('Failed to load tasks', e)
   } finally {
@@ -709,32 +901,91 @@ async function onSaveTask(updatedTask) {
   if (idx !== -1) {
     tasks.value.splice(idx, 1, updatedTask)
   }
-  await saveTask(updatedTask)
+  try {
+    const res = await saveTask(updatedTask)
+    if (res && res.id) {
+      const freshIdx = tasks.value.findIndex((t) => t.id === updatedTask.id)
+      if (freshIdx !== -1) {
+        tasks.value.splice(freshIdx, 1, { ...tasks.value[freshIdx], ...res })
+      }
+    }
+    toast.success('Task saved successfully')
+    return res
+  } catch (err) {
+    const msg = getErrorMessage(err, 'Failed to save task')
+    toast.error(msg)
+    throw err
+  }
 }
 
 async function onCreateTask(formData) {
-  const now = new Date()
-  const newId = `TASK-${Math.floor(100000 + Math.random() * 900000)}`
+  const assigneeList = Array.isArray(formData.assignees) && formData.assignees.length > 0
+    ? formData.assignees.map((a) => (typeof a === 'object' ? (a.value || a.user_id || a.user || a.email) : a)).filter(Boolean)
+    : (formData.assigned_to ? [formData.assigned_to] : [])
   const newTask = {
-    id: newId,
     title: formData.title,
-    project: formData.project || (activeSpace.value !== 'All Tasks' ? activeSpace.value : 'General'),
+    project: formData.project || '',
+    team: formData.team || '',
     status: formData.status || 'Open',
     priority: formData.priority || 'Medium',
-    assigned_to: formData.assigned_to || '',
-    reporter: fullName.value,
-    due_date: formData.due_date || '',
     description: formData.description || '',
+    due_date: formData.due_date || '',
     estimated_hours: 8,
-    logged_hours: 0,
-    starred: false,
-    comments: [],
-    creation: now.toISOString(),
-    modified: now.toISOString(),
-    modified_pretty: 'Just now',
+    assignees: assigneeList,
   }
-  tasks.value.unshift(newTask)
-  await saveTask(newTask)
+
+  try {
+    const result = await saveTask(newTask)
+    if (result && result.id) {
+      const savedTask = {
+        id: result.id,
+        title: result.title || formData.title,
+        project: result.project || formData.project || '',
+        team: result.team || formData.team || '',
+        status: result.status || 'Open',
+        priority: result.priority || 'Medium',
+        task_type: result.task_type || 'Task',
+        assignees: result.assignees || assigneeList,
+        reporter: fullName.value,
+        due_date: result.due || formData.due_date || '',
+        description: result.description || formData.description || '',
+        estimated_hours: result.estimated_hours || 8,
+        logged_hours: 0,
+        starred: false,
+        comments: [],
+        creation: result.creation || new Date().toISOString(),
+        modified: result.modified || new Date().toISOString(),
+        modified_pretty: 'Just now',
+      }
+      tasks.value.unshift(savedTask)
+      toast.success('Task created successfully')
+      return savedTask
+    }
+  } catch (err) {
+    const msg = getErrorMessage(err, 'Failed to create task')
+    toast.error(msg)
+    throw err
+  }
+}
+
+async function onDeleteTask(taskId) {
+  if (!taskId) return
+  try {
+    await deleteTask(taskId)
+    const idx = tasks.value.findIndex((t) => t.id === taskId)
+    if (idx !== -1) {
+      tasks.value.splice(idx, 1)
+    }
+    if (activeTask.value && activeTask.value.id === taskId) {
+      activeTask.value = null
+      detailModalOpen.value = false
+    }
+    toast.success('Task deleted successfully')
+  } catch (err) {
+    const msg = getErrorMessage(err, 'Failed to delete task')
+    toast.error(msg)
+    throw err
+  }
 }
 
 function toggleStar(row) {
@@ -1044,6 +1295,7 @@ onMounted(() => {
   window.addEventListener('popstate', onPopState)
   loadData()
   loadTeams()
+  loadTimesheetList()
 })
 
 onUnmounted(() => {
@@ -1260,10 +1512,17 @@ onUnmounted(() => {
         <template v-if="activeSection === 'Task'">
           <!-- Sub-Header Tabs & Task Count (Locked sticky filter header) -->
           <div class="shrink-0 pb-2 mb-2 bg-white flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
-            <TabButtons
-              v-model="statusTab"
-              :options="statusOptions"
-            />
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5">
+                <Switch v-model="showAssignedToMe" />
+                <span class="text-xs font-medium text-gray-700 select-none cursor-pointer" @click="showAssignedToMe = !showAssignedToMe">Assigned to Me</span>
+              </div>
+              <div class="w-px h-4 bg-gray-300"></div>
+              <TabButtons
+                v-model="statusTab"
+                :options="statusOptions"
+              />
+            </div>
             <div class="flex items-center gap-3 text-xs font-medium text-ink-gray-6">
               <MultiSelect
                 v-model="selectedProjects"
@@ -1319,16 +1578,12 @@ onUnmounted(() => {
               </template>
 
               <template #cell-status="{ row }">
-                <span
-                  class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border select-none transition-colors"
-                  :class="getStatusBadgeClass(row.status)"
-                >
-                  <span
-                    class="size-1.5 rounded-full shrink-0"
-                    :class="getStatusDotClass(row.status)"
-                  />
+                <Badge :theme="statusThemeMap[row.status] || 'gray'" class="justify-self-start">
+                  <template #prefix>
+                    <span class="size-1 rounded-full" :class="statusDotClassMap[row.status] || 'bg-surface-gray-8'" />
+                  </template>
                   {{ row.status }}
-                </span>
+                </Badge>
               </template>
 
               <template #cell-priority="{ row }">
@@ -1343,14 +1598,26 @@ onUnmounted(() => {
               </template>
 
               <template #cell-assigned_to="{ row }">
-                <div v-if="row.assigned_to" class="flex items-center gap-2">
-                  <Avatar
-                    :image="getAssignee(row.assigned_to).image"
-                    :label="row.assigned_to"
-                    size="sm"
-                    shape="circle"
-                  />
-                  <span class="text-sm text-ink-gray-8 truncate">{{ row.assigned_to }}</span>
+                <div v-if="row.assignees && row.assignees.length" class="flex items-center">
+                  <div class="flex -space-x-1.5">
+                    <Tooltip
+                      v-for="a in row.assignees.slice(0, 3)"
+                      :key="a.user_id"
+                      :text="a.name"
+                    >
+                      <Avatar
+                        :image="a.image"
+                        :label="a.name"
+                        size="sm"
+                      />
+                    </Tooltip>
+                    <div
+                      v-if="row.assignees.length > 3"
+                      class="relative flex items-center justify-center size-7 rounded-full bg-gray-100 text-[10px] font-bold text-gray-600"
+                    >
+                      +{{ row.assignees.length - 3 }}
+                    </div>
+                  </div>
                 </div>
                 <span v-else class="text-ink-gray-4 italic text-sm">Unassigned</span>
               </template>
@@ -1383,64 +1650,323 @@ onUnmounted(() => {
         <template v-else-if="activeSection === 'Timesheet'">
           <div class="shrink-0 mb-3 flex items-center justify-between">
             <div>
-              <h2 class="text-lg font-bold text-ink-gray-9">Timesheet Logs</h2>
-              <p class="text-xs text-ink-gray-5">All time entries logged across active projects</p>
+              <h2 class="text-lg font-bold text-ink-gray-9">Timesheet</h2>
+              <p class="text-xs text-ink-gray-5">
+                Log and track your daily work hours
+                <span v-if="selectedTimesheet" class="text-blue-600 font-medium">
+                  — {{ selectedTimesheet.employee_name || selectedTimesheet.user }}
+                </span>
+              </p>
             </div>
-            <div class="text-xs font-medium text-ink-gray-6">
-              Total Logged: <strong class="text-ink-gray-9">{{ timesheetData.reduce((acc, t) => acc + (Number(t.hours) || 0), 0) }} hrs</strong>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-ink-gray-5 font-medium">{{ timesheetListData.length }} entries</span>
+              <Button
+                v-if="!selectedTimesheet"
+                variant="solid"
+                theme="gray"
+                label="Log Hours"
+                class="bg-gray-900 hover:bg-black text-white"
+                @click="openTimesheetForm()"
+              >
+                <template #prefix><Plus class="size-3.5" /></template>
+              </Button>
             </div>
           </div>
 
           <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
-            <CommonListView
-              v-model:selectedRows="selectedTimesheetKeys"
-              :columns="timesheetColumns"
-              :rows="timesheetData"
-              :loading="loading"
+            <!-- Empty state -->
+            <div
+              v-if="!selectedTimesheet && !timesheetListLoading && timesheetListData.length === 0"
+              class="flex-1 flex flex-col items-center justify-center text-center py-12"
             >
-              <template #cell-id="{ row }">
-                <span class="font-mono font-bold text-ink-gray-7">{{ row.id }}</span>
-              </template>
+              <div class="size-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                <Clock class="size-7 text-gray-400" />
+              </div>
+              <p class="text-sm font-semibold text-gray-700 mb-1">No timesheets yet</p>
+              <p class="text-xs text-gray-400 mb-4 max-w-xs">Start logging your work hours for this month.</p>
+              <Button variant="solid" theme="gray" label="Log Hours" class="bg-gray-900 hover:bg-black text-white" @click="openTimesheetForm()">
+                <template #prefix><Plus class="size-3.5" /></template>
+              </Button>
+            </div>
 
-              <template #cell-user="{ row }">
-                <div class="flex items-center gap-2">
-                  <Avatar
-                    :image="getAssignee(row.user).image"
-                    :label="row.user"
+            <!-- Timesheet list -->
+            <div v-else-if="!selectedTimesheet" class="flex-1 min-h-0 overflow-auto">
+              <CommonListView
+                v-model:selectedRows="selectedTimesheetKeys"
+                :columns="timesheetColumns"
+                :rows="timesheetListData"
+                :loading="timesheetListLoading"
+                @row-click="(row) => selectTimesheet(row)"
+              >
+                <template #cell-employee_name="{ row }">
+                  <span class="font-medium text-ink-gray-9">{{ row.employee_name || row.user }}</span>
+                </template>
+
+                <template #cell-timesheet_date="{ row }">
+                  <span class="font-mono text-xs text-ink-gray-7">{{ row.timesheet_date }}</span>
+                </template>
+
+                <template #cell-total_working_hours="{ row }">
+                  <span class="text-xs font-bold text-ink-gray-8">{{ row.total_working_hours }}h</span>
+                </template>
+
+                <template #cell-status="{ row }">
+                  <Badge
+                    :theme="row.status === 'Submitted' ? 'green' : 'blue'"
+                    variant="subtle"
                     size="sm"
-                    shape="circle"
+                  >
+                    {{ row.status }}
+                  </Badge>
+                </template>
+              </CommonListView>
+            </div>
+
+            <!-- Timesheet detail: list + calendar + activity log -->
+            <div v-else class="flex-1 min-h-0 flex overflow-hidden">
+              <!-- Profile card (260px) -->
+              <div class="w-[260px] shrink-0 overflow-y-auto border-r border-gray-200 bg-white">
+                <div class="py-5 px-5">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 mb-4 cursor-pointer transition"
+                    @click="backToTimesheetList"
+                  >
+                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    Back to list
+                  </button>
+
+                  <div class="flex flex-col items-center text-center mb-5">
+                    <div class="size-20 rounded-full bg-gray-100 overflow-hidden shadow-md mb-3">
+                      <Avatar
+                        :label="selectedTimesheet.employee_name || selectedTimesheet.user"
+                        size="3xl"
+                        shape="circle"
+                        class="size-20"
+                      />
+                    </div>
+                    <h3 class="text-base font-bold text-gray-900 leading-tight">{{ selectedTimesheet.employee_name || selectedTimesheet.user }}</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ selectedTimesheet.user }}</p>
+                    <Badge
+                      :theme="selectedTimesheet.status === 'Submitted' ? 'green' : 'blue'"
+                      variant="subtle"
+                      size="sm"
+                      class="mt-2"
+                    >
+                      {{ selectedTimesheet.status }}
+                    </Badge>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2.5 mb-5">
+                    <div class="text-center p-2.5 bg-gray-50 rounded-lg">
+                      <p class="text-lg font-bold text-gray-900">{{ selectedTimesheet.total_working_hours || 0 }}h</p>
+                      <p class="text-[10px] text-gray-500">Total</p>
+                    </div>
+                    <div class="text-center p-2.5 bg-gray-50 rounded-lg">
+                      <p class="text-lg font-bold text-gray-900">{{ selectedTimesheet.timesheet_date }}</p>
+                      <p class="text-[10px] text-gray-500">Date</p>
+                    </div>
+                  </div>
+
+                  <div class="flex gap-2">
+                    <button
+                      type="button"
+                      class="flex-1 px-3 py-2 text-xs font-medium bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition cursor-pointer border border-blue-200"
+                      @click="openTimesheetForm(selectedTimesheet.timesheet_date)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 px-3 py-2 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition cursor-pointer border border-red-200"
+                      @click="deleteTimesheetConfirm(selectedTimesheet)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Calendar + Activity log (50/50) -->
+              <div class="flex-1 min-w-0 flex overflow-hidden">
+                <!-- Calendar (50%) -->
+                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-white border-r border-gray-200">
+                  <TimesheetCalendar
+                    :events="timesheetCalendarEvents"
+                    :loading="timesheetCalendarLoading"
+                    @cellClick="handleTsCalendarClick"
+                    class="flex-1 min-h-0"
                   />
-                  <span class="font-medium text-ink-gray-8 truncate">{{ row.user }}</span>
                 </div>
-              </template>
 
-              <template #cell-task_title="{ row }">
-                <div class="truncate max-w-[260px] font-medium text-ink-gray-9" :title="row.task_title">
-                  {{ row.task_title }}
+                <!-- Activity list (50%) -->
+                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-white">
+                  <div class="shrink-0 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
+                    <div>
+                      <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wide">Activity Log</h4>
+                      <p v-if="selectedTsDayDate" class="text-[11px] text-gray-500 mt-0.5">{{ selectedTsDayDate }}</p>
+                    </div>
+                    <button
+                      v-if="selectedTsDayDate"
+                      type="button"
+                      class="text-[10px] font-medium text-blue-600 hover:text-blue-700 cursor-pointer transition"
+                      @click="openTimesheetForm(selectedTsDayDate)"
+                    >
+                      + Add Entry
+                    </button>
+                  </div>
+
+                  <!-- Placeholder -->
+                  <div v-if="!selectedTsDayDate" class="flex-1 flex flex-col items-center justify-center text-center px-4">
+                    <div class="size-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
+                      <Clock class="size-5 text-gray-400" />
+                    </div>
+                    <p class="text-xs font-semibold text-gray-600 mb-1">Select a timesheet day</p>
+                    <p class="text-[10px] text-gray-400">Click on any day in the calendar to view work entries</p>
+                  </div>
+
+                  <!-- No entries -->
+                  <div v-else-if="selectedTsDayEntries.length === 0" class="flex flex-col items-center justify-center text-center px-4 py-10">
+                    <div class="size-10 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+                      <Clock class="size-5 text-red-400" />
+                    </div>
+                    <p class="text-xs font-semibold text-gray-600 mb-1">No timesheet logged</p>
+                    <p class="text-[10px] text-gray-400">No work entries found for this day</p>
+                  </div>
+
+                  <!-- Entries -->
+                  <div v-else class="flex-1 overflow-y-auto">
+                    <div v-for="(ts, tIdx) in selectedTsDayEntries" :key="ts.name || tIdx" class="px-4 py-3 border-b border-gray-50 last:border-b-0">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                          <span class="text-[11px] font-bold text-gray-800">{{ ts.name }}</span>
+                          <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">{{ ts.status }}</Badge>
+                        </div>
+                        <span class="text-[11px] font-bold text-green-600">{{ ts.total_hours }}h</span>
+                      </div>
+                      <div class="space-y-1.5">
+                        <div
+                          v-for="(item, iIdx) in ts.items"
+                          :key="iIdx"
+                          class="flex items-center gap-2 text-[10px] bg-gray-50 rounded-lg px-2.5 py-2"
+                        >
+                          <span
+                            class="inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold border shrink-0"
+                            :class="{
+                              'bg-blue-50 text-blue-700 border-blue-200': item.activity_type === 'Task',
+                              'bg-amber-50 text-amber-700 border-amber-200': item.activity_type === 'Meeting',
+                              'bg-purple-50 text-purple-700 border-purple-200': item.activity_type === 'Research',
+                            }"
+                          >
+                            {{ item.activity_type }}
+                          </span>
+                          <div class="min-w-0 flex-1">
+                            <span v-if="item.project" class="text-gray-700 font-medium truncate block">{{ item.project }}</span>
+                            <span v-if="item.task" class="text-gray-500 truncate block">/ {{ item.task }}</span>
+                          </div>
+                          <span class="text-gray-700 font-bold shrink-0">{{ item.hrs }}h</span>
+                          <span class="text-gray-400 shrink-0">
+                            {{ item.from_time?.slice(11, 16) }} – {{ item.to_time?.slice(11, 16) }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </template>
-
-              <template #cell-project="{ row }">
-                <span class="text-xs font-medium text-gray-700 truncate block max-w-[140px]" :title="row.project">
-                  {{ row.project }}
-                </span>
-              </template>
-
-              <template #cell-activity_type="{ row }">
-                <span class="text-xs text-ink-gray-7">{{ row.activity_type }}</span>
-              </template>
-
-              <template #cell-status="{ row }">
-                <Badge
-                  :theme="row.status === 'Approved' ? 'green' : 'amber'"
-                  variant="subtle"
-                  size="sm"
-                >
-                  {{ row.status }}
-                </Badge>
-              </template>
-            </CommonListView>
+              </div>
+            </div>
           </div>
+
+          <!-- Timesheet Form Modal -->
+          <teleport to="body">
+            <transition
+              enter-active-class="transition-opacity duration-150"
+              leave-active-class="transition-opacity duration-100"
+              enter-from-class="opacity-0"
+              leave-to-class="opacity-0"
+            >
+              <div v-if="timesheetFormOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/30" @click="timesheetFormOpen = false" />
+                <div class="relative bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                  <!-- Header -->
+                  <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 shrink-0">
+                    <h3 class="text-sm font-bold text-gray-900">Log Timesheet</h3>
+                    <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer" @click="timesheetFormOpen = false">
+                      <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+
+                  <!-- Body -->
+                  <div class="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+                    <!-- Date + Status -->
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="text-xs font-semibold text-gray-700 mb-1 block">Date</label>
+                        <input type="date" v-model="timesheetFormDate" class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" />
+                      </div>
+                      <div>
+                        <label class="text-xs font-semibold text-gray-700 mb-1 block">Status</label>
+                        <select v-model="timesheetFormStatus" class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                          <option value="Draft">Draft</option>
+                          <option value="Submitted">Submitted</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <!-- Items -->
+                    <div>
+                      <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-semibold text-gray-700">Time Entries</label>
+                        <button type="button" class="text-[10px] font-medium text-blue-600 hover:text-blue-700 cursor-pointer transition" @click="addTsFormItem">+ Add Row</button>
+                      </div>
+                      <div v-for="(item, idx) in timesheetFormItems" :key="idx" class="bg-gray-50 rounded-lg p-3 mb-2 border border-gray-100">
+                        <div class="grid grid-cols-3 gap-2 mb-2">
+                          <div>
+                            <label class="text-[10px] text-gray-500 mb-0.5 block">Activity</label>
+                            <select v-model="item.activity_type" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200">
+                              <option value="Task">Task</option>
+                              <option value="Meeting">Meeting</option>
+                              <option value="Research">Research</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label class="text-[10px] text-gray-500 mb-0.5 block">Project</label>
+                            <input v-model="item.project" type="text" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" placeholder="Project name" />
+                          </div>
+                          <div>
+                            <label class="text-[10px] text-gray-500 mb-0.5 block">Task ID</label>
+                            <input v-model="item.task" type="text" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" placeholder="TFT-XXXXX" />
+                          </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                          <div>
+                            <label class="text-[10px] text-gray-500 mb-0.5 block">From</label>
+                            <input v-model="item.from_time" type="datetime-local" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" />
+                          </div>
+                          <div>
+                            <label class="text-[10px] text-gray-500 mb-0.5 block">To</label>
+                            <input v-model="item.to_time" type="datetime-local" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" />
+                          </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <input v-model="item.description" type="text" class="flex-1 text-[10px] border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-200 mr-2" placeholder="Description (optional)" />
+                          <button v-if="timesheetFormItems.length > 1" type="button" class="text-red-400 hover:text-red-600 cursor-pointer transition text-[10px]" @click="removeTsFormItem(idx)">Remove</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Footer -->
+                  <div class="shrink-0 px-5 py-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                    <button type="button" class="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition cursor-pointer" @click="timesheetFormOpen = false">Cancel</button>
+                    <button type="button" class="px-4 py-2 text-xs font-medium text-white bg-gray-900 rounded-lg hover:bg-black transition cursor-pointer disabled:opacity-50" :disabled="timesheetFormSaving" @click="submitTimesheet">
+                      {{ timesheetFormSaving ? 'Saving...' : 'Save Timesheet' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </transition>
+          </teleport>
         </template>
 
         <!-- 3. PROJECT VIEW (List view only as requested) -->
@@ -1819,6 +2345,17 @@ onUnmounted(() => {
       </div>
     </DesktopShell>
 
+    <!-- Toast -->
+    <Transition name="toast">
+      <div
+        v-if="toastVisible"
+        class="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg shadow-lg"
+      >
+        <Check class="size-4" />
+        {{ toastMessage }}
+      </div>
+    </Transition>
+
     <!-- Settings Dialog (Exact snippet structure) -->
     <SettingsDialog v-model:open="showSettings" v-model:tab="settingsTab" size="5xl">
       <SettingsSidebar>
@@ -2064,10 +2601,15 @@ onUnmounted(() => {
       v-model="detailModalOpen"
       :task="activeTask"
       :projects="projects"
+      :teams="teams"
       :people="people"
+      :team-members="teamMembers"
       :statuses="statuses"
       :priorities="priorities"
+      :on-save="onSaveTask"
+      :on-delete="onDeleteTask"
       @save="onSaveTask"
+      @delete="onDeleteTask"
       @close="activeTask = null"
     />
 
@@ -2075,9 +2617,12 @@ onUnmounted(() => {
     <TaskCreateModal
       v-model="createModalOpen"
       :projects="projects"
+      :teams="teams"
       :people="people"
+      :team-members="teamMembers"
       :statuses="statuses"
       :priorities="priorities"
+      :on-create="onCreateTask"
       @create="onCreateTask"
     />
 
@@ -2175,7 +2720,7 @@ onUnmounted(() => {
               @click="empDropdownOpen = true; empSearch = ''"
             >
               <div class="flex items-center gap-2 min-w-0">
-                <Avatar :label="selectedEmployee?.employee_name || memberForm.employee" size="sm" shape="circle" class="shrink-0" />
+                <Avatar :label="selectedEmployee?.employee_name || memberForm.employee" size="sm" class="shrink-0" />
                 <span class="truncate">{{ selectedEmployee?.employee_name || memberForm.employee }}</span>
               </div>
               <span class="text-gray-400 text-xs shrink-0 ml-2">&#10005;</span>
@@ -2228,7 +2773,7 @@ onUnmounted(() => {
                 :disabled="teamMemberEmployeeIds.has(emp.name)"
                 @click="!teamMemberEmployeeIds.has(emp.name) && selectEmployee(emp)"
               >
-                <Avatar :label="emp.employee_name || emp.name" size="sm" shape="circle" class="shrink-0" />
+                <Avatar :label="emp.employee_name || emp.name" size="sm" class="shrink-0" />
                 <div class="min-w-0 flex-1">
                   <p class="font-medium truncate">{{ emp.employee_name || emp.name }}</p>
                   <p v-if="emp.designation || emp.department" class="text-xs text-gray-400 truncate">
@@ -2317,3 +2862,18 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+</style>

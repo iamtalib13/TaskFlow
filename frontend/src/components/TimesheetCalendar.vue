@@ -78,7 +78,7 @@ const calendarDays = computed(() => {
   for (let d = 1; d <= daysInMonth; d++) {
     cells.push({ day: d, key: dateKey(year, month, d), isCurrentMonth: true })
   }
-  const remaining = 42 - cells.length
+  const remaining = 35 - cells.length
   for (let d = 1; d <= remaining; d++) {
     const m = month === 11 ? 0 : month + 1
     const y = month === 11 ? year + 1 : year
@@ -133,6 +133,25 @@ function getDayStatus(cell, dayOfWeek) {
   if (cell.isCurrentMonth) return 'missed'
   return 'other'
 }
+
+function getCellBg(cell, dayOfWeek) {
+  const status = getDayStatus(cell, dayOfWeek)
+  if (status === 'logged') return 'bg-green-50'
+  if (status === 'missed') return 'bg-red-50'
+  if (status === 'holiday') return 'bg-gray-100'
+  if (!cell.isCurrentMonth) return 'bg-gray-50/60'
+  return ''
+}
+
+function getDayNumberClass(cell, dayOfWeek) {
+  const status = getDayStatus(cell, dayOfWeek)
+  if (isToday(cell.key)) return 'bg-blue-600 text-white'
+  if (status === 'logged') return 'text-green-700 font-bold'
+  if (status === 'missed') return 'text-red-500'
+  if (status === 'holiday') return 'text-gray-400'
+  if (!cell.isCurrentMonth) return 'text-gray-300'
+  return 'text-gray-900'
+}
 </script>
 
 <template>
@@ -185,28 +204,23 @@ function getDayStatus(cell, dayOfWeek) {
             <div
               v-for="(cell, dIdx) in week"
               :key="cell.key"
-              class="relative min-h-[52px] border-r border-gray-200 last:border-r-0 px-1 py-1 transition"
-              :class="{
-                'bg-gray-50/80': !cell.isCurrentMonth,
-                'bg-gray-100/60 cursor-not-allowed': cell.isCurrentMonth && isSunday(dIdx),
-                'cursor-pointer hover:bg-gray-50/50': !(cell.isCurrentMonth && isSunday(dIdx)),
-              }"
+              class="relative min-h-[52px] border-r border-gray-200 last:border-r-0 px-1 py-1 transition-colors rounded-sm m-px"
+              :class="[
+                getCellBg(cell, dIdx),
+                cell.isCurrentMonth && isSunday(dIdx) ? 'cursor-not-allowed' : 'cursor-pointer',
+                !(cell.isCurrentMonth && isSunday(dIdx)) ? 'hover:opacity-80' : '',
+              ]"
               @click="!(cell.isCurrentMonth && isSunday(dIdx)) && emit('cellClick', cell.key)"
             >
               <!-- Day number -->
               <div class="flex items-center justify-between mb-0.5">
                 <span
                   class="text-[10px] font-medium inline-flex items-center justify-center size-5 rounded-full"
-                  :class="{
-                    'bg-blue-600 text-white': isToday(cell.key),
-                    'text-gray-900': cell.isCurrentMonth && !isToday(cell.key) && !isSunday(dIdx),
-                    'text-gray-300': !cell.isCurrentMonth,
-                    'text-gray-400': cell.isCurrentMonth && isSunday(dIdx) && !isToday(cell.key),
-                  }"
+                  :class="getDayNumberClass(cell, dIdx)"
                 >
                   {{ cell.day }}
                 </span>
-                <!-- Status dot (hidden on holidays) -->
+                <!-- Status dot (hidden on holidays and other month) -->
                 <span
                   v-if="cell.isCurrentMonth && !isSunday(dIdx)"
                   class="size-1.5 rounded-full shrink-0"

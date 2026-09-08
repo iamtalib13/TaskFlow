@@ -32,6 +32,28 @@
         </button>
       </div>
 
+      <!-- Error Banner -->
+      <div
+        v-if="errorMessage"
+        class="px-6 py-2.5 bg-rose-50 border-b border-rose-200 text-rose-700 text-xs flex items-center justify-between shrink-0"
+      >
+        <span class="font-medium flex items-center gap-1.5">
+          <svg class="size-4 shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke-width="2"/>
+            <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"/>
+            <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"/>
+          </svg>
+          {{ errorMessage }}
+        </span>
+        <button
+          type="button"
+          class="text-rose-500 hover:text-rose-700 font-bold ml-2 cursor-pointer text-sm"
+          @click="errorMessage = ''"
+        >
+          &times;
+        </button>
+      </div>
+
       <!-- Modal Body -->
       <form class="p-6 space-y-4 text-xs overflow-y-auto flex-1" @submit.prevent="submit">
         <div>
@@ -47,13 +69,14 @@
           />
         </div>
 
-        <!-- 4-Column Grid for Metadata -->
+        <!-- Row 1: Project & Team & Status & Priority -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <label class="block font-medium text-gray-600 mb-1">Project</label>
             <select
               v-model="form.project"
               class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              @change="onProjectChange"
             >
               <option value="">Select Project</option>
               <option v-for="p in projects" :key="p.name" :value="p.name">
@@ -63,14 +86,20 @@
           </div>
 
           <div>
-            <label class="block font-medium text-gray-600 mb-1">Assigned To</label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block font-medium text-gray-600">Team</label>
+              <span v-if="effectiveTeam" class="text-[10px] font-semibold text-[#417c7d] bg-[#417c7d]/10 px-1.5 py-0.5 rounded">
+                {{ effectiveTeam }}
+              </span>
+            </div>
             <select
-              v-model="form.assigned_to"
+              v-model="form.team"
               class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              @change="onTeamChange"
             >
-              <option value="">Unassigned</option>
-              <option v-for="u in people" :key="u.email" :value="u.name">
-                {{ u.name }}
+              <option value="">Select Team</option>
+              <option v-for="t in teams" :key="t.name || t" :value="t.name || t">
+                {{ t.team_name || t.name || t }}
               </option>
             </select>
           </div>
@@ -96,8 +125,27 @@
           </div>
         </div>
 
-        <!-- Second Row: Due Date & Estimated Hours -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
+        <!-- Row 2: Assigned To (MultiSelect) & Due Date -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div class="md:col-span-2">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block font-medium text-gray-600">Assigned To (Team Members)</label>
+              <span v-if="assigneeOptions.length > 0" class="text-[10px] text-gray-400">
+                {{ assigneeOptions.length }} team members
+              </span>
+            </div>
+            <MultiSelect
+              v-model="form.assignees"
+              :options="assigneeOptions"
+              :placeholder="effectiveTeam ? `Select ${effectiveTeam} member...` : 'Select Team Members...'"
+              size="sm"
+              class="w-full"
+            />
+            <p v-if="effectiveTeam && assigneeOptions.length === 0" class="text-[10px] text-amber-600 mt-1">
+              No team members found in {{ effectiveTeam }}.
+            </p>
+          </div>
+
           <div>
             <label class="block font-medium text-gray-600 mb-1">Due Date</label>
             <div class="relative flex items-center">
@@ -135,7 +183,8 @@
         <div class="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
           <button
             type="button"
-            class="px-4 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+            :disabled="creating"
+            class="px-4 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition disabled:opacity-50 cursor-pointer"
             @click="close"
           >
             Cancel
@@ -143,10 +192,10 @@
           <button
             type="submit"
             :disabled="!form.title.trim() || creating"
-            class="px-5 py-2 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] text-white text-xs font-semibold rounded-lg shadow-xs disabled:opacity-40 transition flex items-center gap-2"
+            class="px-5 py-2 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] text-white text-xs font-semibold rounded-lg shadow-xs disabled:opacity-40 transition flex items-center gap-2 cursor-pointer"
           >
             <span v-if="creating" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            <span>Create Task</span>
+            <span>{{ creating ? 'Creating...' : 'Create Task' }}</span>
           </button>
         </div>
       </form>
@@ -155,12 +204,15 @@
 </template>
 
 <script>
+import { MultiSelect, toast } from 'frappe-ui'
+import { saveTask, getErrorMessage, fetchTeamMembers } from '../data/api'
 import TaskRichEditor from './TaskRichEditor.vue'
 import { Calendar } from 'lucide-vue-next'
 
 export default {
   name: 'TaskCreateModal',
   components: {
+    MultiSelect,
     TaskRichEditor,
     Calendar,
   },
@@ -173,7 +225,15 @@ export default {
       type: Array,
       default: () => [],
     },
+    teams: {
+      type: Array,
+      default: () => [],
+    },
     people: {
+      type: Array,
+      default: () => [],
+    },
+    teamMembers: {
       type: Array,
       default: () => [],
     },
@@ -185,14 +245,22 @@ export default {
       type: Array,
       default: () => ['Critical', 'High', 'Medium', 'Low'],
     },
+    onCreate: {
+      type: Function,
+      default: null,
+    },
   },
   emits: ['update:modelValue', 'create', 'close'],
   data() {
     return {
       creating: false,
+      errorMessage: '',
+      localTeamMembers: [],
       form: {
         title: '',
         project: '',
+        team: '',
+        assignees: [],
         assigned_to: '',
         status: 'Open',
         priority: 'Medium',
@@ -204,19 +272,71 @@ export default {
   watch: {
     modelValue(val) {
       if (val) {
+        this.errorMessage = ''
+        const defaultProject = this.projects[0]?.name || ''
+        const defaultTeam = this.projects[0]?.team || this.teams[0]?.name || ''
         this.form = {
           title: '',
-          project: this.projects[0]?.name || '',
+          project: defaultProject,
+          team: defaultTeam,
+          assignees: [],
           assigned_to: '',
           status: 'Open',
           priority: 'Medium',
           due_date: '',
           description: '',
         }
+        if (defaultTeam) {
+          this.loadTeamMembersForTeam(defaultTeam)
+        }
       }
     },
   },
   computed: {
+    effectiveTeam() {
+      if (this.form.team) return this.form.team
+      const selected = (this.projects || []).find((p) => p.name === this.form.project)
+      if (selected && selected.team) return selected.team
+      return ''
+    },
+    allAvailableTeamMembers() {
+      const combined = [...(this.teamMembers || []), ...(this.localTeamMembers || [])]
+      const seen = new Set()
+      const list = []
+      for (const m of combined) {
+        const key = `${m.team || ''}_${m.user || ''}_${m.employee || ''}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          list.push(m)
+        }
+      }
+      return list
+    },
+    assigneeOptions() {
+      const team = this.effectiveTeam
+      let members = this.allAvailableTeamMembers
+      if (team) {
+        members = members.filter(
+          (m) => m.team === team && (m.is_active === undefined || m.is_active === 1 || m.is_active === true)
+        )
+      }
+
+      if (members.length > 0) {
+        return members.map((m) => ({
+          value: m.user || m.employee,
+          label: m.employee_name || m.user || m.employee,
+        }))
+      }
+
+      if (!team && this.allAvailableTeamMembers.length > 0) {
+        return this.allAvailableTeamMembers.map((m) => ({
+          value: m.user || m.employee,
+          label: m.employee_name ? `${m.employee_name} (${m.team})` : (m.user || m.employee),
+        }))
+      }
+
+      return []
+    },
     displayDueDate: {
       get() {
         if (!this.form.due_date) return ''
@@ -245,6 +365,30 @@ export default {
     },
   },
   methods: {
+    onProjectChange() {
+      const selected = this.projects.find((p) => p.name === this.form.project)
+      if (selected && selected.team) {
+        this.form.team = selected.team
+      }
+      this.loadTeamMembersForTeam(this.effectiveTeam)
+    },
+    onTeamChange() {
+      this.loadTeamMembersForTeam(this.effectiveTeam)
+    },
+    async loadTeamMembersForTeam(team) {
+      if (!team) return
+      const hasMembers = this.allAvailableTeamMembers.some((m) => m.team === team)
+      if (!hasMembers) {
+        try {
+          const members = await fetchTeamMembers(team)
+          if (Array.isArray(members) && members.length > 0) {
+            this.localTeamMembers.push(...members)
+          }
+        } catch (err) {
+          console.warn('Failed to load team members for team:', team, err)
+        }
+      }
+    },
     onNativeDateChange(e) {
       this.form.due_date = e.target.value
     },
@@ -252,14 +396,37 @@ export default {
       this.$emit('update:modelValue', false)
       this.$emit('close')
     },
-    submit() {
-      if (!this.form.title.trim()) return
+    async submit() {
+      if (!this.form.title.trim()) {
+        this.errorMessage = 'Task Title is required'
+        toast.error('Task Title is required')
+        return
+      }
       this.creating = true
-      this.$emit('create', { ...this.form })
-      setTimeout(() => {
+      this.errorMessage = ''
+      const assigneeIds = (this.form.assignees || []).map((a) => (typeof a === 'object' ? (a.value || a.user_id || a.user || a.email) : a)).filter(Boolean)
+      const payload = {
+        ...this.form,
+        team: this.effectiveTeam || this.form.team || undefined,
+        assignees: assigneeIds,
+        assigned_to: assigneeIds[0] || '',
+      }
+      try {
+        if (this.onCreate) {
+          await this.onCreate(payload)
+        } else {
+          const res = await saveTask(payload)
+          this.$emit('create', res || payload)
+          toast.success('Task created successfully')
+        }
         this.creating = false
         this.close()
-      }, 200)
+      } catch (err) {
+        this.creating = false
+        const msg = getErrorMessage(err, 'Failed to create task')
+        this.errorMessage = msg
+        toast.error(msg)
+      }
     },
   },
 }
