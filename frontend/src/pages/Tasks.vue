@@ -820,7 +820,7 @@ onMounted(() => {
                     />
                   </button>
                   <span
-                    class="font-mono font-bold text-blue-600 hover:underline cursor-pointer"
+                    class="font-mono font-semibold text-ink-gray-8 hover:text-ink-gray-9 hover:underline cursor-pointer"
                     @click.stop="openDetail(row)"
                   >
                     {{ row.id }}
