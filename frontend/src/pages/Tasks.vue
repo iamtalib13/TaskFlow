@@ -29,11 +29,6 @@ import {
   TextInput,
   Tooltip,
 } from 'frappe-ui'
-import {
-  List,
-  ListCell,
-  ListRow,
-} from 'frappe-ui/list'
 
 import CommonListView from '@/components/CommonListView.vue'
 import TaskDetailModal from '@/components/TaskDetailModal.vue'
@@ -71,9 +66,8 @@ const userMenu = [
   { label: 'Log out', icon: 'lucide-log-out' },
 ]
 
-// View Switching: 'feed' or 'table'
-const currentView = ref('table')
-const feedTab = ref('All')
+// Active status tab filter
+const statusTab = ref('All')
 
 // Modals
 const detailModalOpen = ref(false)
@@ -299,12 +293,12 @@ const statusOptions = computed(() => {
   ]
 })
 
-// Filtered tasks based on feed tab and sort
+// Filtered tasks based on status tab and sort
 const visibleTasks = computed(() => {
   let list = [...tasks.value]
 
-  if (feedTab.value && feedTab.value !== 'All') {
-    list = list.filter((t) => t.status === feedTab.value)
+  if (statusTab.value && statusTab.value !== 'All') {
+    list = list.filter((t) => t.status === statusTab.value)
   }
 
   if (sortKey.value) {
@@ -615,33 +609,6 @@ onMounted(() => {
         </div>
 
         <div class="flex items-center gap-2">
-          <!-- View Switcher Toggle (Only in Task view) -->
-          <div
-            v-if="activeSection === 'Task'"
-            class="inline-flex rounded-lg border border-outline-gray-2 bg-surface-base p-0.5 text-xs font-medium"
-          >
-            <button
-              type="button"
-              :class="[
-                'px-2.5 py-1 rounded-md transition',
-                currentView === 'feed' ? 'bg-black text-white' : 'text-ink-gray-6 hover:text-ink-gray-9',
-              ]"
-              @click="currentView = 'feed'"
-            >
-              Feed View
-            </button>
-            <button
-              type="button"
-              :class="[
-                'px-2.5 py-1 rounded-md transition',
-                currentView === 'table' ? 'bg-black text-white' : 'text-ink-gray-6 hover:text-ink-gray-9',
-              ]"
-              @click="currentView = 'table'"
-            >
-              Table View
-            </button>
-          </div>
-
           <!-- Add Task Button (in Task view) -->
           <Button
             v-if="activeSection === 'Task'"
@@ -667,7 +634,7 @@ onMounted(() => {
           <!-- Sub-Header Tabs & Task Count (Sticky with backdrop-blur & dynamic counts) -->
           <div class="sticky top-0 z-20 -mt-3 pt-3 pb-2 mb-2 bg-white/95 backdrop-blur-md flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
             <TabButtons
-              v-model="feedTab"
+              v-model="statusTab"
               :options="statusOptions"
             />
             <div class="flex items-center gap-3 text-xs font-medium text-ink-gray-6">
@@ -675,101 +642,8 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- FEED VIEW -->
-          <div v-if="currentView === 'feed'">
-            <List
-              :columns="['auto', 'minmax(0, 1fr)', 'auto']"
-              class="-mx-3 sm:list-gap-2"
-            >
-              <ListRow
-                v-for="task in visibleTasks"
-                :key="task.id"
-                class="h-16 px-4 cursor-pointer hover:bg-surface-gray-1 transition-colors rounded-lg items-center"
-                @click="openDetail(task)"
-              >
-                <!-- Cell 1: Assignee Avatar -->
-                <ListCell class="shrink-0">
-                  <Avatar
-                    :image="getAssignee(task.assigned_to).image"
-                    :label="task.assigned_to || 'Task'"
-                    size="2xl"
-                    shape="circle"
-                    :title="task.assigned_to ? 'Assigned to ' + task.assigned_to : 'Unassigned'"
-                  />
-                </ListCell>
-
-                <!-- Cell 2: Title & Project/Assignee metadata (No description) -->
-                <ListCell class="min-w-0 flex-1 px-3">
-                  <div class="flex flex-col justify-center min-w-0">
-                    <div class="flex items-center gap-2 truncate leading-snug text-ink-gray-9">
-                      <span class="text-base-semibold truncate">
-                        {{ task.title }}
-                      </span>
-                      <span
-                        v-if="task.badge"
-                        class="shrink-0 px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md"
-                      >
-                        {{ task.badge }}
-                      </span>
-                    </div>
-                    <div class="mt-1 flex items-center gap-2 text-xs text-ink-gray-5 truncate">
-                      <span class="font-mono font-medium text-ink-gray-6">{{ task.id }}</span>
-                      <span>·</span>
-                      <span class="flex items-center gap-1 font-medium text-ink-gray-7 shrink-0">
-                        <span class="lucide-folder size-3.5 text-ink-gray-4" aria-hidden="true" />
-                        {{ task.project }}
-                      </span>
-                      <template v-if="task.assigned_to">
-                        <span>·</span>
-                        <span class="truncate">
-                          Assigned to <strong class="font-medium text-ink-gray-8">{{ task.assigned_to }}</strong>
-                        </span>
-                      </template>
-                    </div>
-                  </div>
-                </ListCell>
-
-                <!-- Cell 3: Right meta (Due Date, Priority, Status Badge & Actions) -->
-                <ListCell class="justify-end shrink-0">
-                  <div class="flex items-center gap-3">
-                    <div v-if="task.due_date" class="hidden sm:block text-right text-xs text-ink-gray-5 font-mono">
-                      {{ task.due_date }}
-                    </div>
-                    <span
-                      v-if="task.priority"
-                      class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border select-none"
-                      :class="getPriorityBadgeClass(task.priority)"
-                    >
-                      {{ task.priority }}
-                    </span>
-                    <span
-                      class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border select-none transition-colors"
-                      :class="getStatusBadgeClass(task.status)"
-                    >
-                      <span
-                        class="size-1.5 rounded-full shrink-0"
-                        :class="getStatusDotClass(task.status)"
-                      />
-                      {{ task.status }}
-                    </span>
-                    <button
-                      type="button"
-                      class="p-1.5 text-ink-gray-4 hover:text-amber-500 rounded hover:bg-surface-gray-2 transition"
-                      @click.stop="toggleStar(task)"
-                    >
-                      <span
-                        class="size-4 block"
-                        :class="task.starred ? 'lucide-star fill-amber-500 text-amber-500' : 'lucide-star'"
-                      />
-                    </button>
-                  </div>
-                </ListCell>
-              </ListRow>
-            </List>
-          </div>
-
-          <!-- TABLE VIEW (Non-sticky ID & Title Horizontal Scroll Table) -->
-          <div v-else class="outline-none focus:outline-none ring-0">
+          <!-- Tasks List Table View -->
+          <div class="outline-none focus:outline-none ring-0">
             <CommonListView
               v-model:selectedRows="selectedRowKeys"
               :columns="tableColumns"
