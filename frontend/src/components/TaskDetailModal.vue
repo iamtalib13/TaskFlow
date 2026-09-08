@@ -1290,7 +1290,7 @@ export default {
           this.form = {
             id: t.id || '',
             title: t.title || '',
-            description: this.formatDescriptionForEditor(t.description),
+            description: t.description || '',
             status: t.status || 'Open',
             priority: t.priority || 'Medium',
             task_type: t.task_type || (Array.isArray(t.labels) && t.labels[0]) || 'Task',
@@ -1517,16 +1517,6 @@ export default {
     },
     getDefaultDescription() {
       return ''
-    },
-    formatDescriptionForEditor(desc) {
-      if (!desc) return ''
-      if (/<(p|br|div|h[1-6]|ul|ol|li|table|blockquote)[\s\S]*>/i.test(desc)) {
-        return desc
-      }
-      return desc
-        .split(/\r?\n\r?\n/)
-        .map((block) => `<p>${block.replace(/\r?\n/g, '<br>')}</p>`)
-        .join('')
     },
     formatDateDisplay(isoDate) {
       if (!isoDate) return ''

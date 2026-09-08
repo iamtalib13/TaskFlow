@@ -1,5 +1,4 @@
 import './index.css'
-import 'prosemirror-view/style/prosemirror.css'
 
 import { createApp } from 'vue'
 import router from './router'
