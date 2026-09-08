@@ -2633,6 +2633,7 @@ onUnmounted(() => {
       :team-members="teamMembers"
       :statuses="statuses"
       :priorities="priorities"
+      :current-user="currentUserEmail"
       :on-save="onSaveTask"
       :on-delete="onDeleteTask"
       @save="onSaveTask"
