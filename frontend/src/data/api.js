@@ -41,6 +41,8 @@ export const mockBootstrap = {
         { author: 'Marcus Brody', time: '2 hours ago', text: 'Please ensure responsive mobile wrapping works smoothly.' },
         { author: 'Talib Sheikh', time: '1 hour ago', text: 'Implemented grid layout, testing on tablet breakpoint.' },
       ],
+      modified: '2026-09-08 15:42:00',
+      modified_pretty: '10m ago',
     },
     {
       id: 'ERP-104',
@@ -58,6 +60,8 @@ export const mockBootstrap = {
       starred: true,
       description: 'Create KPI summary tiles, burndown chart container, and task activity feed widgets.',
       comments: [],
+      modified: '2026-09-08 14:15:00',
+      modified_pretty: '1h ago',
     },
     {
       id: 'CRM-88',
@@ -75,6 +79,8 @@ export const mockBootstrap = {
       starred: false,
       description: 'Review B-tree index coverage on leads, opportunities, and interactions tables.',
       comments: [],
+      modified: '2026-09-08 12:30:00',
+      modified_pretty: '3h ago',
     },
     {
       id: 'CORE-42',
@@ -92,6 +98,8 @@ export const mockBootstrap = {
       starred: false,
       description: 'Setup SAML identity provider handshake and role mapping assertions.',
       comments: [],
+      modified: '2026-09-08 09:00:00',
+      modified_pretty: '7h ago',
     },
     {
       id: 'ERP-112',
@@ -109,6 +117,8 @@ export const mockBootstrap = {
       starred: false,
       description: 'Deploy Redis caching middleware with stale-while-revalidate invalidation pattern.',
       comments: [],
+      modified: '2026-09-07 18:20:00',
+      modified_pretty: 'Yesterday',
     },
     {
       id: 'CORE-59',
@@ -126,6 +136,8 @@ export const mockBootstrap = {
       starred: false,
       description: 'Resolve worker node distributed locking race condition during partition rebalances.',
       comments: [],
+      modified: '2026-09-07 11:15:00',
+      modified_pretty: 'Yesterday',
     },
     {
       id: 'TASK-135460',
@@ -143,6 +155,8 @@ export const mockBootstrap = {
       starred: false,
       description: 'Harmonize toast notifications and inline field validation states across all doctype forms.',
       comments: [],
+      modified: '2026-09-06 16:40:00',
+      modified_pretty: '2d ago',
     },
     {
       id: 'MOB-205',
@@ -160,6 +174,8 @@ export const mockBootstrap = {
       starred: false,
       description: 'Implement SQLite local change queue with conflict resolution vector clocks.',
       comments: [],
+      modified: '2026-09-05 10:20:00',
+      modified_pretty: '3d ago',
     },
     {
       id: 'SEC-301',
@@ -177,6 +193,8 @@ export const mockBootstrap = {
       starred: false,
       description: 'Stream structured JSON security event telemetry to centralized SIEM collector.',
       comments: [],
+      modified: '2026-09-04 14:10:00',
+      modified_pretty: '4d ago',
     },
     {
       id: 'TASK-135468',
@@ -194,6 +212,8 @@ export const mockBootstrap = {
       starred: true,
       description: 'Prevent OOM exceptions during peak transaction windows by tweaking maxmemory-policy.',
       comments: [],
+      modified: '2026-09-03 09:30:00',
+      modified_pretty: '5d ago',
     },
     {
       id: 'ERP-119',
@@ -211,6 +231,8 @@ export const mockBootstrap = {
       starred: true,
       description: 'Fix forex currency gain/loss calculation on partially reconciled foreign currency invoices.',
       comments: [],
+      modified: '2026-09-02 17:00:00',
+      modified_pretty: '6d ago',
     },
     {
       id: 'TASK-135465',
@@ -228,6 +250,8 @@ export const mockBootstrap = {
       starred: false,
       description: 'Format aged trial balance output with custom branding header and currency symbols.',
       comments: [],
+      modified: '2026-08-28 11:00:00',
+      modified_pretty: '11d ago',
     },
   ],
 }
