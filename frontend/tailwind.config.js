@@ -1,9 +1,12 @@
+import frappePreset, { content as frappeContent } from 'frappe-ui/tailwind'
+
 /** @type {import('tailwindcss').Config} */
 export default {
+  presets: [frappePreset],
   content: [
+    ...frappeContent,
     "./index.html",
     "./src/**/*.{vue,js,ts,jsx,tsx}",
-    "./node_modules/frappe-ui/src/**/*.{vue,js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {

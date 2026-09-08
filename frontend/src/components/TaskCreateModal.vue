@@ -5,14 +5,14 @@
     @click.self="close"
   >
     <div
-      class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-xl flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
+      class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
       role="dialog"
       aria-modal="true"
     >
       <!-- Modal Header -->
-      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
-        <div class="flex items-center gap-2">
-          <span class="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center text-sm font-bold">
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center text-sm font-bold shadow-xs">
             +
           </span>
           <div>
@@ -23,7 +23,7 @@
 
         <button
           type="button"
-          class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+          class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition cursor-pointer"
           @click="close"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,7 +33,7 @@
       </div>
 
       <!-- Modal Body -->
-      <form class="p-6 space-y-4 text-xs" @submit.prevent="submit">
+      <form class="p-6 space-y-4 text-xs overflow-y-auto flex-1" @submit.prevent="submit">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">
             Task Title <span class="text-rose-500">*</span>
@@ -47,7 +47,8 @@
           />
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <!-- 4-Column Grid for Metadata -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <label class="block font-medium text-gray-600 mb-1">Project</label>
             <select
@@ -73,9 +74,7 @@
               </option>
             </select>
           </div>
-        </div>
 
-        <div class="grid grid-cols-3 gap-3">
           <div>
             <label class="block font-medium text-gray-600 mb-1">Status</label>
             <select
@@ -95,7 +94,10 @@
               <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
             </select>
           </div>
+        </div>
 
+        <!-- Second Row: Due Date & Estimated Hours -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
           <div>
             <label class="block font-medium text-gray-600 mb-1">Due Date</label>
             <div class="relative flex items-center">
@@ -124,8 +126,8 @@
           <TaskRichEditor
             v-model="form.description"
             :people="people"
-            min-height="min-h-[110px]"
-            placeholder="Details or acceptance criteria..."
+            min-height="min-h-48"
+            placeholder="Write details, acceptance criteria, or type / for blocks..."
           />
         </div>
 
