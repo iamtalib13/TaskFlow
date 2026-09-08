@@ -706,34 +706,53 @@ def get_employees() -> dict:
     return {"employees": employees}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def add_team_member(team: str, employee: str, team_role: str, access_level: str, is_active: int = 1) -> dict:
     """Add a new member to a team."""
     _require_login()
-    
+
     if not team or team == "all":
         frappe.throw(_("Please select a specific team"))
-    
-    # Check if user has permission to manage this team
-    from taskflow.taskflow.service.team_hierarchy import can_manage_team
-    if not can_manage_team(frappe.session.user, team):
-        frappe.throw(_("You don't have permission to add members to this team"))
-    
-    # Check if member already exists
-    existing = frappe.db.exists("Taskflow Team Member", {
-        "parent": team,
-        "employee": employee
-    })
-    
+
+    if not employee:
+        frappe.throw(_("Please select an employee"))
+
+    # Permission: System Manager or Taskflow Admin can add to any team
+    user_roles = set(frappe.get_roles(frappe.session.user))
+    has_global_access = bool({"System Manager", "Taskflow Admin", "Projects Manager"} & user_roles)
+
+    if not has_global_access:
+        from taskflow.taskflow.service.team_hierarchy import can_manage_team
+        if not can_manage_team(frappe.session.user, team):
+            frappe.throw(_("You don't have permission to add members to this team"))
+
+    # Check if member already exists in this team (query child table directly)
+    existing = frappe.db.sql(
+        """SELECT name FROM `tabTaskflow Team Member`
+           WHERE parent = %s AND employee = %s AND is_active = 1
+           LIMIT 1""",
+        (team, employee),
+        as_dict=True,
+    )
+
     if existing:
         frappe.throw(_("This employee is already a member of the team"))
-    
+
+    # Verify team exists
+    if not frappe.db.exists("Taskflow Team", team):
+        frappe.throw(_("Team not found"))
+
+    # Verify employee exists
+    employee_name = frappe.db.get_value("Employee", employee, "employee_name")
+    if not employee_name:
+        frappe.throw(_("Employee not found"))
+
     # Get the team document
     team_doc = frappe.get_doc("Taskflow Team", team)
-    
+
     # Get user_id from employee
     user_id = frappe.db.get_value("Employee", employee, "user_id")
-    
+
     # Add new member to child table
     team_doc.append("team_members", {
         "employee": employee,
@@ -742,15 +761,16 @@ def add_team_member(team: str, employee: str, team_role: str, access_level: str,
         "access_level": access_level,
         "is_active": is_active
     })
-    
+
     # Save the team document
     team_doc.save(ignore_permissions=True)
     frappe.db.commit()
-    
+
     return {
         "message": _("Team member added successfully"),
         "member": {
             "employee": employee,
+            "employee_name": employee_name,
             "team_role": team_role,
             "access_level": access_level
         }
@@ -1804,3 +1824,53 @@ def send_mail(to: str, cc: str = "", subject: str = "", message: str = "") -> di
     )
 
     return {"status": "success", "message": "Mail sent successfully."}
+
+
+@frappe.whitelist(methods=["POST"])
+def get_member_timesheets(user: str, from_date: str = "", to_date: str = "") -> list[dict]:
+    """Fetch timesheet data for a member between two dates.
+
+    Returns a list of dates with total hours and child items for each day.
+    """
+    _require_login()
+
+    if not user:
+        frappe.throw("User is required.")
+
+    filters = {"user": user}
+    if from_date:
+        filters["timesheet_date"] = (">=", from_date)
+    if to_date:
+        if "timesheet_date" in filters:
+            filters["timesheet_date"] = ("between", [from_date, to_date])
+        else:
+            filters["timesheet_date"] = ("<=", to_date)
+
+    timesheets = frappe.get_all(
+        "Taskflow Timesheet",
+        filters=filters,
+        fields=["name", "user", "timesheet_date", "total_working_hours", "status"],
+        order_by="timesheet_date asc",
+    )
+
+    result = []
+    for ts in timesheets:
+        items = frappe.get_all(
+            "Taskflow Timesheet Item",
+            filters={"parent": ts.name},
+            fields=[
+                "activity_type", "project", "task", "from_time",
+                "to_time", "hrs", "completeds", "description",
+            ],
+            order_by="from_time asc",
+        )
+        result.append({
+            "name": ts.name,
+            "user": ts.user,
+            "date": str(ts.timesheet_date),
+            "total_hours": ts.total_working_hours or 0,
+            "status": ts.status,
+            "items": items,
+        })
+
+    return result

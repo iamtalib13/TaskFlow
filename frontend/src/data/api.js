@@ -407,6 +407,129 @@ export async function addTaskComment(taskId, text) {
   }
 }
 
+// --- Team API Functions ---
+
+async function callFrappe(method, args = {}, methodType = 'GET') {
+  // Try frappe.call first (works inside Frappe bench)
+  if (typeof window !== 'undefined' && window.frappe && window.frappe.call) {
+    try {
+      const res = await window.frappe.call({ method, args, type: methodType })
+      if (res && res.message) return res.message
+      return res
+    } catch (e) {
+      // Extract meaningful error message from Frappe exception
+      const msg = e?.message || e?.exc?.[1]?.split('Msg: ')?.[1] || String(e)
+      throw new Error(msg)
+    }
+  }
+
+  // Fallback: raw fetch
+  try {
+    const csrfToken = window.csrf_token || ''
+    const url = new URL(`/api/method/${method}`, window.location.origin)
+    const fetchOpts = {
+      method: methodType,
+      headers: {
+        'Accept': 'application/json',
+        'X-Frappe-CSRF-Token': csrfToken,
+      },
+    }
+
+    if (methodType === 'POST') {
+      fetchOpts.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+      const params = new URLSearchParams()
+      Object.entries(args).forEach(([k, v]) => {
+        params.append(k, typeof v === 'object' ? JSON.stringify(v) : v)
+      })
+      fetchOpts.body = params.toString()
+    } else {
+      Object.entries(args).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) url.searchParams.set(k, v)
+      })
+    }
+
+    const resp = await fetch(url.toString(), fetchOpts)
+    const data = await resp.json()
+
+    if (!resp.ok) {
+      const msg = data?.exc?.[1]?.split('Msg: ')?.[1] || data?.message || `Request failed (${resp.status})`
+      throw new Error(msg)
+    }
+
+    return data.message
+  } catch (e) {
+    throw e
+  }
+}
+
+// Fetch all teams from workspace bootstrap
+export async function fetchTeams() {
+  const data = await callFrappe('taskflow.taskflow.api.workspace.get_workspace_bootstrap')
+  return data ? data.teams || [] : []
+}
+
+// Fetch team members for a specific team (or all accessible teams)
+export async function fetchTeamMembers(team = 'all') {
+  const data = await callFrappe('taskflow.taskflow.api.portal.get_team_members', { team })
+  return data ? data.team_members || [] : []
+}
+
+// Create a new team
+export async function createTeam(payload) {
+  return await callFrappe(
+    'taskflow.taskflow.api.workspace.create_team',
+    { payload: JSON.stringify(payload) },
+    'POST'
+  )
+}
+
+// Update an existing team
+export async function updateTeam(name, payload) {
+  return await callFrappe(
+    'taskflow.taskflow.api.workspace.update_team',
+    { name, payload: JSON.stringify(payload) },
+    'POST'
+  )
+}
+
+// Delete a team
+export async function deleteTeam(name) {
+  return await callFrappe(
+    'taskflow.taskflow.api.workspace.delete_team',
+    { name },
+    'POST'
+  )
+}
+
+// Fetch employees for member selection
+export async function fetchEmployees() {
+  const data = await callFrappe('taskflow.taskflow.api.portal.get_employees')
+  return Array.isArray(data) ? data : data ? data.employees || [] : []
+}
+
+// Add a member to a team
+export async function addTeamMember(team, employee, teamRole, accessLevel) {
+  return await callFrappe(
+    'taskflow.taskflow.api.portal.add_team_member',
+    { team, employee, team_role: teamRole, access_level: accessLevel || 'Operate' },
+    'POST'
+  )
+}
+
+// Remove a member from a team (deactivate)
+export async function removeTeamMember(team, employee) {
+  return await callFrappe(
+    'taskflow.taskflow.api.workspace.update_team',
+    {
+      name: team,
+      payload: JSON.stringify({
+        team_members: [],
+      }),
+    },
+    'POST'
+  )
+}
+
 // Delete a comment
 export async function deleteTaskComment(commentId) {
   if (!commentId) return false
@@ -442,5 +565,14 @@ export async function deleteTaskComment(commentId) {
   }
 
   return true
+}
+
+export async function fetchMemberTimesheets(user, fromDate = '', toDate = '') {
+  if (!user) return []
+  return callFrappe(
+    'taskflow.taskflow.api.portal.get_member_timesheets',
+    { user, from_date: fromDate, to_date: toDate },
+    'POST',
+  )
 }
 

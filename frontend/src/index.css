@@ -115,4 +115,32 @@ textarea:focus:not(.focus-none) {
   stroke: #111827 !important;
 }
 
+/* Row highlight for records modified 'Just now' */
+.row-just-now,
+tr.row-just-now,
+tr.is-just-now {
+  background-color: #ecfdf5 !important;
+}
+
+tr.row-just-now:hover,
+tr.is-just-now:hover {
+  background-color: #d1fae5 !important;
+}
+
+tr.row-just-now td,
+tr.is-just-now td {
+  background-color: #ecfdf5 !important;
+}
+
+tr.row-just-now:hover td,
+tr.is-just-now:hover td {
+  background-color: #d1fae5 !important;
+}
+
+tr.row-just-now td:first-child,
+tr.is-just-now td:first-child {
+  border-left: 4px solid #10b981 !important;
+}
+
+
 
