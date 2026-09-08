@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 const props = defineProps({
   events: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  selectedDate: { type: String, default: '' },
 })
 
 const emit = defineEmits(['cellClick'])
@@ -209,6 +210,7 @@ function getDayNumberClass(cell, dayOfWeek) {
                 getCellBg(cell, dIdx),
                 cell.isCurrentMonth && isSunday(dIdx) ? 'cursor-not-allowed' : 'cursor-pointer',
                 !(cell.isCurrentMonth && isSunday(dIdx)) ? 'hover:opacity-80' : '',
+                selectedDate && cell.key === selectedDate ? 'ring-2 ring-[#417c7d] ring-inset z-10' : '',
               ]"
               @click="!(cell.isCurrentMonth && isSunday(dIdx)) && emit('cellClick', cell.key)"
             >
