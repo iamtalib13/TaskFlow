@@ -2,13 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="/assets/taskflow/frontend/favicon.png" />
+    <link rel="icon" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Taskflow</title>
-    <script type="module" crossorigin src="/assets/taskflow/frontend/assets/index.dc12b36e.js"></script>
-    <link rel="modulepreload" href="/assets/taskflow/frontend/assets/vendor.00582aa0.js">
-    <link rel="stylesheet" href="/assets/taskflow/frontend/assets/vendor.1f7d581e.css">
-    <link rel="stylesheet" href="/assets/taskflow/frontend/assets/index.d2cd4a70.css">
   </head>
   <body class="bg-gray-50 text-gray-900 antialiased">
     <div id="app"></div>
@@ -21,6 +17,6 @@
       if (!window.frappe) window.frappe = {};
       window.frappe.boot = {{ (boot or {}) | tojson }};
     </script>
-    
+    <script type="module" src="/src/main.js"></script>
   </body>
 </html>

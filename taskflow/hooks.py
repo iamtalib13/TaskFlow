@@ -66,6 +66,9 @@ app_license = "mit"
 
 website_route_rules = [
     {"from_route": "/taskflow/<path:app_path>", "to_route": "taskflow"},
+    {"from_route": "/mytasks/<path:app_path>", "to_route": "mytasks"},
+    {"from_route": "/tasks", "to_route": "mytasks"},
+    {"from_route": "/tasks/<path:app_path>", "to_route": "mytasks"},
 ]
 
 # Generators
