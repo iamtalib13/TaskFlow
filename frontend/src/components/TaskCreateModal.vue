@@ -69,8 +69,8 @@
           />
         </div>
 
-        <!-- Row 1: Project & Team & Task Type & Status & Priority -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <!-- Row 1: Project & Task Type & Status & Priority -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <label class="block font-medium text-gray-600 mb-1">Project</label>
             <select
@@ -81,25 +81,6 @@
               <option value="">Select Project</option>
               <option v-for="p in projects" :key="p.name" :value="p.name">
                 {{ p.display_name || p.name }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="block font-medium text-gray-600">Team</label>
-              <span v-if="effectiveTeam" class="text-[10px] font-semibold text-[#417c7d] bg-[#417c7d]/10 px-1.5 py-0.5 rounded">
-                {{ effectiveTeam }}
-              </span>
-            </div>
-            <select
-              v-model="form.team"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-              @change="onTeamChange"
-            >
-              <option value="">Select Team</option>
-              <option v-for="t in teams" :key="t.name || t" :value="t.name || t">
-                {{ t.team_name || t.name || t }}
               </option>
             </select>
           </div>
