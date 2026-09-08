@@ -86,3 +86,16 @@ table,
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* Sidebar Active Item Styling */
+[data-slot="sidebar-item"][data-state="active"] {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+[data-slot="sidebar-item"][data-state="active"] svg {
+  color: #111827 !important;
+  stroke: #111827 !important;
+}
+

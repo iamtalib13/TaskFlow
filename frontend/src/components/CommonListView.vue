@@ -157,70 +157,65 @@
       </table>
     </div>
 
-    <!-- Pagination & Bottom Controls (Sticky to bottom) -->
+    <!-- Sticky Bottom Bar: Load More & Counter -->
     <div
       v-if="pagination"
-      class="sticky bottom-0 z-30 px-3 py-2 bg-white/95 backdrop-blur-md border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 select-none shadow-[0_-2px_10px_rgba(0,0,0,0.04)]"
+      class="sticky bottom-0 z-30 px-4 py-2.5 bg-white/95 backdrop-blur-md border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 select-none shadow-[0_-2px_10px_rgba(0,0,0,0.04)]"
     >
-      <!-- Page Size Selector -->
-      <div class="flex items-center gap-2">
-        <div class="inline-flex rounded-lg border border-gray-200 overflow-hidden bg-white shadow-2xs">
-          <button
-            v-for="size in pageSizes"
-            :key="size"
-            type="button"
-            :class="[
-              'px-2.5 py-1 text-xs font-medium transition-colors border-r last:border-r-0 border-gray-200',
-              pagination.pageSize === size
-                ? 'bg-black text-white'
-                : 'text-gray-600 hover:bg-gray-50',
-            ]"
-            @click="onPageSizeChange(size)"
-          >
-            {{ size }}
-          </button>
-        </div>
-        <span class="text-gray-500 text-xs">per page</span>
-      </div>
-
-      <!-- Item Range Indicator -->
-      <div class="text-gray-600 font-medium">
-        Showing
-        <span class="text-gray-900 font-semibold">{{ startIndex }} - {{ endIndex }}</span>
-        of
-        <span class="text-gray-900 font-semibold">{{ pagination.total }}</span>
-        tasks
-      </div>
-
-      <!-- Pagination Next / Prev Buttons -->
-      <div class="flex items-center gap-1">
-        <button
-          type="button"
-          :disabled="pagination.page <= 1"
-          class="p-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
-          title="Previous Page"
-          @click="onPageChange(pagination.page - 1)"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
-
-        <span class="px-2 font-medium text-gray-700 text-xs">
-          {{ pagination.page }} / {{ totalPages }}
+      <!-- Left: Item Count & Progress Indicator -->
+      <div class="flex items-center gap-3">
+        <span class="text-gray-600 font-medium">
+          Showing <span class="text-gray-900 font-bold">{{ loadedCount }}</span> of <span class="text-gray-900 font-bold">{{ totalCount }}</span> tasks
         </span>
 
+        <!-- Sleek Mini Progress Bar -->
+        <div class="hidden sm:block w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            class="h-full bg-black rounded-full transition-all duration-300"
+            :style="{ width: `${progressPercent}%` }"
+          />
+        </div>
+      </div>
+
+      <!-- Right: Load More Controls -->
+      <div class="flex items-center gap-2">
+        <!-- Load More Button -->
         <button
+          v-if="hasMore"
           type="button"
-          :disabled="pagination.page >= totalPages"
-          class="p-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
-          title="Next Page"
-          @click="onPageChange(pagination.page + 1)"
+          :disabled="loading"
+          class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gray-900 hover:bg-black text-white text-xs font-semibold shadow-xs hover:shadow transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          @click="$emit('load-more')"
         >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 18 15 12 9 6"></polyline>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <polyline points="19 12 12 19 5 12"></polyline>
           </svg>
+          <span>Load More ({{ nextBatchCount }} remaining)</span>
         </button>
+
+        <!-- Load All Button (if more than 1 batch remaining) -->
+        <button
+          v-if="hasMore && remainingCount > nextBatchCount"
+          type="button"
+          :disabled="loading"
+          class="px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-medium transition cursor-pointer"
+          title="Load all remaining records"
+          @click="$emit('load-all')"
+        >
+          Load all
+        </button>
+
+        <!-- All Loaded Badge -->
+        <span
+          v-if="!hasMore && totalCount > 0"
+          class="inline-flex items-center gap-1.5 text-xs text-gray-500 font-medium bg-gray-100/90 px-3 py-1 rounded-md"
+        >
+          <svg class="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          All {{ totalCount }} tasks loaded
+        </span>
       </div>
     </div>
   </div>
@@ -283,6 +278,8 @@ export default {
     'update:selectedRows',
     'row-click',
     'sort-change',
+    'load-more',
+    'load-all',
     'page-change',
     'page-size-change',
   ],
@@ -311,17 +308,45 @@ export default {
       const count = this.rows.filter((row) => this.isRowSelected(row)).length
       return count > 0 && count < this.rows.length
     },
+    loadedCount() {
+      if (this.pagination && this.pagination.loaded !== undefined) {
+        return this.pagination.loaded
+      }
+      return this.rows.length
+    },
+    totalCount() {
+      if (this.pagination && this.pagination.total !== undefined) {
+        return this.pagination.total
+      }
+      return this.rows.length
+    },
+    hasMore() {
+      return this.loadedCount < this.totalCount
+    },
+    remainingCount() {
+      return Math.max(0, this.totalCount - this.loadedCount)
+    },
+    stepCount() {
+      return (this.pagination && this.pagination.step) || 20
+    },
+    nextBatchCount() {
+      return Math.min(this.stepCount, this.remainingCount)
+    },
+    progressPercent() {
+      if (!this.totalCount) return 100
+      return Math.min(100, Math.round((this.loadedCount / this.totalCount) * 100))
+    },
     totalPages() {
       if (!this.pagination || !this.pagination.total) return 1
       return Math.max(1, Math.ceil(this.pagination.total / (this.pagination.pageSize || 20)))
     },
     startIndex() {
       if (!this.pagination || !this.pagination.total) return 0
-      return (this.pagination.page - 1) * this.pagination.pageSize + 1
+      return (this.pagination.page - 1) * (this.pagination.pageSize || 20) + 1
     },
     endIndex() {
       if (!this.pagination || !this.pagination.total) return 0
-      return Math.min(this.pagination.total, this.pagination.page * this.pagination.pageSize)
+      return Math.min(this.pagination.total, (this.pagination.page || 1) * (this.pagination.pageSize || 20))
     },
   },
   methods: {
