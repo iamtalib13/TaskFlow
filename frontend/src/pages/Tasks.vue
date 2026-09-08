@@ -72,7 +72,7 @@ const userMenu = [
 ]
 
 // View Switching: 'feed' or 'table'
-const currentView = ref('feed')
+const currentView = ref('table')
 const feedTab = ref('All')
 
 // Modals
