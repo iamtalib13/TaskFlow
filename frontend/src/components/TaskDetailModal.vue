@@ -37,95 +37,101 @@
         </div>
 
         <!-- Right: Status / Priority Controls & Action Buttons -->
-        <div class="flex items-center gap-2.5 shrink-0">
-          <!-- Save Status Indicator -->
-          <div class="hidden sm:flex items-center gap-1.5 text-xs text-gray-500 font-medium mr-1">
-            <Cloud class="size-3.5 text-[#417c7d]" />
-            <span>All changes saved</span>
+        <div class="flex items-end gap-3 shrink-0">
+          <!-- Task Type Dropdown Selector with Label Above -->
+          <div class="flex flex-col">
+            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Task Type</label>
+            <div class="relative">
+              <select
+                v-model="form.task_type"
+                class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-lg border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none"
+                :class="getTaskTypeSelectClass(form.task_type)"
+              >
+                <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
+              </select>
+              <component
+                :is="getTaskTypeIcon(form.task_type)"
+                class="absolute left-2 top-1/2 -translate-y-1/2 size-3 pointer-events-none"
+                :class="getTaskTypeIconClass(form.task_type)"
+              />
+              <ChevronDown class="absolute right-1.5 top-1/2 -translate-y-1/2 size-3 pointer-events-none opacity-60" />
+            </div>
           </div>
 
-          <!-- Status Dropdown Selector -->
-          <div class="relative">
-            <select
-              v-model="form.status"
-              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none"
-              :class="getStatusSelectClass(form.status)"
+          <!-- Status Dropdown Selector with Label Above -->
+          <div class="flex flex-col">
+            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Status</label>
+            <div class="relative">
+              <select
+                v-model="form.status"
+                class="appearance-none pl-5.5 pr-6 py-1 text-xs font-semibold rounded-lg border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none"
+                :class="getStatusSelectClass(form.status)"
+              >
+                <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+              </select>
+              <span
+                class="absolute left-2 top-1/2 -translate-y-1/2 size-2 rounded-full pointer-events-none"
+                :class="getStatusDotClass(form.status)"
+              />
+              <ChevronDown class="absolute right-1.5 top-1/2 -translate-y-1/2 size-3 pointer-events-none opacity-60" />
+            </div>
+          </div>
+
+          <!-- Priority Dropdown Selector with Label Above -->
+          <div class="flex flex-col">
+            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Priority</label>
+            <div class="relative">
+              <select
+                v-model="form.priority"
+                class="appearance-none pl-5.5 pr-6 py-1 text-xs font-semibold rounded-lg border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none bg-blue-50/60 text-blue-700 border-blue-200"
+              >
+                <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
+              </select>
+              <Flag class="absolute left-2 top-1/2 -translate-y-1/2 size-3 pointer-events-none text-blue-600" />
+              <ChevronDown class="absolute right-1.5 top-1/2 -translate-y-1/2 size-3 pointer-events-none text-blue-500" />
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center gap-1.5 pb-0.5">
+            <!-- Delete Task Button -->
+            <button
+              v-if="form.id"
+              type="button"
+              :disabled="deleting || saving"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-200 transition cursor-pointer disabled:opacity-40"
+              title="Delete Task"
+              @click="confirmDelete"
             >
-              <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
-            </select>
-            <span
-              class="absolute left-2.5 top-1/2 -translate-y-1/2 size-2 rounded-full pointer-events-none"
-              :class="getStatusDotClass(form.status)"
-            />
-            <ChevronDown class="absolute right-2 top-1/2 -translate-y-1/2 size-3 pointer-events-none opacity-60" />
-          </div>
+              <span v-if="deleting" class="size-3.5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></span>
+              <Trash2 v-else class="size-3.5" />
+              <span class="hidden sm:inline">{{ deleting ? 'Deleting...' : 'Delete' }}</span>
+            </button>
 
-          <!-- Priority Dropdown Selector -->
-          <div class="relative">
-            <select
-              v-model="form.priority"
-              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none bg-blue-50/60 text-blue-700 border-blue-200"
+            <!-- Cancel Button -->
+            <button
+              type="button"
+              :disabled="saving || deleting"
+              class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition cursor-pointer disabled:opacity-50"
+              @click="close"
             >
-              <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
-            </select>
-            <Flag class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 pointer-events-none text-blue-600" />
-            <ChevronDown class="absolute right-2 top-1/2 -translate-y-1/2 size-3 pointer-events-none text-blue-500" />
-          </div>
+              Cancel
+            </button>
 
-          <!-- Task Type Dropdown Selector -->
-          <div class="relative">
-            <select
-              v-model="form.task_type"
-              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none"
-              :class="getTaskTypeSelectClass(form.task_type)"
+            <!-- Save Task Button -->
+            <button
+              type="button"
+              :disabled="saving || deleting"
+              class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
+              title="Save Task (⌘S)"
+              @click="save"
             >
-              <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
-            </select>
-            <component
-              :is="getTaskTypeIcon(form.task_type)"
-              class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 pointer-events-none"
-              :class="getTaskTypeIconClass(form.task_type)"
-            />
-            <ChevronDown class="absolute right-2 top-1/2 -translate-y-1/2 size-3 pointer-events-none opacity-60" />
+              <Check v-if="!saving" class="size-3.5 stroke-[2.5]" />
+              <span v-else class="size-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span>{{ saving ? 'Saving...' : 'Save Task' }}</span>
+              <kbd class="ml-0.5 px-1 py-0.2 rounded text-[10px] bg-white/20 font-mono font-normal">⌘S</kbd>
+            </button>
           </div>
-
-          <!-- Delete Task Button -->
-          <button
-            v-if="form.id"
-            type="button"
-            :disabled="deleting || saving"
-            class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-200 transition cursor-pointer disabled:opacity-40"
-            title="Delete Task"
-            @click="confirmDelete"
-          >
-            <span v-if="deleting" class="size-3.5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></span>
-            <Trash2 v-else class="size-3.5" />
-            <span class="hidden sm:inline">{{ deleting ? 'Deleting...' : 'Delete' }}</span>
-          </button>
-
-          <!-- Cancel Button -->
-          <button
-            type="button"
-            :disabled="saving || deleting"
-            class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition cursor-pointer disabled:opacity-50"
-            @click="close"
-          >
-            Cancel
-          </button>
-
-          <!-- Save Task Button -->
-          <button
-            type="button"
-            :disabled="saving || deleting"
-            class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
-            title="Save Task (⌘S)"
-            @click="save"
-          >
-            <Check v-if="!saving" class="size-3.5 stroke-[2.5]" />
-            <span v-else class="size-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            <span>{{ saving ? 'Saving...' : 'Save Task' }}</span>
-            <kbd class="ml-0.5 px-1 py-0.2 rounded text-[10px] bg-white/20 font-mono font-normal">⌘S</kbd>
-          </button>
         </div>
       </header>
 
@@ -677,41 +683,6 @@
 
         <!-- COLUMN 2: CENTER MAIN CONTENT (Header, Attachments, Title & Description) -->
         <main class="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 space-y-4">
-          <!-- Project & Task Type Pill Bar with Metadata -->
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-1.5">
-              <span v-if="form.project" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#417c7d]/10 text-[#417c7d] border border-[#417c7d]/25">
-                {{ form.project }}
-              </span>
-              <span v-else class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200/60">
-                No Project
-              </span>
-              <ChevronRight class="size-3.5 text-gray-400" />
-              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200/60">
-                <CheckCircle class="size-3 text-emerald-600 stroke-[2.5]" />
-                Task
-              </span>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 font-medium">
-              <span class="font-mono font-bold text-[#417c7d]">ID: {{ form.id || 'New' }}</span>
-              <template v-if="form.reporter">
-                <span class="text-gray-300">•</span>
-                <span class="inline-flex items-center gap-1">
-                  <User class="size-3 text-gray-400" />
-                  <span>By <strong class="text-gray-700">{{ form.reporter }}</strong></span>
-                </span>
-              </template>
-              <template v-if="updatedTimeAgo">
-                <span class="text-gray-300">•</span>
-                <span class="inline-flex items-center gap-1">
-                  <Clock class="size-3 text-gray-400" />
-                  <span>{{ updatedTimeAgo }}</span>
-                </span>
-              </template>
-            </div>
-          </div>
-
           <!-- Attachments Section (Square Thumbnails + Add Tile) -->
           <div class="space-y-1.5 pt-0.5 pb-1">
             <div class="flex items-center justify-between">
