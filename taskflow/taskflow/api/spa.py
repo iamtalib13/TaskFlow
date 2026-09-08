@@ -122,6 +122,7 @@ def get_spa_bootstrap() -> dict:
 			"creation": str(c["creation"]),
 			"text": frappe.utils.strip_html(c["content"]) if c["content"] else "",
 			"can_delete": (c.get("owner") == current_user or current_user == "Administrator"),
+			"can_edit": (c.get("owner") == current_user or current_user == "Administrator"),
 			"is_current_user": (c["comment_by"] == current_user or c.get("owner") == current_user),
 		})
 
@@ -523,6 +524,7 @@ def get_task_comments(task_id: str) -> list:
 			"creation": str(c["creation"]),
 			"text": frappe.utils.strip_html(c["content"]) if c["content"] else "",
 			"can_delete": (c.get("owner") == current_user or current_user == "Administrator"),
+			"can_edit": (c.get("owner") == current_user or current_user == "Administrator"),
 			"is_current_user": (c["comment_by"] == current_user or c.get("owner") == current_user),
 		})
 
@@ -551,7 +553,31 @@ def add_task_comment(task_id: str, text: str) -> dict:
 		"creation": str(comment.creation) if getattr(comment, "creation", None) else "",
 		"text": frappe.utils.strip_html(comment.content) if comment.content else text.strip(),
 		"can_delete": True,
+		"can_edit": True,
 		"is_current_user": True,
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def update_task_comment(comment_id: str, text: str) -> dict:
+	_require_login()
+	if not comment_id:
+		frappe.throw(_("Comment ID is required"))
+	if not text or not text.strip():
+		frappe.throw(_("Comment text cannot be empty"))
+
+	comment = frappe.get_doc("Comment", comment_id)
+	current_user = frappe.session.user
+	if comment.owner != current_user and current_user != "Administrator" and not frappe.has_permission("Comment", "write"):
+		frappe.throw(_("Not permitted to update this comment"), frappe.PermissionError)
+
+	comment.content = text.strip()
+	comment.save(ignore_permissions=True)
+
+	return {
+		"success": True,
+		"id": comment_id,
+		"text": frappe.utils.strip_html(comment.content) if comment.content else text.strip(),
 	}
 
 

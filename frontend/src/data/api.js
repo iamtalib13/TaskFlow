@@ -597,8 +597,44 @@ export async function deleteTaskComment(commentId) {
   } catch (e) {
     // Offline
   }
-
   return true
+}
+
+// Update a comment
+export async function updateTaskComment(commentId, text) {
+  if (!commentId || !text) return false
+  if (typeof window !== 'undefined' && window.frappe && window.frappe.call) {
+    try {
+      const res = await window.frappe.call({
+        method: 'taskflow.taskflow.api.spa.update_task_comment',
+        args: { comment_id: commentId, text: text.trim() },
+      })
+      if (res && res.message) return res.message
+    } catch (e) {
+      console.error('Failed to update comment via frappe.call', e)
+    }
+  }
+
+  try {
+    const csrfToken = window.csrf_token || ''
+    const resp = await fetch('/api/method/taskflow.taskflow.api.spa.update_task_comment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Frappe-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify({ comment_id: commentId, text: text.trim() }),
+    })
+    if (resp.ok) {
+      const json = await resp.json()
+      return json.message
+    }
+  } catch (e) {
+    // Offline
+  }
+
+  return { success: true, id: commentId, text: text.trim() }
 }
 
 export async function fetchMemberTimesheets(user, fromDate = '', toDate = '') {

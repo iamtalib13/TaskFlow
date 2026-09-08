@@ -684,47 +684,57 @@
               <!-- CURRENT USER MESSAGE (Right-Aligned) -->
               <div
                 v-if="isCurrentUser(cmt)"
-                class="flex flex-col items-end group max-w-[85%] ml-auto"
+                class="flex flex-col items-end group max-w-[90%] ml-auto"
               >
-                <div class="bg-[#417c7d] text-white rounded-2xl rounded-br-xs px-3.5 py-2 text-xs shadow-xs leading-relaxed break-words whitespace-pre-wrap select-text">
-                  {{ cmt.text }}
+                <!-- Edit Mode -->
+                <div v-if="editingCommentId === cmt.id" class="w-full space-y-1.5">
+                  <textarea
+                    v-model="editingCommentText"
+                    rows="2"
+                    class="w-full bg-white border border-[#417c7d] focus:ring-2 focus:ring-[#417c7d]/20 rounded-xl px-2.5 py-1.5 text-xs text-gray-800 outline-none resize-none transition leading-normal"
+                    placeholder="Edit comment..."
+                    @keydown.enter.exact.prevent="saveEditComment(cmt, idx)"
+                    @keydown.escape.prevent="cancelEditComment"
+                  ></textarea>
+                  <div class="flex items-center justify-end gap-1.5 text-[11px]">
+                    <button
+                      type="button"
+                      class="px-2 py-0.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                      @click="cancelEditComment"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      :disabled="updatingComment || !editingCommentText.trim()"
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-[#417c7d] hover:bg-[#366869] text-white font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                      @click="saveEditComment(cmt, idx)"
+                    >
+                      <Loader2 v-if="updatingComment" class="size-3 animate-spin" />
+                      <span>Save</span>
+                    </button>
+                  </div>
                 </div>
-                <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-gray-400">
-                  <span>{{ cmt.time || 'Just now' }}</span>
-                  <button
-                    v-if="cmt.can_delete || cmt.id"
-                    type="button"
-                    class="opacity-0 group-hover:opacity-100 transition hover:text-rose-600 text-gray-400 cursor-pointer p-0.5"
-                    title="Delete comment"
-                    @click="deleteComment(cmt.id, idx)"
-                  >
-                    <Trash2 class="size-2.5" />
-                  </button>
-                </div>
-              </div>
 
-              <!-- OTHER USERS MESSAGE (Left-Aligned) -->
-              <div
-                v-else
-                class="flex items-start gap-2 group max-w-[88%] mr-auto"
-              >
-                <span
-                  class="size-5 rounded-full text-white font-bold text-[9px] flex items-center justify-center shrink-0 mt-0.5"
-                  :class="getAvatarColor(cmt.author)"
-                >
-                  {{ getInitials(cmt.author) }}
-                </span>
-                <div class="flex flex-col items-start min-w-0">
-                  <span class="text-[10px] font-semibold text-gray-600 mb-0.5 truncate max-w-[150px]">
-                    {{ cmt.author }}
-                  </span>
-                  <div class="bg-gray-100 hover:bg-gray-100/90 text-gray-800 border border-gray-200/80 rounded-2xl rounded-tl-xs px-3.5 py-2 text-xs leading-relaxed break-words whitespace-pre-wrap select-text">
+                <!-- Display Mode -->
+                <template v-else>
+                  <div class="bg-[#417c7d] text-white rounded-2xl rounded-br-xs px-3.5 py-2 text-xs shadow-xs leading-relaxed break-words whitespace-pre-wrap select-text">
                     {{ cmt.text }}
                   </div>
                   <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-gray-400">
-                    <span>{{ cmt.time }}</span>
+                    <span>{{ cmt.time || 'Just now' }}</span>
+                    <!-- Edit Button -->
                     <button
-                      v-if="cmt.can_delete"
+                      type="button"
+                      class="opacity-0 group-hover:opacity-100 transition hover:text-[#417c7d] text-gray-400 cursor-pointer p-0.5"
+                      title="Edit comment"
+                      @click="startEditComment(cmt)"
+                    >
+                      <Pencil class="size-2.5" />
+                    </button>
+                    <!-- Delete Button -->
+                    <button
+                      v-if="cmt.can_delete || cmt.id"
                       type="button"
                       class="opacity-0 group-hover:opacity-100 transition hover:text-rose-600 text-gray-400 cursor-pointer p-0.5"
                       title="Delete comment"
@@ -733,6 +743,82 @@
                       <Trash2 class="size-2.5" />
                     </button>
                   </div>
+                </template>
+              </div>
+
+              <!-- OTHER USERS MESSAGE (Left-Aligned) -->
+              <div
+                v-else
+                class="flex items-start gap-2 group max-w-[90%] mr-auto"
+              >
+                <span
+                  class="size-5 rounded-full text-white font-bold text-[9px] flex items-center justify-center shrink-0 mt-0.5"
+                  :class="getAvatarColor(cmt.author)"
+                >
+                  {{ getInitials(cmt.author) }}
+                </span>
+                <div class="flex flex-col items-start min-w-0 flex-1">
+                  <span class="text-[10px] font-semibold text-gray-600 mb-0.5 truncate max-w-[150px]">
+                    {{ cmt.author }}
+                  </span>
+
+                  <!-- Edit Mode for other user (if permitted) -->
+                  <div v-if="editingCommentId === cmt.id" class="w-full space-y-1.5">
+                    <textarea
+                      v-model="editingCommentText"
+                      rows="2"
+                      class="w-full bg-white border border-[#417c7d] focus:ring-2 focus:ring-[#417c7d]/20 rounded-xl px-2.5 py-1.5 text-xs text-gray-800 outline-none resize-none transition leading-normal"
+                      placeholder="Edit comment..."
+                      @keydown.enter.exact.prevent="saveEditComment(cmt, idx)"
+                      @keydown.escape.prevent="cancelEditComment"
+                    ></textarea>
+                    <div class="flex items-center justify-end gap-1.5 text-[11px]">
+                      <button
+                        type="button"
+                        class="px-2 py-0.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                        @click="cancelEditComment"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        :disabled="updatingComment || !editingCommentText.trim()"
+                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-[#417c7d] hover:bg-[#366869] text-white font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                        @click="saveEditComment(cmt, idx)"
+                      >
+                        <Loader2 v-if="updatingComment" class="size-3 animate-spin" />
+                        <span>Save</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Display Mode -->
+                  <template v-else>
+                    <div class="bg-gray-100 hover:bg-gray-100/90 text-gray-800 border border-gray-200/80 rounded-2xl rounded-tl-xs px-3.5 py-2 text-xs leading-relaxed break-words whitespace-pre-wrap select-text">
+                      {{ cmt.text }}
+                    </div>
+                    <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-gray-400">
+                      <span>{{ cmt.time }}</span>
+                      <button
+                        v-if="cmt.can_edit"
+                        type="button"
+                        class="opacity-0 group-hover:opacity-100 transition hover:text-[#417c7d] text-gray-400 cursor-pointer p-0.5"
+                        title="Edit comment"
+                        @click="startEditComment(cmt)"
+                      >
+                        <Pencil class="size-2.5" />
+                      </button>
+                      <button
+                        v-if="cmt.can_delete"
+                        type="button"
+                        class="opacity-0 group-hover:opacity-100 transition hover:text-rose-600 text-gray-400 cursor-pointer p-0.5"
+                        title="Delete comment"
+                        @click="deleteComment(cmt.id, idx)"
+                      >
+                        <Trash2 class="size-2.5" />
+                      </button>
+                    </div>
+                  </template>
                 </div>
               </div>
             </template>
@@ -819,6 +905,7 @@ import { Divider, MultiSelect, toast } from 'frappe-ui'
 import {
   fetchTaskComments,
   addTaskComment,
+  updateTaskComment,
   deleteTaskComment,
   saveTask,
   deleteTask,
@@ -860,6 +947,7 @@ import {
   MessageSquare,
   Loader2,
   Send,
+  Pencil,
 } from 'lucide-vue-next'
 
 export default {
@@ -898,6 +986,7 @@ export default {
     MessageSquare,
     Loader2,
     Send,
+    Pencil,
   },
   props: {
     modelValue: {
@@ -953,6 +1042,9 @@ export default {
       errorMessage: '',
       loadingComments: false,
       submittingComment: false,
+      updatingComment: false,
+      editingCommentId: null,
+      editingCommentText: '',
       newComment: '',
       activeRightTab: 'comments',
       localTeamMembers: [],
@@ -1350,6 +1442,39 @@ export default {
         this.submittingComment = false
       }
     },
+    startEditComment(cmt) {
+      this.editingCommentId = cmt.id
+      this.editingCommentText = cmt.text || ''
+    },
+    cancelEditComment() {
+      this.editingCommentId = null
+      this.editingCommentText = ''
+    },
+    async saveEditComment(cmt, index) {
+      const newText = (this.editingCommentText || '').trim()
+      if (!newText) {
+        toast.error('Comment text cannot be empty')
+        return
+      }
+      this.updatingComment = true
+      try {
+        if (cmt.id && !String(cmt.id).startsWith('temp-')) {
+          await updateTaskComment(cmt.id, newText)
+        }
+        if (this.comments[index]) {
+          this.comments[index].text = newText
+        }
+        this.editingCommentId = null
+        this.editingCommentText = ''
+        toast.success('Comment updated')
+      } catch (err) {
+        console.error('Error updating comment:', err)
+        const msg = getErrorMessage(err, 'Failed to update comment')
+        toast.error(msg)
+      } finally {
+        this.updatingComment = false
+      }
+    },
     async deleteComment(commentId, index) {
       if (!confirm('Are you sure you want to delete this comment?')) return
       try {
@@ -1362,8 +1487,11 @@ export default {
           action: 'deleted a comment',
           time: 'Just now',
         })
+        toast.success('Comment deleted')
       } catch (e) {
         console.error('Error deleting comment:', e)
+        const msg = getErrorMessage(e, 'Failed to delete comment')
+        toast.error(msg)
       }
     },
     insertMentionShortcut() {
