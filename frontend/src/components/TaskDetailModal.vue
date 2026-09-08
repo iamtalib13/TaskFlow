@@ -645,22 +645,27 @@
             </div>
           </div>
 
-          <!-- Task Title (Editable headline input) -->
-          <div class="pt-1">
+          <!-- Task Title (Proper Input Box) -->
+          <div class="space-y-1 pt-0.5">
+            <div class="flex items-center justify-between">
+              <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                Task Title <span class="text-rose-500">*</span>
+              </label>
+            </div>
             <input
               v-model="form.title"
               type="text"
-              placeholder="Task title..."
-              class="w-full text-xl sm:text-2xl font-bold text-gray-900 border-none p-0 focus:ring-0 focus:outline-none placeholder-gray-300 tracking-tight leading-snug"
+              placeholder="Enter task title..."
+              class="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#417c7d] focus:ring-2 focus:ring-[#417c7d]/15 rounded-xl px-3.5 py-2 text-sm sm:text-base font-semibold text-gray-900 placeholder-gray-400 outline-none transition shadow-2xs"
             />
           </div>
 
           <!-- Description Section (Directly below Title, zero blank gaps) -->
-          <div class="space-y-1.5 pt-0.5">
+          <div class="space-y-1 pt-0.5">
             <div class="flex items-center justify-between">
-              <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+              <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider">
                 Description
-              </span>
+              </label>
               <span class="text-[10px] text-gray-400">
                 Markdown & Rich formatting supported
               </span>
