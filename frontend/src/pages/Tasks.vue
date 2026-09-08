@@ -210,24 +210,60 @@ function formatPrettyDate(row) {
   }
 }
 
-// Status theme mapping for badges
-const getStatusTheme = (status) => {
+// Colorful status badge styling: Completed (Green), Overdue (Red), Open (Blue), etc.
+const getStatusBadgeClass = (status) => {
   switch (status) {
     case 'Completed':
-      return 'green'
-    case 'In Progress':
-      return 'blue'
-    case 'Review':
-      return 'purple'
-    case 'On Hold':
-      return 'amber'
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-1 ring-emerald-500/10'
     case 'Overdue':
-      return 'red'
-    case 'Cancelled':
-      return 'gray'
+      return 'bg-rose-50 text-rose-700 border-rose-200 ring-1 ring-rose-500/10'
     case 'Open':
+      return 'bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-500/10'
+    case 'In Progress':
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-1 ring-indigo-500/10'
+    case 'Review':
+      return 'bg-purple-50 text-purple-700 border-purple-200 ring-1 ring-purple-500/10'
+    case 'On Hold':
+      return 'bg-amber-50 text-amber-700 border-amber-200 ring-1 ring-amber-500/10'
+    case 'Cancelled':
+      return 'bg-gray-100 text-gray-600 border-gray-200 ring-1 ring-gray-500/10'
     default:
-      return 'gray'
+      return 'bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-500/10'
+  }
+}
+
+const getStatusDotClass = (status) => {
+  switch (status) {
+    case 'Completed':
+      return 'bg-emerald-500'
+    case 'Overdue':
+      return 'bg-rose-500 animate-pulse'
+    case 'Open':
+      return 'bg-blue-500'
+    case 'In Progress':
+      return 'bg-indigo-500'
+    case 'Review':
+      return 'bg-purple-500'
+    case 'On Hold':
+      return 'bg-amber-500'
+    case 'Cancelled':
+      return 'bg-gray-400'
+    default:
+      return 'bg-blue-500'
+  }
+}
+
+const getPriorityBadgeClass = (priority) => {
+  switch (priority) {
+    case 'Critical':
+      return 'bg-rose-50 text-rose-700 border-rose-200 font-semibold'
+    case 'High':
+      return 'bg-orange-50 text-orange-700 border-orange-200 font-medium'
+    case 'Medium':
+      return 'bg-amber-50 text-amber-700 border-amber-200 font-medium'
+    case 'Low':
+    default:
+      return 'bg-gray-100 text-gray-600 border-gray-200'
   }
 }
 
@@ -699,21 +735,23 @@ onMounted(() => {
                     <div v-if="task.due_date" class="hidden sm:block text-right text-xs text-ink-gray-5 font-mono">
                       {{ task.due_date }}
                     </div>
-                    <Badge
+                    <span
                       v-if="task.priority"
-                      :theme="task.priority === 'Critical' ? 'red' : task.priority === 'High' ? 'amber' : 'gray'"
-                      variant="subtle"
-                      size="sm"
+                      class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border select-none"
+                      :class="getPriorityBadgeClass(task.priority)"
                     >
                       {{ task.priority }}
-                    </Badge>
-                    <Badge
-                      :theme="getStatusTheme(task.status)"
-                      variant="subtle"
-                      size="sm"
+                    </span>
+                    <span
+                      class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border select-none transition-colors"
+                      :class="getStatusBadgeClass(task.status)"
                     >
+                      <span
+                        class="size-1.5 rounded-full shrink-0"
+                        :class="getStatusDotClass(task.status)"
+                      />
                       {{ task.status }}
-                    </Badge>
+                    </span>
                     <button
                       type="button"
                       class="p-1.5 text-ink-gray-4 hover:text-amber-500 rounded hover:bg-surface-gray-2 transition"
@@ -786,24 +824,26 @@ onMounted(() => {
               </template>
 
               <template #cell-status="{ row }">
-                <Badge
-                  :theme="getStatusTheme(row.status)"
-                  variant="subtle"
-                  size="sm"
+                <span
+                  class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border select-none transition-colors"
+                  :class="getStatusBadgeClass(row.status)"
                 >
+                  <span
+                    class="size-1.5 rounded-full shrink-0"
+                    :class="getStatusDotClass(row.status)"
+                  />
                   {{ row.status }}
-                </Badge>
+                </span>
               </template>
 
               <template #cell-priority="{ row }">
-                <Badge
+                <span
                   v-if="row.priority"
-                  :theme="row.priority === 'Critical' ? 'red' : row.priority === 'High' ? 'amber' : row.priority === 'Medium' ? 'blue' : 'gray'"
-                  variant="subtle"
-                  size="sm"
+                  class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border select-none"
+                  :class="getPriorityBadgeClass(row.priority)"
                 >
                   {{ row.priority }}
-                </Badge>
+                </span>
                 <span v-else class="text-ink-gray-4">—</span>
               </template>
 

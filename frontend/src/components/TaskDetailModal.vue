@@ -383,18 +383,22 @@ export default {
     },
     statusBadgeClass(status) {
       switch (status) {
-        case 'In Progress':
-          return 'bg-blue-50 text-blue-700 border border-blue-200/60'
-        case 'Review':
-          return 'bg-purple-50 text-purple-700 border border-purple-200/60'
         case 'Completed':
-          return 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+          return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+        case 'Overdue':
+          return 'bg-rose-50 text-rose-700 border border-rose-200'
+        case 'Open':
+          return 'bg-blue-50 text-blue-700 border border-blue-200'
+        case 'In Progress':
+          return 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+        case 'Review':
+          return 'bg-purple-50 text-purple-700 border border-purple-200'
         case 'On Hold':
-          return 'bg-amber-50 text-amber-700 border border-amber-200/60'
+          return 'bg-amber-50 text-amber-700 border border-amber-200'
         case 'Cancelled':
-          return 'bg-rose-50 text-rose-700 border border-rose-200/60'
+          return 'bg-gray-100 text-gray-600 border border-gray-200'
         default:
-          return 'bg-gray-100 text-gray-700 border border-gray-200'
+          return 'bg-blue-50 text-blue-700 border border-blue-200'
       }
     },
     priorityBadgeClass(priority) {
