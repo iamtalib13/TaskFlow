@@ -103,7 +103,7 @@
               isRowSelected(row)
                 ? 'bg-blue-50/50 hover:bg-blue-50/80'
                 : isJustNowRow(row)
-                  ? '!bg-emerald-50/90 hover:!bg-emerald-100/80 border-l-4 border-l-emerald-500 shadow-xs'
+                  ? 'row-just-now is-just-now shadow-xs'
                   : (getRowClass(row, idx) || 'hover:bg-[#f0f7f7]'),
             ]"
             @click="onRowClick(row, $event)"
@@ -369,11 +369,23 @@ export default {
     isJustNowRow(row) {
       if (!row) return false
       const rowCls = this.getRowClass(row)
-      if (typeof rowCls === 'string' && (rowCls.includes('emerald') || rowCls.includes('is-just-now'))) {
+      if (typeof rowCls === 'string' && (rowCls.includes('emerald') || rowCls.includes('just-now'))) {
         return true
       }
       const p = (row.modified_pretty || '').toString().trim().toLowerCase()
-      return p === 'just now'
+      if (p === 'just now' || p === 'right now' || p.includes('just now') || p.includes('second')) return true
+      if (row.modified) {
+        try {
+          const raw = String(row.modified).trim()
+          const isoString = raw.includes('T') ? raw : raw.replace(' ', 'T')
+          const d = new Date(isoString)
+          if (!isNaN(d.getTime())) {
+            const diffSec = Math.floor((Date.now() - d.getTime()) / 1000)
+            if (diffSec >= 0 && diffSec < 300) return true
+          }
+        } catch {}
+      }
+      return false
     },
     getRowKey(row, idx) {
       return row[this.rowKey] || idx

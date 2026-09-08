@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue'
 import {
   Avatar,
   Badge,
@@ -7,6 +7,7 @@ import {
   Button,
   DesktopShell,
   Dropdown,
+  FormControl,
   MobileNav,
   MobileShell,
   MultiSelect,
@@ -61,7 +62,19 @@ import {
 import CommonListView from '@/components/CommonListView.vue'
 import TaskDetailModal from '@/components/TaskDetailModal.vue'
 import TaskCreateModal from '@/components/TaskCreateModal.vue'
-import { fetchBootstrap, saveTask } from '@/data/api.js'
+import {
+  fetchBootstrap,
+  saveTask,
+  fetchTeams,
+  fetchTeamMembers,
+  createTeam,
+  updateTeam,
+  deleteTeam,
+  fetchEmployees,
+  addTeamMember,
+  fetchMemberTimesheets,
+} from '@/data/api.js'
+import TimesheetCalendar from '@/components/TimesheetCalendar.vue'
 
 // --- State & Data ---
 const loading = ref(false)
@@ -71,8 +84,26 @@ const people = ref([])
 const statuses = ref(['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue'])
 const priorities = ref(['Critical', 'High', 'Medium', 'Low'])
 
+// Teams & Team Members state
+const teams = ref([])
+const teamMembers = ref([])
+const employees = ref([])
+const teamLoading = ref(false)
+const selectedTeam = ref(null)
+const allTeamsSelected = computed(() => !selectedTeam.value)
+const activeSpace = ref('All Tasks')
+
 // Active Navigation: ONLY Task, Timesheet, Project, Team
-const activeSection = ref('Task')
+const VALID_SECTIONS = ['Task', 'Timesheet', 'Project', 'Team']
+const getSectionFromURL = () => {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const section = params.get('section')
+    if (section && VALID_SECTIONS.includes(section)) return section
+  } catch {}
+  return 'Task'
+}
+const activeSection = ref(getSectionFromURL())
 
 const SIDEBAR_COLLAPSED_KEY = 'taskflow:sidebar_collapsed'
 const getStoredSidebarState = () => {
@@ -91,6 +122,38 @@ watch(isSidebarCollapsed, (val) => {
     console.error('Failed to save sidebar state to localStorage', e)
   }
 })
+
+// Sync activeSection with URL query param
+watch(activeSection, (val) => {
+  try {
+    const url = new URL(window.location.href)
+    url.searchParams.set('section', val)
+    window.history.replaceState(null, '', url.toString())
+  } catch {}
+})
+
+// Handle browser back/forward
+const onPopState = () => {
+  const section = getSectionFromURL()
+  if (VALID_SECTIONS.includes(section)) {
+    activeSection.value = section
+  }
+  // Restore member from URL
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const memberEmail = params.get('member')
+    if (memberEmail && activeSection.value === 'Team') {
+      const found = teamData.value.find((m) => m.email === memberEmail || m.id === memberEmail)
+      if (found) {
+        selectedMember.value = found
+        loadMemberTimesheets(found)
+      }
+    } else if (!memberEmail) {
+      selectedMember.value = null
+      calendarEvents.value = []
+    }
+  } catch {}
+}
 
 const navItems = computed(() => [
   { id: 'Task', label: 'Task', icon: CheckSquare, badge: visibleTasks.value.length },
@@ -153,6 +216,7 @@ const projectOptions = computed(() => {
 const detailModalOpen = ref(false)
 const activeTask = ref(null)
 const createModalOpen = ref(false)
+const showSettings = ref(false)
 
 // User Profile Settings State
 const settingsTab = ref('profile')
@@ -256,7 +320,7 @@ watch([statusTab, selectedProjects], () => {
 function formatPrettyDate(row) {
   if (row?.modified_pretty) {
     const p = String(row.modified_pretty).trim()
-    if (p.toLowerCase() === 'just now') return 'Just now'
+    if (p.toLowerCase() === 'just now' || p.toLowerCase().includes('second') || p.toLowerCase() === 'right now') return 'Just now'
     return p
   }
   if (!row?.modified) return '—'
@@ -270,7 +334,7 @@ function formatPrettyDate(row) {
     const now = new Date()
     const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000)
 
-    if (diffSec < 0 || diffSec < 180) return 'Just now'
+    if (diffSec < 0 || diffSec < 300) return 'Just now'
     const diffMin = Math.floor(diffSec / 60)
     if (diffMin < 60) return `${diffMin}m ago`
     const diffHours = Math.floor(diffMin / 60)
@@ -294,9 +358,9 @@ function formatPrettyDate(row) {
 function isRowJustNow(row) {
   if (!row) return false
   const p = (row.modified_pretty || '').toString().trim().toLowerCase()
-  if (p === 'just now') return true
+  if (p === 'just now' || p === 'right now' || p.includes('just now') || p.includes('second')) return true
   const computed = formatPrettyDate(row).toString().trim().toLowerCase()
-  if (computed === 'just now') return true
+  if (computed === 'just now' || computed === 'right now' || computed.includes('just now') || computed.includes('second')) return true
   if (row.modified) {
     try {
       const raw = String(row.modified).trim()
@@ -304,7 +368,7 @@ function isRowJustNow(row) {
       const d = new Date(isoString)
       if (!isNaN(d.getTime())) {
         const diffSec = Math.floor((Date.now() - d.getTime()) / 1000)
-        if (diffSec >= 0 && diffSec < 180) return true
+        if (diffSec >= 0 && diffSec < 300) return true
       }
     } catch {}
   }
@@ -314,7 +378,7 @@ function isRowJustNow(row) {
 // Light green highlight for tasks modified 'Just now'
 function getTaskRowClass(row) {
   if (isRowJustNow(row)) {
-    return '!bg-emerald-50/90 hover:!bg-emerald-100/80 border-l-4 border-l-emerald-500 is-just-now'
+    return 'row-just-now is-just-now'
   }
   return 'hover:bg-[#f0f7f7]'
 }
@@ -507,31 +571,53 @@ const teamColumns = [
   { key: 'member', label: 'MEMBER', width: '220px', minWidth: '180px', sortable: true, visible: true },
   { key: 'email', label: 'EMAIL', width: '220px', minWidth: '180px', sortable: true, visible: true },
   { key: 'role', label: 'ROLE', width: '160px', minWidth: '140px', sortable: true, visible: true },
-  { key: 'department', label: 'DEPARTMENT', width: '160px', minWidth: '140px', sortable: true, visible: true },
   { key: 'active_tasks', label: 'ACTIVE TASKS', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
   { key: 'logged_hours', label: 'HOURS LOGGED', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
   { key: 'status', label: 'STATUS', width: '110px', minWidth: '90px', sortable: true, visible: true },
 ]
 
+// Team data from backend (Taskflow Team member table)
 const teamData = computed(() => {
-  return members.map((m, idx) => {
-    const mTasks = tasks.value.filter((t) => t.assigned_to === m.name)
-    const activeTasks = mTasks.filter((t) => t.status !== 'Completed').length
-    const loggedHours = mTasks.reduce((acc, t) => acc + (Number(t.logged_hours) || 0), 0)
-
-    return {
-      id: `USR-${idx + 1}`,
-      name: m.name,
-      email: m.email,
-      role: m.role,
-      image: m.image,
-      department: idx === 1 ? 'Engineering' : idx === 3 ? 'Design' : idx === 4 ? 'DevOps' : 'Product & Mgmt',
-      active_tasks: activeTasks || (idx + 1),
-      total_tasks: mTasks.length || (idx + 3),
-      logged_hours: loggedHours || (idx + 1) * 12,
-      status: 'Active',
-    }
-  })
+  if (teamMembers.value && teamMembers.value.length > 0) {
+    return teamMembers.value.map((m, idx) => ({
+      id: m.name || `USR-${idx + 1}`,
+      name: m.employee_name || m.user || m.employee || 'Unknown',
+      email: m.user || '',
+      role: m.team_role || 'Team Member',
+      image: m.user_image || '',
+      department: m.department || 'General',
+      designation: m.designation || '',
+      active_tasks: m.pending_tasks || 0,
+      total_tasks: m.total_tasks || 0,
+      completed_tasks: m.completed_tasks || 0,
+      overdue_tasks: m.overdue_tasks || 0,
+      logged_hours: 0,
+      status: m.is_active ? 'Active' : 'Inactive',
+      team: m.team || '',
+      employee: m.employee || '',
+      access_level: m.access_level || 'Operate',
+    }))
+  }
+  // Fallback: show teams as rows if no members loaded
+  if (teams.value && teams.value.length > 0) {
+    return teams.value.map((t, idx) => ({
+      id: t.name || `TEAM-${idx + 1}`,
+      name: t.team_name || t.name,
+      email: t.team_lead || '',
+      role: 'Team',
+      image: '',
+      department: t.company || '',
+      active_tasks: 0,
+      total_tasks: 0,
+      completed_tasks: 0,
+      logged_hours: 0,
+      status: t.is_active ? 'Active' : 'Inactive',
+      team: t.name,
+      member_count: t.member_count || 0,
+      project_count: t.project_count || 0,
+    }))
+  }
+  return []
 })
 
 // --- 4. Timesheet List View State & Columns ---
@@ -584,6 +670,32 @@ async function loadData() {
   }
 }
 
+// Load teams and team members from backend
+async function loadTeams() {
+  teamLoading.value = true
+  try {
+    const [teamsData, membersData] = await Promise.all([
+      fetchTeams(),
+      fetchTeamMembers('all'),
+    ])
+    teams.value = teamsData || []
+    teamMembers.value = membersData || []
+  } catch (e) {
+    console.error('Failed to load teams', e)
+  } finally {
+    teamLoading.value = false
+  }
+}
+
+// Load employees for member selection
+async function loadEmployees() {
+  try {
+    employees.value = await fetchEmployees()
+  } catch (e) {
+    console.error('Failed to load employees', e)
+  }
+}
+
 function openDetail(task) {
   activeTask.value = task
   detailModalOpen.value = true
@@ -629,8 +741,313 @@ function toggleStar(row) {
   row.starred = !row.starred
 }
 
+// --- Team CRUD State & Functions ---
+const teamRoleOptions = ['Team Lead', 'Project Manager', 'Team Member', 'Viewer', 'Auditor', 'Coordinator']
+
+const employeeOptions = computed(() => {
+  return (employees.value || []).map((emp) => ({
+    value: emp.name,
+    label: emp.employee_name || emp.name,
+  }))
+})
+
+const teamOptions = computed(() => {
+  return (teams.value || []).map((t) => ({
+    value: t.name,
+    label: t.team_name || t.name,
+  }))
+})
+
+// Create Team (simple popup)
+const createTeamOpen = ref(false)
+const newTeamName = ref('')
+
+function openCreateTeam() {
+  newTeamName.value = ''
+  createTeamOpen.value = true
+}
+
+async function submitCreateTeam() {
+  const name = (newTeamName.value || '').trim()
+  if (!name) return
+  try {
+    await createTeam({ team_name: name })
+    createTeamOpen.value = false
+    await loadTeams()
+  } catch (e) {
+    console.error('Failed to create team', e)
+  }
+}
+
+// Add Member dialog
+const addMemberOpen = ref(false)
+const memberLoading = ref(false)
+const memberSubmitted = ref(false)
+const memberSubmitError = ref('')
+const empSearch = ref('')
+const empDropdownOpen = ref(false)
+
+const memberForm = reactive({
+  employee: '',
+  team: '',
+  team_role: 'Team Member',
+  access_level: 'Operate',
+})
+
+const filteredEmployees = computed(() => {
+  const q = (empSearch.value || '').toLowerCase().trim()
+  let list = employees.value || []
+  if (q) {
+    list = list.filter((emp) => {
+      const name = (emp.employee_name || emp.name || '').toLowerCase()
+      const desig = (emp.designation || '').toLowerCase()
+      const dept = (emp.department || '').toLowerCase()
+      return name.includes(q) || desig.includes(q) || dept.includes(q)
+    })
+  }
+  return list.slice(0, 20)
+})
+
+const teamMemberEmployeeIds = computed(() => {
+  return new Set(
+    (teamMembers.value || [])
+      .filter((m) => m.team === memberForm.team && m.is_active)
+      .map((m) => m.employee)
+      .filter(Boolean)
+  )
+})
+
+const selectedMember = ref(null)
+const calendarEvents = ref([])
+const calendarLoading = ref(false)
+const selectedDayEntries = ref([])
+const selectedDayDate = ref('')
+
+function selectMember(member) {
+  selectedMember.value = member
+  calendarEvents.value = []
+  if (member) {
+    loadMemberTimesheets(member)
+    // Push member into URL
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.set('member', member.email || member.name)
+      window.history.pushState(null, '', url.toString())
+    } catch {}
+  }
+}
+
+function backToList() {
+  selectedMember.value = null
+  calendarEvents.value = []
+  // Remove member from URL
+  try {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('member')
+    window.history.pushState(null, '', url.toString())
+  } catch {}
+}
+
+async function loadMemberTimesheets(member) {
+  if (!member || !member.email) return
+  calendarLoading.value = true
+  try {
+    const year = new Date().getFullYear()
+    const month = new Date().getMonth()
+    const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    const data = await fetchMemberTimesheets(member.email, fromDate, toDate)
+    calendarEvents.value = (data || []).map((ts) => ({
+      id: ts.name,
+      title: `${ts.total_hours}h logged`,
+      fromDate: ts.date,
+      toDate: ts.date,
+      fromTime: '00:00',
+      toTime: '23:59',
+      isFullDay: true,
+      color: ts.status === 'Submitted' ? 'green' : 'blue',
+      _ts: ts,
+      _hours: ts.total_hours || 0,
+    }))
+  } catch (e) {
+    console.error('Failed to load timesheets', e)
+    calendarEvents.value = []
+  } finally {
+    calendarLoading.value = false
+  }
+}
+
+function handleCalendarClick(dateStr) {
+  selectedDayDate.value = dateStr
+  selectedDayEntries.value = calendarEvents.value
+    .filter((ev) => ev.fromDate === dateStr)
+    .map((ev) => ev._ts)
+    .filter(Boolean)
+}
+
+function getMemberRoleBadgeClass(role) {
+  switch (role) {
+    case 'Team Lead': return 'bg-amber-50 text-amber-700 border-amber-200'
+    case 'Project Manager': return 'bg-blue-50 text-blue-700 border-blue-200'
+    case 'Coordinator': return 'bg-purple-50 text-purple-700 border-purple-200'
+    case 'Viewer': return 'bg-gray-100 text-gray-600 border-gray-200'
+    case 'Auditor': return 'bg-indigo-50 text-indigo-700 border-indigo-200'
+    default: return 'bg-green-50 text-green-700 border-green-200'
+  }
+}
+
+const memberErrors = computed(() => {
+  if (!memberSubmitted.value) return {}
+  const e = {}
+  if (!memberForm.team) e.team = 'Team is required.'
+  else if (!memberForm.employee) e.employee = 'Employee is required.'
+  return e
+})
+
+const memberFormValid = computed(() => !memberErrors.value.team && !memberErrors.value.employee)
+
+const selectedEmployee = computed(() => {
+  if (!memberForm.employee) return null
+  return (employees.value || []).find((emp) => emp.name === memberForm.employee) || null
+})
+
+const accessLevelOptions = [
+  { label: 'View', value: 'View' },
+  { label: 'Operate', value: 'Operate' },
+  { label: 'Manage', value: 'Manage' },
+  { label: 'Admin', value: 'Admin' },
+]
+
+function openAddMember() {
+  Object.assign(memberForm, {
+    employee: '',
+    team: selectedTeam.value ? selectedTeam.value.name : '',
+    team_role: 'Team Member',
+    access_level: 'Operate',
+  })
+  memberSubmitted.value = false
+  memberSubmitError.value = ''
+  empSearch.value = ''
+  empDropdownOpen.value = false
+  addMemberOpen.value = true
+  loadEmployees()
+}
+
+function resetMemberForm() {
+  Object.assign(memberForm, {
+    employee: '',
+    team: '',
+    team_role: 'Team Member',
+    access_level: 'Operate',
+  })
+  memberSubmitted.value = false
+  memberSubmitError.value = ''
+  empSearch.value = ''
+  empDropdownOpen.value = false
+}
+
+function onMemberTeamChange(val) {
+  memberForm.team = val
+  memberForm.employee = ''
+  memberSubmitted.value = false
+  memberSubmitError.value = ''
+  empSearch.value = ''
+  empDropdownOpen.value = false
+  if (val) {
+    loadTeamMembersForTeam(val)
+  }
+}
+
+function selectEmployee(emp) {
+  memberForm.employee = emp.name
+  empSearch.value = ''
+  empDropdownOpen.value = false
+  memberSubmitted.value = false
+  memberSubmitError.value = ''
+}
+
+async function submitAddMember() {
+  memberSubmitted.value = true
+  memberSubmitError.value = ''
+  if (!memberFormValid.value) return
+  memberLoading.value = true
+  const keepTeam = memberForm.team
+  try {
+    await addTeamMember(
+      memberForm.team,
+      memberForm.employee,
+      memberForm.team_role,
+      memberForm.access_level,
+    )
+    addMemberOpen.value = false
+    resetMemberForm()
+    await loadTeams()
+    // Keep same team selected after adding
+    if (keepTeam) {
+      const team = teams.value.find((t) => t.name === keepTeam)
+      if (team) {
+        selectedTeam.value = team
+        await loadTeamMembersForTeam(team.name)
+      }
+    }
+  } catch (e) {
+    memberSubmitError.value = e?.message || 'Failed to add member. They may already be in this team.'
+  } finally {
+    memberLoading.value = false
+  }
+}
+
+async function deleteTeamConfirm(team) {
+  if (!team || !team.name) return
+  try {
+    await deleteTeam(team.name)
+    if (selectedTeam.value && selectedTeam.value.name === team.name) {
+      selectedTeam.value = null
+    }
+    await loadTeams()
+  } catch (e) {
+    console.error('Failed to delete team', e)
+  }
+}
+
+function selectTeam(team) {
+  if (selectedTeam.value && selectedTeam.value.name === team.name) {
+    selectedTeam.value = null
+    loadTeams()
+  } else {
+    selectedTeam.value = team
+    loadTeamMembersForTeam(team.name)
+  }
+}
+
+function selectAllTeams() {
+  if (selectedTeam.value) {
+    selectedTeam.value = null
+    loadTeams()
+  }
+}
+
+async function loadTeamMembersForTeam(teamName) {
+  teamLoading.value = true
+  try {
+    const data = await fetchTeamMembers(teamName)
+    teamMembers.value = data || []
+  } catch (e) {
+    console.error('Failed to load team members', e)
+  } finally {
+    teamLoading.value = false
+  }
+}
+
 onMounted(() => {
+  window.addEventListener('popstate', onPopState)
   loadData()
+  loadTeams()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('popstate', onPopState)
 })
 </script>
 
@@ -1092,53 +1509,311 @@ onMounted(() => {
           <div class="shrink-0 mb-3 flex items-center justify-between">
             <div>
               <h2 class="text-lg font-bold text-ink-gray-9">Team Members</h2>
-              <p class="text-xs text-ink-gray-5">Workspace collaborators and task allocation</p>
+              <p class="text-xs text-ink-gray-5">
+                Workspace collaborators and task allocation
+                <span v-if="selectedTeam" class="text-blue-600 font-medium">
+                  — {{ selectedTeam.team_name || selectedTeam.name }}
+                </span>
+              </p>
             </div>
-            <span class="text-xs text-ink-gray-5 font-medium">{{ teamData.length }} members</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-ink-gray-5 font-medium">{{ teamData.length }} members</span>
+              <Button
+                variant="solid"
+                theme="gray"
+                label="Add Member"
+                class="bg-gray-900 hover:bg-black text-white"
+                @click="openAddMember"
+              >
+                <template #prefix><UserPlus class="size-4" /></template>
+              </Button>
+            </div>
+          </div>
+
+          <!-- Teams capsule list with + button -->
+          <div v-if="teams.length > 0" class="shrink-0 mb-3 flex flex-wrap items-center gap-2">
+            <!-- All Teams badge (default selected) -->
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer select-none"
+              :class="allTeamsSelected
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-200'
+                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'"
+              @click="selectAllTeams"
+            >
+              <span class="size-1.5 rounded-full shrink-0" :class="allTeamsSelected ? 'bg-white' : 'bg-blue-500'" />
+              All Teams
+              <span class="font-bold" :class="allTeamsSelected ? 'text-blue-100' : 'text-gray-500'">({{ teamData.length }})</span>
+            </button>
+            <button
+              v-for="team in teams"
+              :key="team.name"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer select-none"
+              :class="selectedTeam && selectedTeam.name === team.name
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-200'
+                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'"
+              @click="selectTeam(team)"
+            >
+              <span class="size-1.5 rounded-full shrink-0" :class="selectedTeam && selectedTeam.name === team.name ? 'bg-white' : (team.is_active ? 'bg-green-500' : 'bg-gray-400')" />
+              {{ team.team_name || team.name }}
+              <span class="font-bold" :class="selectedTeam && selectedTeam.name === team.name ? 'text-blue-100' : 'text-gray-500'">({{ team.member_count || 0 }})</span>
+            </button>
+            <button
+              type="button"
+              title="Create new team"
+              class="inline-flex items-center justify-center size-7 rounded-full border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all cursor-pointer"
+              @click="openCreateTeam"
+            >
+              <Plus class="size-3.5" />
+            </button>
           </div>
 
           <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
-            <CommonListView
-              v-model:selectedRows="selectedTeamKeys"
-              :columns="teamColumns"
-              :rows="teamData"
-              :loading="loading"
+            <!-- Empty state: team selected but no members -->
+            <div
+              v-if="selectedTeam && !teamLoading && teamData.length === 0 && !selectedMember"
+              class="flex-1 flex flex-col items-center justify-center text-center py-12"
             >
-              <template #cell-member="{ row }">
-                <div class="flex items-center gap-2.5">
-                  <Avatar
-                    :image="row.image"
-                    :label="row.name"
-                    size="lg"
-                    shape="circle"
-                  />
-                  <div>
-                    <p class="font-semibold text-ink-gray-9 leading-tight">{{ row.name }}</p>
-                    <p class="text-[11px] text-ink-gray-5 leading-tight">{{ row.role }}</p>
+              <div class="size-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                <Users class="size-7 text-gray-400" />
+              </div>
+              <p class="text-sm font-semibold text-gray-700 mb-1">No team members yet</p>
+              <p class="text-xs text-gray-400 mb-4 max-w-xs">
+                This team has no members. Add someone to get started.
+              </p>
+              <Button
+                variant="solid"
+                theme="gray"
+                label="Add Member"
+                class="bg-gray-900 hover:bg-black text-white"
+                @click="openAddMember"
+              >
+                <template #prefix><UserPlus class="size-3.5" /></template>
+              </Button>
+            </div>
+
+            <!-- Member list (hidden when profile is open) -->
+            <div
+              v-else-if="!selectedMember"
+              class="flex-1 min-h-0 overflow-auto"
+            >
+              <CommonListView
+                v-model:selectedRows="selectedTeamKeys"
+                :columns="teamColumns"
+                :rows="teamData"
+                :loading="teamLoading"
+                @row-click="(row) => selectMember(row)"
+              >
+                <template #cell-member="{ row }">
+                  <div class="flex items-center gap-2.5">
+                    <Avatar
+                      :image="row.image"
+                      :label="row.name"
+                      size="lg"
+                      shape="circle"
+                    />
+                    <div>
+                      <p class="font-semibold text-ink-gray-9 leading-tight">{{ row.name }}</p>
+                      <p class="text-[11px] text-ink-gray-5 leading-tight">{{ row.role }}</p>
+                    </div>
+                  </div>
+                </template>
+
+                <template #cell-email="{ row }">
+                  <span class="font-mono text-xs text-ink-gray-6">{{ row.email }}</span>
+                </template>
+
+                <template #cell-active_tasks="{ row }">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <span class="text-xs font-mono text-ink-gray-8">{{ row.active_tasks }}</span>
+                    <span v-if="row.overdue_tasks > 0" class="text-[10px] text-red-500 font-medium">({{ row.overdue_tasks }} late)</span>
+                  </div>
+                </template>
+
+                <template #cell-status="{ row }">
+                  <Badge
+                    :theme="row.status === 'Active' ? 'green' : 'gray'"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    {{ row.status }}
+                  </Badge>
+                </template>
+              </CommonListView>
+            </div>
+
+            <!-- Full profile view (replaces list) -->
+            <div
+              v-else
+              class="flex-1 min-h-0 flex overflow-hidden"
+            >
+              <!-- Profile card (left, ~260px) -->
+              <div class="w-[260px] shrink-0 overflow-y-auto border-r border-gray-200 bg-white">
+                <div class="py-5 px-5">
+                  <!-- Back button -->
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 mb-4 cursor-pointer transition"
+                    @click="backToList"
+                  >
+                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    Back to members
+                  </button>
+
+                  <!-- Avatar + Name -->
+                  <div class="flex flex-col items-center text-center mb-5">
+                    <div class="size-20 rounded-full bg-gray-100 overflow-hidden shadow-md mb-3">
+                      <Avatar
+                        :image="selectedMember.image"
+                        :label="selectedMember.name"
+                        size="3xl"
+                        shape="circle"
+                        class="size-20"
+                      />
+                    </div>
+                    <h3 class="text-base font-bold text-gray-900 leading-tight">{{ selectedMember.name }}</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ selectedMember.email }}</p>
+                    <span
+                      class="inline-flex mt-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
+                      :class="getMemberRoleBadgeClass(selectedMember.role)"
+                    >
+                      {{ selectedMember.role }}
+                    </span>
+                  </div>
+
+                  <!-- Stats -->
+                  <div class="grid grid-cols-2 gap-2.5 mb-5">
+                    <div class="text-center p-2.5 bg-gray-50 rounded-lg">
+                      <p class="text-lg font-bold text-gray-900">{{ selectedMember.active_tasks || 0 }}</p>
+                      <p class="text-[10px] text-gray-500">Active</p>
+                    </div>
+                    <div class="text-center p-2.5 bg-gray-50 rounded-lg">
+                      <p class="text-lg font-bold text-gray-900">{{ selectedMember.completed_tasks || 0 }}</p>
+                      <p class="text-[10px] text-gray-500">Done</p>
+                    </div>
+                    <div class="text-center p-2.5 bg-gray-50 rounded-lg">
+                      <p class="text-lg font-bold text-gray-900">{{ selectedMember.total_tasks || 0 }}</p>
+                      <p class="text-[10px] text-gray-500">Total</p>
+                    </div>
+                    <div class="text-center p-2.5 rounded-lg" :class="(selectedMember.overdue_tasks || 0) > 0 ? 'bg-red-50' : 'bg-gray-50'">
+                      <p class="text-lg font-bold" :class="(selectedMember.overdue_tasks || 0) > 0 ? 'text-red-600' : 'text-gray-900'">{{ selectedMember.overdue_tasks || 0 }}</p>
+                      <p class="text-[10px] text-gray-500">Overdue</p>
+                    </div>
+                  </div>
+
+                  <!-- Details -->
+                  <div class="divide-y divide-gray-100 border-t border-gray-100">
+                    <div class="flex items-center justify-between py-2.5">
+                      <span class="text-xs text-gray-500">Status</span>
+                      <Badge :theme="selectedMember.status === 'Active' ? 'green' : 'gray'" variant="subtle" size="sm">
+                        {{ selectedMember.status }}
+                      </Badge>
+                    </div>
+                    <div class="flex items-center justify-between py-2.5">
+                      <span class="text-xs text-gray-500">Access</span>
+                      <span class="text-xs font-medium text-gray-700">{{ selectedMember.access_level || 'Operate' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2.5">
+                      <span class="text-xs text-gray-500">Team</span>
+                      <span class="text-xs font-medium text-gray-700 truncate ml-2">{{ selectedTeam?.team_name || selectedTeam?.name || '—' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2.5">
+                      <span class="text-xs text-gray-500">Employee</span>
+                      <span class="text-xs font-mono text-gray-600">{{ selectedMember.employee || '—' }}</span>
+                    </div>
                   </div>
                 </div>
-              </template>
+              </div>
 
-              <template #cell-email="{ row }">
-                <span class="font-mono text-xs text-ink-gray-6">{{ row.email }}</span>
-              </template>
+              <!-- Calendar + Activity list (50/50) -->
+              <div class="flex-1 min-w-0 flex overflow-hidden">
+                <!-- Calendar (50%) -->
+                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-white border-r border-gray-200">
+                  <TimesheetCalendar
+                    :events="calendarEvents"
+                    :loading="calendarLoading"
+                    @cellClick="handleCalendarClick"
+                    class="flex-1 min-h-0"
+                  />
+                </div>
 
-              <template #cell-department="{ row }">
-                <span class="px-2 py-0.5 rounded-full text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200">
-                  {{ row.department }}
-                </span>
-              </template>
+                <!-- Activity list (50%) -->
+                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-white">
+                  <!-- Header -->
+                  <div class="shrink-0 px-4 py-2.5 border-b border-gray-100">
+                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wide">Activity Log</h4>
+                    <p v-if="selectedDayDate" class="text-[11px] text-gray-500 mt-0.5">{{ selectedDayDate }}</p>
+                  </div>
 
-              <template #cell-status="{ row }">
-                <Badge
-                  theme="green"
-                  variant="subtle"
-                  size="sm"
-                >
-                  {{ row.status }}
-                </Badge>
-              </template>
-            </CommonListView>
+                  <!-- Placeholder when no day selected -->
+                  <div
+                    v-if="!selectedDayDate"
+                    class="flex-1 flex flex-col items-center justify-center text-center px-4"
+                  >
+                    <div class="size-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
+                      <Clock class="size-5 text-gray-400" />
+                    </div>
+                    <p class="text-xs font-semibold text-gray-600 mb-1">Select a timesheet day</p>
+                    <p class="text-[10px] text-gray-400">Click on any day in the calendar to view work entries</p>
+                  </div>
+
+                  <!-- Entries when day selected -->
+                  <div v-else class="flex-1 overflow-y-auto">
+                    <!-- No entries for this day -->
+                    <div
+                      v-if="selectedDayEntries.length === 0"
+                      class="flex flex-col items-center justify-center text-center px-4 py-10"
+                    >
+                      <div class="size-10 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+                        <Clock class="size-5 text-red-400" />
+                      </div>
+                      <p class="text-xs font-semibold text-gray-600 mb-1">No timesheet logged</p>
+                      <p class="text-[10px] text-gray-400">No work entries found for this day</p>
+                    </div>
+
+                    <!-- Timesheet entries -->
+                    <div v-else>
+                      <div v-for="(ts, tIdx) in selectedDayEntries" :key="ts.name || tIdx" class="px-4 py-3 border-b border-gray-50 last:border-b-0">
+                        <div class="flex items-center justify-between mb-2">
+                          <div class="flex items-center gap-2">
+                            <span class="text-[11px] font-bold text-gray-800">{{ ts.name }}</span>
+                            <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">{{ ts.status }}</Badge>
+                          </div>
+                          <span class="text-[11px] font-bold text-green-600">{{ ts.total_hours }}h</span>
+                        </div>
+                        <div class="space-y-1.5">
+                          <div
+                            v-for="(item, iIdx) in ts.items"
+                            :key="iIdx"
+                            class="flex items-center gap-2 text-[10px] bg-gray-50 rounded-lg px-2.5 py-2"
+                          >
+                            <span
+                              class="inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold border shrink-0"
+                              :class="{
+                                'bg-blue-50 text-blue-700 border-blue-200': item.activity_type === 'Task',
+                                'bg-amber-50 text-amber-700 border-amber-200': item.activity_type === 'Meeting',
+                                'bg-purple-50 text-purple-700 border-purple-200': item.activity_type === 'Research',
+                              }"
+                            >
+                              {{ item.activity_type }}
+                            </span>
+                            <div class="min-w-0 flex-1">
+                              <span v-if="item.project" class="text-gray-700 font-medium truncate block">{{ item.project }}</span>
+                              <span v-if="item.task" class="text-gray-500 truncate block">/ {{ item.task }}</span>
+                            </div>
+                            <span class="text-gray-700 font-bold shrink-0">{{ item.hrs }}h</span>
+                            <span class="text-gray-400 shrink-0">
+                              {{ item.from_time?.slice(11, 16) }} – {{ item.to_time?.slice(11, 16) }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </template>
       </div>
@@ -1405,5 +2080,240 @@ onMounted(() => {
       :priorities="priorities"
       @create="onCreateTask"
     />
+
+    <!-- Create Team Modal (Simple) -->
+    <div v-if="createTeamOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+      <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" @click="createTeamOpen = false" />
+      <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 class="text-base font-bold text-gray-900">Create New Team</h3>
+          <button
+            type="button"
+            class="size-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer"
+            @click="createTeamOpen = false"
+          >
+            <span class="text-lg leading-none">&times;</span>
+          </button>
+        </div>
+        <div class="px-5 py-4">
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Team Name *</label>
+          <TextInput
+            v-model="newTeamName"
+            placeholder="e.g. Engineering Team"
+            class="w-full"
+            @keydown.enter="submitCreateTeam"
+          />
+        </div>
+        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+          <Button variant="subtle" label="Cancel" @click="createTeamOpen = false" />
+          <Button
+            variant="solid"
+            theme="gray"
+            label="Create"
+            class="bg-gray-900 hover:bg-black text-white"
+            :loading="teamLoading"
+            :disabled="!newTeamName.trim()"
+            @click="submitCreateTeam"
+          >
+            <template #prefix><Plus class="size-3.5" /></template>
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div v-if="addMemberOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+      <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" @click="addMemberOpen = false" />
+      <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div class="flex items-center gap-2.5">
+            <div class="size-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <UserPlus class="size-4 text-blue-600" />
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-gray-900">Add Team Member</h3>
+              <p class="text-xs text-gray-500">Assign an employee to a team with a role</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="size-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer"
+            @click="addMemberOpen = false"
+          >
+            <span class="text-lg leading-none">&times;</span>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="px-5 py-5 space-y-4">
+
+          <!-- Step 1: Team (always visible) -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Step 1 — Select Team *</label>
+            <select
+              :value="memberForm.team"
+              class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              @change="onMemberTeamChange($event.target.value)"
+            >
+              <option value="" disabled>Choose a team...</option>
+              <option v-for="t in teams" :key="t.name" :value="t.name">
+                {{ t.team_name || t.name }} ({{ t.member_count || 0 }} members)
+              </option>
+            </select>
+            <p v-if="memberSubmitted && memberErrors.team" class="text-xs text-red-600 mt-1">{{ memberErrors.team }}</p>
+          </div>
+
+          <!-- Step 2: Employee (only after team selected) -->
+          <div v-if="memberForm.team" class="transition-all duration-200 relative">
+            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Step 2 — Select Employee *</label>
+
+            <!-- Selected employee display / trigger -->
+            <div
+              v-if="memberForm.employee && !empDropdownOpen"
+              class="flex items-center justify-between w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white hover:border-gray-300 transition cursor-pointer"
+              @click="empDropdownOpen = true; empSearch = ''"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <Avatar :label="selectedEmployee?.employee_name || memberForm.employee" size="sm" shape="circle" class="shrink-0" />
+                <span class="truncate">{{ selectedEmployee?.employee_name || memberForm.employee }}</span>
+              </div>
+              <span class="text-gray-400 text-xs shrink-0 ml-2">&#10005;</span>
+            </div>
+
+            <!-- Search input -->
+            <div v-else>
+              <div class="relative">
+                <input
+                  ref="empSearchInput"
+                  v-model="empSearch"
+                  type="text"
+                  placeholder="Type to search employee..."
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  class="w-full text-sm border border-gray-200 rounded-lg pl-3 pr-8 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  @focus="empDropdownOpen = true"
+                  @keydown.escape="empDropdownOpen = false"
+                />
+                <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">
+                  {{ filteredEmployees.length }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Dropdown list -->
+            <div v-if="empDropdownOpen" class="fixed inset-0 z-10" @click="empDropdownOpen = false" />
+            <div
+              v-if="empDropdownOpen"
+              class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+              @click.stop
+            >
+              <div v-if="filteredEmployees.length === 0" class="px-3 py-4 text-center text-sm text-gray-400">
+                No employees found
+              </div>
+              <button
+                v-for="emp in filteredEmployees"
+                :key="emp.name"
+                type="button"
+                class="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition cursor-pointer"
+                :class="[
+                  teamMemberEmployeeIds.has(emp.name)
+                    ? 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
+                    : memberForm.employee === emp.name
+                      ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                      : 'text-gray-700 hover:bg-gray-50'
+                ]"
+                :disabled="teamMemberEmployeeIds.has(emp.name)"
+                @click="!teamMemberEmployeeIds.has(emp.name) && selectEmployee(emp)"
+              >
+                <Avatar :label="emp.employee_name || emp.name" size="sm" shape="circle" class="shrink-0" />
+                <div class="min-w-0 flex-1">
+                  <p class="font-medium truncate">{{ emp.employee_name || emp.name }}</p>
+                  <p v-if="emp.designation || emp.department" class="text-xs text-gray-400 truncate">
+                    {{ emp.designation }}{{ emp.department ? ' · ' + emp.department : '' }}
+                  </p>
+                </div>
+                <span
+                  v-if="teamMemberEmployeeIds.has(emp.name)"
+                  class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-200 text-gray-500"
+                >
+                  Already added
+                </span>
+              </button>
+            </div>
+
+            <p v-if="memberSubmitted && memberErrors.employee" class="text-xs text-red-600 mt-1">{{ memberErrors.employee }}</p>
+          </div>
+
+          <!-- Employee Preview Card -->
+          <div v-if="selectedEmployee" class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-200">
+            <Avatar
+              :label="selectedEmployee.employee_name || selectedEmployee.name"
+              size="lg"
+              shape="circle"
+              class="shrink-0"
+            />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-gray-900 truncate">{{ selectedEmployee.employee_name || selectedEmployee.name }}</p>
+              <p v-if="selectedEmployee.designation" class="text-xs text-gray-500 truncate">{{ selectedEmployee.designation }}</p>
+              <p v-if="selectedEmployee.department" class="text-xs text-gray-400 truncate">{{ selectedEmployee.department }}</p>
+            </div>
+            <span class="shrink-0 px-2 py-0.5 text-[10px] font-medium bg-green-50 text-green-700 border border-green-200 rounded-full">Active</span>
+          </div>
+
+          <!-- Step 3: Role & Access (only after employee selected) -->
+          <div v-if="memberForm.employee" class="grid grid-cols-2 gap-4 transition-all duration-200">
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 mb-1.5">Step 3 — Role</label>
+              <select
+                v-model="memberForm.team_role"
+                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              >
+                <option v-for="r in teamRoleOptions" :key="r" :value="r">{{ r }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 mb-1.5">Access Level</label>
+              <select
+                v-model="memberForm.access_level"
+                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              >
+                <option v-for="l in accessLevelOptions" :key="l.value" :value="l.value">{{ l.label }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Submit Error -->
+          <div v-if="memberSubmitError" class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <span class="text-red-500 text-xs mt-0.5">&#9888;</span>
+            <p class="text-xs text-red-700">{{ memberSubmitError }}</p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+          <p v-if="memberForm.team" class="text-[11px] text-gray-400">
+            Adding to: <span class="font-medium text-gray-600">{{ teams.find((t) => t.name === memberForm.team)?.team_name || memberForm.team }}</span>
+          </p>
+          <div v-else />
+          <div class="flex items-center gap-2">
+            <Button variant="subtle" label="Cancel" @click="addMemberOpen = false" />
+            <Button
+              variant="solid"
+              theme="gray"
+              label="Add Member"
+              class="bg-gray-900 hover:bg-black text-white"
+              :loading="memberLoading"
+              :disabled="!memberForm.employee || memberLoading"
+              @click="submitAddMember"
+            >
+              <template #prefix><UserPlus class="size-3.5" /></template>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
