@@ -72,6 +72,23 @@
             <ChevronDown class="absolute right-2 top-1/2 -translate-y-1/2 size-3 pointer-events-none text-blue-500" />
           </div>
 
+          <!-- Task Type Dropdown Selector -->
+          <div class="relative">
+            <select
+              v-model="form.task_type"
+              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none"
+              :class="getTaskTypeSelectClass(form.task_type)"
+            >
+              <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
+            </select>
+            <component
+              :is="getTaskTypeIcon(form.task_type)"
+              class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 pointer-events-none"
+              :class="getTaskTypeIconClass(form.task_type)"
+            />
+            <ChevronDown class="absolute right-2 top-1/2 -translate-y-1/2 size-3 pointer-events-none opacity-60" />
+          </div>
+
           <!-- Delete Task Button -->
           <button
             v-if="form.id"
@@ -179,6 +196,24 @@
                     {{ t.team_name || t.name || t }}
                   </option>
                 </select>
+              </div>
+
+              <div>
+                <label class="block font-medium text-[11px] text-gray-700 mb-1">Task Type</label>
+                <div class="relative flex items-center">
+                  <select
+                    v-model="form.task_type"
+                    class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-7 pr-7 py-1.5 text-xs text-gray-900 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
+                  >
+                    <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
+                  </select>
+                  <component
+                    :is="getTaskTypeIcon(form.task_type)"
+                    class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
+                    :class="getTaskTypeIconClass(form.task_type)"
+                  />
+                  <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none text-gray-400" />
+                </div>
               </div>
             </div>
 
@@ -1164,6 +1199,9 @@ import {
   Send,
   Pencil,
   ExternalLink,
+  Bug,
+  Sparkles,
+  CheckSquare,
 } from 'lucide-vue-next'
 
 export default {
@@ -1204,6 +1242,9 @@ export default {
     Send,
     Pencil,
     ExternalLink,
+    Bug,
+    Sparkles,
+    CheckSquare,
   },
   props: {
     modelValue: {
@@ -1265,12 +1306,14 @@ export default {
       newComment: '',
       activeRightTab: 'comments',
       localTeamMembers: [],
+      taskTypes: ['Task', 'Bug', 'Customization Request'],
       form: {
         id: '',
         title: '',
         description: '',
         status: 'Open',
         priority: 'Medium',
+        task_type: 'Task',
         project: '',
         team: '',
         assignees: [],
@@ -1321,6 +1364,7 @@ export default {
             description: t.description || '',
             status: t.status || 'Open',
             priority: t.priority || 'Medium',
+            task_type: t.task_type || (Array.isArray(t.labels) && t.labels[0]) || 'Task',
             project: t.project || '',
             team: matchedTeam || '',
             assignees: assigneesList,
@@ -1966,6 +2010,26 @@ export default {
         default:
           return 'bg-gray-400'
       }
+    },
+    getTaskTypeSelectClass(type) {
+      switch (type) {
+        case 'Bug':
+          return 'bg-rose-50/80 text-rose-700 border-rose-200'
+        case 'Customization Request':
+          return 'bg-purple-50/80 text-purple-700 border-purple-200'
+        default:
+          return 'bg-teal-50/80 text-teal-800 border-teal-200'
+      }
+    },
+    getTaskTypeIcon(type) {
+      if (type === 'Bug') return 'Bug'
+      if (type === 'Customization Request') return 'Sparkles'
+      return 'CheckSquare'
+    },
+    getTaskTypeIconClass(type) {
+      if (type === 'Bug') return 'text-rose-600'
+      if (type === 'Customization Request') return 'text-purple-600'
+      return 'text-teal-700'
     },
   },
 }

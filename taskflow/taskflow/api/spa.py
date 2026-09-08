@@ -186,6 +186,7 @@ def get_spa_bootstrap() -> dict:
 			"team": t.get("team") or "",
 			"status": t["status"] or "Open",
 			"priority": t["priority"] or "Medium",
+			"task_type": t.get("task_type") or "Task",
 			"labels": [t["task_type"]] if t.get("task_type") else ["Task"],
 			"assignees": assignee_list,
 			"owner": t["owner"],
