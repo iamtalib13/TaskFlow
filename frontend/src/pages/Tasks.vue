@@ -539,7 +539,7 @@ onMounted(() => {
       </PageHeader>
 
       <!-- Main Body Container: Full width, minor padding, no unnecessary gaps -->
-      <div class="w-full px-3 pt-3 pb-8">
+      <div class="w-full px-3 pt-3 pb-1">
         <!-- 1. TASK VIEW -->
         <template v-if="activeSection === 'Task'">
           <!-- Sub-Header Tabs & Task Count -->
