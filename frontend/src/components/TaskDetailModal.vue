@@ -72,10 +72,25 @@
             <ChevronDown class="absolute right-2 top-1/2 -translate-y-1/2 size-3 pointer-events-none text-blue-500" />
           </div>
 
+          <!-- Delete Task Button -->
+          <button
+            v-if="form.id"
+            type="button"
+            :disabled="deleting || saving"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-200 transition cursor-pointer disabled:opacity-40"
+            title="Delete Task"
+            @click="confirmDelete"
+          >
+            <span v-if="deleting" class="size-3.5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></span>
+            <Trash2 v-else class="size-3.5" />
+            <span class="hidden sm:inline">{{ deleting ? 'Deleting...' : 'Delete' }}</span>
+          </button>
+
           <!-- Cancel Button -->
           <button
             type="button"
-            class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition cursor-pointer"
+            :disabled="saving || deleting"
+            class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition cursor-pointer disabled:opacity-50"
             @click="close"
           >
             Cancel
@@ -84,18 +99,40 @@
           <!-- Save Task Button -->
           <button
             type="button"
-            :disabled="saving"
+            :disabled="saving || deleting"
             class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
             title="Save Task (⌘S)"
             @click="save"
           >
             <Check v-if="!saving" class="size-3.5 stroke-[2.5]" />
             <span v-else class="size-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            <span>Save Task</span>
+            <span>{{ saving ? 'Saving...' : 'Save Task' }}</span>
             <kbd class="ml-0.5 px-1 py-0.2 rounded text-[10px] bg-white/20 font-mono font-normal">⌘S</kbd>
           </button>
         </div>
       </header>
+
+      <!-- Error Message Banner -->
+      <div
+        v-if="errorMessage"
+        class="px-6 py-2.5 bg-rose-50 border-b border-rose-200 text-rose-700 text-xs flex items-center justify-between shrink-0"
+      >
+        <span class="font-medium flex items-center gap-1.5">
+          <svg class="size-4 shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke-width="2"/>
+            <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"/>
+            <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"/>
+          </svg>
+          {{ errorMessage }}
+        </span>
+        <button
+          type="button"
+          class="text-rose-500 hover:text-rose-700 font-bold ml-2 cursor-pointer text-sm"
+          @click="errorMessage = ''"
+        >
+          &times;
+        </button>
+      </div>
 
       <!-- 3-COLUMN MAIN BODY LAYOUT -->
       <div class="flex-1 min-h-0 overflow-y-auto p-4 bg-[#f8fafc] flex flex-col xl:flex-row gap-4">
@@ -108,9 +145,49 @@
               <Info class="size-3.5 text-gray-400 hover:text-gray-600 cursor-pointer" title="Assignment details" />
             </div>
 
+            <!-- Project & Team selectors -->
+            <div class="space-y-2 pb-2.5 border-b border-gray-100">
+              <div>
+                <label class="block font-semibold text-[11px] text-gray-600 mb-1">Project</label>
+                <select
+                  v-model="form.project"
+                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  @change="onProjectChange"
+                >
+                  <option v-for="p in projects" :key="p.name" :value="p.name">
+                    {{ p.display_name || p.name }}
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block font-semibold text-[11px] text-gray-600">Team</label>
+                  <span v-if="effectiveTeam" class="text-[10px] font-semibold text-[#417c7d] bg-[#417c7d]/10 px-1.5 py-0.5 rounded">
+                    {{ effectiveTeam }}
+                  </span>
+                </div>
+                <select
+                  v-model="form.team"
+                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  @change="onTeamChange"
+                >
+                  <option value="">Select Team</option>
+                  <option v-for="t in teams" :key="t.name || t" :value="t.name || t">
+                    {{ t.team_name || t.name || t }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
             <!-- Assigned to -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Assigned to</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block font-semibold text-[11px] text-gray-600">Assigned to</label>
+                <span v-if="assigneeOptions.length > 0" class="text-[10px] text-gray-400">
+                  {{ assigneeOptions.length }} team members
+                </span>
+              </div>
               <!-- Selected assignees chips with avatar and remove icon -->
               <div v-if="form.assignees && form.assignees.length > 0" class="space-y-1 mb-1.5">
                 <div
@@ -141,10 +218,13 @@
               <MultiSelect
                 v-model="form.assignees"
                 :options="assigneeOptions"
-                placeholder="Add Assignee..."
+                :placeholder="effectiveTeam ? `Select ${effectiveTeam} member...` : 'Add Assignee...'"
                 size="sm"
                 class="w-full"
               />
+              <p v-if="effectiveTeam && assigneeOptions.length === 0" class="text-[10px] text-amber-600 mt-1">
+                No team members found in {{ effectiveTeam }}.
+              </p>
             </div>
 
             <!-- Pending With -->
@@ -678,8 +758,8 @@
 </template>
 
 <script>
-import { MultiSelect } from 'frappe-ui'
-import { fetchTaskComments, addTaskComment, deleteTaskComment } from '../data/api'
+import { MultiSelect, toast } from 'frappe-ui'
+import { fetchTaskComments, addTaskComment, deleteTaskComment, saveTask, deleteTask, getErrorMessage, fetchTeamMembers } from '../data/api'
 import TaskRichEditor from './TaskRichEditor.vue'
 import {
   ArrowLeft,
@@ -759,7 +839,15 @@ export default {
       type: Array,
       default: () => [],
     },
+    teams: {
+      type: Array,
+      default: () => [],
+    },
     people: {
+      type: Array,
+      default: () => [],
+    },
+    teamMembers: {
       type: Array,
       default: () => [],
     },
@@ -771,15 +859,26 @@ export default {
       type: Array,
       default: () => ['Critical', 'High', 'Medium', 'Low'],
     },
+    onSave: {
+      type: Function,
+      default: null,
+    },
+    onDelete: {
+      type: Function,
+      default: null,
+    },
   },
-  emits: ['update:modelValue', 'save', 'close'],
+  emits: ['update:modelValue', 'save', 'delete', 'close'],
   data() {
     return {
       saving: false,
+      deleting: false,
+      errorMessage: '',
       loadingComments: false,
       submittingComment: false,
       newComment: '',
       activeRightTab: 'comments',
+      localTeamMembers: [],
       form: {
         id: '',
         title: '',
@@ -787,6 +886,7 @@ export default {
         status: 'On Hold',
         priority: 'Medium',
         project: 'Drishti Core',
+        team: '',
         assignees: [],
         assigned_to: '',
         reporter: 'Talib Sheikh',
@@ -835,12 +935,14 @@ export default {
         if (t) {
           let assigneesList = []
           if (Array.isArray(t.assignees)) {
-            assigneesList = [...t.assignees]
+            assigneesList = t.assignees.map((a) => (typeof a === 'object' ? (a.user_id || a.value || a.email || a.name) : a)).filter(Boolean)
           } else if (Array.isArray(t.table_gqbl)) {
             assigneesList = t.table_gqbl.map((row) => row.user_id || row.employee_name).filter(Boolean)
           } else if (typeof t.assigned_to === 'string' && t.assigned_to.trim()) {
             assigneesList = t.assigned_to.split(',').map((s) => s.trim()).filter(Boolean)
           }
+
+          const matchedTeam = t.team || ((this.projects || []).find((p) => p.name === t.project || p.display_name === t.project)?.team) || ''
 
           this.form = {
             id: t.id || '',
@@ -849,6 +951,7 @@ export default {
             status: t.status || 'Open',
             priority: t.priority || 'Medium',
             project: t.project || 'Drishti Core',
+            team: matchedTeam,
             assignees: assigneesList,
             assigned_to: t.assigned_to || '',
             reporter: t.reporter || t.owner || 'Talib Sheikh',
@@ -879,6 +982,10 @@ export default {
           if (t.id && t.id !== 'new') {
             this.loadActualComments(t.id)
           }
+
+          if (matchedTeam) {
+            this.loadTeamMembersForTeam(matchedTeam)
+          }
         }
       },
     },
@@ -894,12 +1001,53 @@ export default {
     window.removeEventListener('keydown', this.handleKeyDown)
   },
   computed: {
+    effectiveTeam() {
+      if (this.form.team) return this.form.team
+      if (this.task && this.task.team) return this.task.team
+      const proj = (this.projects || []).find(
+        (p) => p.name === this.form.project || p.display_name === this.form.project
+      )
+      if (proj && proj.team) return proj.team
+      return ''
+    },
+    allAvailableTeamMembers() {
+      const combined = [...(this.teamMembers || []), ...(this.localTeamMembers || [])]
+      const seen = new Set()
+      const list = []
+      for (const m of combined) {
+        const key = `${m.team || ''}_${m.user || ''}_${m.employee || ''}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          list.push(m)
+        }
+      }
+      return list
+    },
     assigneeOptions() {
-      const list = Array.isArray(this.people) ? this.people : []
-      return list.map((p) => ({
-        value: p.email || p.name,
-        label: p.name || p.email,
-      }))
+      const team = this.effectiveTeam
+      let members = this.allAvailableTeamMembers
+      if (team) {
+        members = members.filter(
+          (m) => m.team === team && (m.is_active === undefined || m.is_active === 1 || m.is_active === true)
+        )
+      }
+
+      if (members.length > 0) {
+        return members.map((m) => ({
+          value: m.user || m.employee,
+          label: m.employee_name || m.user || m.employee,
+        }))
+      }
+
+      // If no team is associated yet, show all accessible team members
+      if (!team && this.allAvailableTeamMembers.length > 0) {
+        return this.allAvailableTeamMembers.map((m) => ({
+          value: m.user || m.employee,
+          label: m.employee_name ? `${m.employee_name} (${m.team})` : (m.user || m.employee),
+        }))
+      }
+
+      return []
     },
     isOverdue() {
       if (this.form.status === 'Overdue') return true
@@ -954,13 +1102,46 @@ export default {
   methods: {
     getAssigneeValue(assignee) {
       if (!assignee) return ''
-      return typeof assignee === 'object' ? (assignee.value || assignee.name || assignee.email) : assignee
+      return typeof assignee === 'object' ? (assignee.value || assignee.user_id || assignee.email || assignee.name) : assignee
     },
     getAssigneeName(assignee) {
+      if (typeof assignee === 'object' && assignee.name && !assignee.name.includes('@')) {
+        return assignee.name
+      }
       const val = this.getAssigneeValue(assignee)
       if (!val) return ''
+      const member = (this.allAvailableTeamMembers || []).find(
+        (m) => m.user === val || m.employee === val || m.employee_name === val || m.name === val
+      )
+      if (member && member.employee_name) return member.employee_name
       const p = (this.people || []).find((x) => x.email === val || x.name === val)
       return p ? (p.name || p.email) : val
+    },
+    onProjectChange() {
+      const selected = (this.projects || []).find(
+        (p) => p.name === this.form.project || p.display_name === this.form.project
+      )
+      if (selected && selected.team) {
+        this.form.team = selected.team
+      }
+      this.loadTeamMembersForTeam(this.effectiveTeam)
+    },
+    onTeamChange() {
+      this.loadTeamMembersForTeam(this.effectiveTeam)
+    },
+    async loadTeamMembersForTeam(team) {
+      if (!team) return
+      const hasMembers = this.allAvailableTeamMembers.some((m) => m.team === team)
+      if (!hasMembers) {
+        try {
+          const members = await fetchTeamMembers(team)
+          if (Array.isArray(members) && members.length > 0) {
+            this.localTeamMembers.push(...members)
+          }
+        } catch (err) {
+          console.warn('Failed to load team members for team:', team, err)
+        }
+      }
     },
     removeAssignee(assignee) {
       const targetVal = this.getAssigneeValue(assignee)
@@ -1111,12 +1292,20 @@ export default {
     downloadAll() {
       alert(`Downloading all ${this.attachments.length} attachments...`)
     },
-    save() {
+    async save() {
+      if (!this.form.title || !this.form.title.trim()) {
+        this.errorMessage = 'Task title is required'
+        toast.error('Task title is required')
+        return
+      }
       this.saving = true
+      this.errorMessage = ''
       const assigneeIds = (this.form.assignees || []).map((a) => this.getAssigneeValue(a)).filter(Boolean)
       const updated = {
         ...this.task,
         ...this.form,
+        id: this.form.id || this.task?.id,
+        team: this.effectiveTeam || this.form.team || this.task?.team || '',
         assignees: assigneeIds,
         assigned_to: assigneeIds.map((id) => this.getAssigneeName(id)).join(', '),
         table_gqbl: assigneeIds.map((id) => ({
@@ -1126,11 +1315,47 @@ export default {
         comments: this.comments,
         attachments: this.attachments,
       }
-      this.$emit('save', updated)
-      setTimeout(() => {
+      try {
+        if (this.onSave) {
+          await this.onSave(updated)
+        } else {
+          await saveTask(updated)
+          this.$emit('save', updated)
+          toast.success('Task saved successfully')
+        }
         this.saving = false
         this.close()
-      }, 250)
+      } catch (err) {
+        this.saving = false
+        const msg = getErrorMessage(err, 'Failed to save task')
+        this.errorMessage = msg
+        toast.error(msg)
+      }
+    },
+    async confirmDelete() {
+      const taskId = this.form.id || this.task?.id
+      if (!taskId) return
+      if (!confirm(`Are you sure you want to delete task "${this.form.title || taskId}"? This action cannot be undone.`)) {
+        return
+      }
+      this.deleting = true
+      this.errorMessage = ''
+      try {
+        if (this.onDelete) {
+          await this.onDelete(taskId)
+        } else {
+          await deleteTask(taskId)
+          this.$emit('delete', taskId)
+          toast.success('Task deleted successfully')
+        }
+        this.deleting = false
+        this.close()
+      } catch (err) {
+        this.deleting = false
+        const msg = getErrorMessage(err, 'Failed to delete task')
+        this.errorMessage = msg
+        toast.error(msg)
+      }
     },
     getStatusSelectClass(status) {
       switch (status) {

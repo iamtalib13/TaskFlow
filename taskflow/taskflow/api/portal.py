@@ -1874,3 +1874,79 @@ def get_member_timesheets(user: str, from_date: str = "", to_date: str = "") -> 
         })
 
     return result
+
+
+@frappe.whitelist(methods=["POST"])
+def get_all_timesheets(from_date: str = "", to_date: str = "", user: str = "") -> list[dict]:
+    """Fetch all timesheets (optionally filtered by user and date range) for list view."""
+    _require_login()
+    filters = {}
+    if user:
+        filters["user"] = user
+    if from_date and to_date:
+        filters["timesheet_date"] = ("between", [from_date, to_date])
+    elif from_date:
+        filters["timesheet_date"] = (">=", from_date)
+    elif to_date:
+        filters["timesheet_date"] = ("<=", to_date)
+
+    timesheets = frappe.get_all(
+        "Taskflow Timesheet",
+        filters=filters,
+        fields=["name", "user", "employee_name", "timesheet_date", "total_working_hours", "status"],
+        order_by="timesheet_date desc",
+    )
+    return timesheets
+
+
+@frappe.whitelist(methods=["POST"])
+def save_timesheet(date: str, items: list[dict] = None, status: str = "Draft") -> dict:
+    """Create or update a timesheet for the current user on a given date.
+
+    items: list of { activity_type, project, task, from_time, to_time, description }
+    """
+    _require_login()
+    user = frappe.session.user
+
+    if not date:
+        frappe.throw("Date is required.")
+    if items is None:
+        items = []
+
+    existing = frappe.db.get_value(
+        "Taskflow Timesheet",
+        {"user": user, "timesheet_date": date},
+        "name",
+    )
+
+    if existing:
+        ts = frappe.get_doc("Taskflow Timesheet", existing)
+        ts.items = []
+        for item in items:
+            ts.append("table_pfiw", item)
+        ts.status = status
+        ts.calculate_total_hours()
+        ts.save(ignore_permissions=True)
+    else:
+        ts = frappe.new_doc("Taskflow Timesheet")
+        ts.user = user
+        ts.timesheet_date = date
+        ts.status = status
+        for item in items:
+            ts.append("table_pfiw", item)
+        ts.calculate_total_hours()
+        ts.insert(ignore_permissions=True)
+
+    frappe.db.commit()
+    return {"name": ts.name, "total_hours": ts.total_working_hours, "status": ts.status}
+
+
+@frappe.whitelist(methods=["POST"])
+def delete_timesheet(timesheet_name: str) -> dict:
+    """Delete a timesheet by name."""
+    _require_login()
+    if not timesheet_name:
+        frappe.throw("Timesheet name is required.")
+    frappe.delete_doc("Taskflow Timesheet", timesheet_name, ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "success"}

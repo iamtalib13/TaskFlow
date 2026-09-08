@@ -23,7 +23,7 @@ def get_spa_bootstrap() -> dict:
 	project_filters = {"is_archived": 0} if has_archived else {}
 	projects = frappe.get_all(
 		"Taskflow Project",
-		fields=["name", "project_name", "status"],
+		fields=["name", "project_name", "status", "team"],
 		filters=project_filters,
 		order_by="project_name asc",
 	)
@@ -45,6 +45,7 @@ def get_spa_bootstrap() -> dict:
 			"name",
 			"task_title",
 			"project",
+			"team",
 			"status",
 			"priority",
 			"task_type",
@@ -81,6 +82,17 @@ def get_spa_bootstrap() -> dict:
 			fields=["parent", "user_id", "employee_name"],
 		)
 
+	# Fetch user images for all assignees in one batch
+	all_user_ids = list({a["user_id"] for a in assignments if a.get("user_id")})
+	user_image_map = {}
+	if all_user_ids:
+		users_data = frappe.get_all(
+			"User",
+			filters={"name": ["in", all_user_ids]},
+			fields=["name", "user_image", "full_name"],
+		)
+		user_image_map = {u["name"]: u for u in users_data}
+
 	assignment_map = {}
 	for a in assignments:
 		assignment_map.setdefault(a["parent"], []).append(a)
@@ -115,16 +127,27 @@ def get_spa_bootstrap() -> dict:
 	tasks = []
 	for t in tasks_raw:
 		assignee_rows = assignment_map.get(t["name"], [])
-		assignee_users = [row["user_id"] for row in assignee_rows if row.get("user_id")]
+		assignee_list = []
+		for row in assignee_rows:
+			uid = row.get("user_id")
+			if not uid:
+				continue
+			u_info = user_image_map.get(uid, {})
+			assignee_list.append({
+				"user_id": uid,
+				"name": u_info.get("full_name") or row.get("employee_name") or uid,
+				"image": u_info.get("user_image") or "",
+			})
 
 		tasks.append({
 			"id": t["name"],
 			"title": t["task_title"] or t["name"],
 			"project": t["project"] or "General",
+			"team": t.get("team") or "",
 			"status": t["status"] or "Open",
 			"priority": t["priority"] or "Medium",
 			"labels": [t["task_type"]] if t.get("task_type") else ["Task"],
-			"assignees": assignee_users,
+			"assignees": assignee_list,
 			"owner": t["owner"],
 			"due": str(t["due_date"]) if t.get("due_date") else "",
 			"creation": str(t["creation"]) if t.get("creation") else "",
@@ -148,6 +171,53 @@ def get_spa_bootstrap() -> dict:
 			"ticket_description": t.get("ticket_description") or "",
 		})
 
+	# Accessible teams and team members
+	from taskflow.taskflow.service.team_hierarchy import get_accessible_teams
+	accessible_teams = list(get_accessible_teams(current_user))
+	teams_filter = {"name": ["in", accessible_teams]} if accessible_teams else {}
+	teams_data = frappe.get_all(
+		"Taskflow Team",
+		filters=teams_filter,
+		fields=["name", "team_name", "team_lead", "is_active"],
+		order_by="team_name asc",
+	)
+
+	team_members_filter = {"is_active": 1}
+	if accessible_teams:
+		team_members_filter["parent"] = ["in", accessible_teams]
+
+	team_members_raw = frappe.get_all(
+		"Taskflow Team Member",
+		filters=team_members_filter,
+		fields=["name", "parent as team", "employee", "user", "team_role", "access_level", "is_active"],
+	)
+	emp_ids = [m["employee"] for m in team_members_raw if m.get("employee")]
+	emp_map = {}
+	if emp_ids:
+		emps = frappe.get_all(
+			"Employee",
+			filters={"name": ["in", emp_ids]},
+			fields=["name", "employee_name", "user_id", "image", "designation", "department"],
+		)
+		emp_map = {e["name"]: e for e in emps}
+
+	team_members = []
+	for m in team_members_raw:
+		e_info = emp_map.get(m["employee"], {})
+		team_members.append({
+			"name": m["name"],
+			"team": m["team"],
+			"employee": m["employee"],
+			"user": m.get("user") or e_info.get("user_id") or "",
+			"employee_name": e_info.get("employee_name") or m["employee"],
+			"user_image": e_info.get("image") or "",
+			"designation": e_info.get("designation") or "",
+			"department": e_info.get("department") or "",
+			"team_role": m.get("team_role") or "Team Member",
+			"access_level": m.get("access_level") or "Operate",
+			"is_active": m.get("is_active", 1),
+		})
+
 	return {
 		"me": {
 			"email": user_info.get("name"),
@@ -158,6 +228,7 @@ def get_spa_bootstrap() -> dict:
 			{
 				"name": p["name"],
 				"display_name": p.get("project_name") or p["name"],
+				"team": p.get("team") or "",
 				"icon": "lucide-folder",
 			}
 			for p in projects
@@ -170,6 +241,8 @@ def get_spa_bootstrap() -> dict:
 			}
 			for u in users
 		],
+		"teams": teams_data,
+		"team_members": team_members,
 		"statuses": ["Open", "In Progress", "Review", "On Hold", "Completed", "Cancelled", "Overdue"],
 		"priorities": ["Critical", "High", "Medium", "Low"],
 		"tasks": tasks,
@@ -219,6 +292,26 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		if "description" in data:
 			doc.description = data.get("description")
 
+	# Ensure valid team is assigned (mandatory for non-admin permission rules)
+	candidate_team = data.get("team")
+	if candidate_team and not frappe.db.exists("Taskflow Team", candidate_team):
+		candidate_team = None
+
+	if not candidate_team and doc.project:
+		proj_team = frappe.db.get_value("Taskflow Project", doc.project, "team")
+		if proj_team and frappe.db.exists("Taskflow Team", proj_team):
+			candidate_team = proj_team
+
+	if not candidate_team:
+		from taskflow.taskflow.service.team_hierarchy import get_accessible_teams
+		user_teams = [t for t in get_accessible_teams(frappe.session.user) if frappe.db.exists("Taskflow Team", t)]
+		if user_teams:
+			candidate_team = user_teams[0]
+		else:
+			candidate_team = frappe.db.get_value("Taskflow Team", {"is_active": 1}, "name")
+
+	doc.team = candidate_team
+
 	# Save additional assignment, schedule, and ticket fields
 	direct_fields = [
 		"pending_with",
@@ -252,28 +345,58 @@ def save_task(payload: str = None, **kwargs) -> dict:
 
 		current_employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
 		doc.set("table_gqbl", [])
+		first_emp = None
 		for user_id in (assignee_list or []):
 			if user_id:
-				emp_name = frappe.db.get_value("User", user_id, "full_name") or user_id
+				emp = None
+				if frappe.db.exists("Employee", user_id):
+					emp_recs = frappe.get_all("Employee", filters={"name": user_id}, fields=["name", "employee_name", "user_id"])
+					if emp_recs:
+						emp = emp_recs[0]
+					actual_user = (emp.get("user_id") if emp else None) or user_id
+					emp_name = (emp.get("employee_name") if emp else None) or user_id
+				else:
+					actual_user = user_id
+					emp_records = frappe.get_all("Employee", filters={"user_id": user_id}, fields=["name", "employee_name", "user_id"])
+					if emp_records:
+						emp = emp_records[0]
+						emp_name = emp.get("employee_name") or frappe.db.get_value("User", user_id, "full_name") or user_id
+					else:
+						emp_name = frappe.db.get_value("User", user_id, "full_name") or user_id
+
 				doc.append("table_gqbl", {
-					"user_id": user_id,
+					"user_id": actual_user,
 					"employee_name": emp_name,
 					"assigned_by": current_employee or None,
 				})
+				if not first_emp:
+					first_emp = emp.get("name") if emp else frappe.db.get_value("Employee", {"user_id": actual_user}, "name")
 
 		if doc.meta.has_field("assigned_to"):
-			doc.assigned_to = ", ".join(assignee_list) if assignee_list else ""
+			doc.assigned_to = first_emp
 
 	if is_new:
 		doc.insert(ignore_permissions=False)
 	else:
 		doc.save(ignore_permissions=False)
 
+	doc_rows = doc.get("table_gqbl", [])
+	doc_user_ids = [r.user_id for r in doc_rows if r.user_id]
+	doc_user_image_map = {}
+	if doc_user_ids:
+		doc_users = frappe.get_all(
+			"User",
+			filters={"name": ["in", doc_user_ids]},
+			fields=["name", "user_image", "full_name"],
+		)
+		doc_user_image_map = {u["name"]: u for u in doc_users}
+
 	return {
 		"id": doc.name,
 		"name": doc.name,
 		"title": doc.task_title,
 		"project": doc.project or "",
+		"team": doc.team or "",
 		"status": doc.status,
 		"priority": doc.priority,
 		"task_type": doc.task_type or "Task",
@@ -284,8 +407,14 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		"modified": str(doc.modified) if getattr(doc, "modified", None) else "",
 		"modified_pretty": frappe.utils.pretty_date(doc.modified) if getattr(doc, "modified", None) else "Just now",
 		"description": doc.description or "",
-		"assignees": [r.user_id for r in doc.get("table_gqbl", []) if r.user_id],
-		"table_gqbl": [{"user_id": r.user_id, "employee_name": r.employee_name} for r in doc.get("table_gqbl", [])],
+		"assignees": [
+			{
+				"user_id": r.user_id,
+				"name": (doc_user_image_map.get(r.user_id, {}).get("full_name") or r.employee_name or r.user_id),
+				"image": doc_user_image_map.get(r.user_id, {}).get("user_image") or "",
+			}
+			for r in doc_rows if r.user_id
+		],
 		"pending_with": doc.pending_with or "",
 		"pending_from": str(doc.pending_from) if getattr(doc, "pending_from", None) else "",
 		"guided_by": doc.guided_by or "",
@@ -308,8 +437,14 @@ def delete_task(task_id: str) -> dict:
 	if not task_id:
 		frappe.throw(_("Task ID is required"))
 	doc = frappe.get_doc("Taskflow Task", task_id)
-	doc.check_permission("delete")
-	frappe.delete_doc("Taskflow Task", task_id, ignore_permissions=False)
+	user = frappe.session.user
+	is_admin = user == "Administrator" or bool({"System Manager", "Taskflow Admin"} & set(frappe.get_roles(user)))
+	if not is_admin:
+		from taskflow.taskflow.service.team_hierarchy import can_manage_team
+		if doc.owner != user and not can_manage_team(user, doc.team):
+			frappe.throw(_("Not permitted to delete this task"), frappe.PermissionError)
+
+	frappe.delete_doc("Taskflow Task", task_id, ignore_permissions=True)
 	return {"success": True, "id": task_id}
 
 
