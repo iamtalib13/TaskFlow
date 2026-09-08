@@ -230,22 +230,21 @@
 
         <!-- Actions -->
         <div class="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
-          <button
+          <Button
             type="button"
             :disabled="creating"
-            class="px-4 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition disabled:opacity-50 cursor-pointer"
             @click="close"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="solid"
             type="submit"
+            :loading="creating"
             :disabled="!form.title.trim() || creating"
-            class="px-5 py-2 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] text-white text-xs font-semibold rounded-lg shadow-xs disabled:opacity-40 transition flex items-center gap-2 cursor-pointer"
           >
-            <span v-if="creating" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            <span>{{ creating ? 'Creating...' : 'Create Task' }}</span>
-          </button>
+            Create Task
+          </Button>
         </div>
       </form>
     </div>
@@ -253,7 +252,7 @@
 </template>
 
 <script>
-import { MultiSelect, DatePicker, toast } from 'frappe-ui'
+import { MultiSelect, DatePicker, Button, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
 import { saveTask, getErrorMessage, fetchTeamMembers } from '../data/api'
 import TaskRichEditor from './TaskRichEditor.vue'
@@ -262,6 +261,7 @@ import { Calendar, Bug, Sparkles, CheckSquare, ChevronDown } from 'lucide-vue-ne
 export default {
   name: 'TaskCreateModal',
   components: {
+    Button,
     DatePicker,
     MultiSelect,
     TaskRichEditor,
