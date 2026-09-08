@@ -72,12 +72,11 @@
             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Description
             </label>
-            <textarea
+            <TaskRichEditor
               v-model="form.description"
-              rows="5"
-              placeholder="Add details, acceptance criteria, or notes..."
-              class="w-full text-sm text-gray-800 border border-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-black focus:border-black outline-none transition resize-y"
-            ></textarea>
+              :people="people"
+              placeholder="Add details, acceptance criteria, or notes…"
+            />
           </div>
 
           <!-- Comments & Activity Section -->
@@ -202,14 +201,27 @@
             />
           </div>
 
-          <!-- Due Date -->
+          <!-- Due Date (DD-MM-YYYY) -->
           <div>
             <label class="block text-gray-500 font-medium mb-1">Due Date</label>
-            <input
-              v-model="form.due_date"
-              type="date"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-black outline-none"
-            />
+            <div class="relative flex items-center">
+              <input
+                v-model="displayDueDate"
+                type="text"
+                placeholder="DD-MM-YYYY"
+                maxlength="10"
+                class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-black outline-none"
+              />
+              <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer" title="Pick date">
+                <Calendar class="size-4" />
+                <input
+                  type="date"
+                  :value="form.due_date"
+                  class="sr-only"
+                  @change="onNativeDateChange"
+                />
+              </label>
+            </div>
           </div>
 
           <!-- Estimated & Logged Hours -->
@@ -265,8 +277,15 @@
 </template>
 
 <script>
+import TaskRichEditor from './TaskRichEditor.vue'
+import { Calendar } from 'lucide-vue-next'
+
 export default {
   name: 'TaskDetailModal',
+  components: {
+    TaskRichEditor,
+    Calendar,
+  },
   props: {
     modelValue: {
       type: Boolean,
@@ -349,7 +368,38 @@ export default {
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleKeyDown)
   },
+  computed: {
+    displayDueDate: {
+      get() {
+        if (!this.form.due_date) return ''
+        const parts = String(this.form.due_date).split('-')
+        if (parts.length === 3) {
+          const [y, m, d] = parts
+          if (y.length === 4) return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`
+        }
+        return this.form.due_date
+      },
+      set(val) {
+        if (!val) {
+          this.form.due_date = ''
+          return
+        }
+        const parts = String(val).trim().split(/[-/]/)
+        if (parts.length === 3) {
+          const [d, m, y] = parts
+          if (y && y.length === 4) {
+            this.form.due_date = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+            return
+          }
+        }
+        this.form.due_date = val
+      },
+    },
+  },
   methods: {
+    onNativeDateChange(e) {
+      this.form.due_date = e.target.value
+    },
     close() {
       this.$emit('update:modelValue', false)
       this.$emit('close')

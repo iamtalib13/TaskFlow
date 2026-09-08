@@ -3,6 +3,7 @@ import { computed, ref, onMounted, watch } from 'vue'
 import {
   Avatar,
   Badge,
+  Breadcrumbs,
   Button,
   DesktopShell,
   Dropdown,
@@ -77,6 +78,20 @@ const navItems = computed(() => [
   { id: 'Project', label: 'Project', icon: FolderKanban, badge: projectsData.value.length },
   { id: 'Team', label: 'Team', icon: Users, badge: teamData.value.length },
 ])
+
+const currentBreadcrumbs = computed(() => {
+  const sectionLabel = {
+    Task: 'Tasks',
+    Timesheet: 'Timesheet',
+    Project: 'Projects',
+    Team: 'Team',
+  }[activeSection.value] || activeSection.value
+
+  return [
+    { label: 'Workspace', route: '#' },
+    { label: sectionLabel, route: '#' },
+  ]
+})
 
 // User Menu
 const userMenu = [
@@ -652,8 +667,8 @@ onMounted(() => {
       </template>
 
       <!-- Pinned Page Header -->
-      <PageHeader>
-        <div class="flex items-center gap-2.5">
+      <PageHeader class="border-b border-outline-gray-2 bg-surface-base">
+        <div class="flex items-center gap-3">
           <!-- Sidebar Toggle Button in Header -->
           <Button
             variant="ghost"
@@ -665,7 +680,9 @@ onMounted(() => {
               <PanelLeftClose v-else class="size-4 text-gray-600" />
             </template>
           </Button>
-          <PageHeaderTitle>{{ activeSection }}</PageHeaderTitle>
+
+          <!-- Breadcrumbs for current section -->
+          <Breadcrumbs :items="currentBreadcrumbs" />
         </div>
 
         <div class="flex items-center gap-2">
@@ -763,7 +780,7 @@ onMounted(() => {
               </template>
 
               <template #cell-project="{ row }">
-                <span class="px-2 py-0.5 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200">
+                <span class="text-xs font-medium text-gray-700 truncate block max-w-[140px]" :title="row.project">
                   {{ row.project }}
                 </span>
               </template>
@@ -870,7 +887,7 @@ onMounted(() => {
             </template>
 
             <template #cell-project="{ row }">
-              <span class="px-2 py-0.5 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200">
+              <span class="text-xs font-medium text-gray-700 truncate block max-w-[140px]" :title="row.project">
                 {{ row.project }}
               </span>
             </template>
