@@ -132,7 +132,7 @@ const spaceActions = [
   { label: 'Archive', icon: 'lucide-archive' },
 ]
 
-// Members list in Settings
+// Members list in Settings & Avatar lookup
 const members = [
   {
     name: 'Talib Sheikh',
@@ -144,21 +144,39 @@ const members = [
     name: 'Sarah Chen',
     email: 'sarah.chen@example.com',
     role: 'Tech Lead',
-    image: 'https://i.pravatar.cc/150?img=5',
+    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
   },
   {
     name: 'Marcus Brody',
     email: 'marcus.brody@example.com',
     role: 'Engineer',
-    image: 'https://i.pravatar.cc/150?img=12',
+    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
   },
   {
     name: 'Elena Rostova',
     email: 'elena.rostova@example.com',
     role: 'Product Designer',
-    image: 'https://i.pravatar.cc/150?img=20',
+    image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+  },
+  {
+    name: 'Devon Vance',
+    email: 'devon.vance@example.com',
+    role: 'DevOps Lead',
+    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
   },
 ]
+
+const getAssignee = (name) => {
+  if (!name) return { name: 'Unassigned', image: '' }
+  const found = members.find(
+    (m) => m.name.toLowerCase() === name.toLowerCase() || m.email.toLowerCase() === name.toLowerCase()
+  )
+  if (found) return found
+  return {
+    name,
+    image: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e2e8f0&color=334155&size=128`,
+  }
+}
 
 // Table View Columns (non-sticky ID & Title as requested)
 const tableColumns = [
@@ -500,52 +518,74 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 1. FEED LIST VIEW (Exact Frappe UI List Layout) -->
+        <!-- 1. FEED LIST VIEW (Frappe UI List Layout) -->
         <div v-if="currentView === 'feed'">
-          <List class="-mx-3 sm:list-gap-4">
+          <List
+            :columns="['auto', 'minmax(0, 1fr)', 'auto']"
+            class="-mx-3 sm:list-gap-2 bg-surface-base rounded-xl border border-outline-gray-2 shadow-xs p-1"
+          >
             <ListRow
               v-for="task in visibleTasks"
               :key="task.id"
-              class="h-15 cursor-pointer hover:bg-surface-gray-1 transition"
+              class="h-16 px-4 cursor-pointer hover:bg-surface-gray-1 transition-colors rounded-lg items-center"
               @click="openDetail(task)"
             >
-              <!-- Cell 1: Avatar -->
-              <ListCell>
+              <!-- Cell 1: Assignee Avatar -->
+              <ListCell class="shrink-0">
                 <Avatar
+                  :image="getAssignee(task.assigned_to).image"
                   :label="task.assigned_to || 'Task'"
                   size="2xl"
+                  shape="circle"
+                  :title="task.assigned_to ? 'Assigned to ' + task.assigned_to : 'Unassigned'"
                 />
               </ListCell>
 
-              <!-- Cell 2: Title, Project & Excerpt -->
-              <ListCell>
-                <div class="min-w-0 flex-1">
-                  <div class="truncate leading-none text-ink-gray-8">
-                    <span class="text-base-semibold">
+              <!-- Cell 2: Title & Project/Assignee metadata (No description) -->
+              <ListCell class="min-w-0 flex-1 px-3">
+                <div class="flex flex-col justify-center min-w-0">
+                  <div class="flex items-center gap-2 truncate leading-snug text-ink-gray-9">
+                    <span class="text-base-semibold truncate">
                       {{ task.title }}
                     </span>
                     <span
                       v-if="task.badge"
-                      class="ml-2 px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md"
+                      class="shrink-0 px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md"
                     >
                       {{ task.badge }}
                     </span>
                   </div>
-                  <div class="mt-1.5 flex min-w-0 items-center text-base text-ink-gray-5">
-                    <span class="lucide-folder mr-1 size-4 shrink-0" aria-hidden="true" />
-                    <span class="shrink-0 font-medium text-ink-gray-7">{{ task.project }}</span>
-                    <span class="mx-1.5">·</span>
-                    <span class="truncate">{{ task.description || 'No description provided' }}</span>
+                  <div class="mt-1 flex items-center gap-2 text-xs text-ink-gray-5 truncate">
+                    <span class="font-mono font-medium text-ink-gray-6">{{ task.id }}</span>
+                    <span>·</span>
+                    <span class="flex items-center gap-1 font-medium text-ink-gray-7 shrink-0">
+                      <span class="lucide-folder size-3.5 text-ink-gray-4" aria-hidden="true" />
+                      {{ task.project }}
+                    </span>
+                    <template v-if="task.assigned_to">
+                      <span>·</span>
+                      <span class="truncate">
+                        Assigned to <strong class="font-medium text-ink-gray-8">{{ task.assigned_to }}</strong>
+                      </span>
+                    </template>
                   </div>
                 </div>
               </ListCell>
 
-              <!-- Cell 3: Right meta (Status Badge, Priority & Actions) -->
-              <ListCell class="justify-end">
+              <!-- Cell 3: Right meta (Due Date, Priority, Status Badge & Actions) -->
+              <ListCell class="justify-end shrink-0">
                 <div class="flex items-center gap-3">
-                  <div class="text-right text-sm text-ink-gray-5">
-                    {{ task.due_date || 'No due date' }}
+                  <div v-if="task.due_date" class="hidden sm:block text-right text-xs text-ink-gray-5 font-mono">
+                    {{ task.due_date }}
                   </div>
+                  <Badge
+                    v-if="task.priority"
+                    :theme="task.priority === 'Critical' ? 'red' : task.priority === 'High' ? 'amber' : 'gray'"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    {{ task.priority }}
+                  </Badge>
                   <Badge
                     :theme="task.status === 'Completed' ? 'green' : task.status === 'In Progress' ? 'blue' : task.status === 'Review' ? 'purple' : 'gray'"
                     variant="subtle"
@@ -555,11 +595,11 @@ onMounted(() => {
                   </Badge>
                   <button
                     type="button"
-                    class="p-1 text-ink-gray-4 hover:text-amber-500 transition"
+                    class="p-1.5 text-ink-gray-4 hover:text-amber-500 rounded hover:bg-surface-gray-2 transition"
                     @click.stop="toggleStar(task)"
                   >
                     <span
-                      class="size-4"
+                      class="size-4 block"
                       :class="task.starred ? 'lucide-star fill-amber-500 text-amber-500' : 'lucide-star'"
                     />
                   </button>
