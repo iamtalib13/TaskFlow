@@ -125,8 +125,8 @@
           </div>
         </div>
 
-        <!-- Row 2: Assigned To (MultiSelect) & Due Date -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+        <!-- Row 2: Assigned To (MultiSelect) & Task Type & Due Date -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div class="md:col-span-2">
             <div class="flex items-center justify-between mb-1">
               <label class="block font-medium text-gray-600">Assigned To (Team Members)</label>
@@ -144,6 +144,24 @@
             <p v-if="effectiveTeam && assigneeOptions.length === 0" class="text-[10px] text-amber-600 mt-1">
               No team members found in {{ effectiveTeam }}.
             </p>
+          </div>
+
+          <div>
+            <label class="block font-medium text-gray-600 mb-1">Task Type</label>
+            <div class="relative flex items-center">
+              <select
+                v-model="form.task_type"
+                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-7 pr-7 py-1.5 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
+              >
+                <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
+              </select>
+              <component
+                :is="getTaskTypeIcon(form.task_type)"
+                class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
+                :class="getTaskTypeIconClass(form.task_type)"
+              />
+              <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none text-gray-400" />
+            </div>
           </div>
 
           <div>
@@ -239,7 +257,7 @@ import { MultiSelect, DatePicker, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
 import { saveTask, getErrorMessage, fetchTeamMembers } from '../data/api'
 import TaskRichEditor from './TaskRichEditor.vue'
-import { Calendar } from 'lucide-vue-next'
+import { Calendar, Bug, Sparkles, CheckSquare, ChevronDown } from 'lucide-vue-next'
 
 export default {
   name: 'TaskCreateModal',
@@ -248,6 +266,10 @@ export default {
     MultiSelect,
     TaskRichEditor,
     Calendar,
+    Bug,
+    Sparkles,
+    CheckSquare,
+    ChevronDown,
   },
   props: {
     modelValue: {
@@ -289,10 +311,12 @@ export default {
       creating: false,
       errorMessage: '',
       localTeamMembers: [],
+      taskTypes: ['Task', 'Bug', 'Customization Request'],
       form: {
         title: '',
         project: '',
         team: '',
+        task_type: 'Task',
         assignees: [],
         assigned_to: '',
         status: 'Open',
@@ -313,6 +337,7 @@ export default {
           title: '',
           project: defaultProject,
           team: defaultTeam,
+          task_type: 'Task',
           assignees: [],
           assigned_to: '',
           status: 'Open',
@@ -468,6 +493,16 @@ export default {
         this.errorMessage = msg
         toast.error(msg)
       }
+    },
+    getTaskTypeIcon(type) {
+      if (type === 'Bug') return 'Bug'
+      if (type === 'Customization Request') return 'Sparkles'
+      return 'CheckSquare'
+    },
+    getTaskTypeIconClass(type) {
+      if (type === 'Bug') return 'text-rose-600'
+      if (type === 'Customization Request') return 'text-purple-600'
+      return 'text-[#417c7d]'
     },
   },
 }
