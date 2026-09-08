@@ -1,5 +1,6 @@
 {
   "name": "frappe-ui-frontend",
+  "type": "module",
   "private": true,
   "version": "0.0.0",
   "scripts": {
@@ -9,16 +10,16 @@
   },
   "dependencies": {
     "feather-icons": "^4.28.0",
-    "frappe-ui": "^0.0.105",
+    "frappe-ui": "1.0.0-beta.56",
     "lucide-vue-next": "^1.0.0",
-    "vue": "^3.2.25",
-    "vue-router": "^4.0.12"
+    "vue": "^3.5.13",
+    "vue-router": "^4.4.5"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^2.0.0",
-    "autoprefixer": "^10.4.2",
-    "postcss": "^8.4.5",
-    "tailwindcss": "^3.0.15",
-    "vite": "^2.7.2"
+    "@vitejs/plugin-vue": "^5.1.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "vite": "^5.4.11"
   }
 }
