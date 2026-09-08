@@ -40,7 +40,8 @@
               scope="col"
               :style="{
                 width: col.width || 'auto',
-                minWidth: col.minWidth || '120px',
+                minWidth: col.minWidth || '80px',
+                maxWidth: col.width || 'none',
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
@@ -125,6 +126,9 @@
               v-for="col in visibleColumns"
               :key="col.key"
               :style="{
+                width: col.width || 'auto',
+                minWidth: col.minWidth || '80px',
+                maxWidth: col.width || 'none',
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
