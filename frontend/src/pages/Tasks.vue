@@ -155,7 +155,7 @@ const getAssignee = (name) => {
 
 // Table View Columns (non-sticky ID & Title as requested)
 const tableColumns = [
-  { key: 'id', label: 'ID', width: '110px', minWidth: '90px', sortable: true, visible: true },
+  { key: 'id', label: 'ID', width: '120px', minWidth: '100px', sortable: true, visible: true },
   { key: 'title', label: 'TASK', width: '220px', minWidth: '180px', sortable: true, visible: true },
   { key: 'project', label: 'PROJECT', width: '140px', minWidth: '120px', sortable: true, visible: true },
   { key: 'status', label: 'STATUS', width: '120px', minWidth: '100px', sortable: true, visible: true },
@@ -166,14 +166,53 @@ const tableColumns = [
   { key: 'due_date', label: 'DUE DATE', width: '110px', minWidth: '100px', sortable: true, visible: true },
   { key: 'estimated_hours', label: 'EST. HRS', width: '90px', minWidth: '80px', align: 'right', sortable: true, visible: true },
   { key: 'logged_hours', label: 'LOGGED HRS', width: '90px', minWidth: '80px', align: 'right', sortable: true, visible: true },
-  { key: 'actions', label: 'ACTIONS', width: '80px', minWidth: '70px', align: 'center', sortable: false, visible: true },
+  { key: 'modified', label: 'MODIFIED', width: '130px', minWidth: '110px', sortable: true, visible: true },
 ]
 
 const selectedRowKeys = ref([])
 const tablePage = ref(1)
 const tablePageSize = ref(20)
-const sortKey = ref('creation')
+const sortKey = ref('modified')
 const sortOrder = ref('desc')
+
+function handleSortChange({ key, order }) {
+  sortKey.value = key
+  sortOrder.value = order
+}
+
+function formatPrettyDate(row) {
+  if (row?.modified_pretty) return row.modified_pretty
+  if (!row?.modified) return '—'
+
+  try {
+    const raw = String(row.modified).trim()
+    const isoString = raw.includes('T') ? raw : raw.replace(' ', 'T')
+    const d = new Date(isoString)
+    if (isNaN(d.getTime())) return row.modified
+
+    const now = new Date()
+    const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000)
+
+    if (diffSec < 0 || diffSec < 60) return 'Just now'
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 60) return `${diffMin}m ago`
+    const diffHours = Math.floor(diffMin / 60)
+    if (diffHours < 24) return `${diffHours}h ago`
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays}d ago`
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const day = d.getDate()
+    const month = months[d.getMonth()]
+    if (d.getFullYear() === now.getFullYear()) {
+      return `${day} ${month}`
+    }
+    return `${day} ${month} ${d.getFullYear()}`
+  } catch {
+    return row.modified || '—'
+  }
+}
 
 // Status theme mapping for badges
 const getStatusTheme = (status) => {
@@ -196,12 +235,24 @@ const getStatusTheme = (status) => {
   }
 }
 
-// Filtered tasks based on feed tab
+// Filtered tasks based on feed tab and sort
 const visibleTasks = computed(() => {
   let list = [...tasks.value]
 
   if (feedTab.value && feedTab.value !== 'All') {
     list = list.filter((t) => t.status === feedTab.value)
+  }
+
+  if (sortKey.value) {
+    list.sort((a, b) => {
+      let valA = a[sortKey.value] ?? ''
+      let valB = b[sortKey.value] ?? ''
+      if (typeof valA === 'string') valA = valA.toLowerCase()
+      if (typeof valB === 'string') valB = valB.toLowerCase()
+      if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1
+      if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1
+      return 0
+    })
   }
 
   return list
@@ -349,6 +400,9 @@ function openDetail(task) {
 }
 
 async function onSaveTask(updatedTask) {
+  const now = new Date()
+  updatedTask.modified = now.toISOString()
+  updatedTask.modified_pretty = 'Just now'
   const idx = tasks.value.findIndex((t) => t.id === updatedTask.id)
   if (idx !== -1) {
     tasks.value.splice(idx, 1, updatedTask)
@@ -357,6 +411,7 @@ async function onSaveTask(updatedTask) {
 }
 
 async function onCreateTask(formData) {
+  const now = new Date()
   const newId = `TASK-${Math.floor(100000 + Math.random() * 900000)}`
   const newTask = {
     id: newId,
@@ -372,6 +427,9 @@ async function onCreateTask(formData) {
     logged_hours: 0,
     starred: false,
     comments: [],
+    creation: now.toISOString(),
+    modified: now.toISOString(),
+    modified_pretty: 'Just now',
   }
   tasks.value.unshift(newTask)
   await saveTask(newTask)
@@ -665,16 +723,30 @@ onMounted(() => {
               :sort-order="sortOrder"
               :pagination="paginationInfo"
               @row-click="openDetail"
+              @sort-change="handleSortChange"
               @page-change="(p) => (tablePage = p)"
               @page-size-change="(s) => { tablePageSize = s; tablePage = 1; }"
             >
               <template #cell-id="{ row }">
-                <span
-                  class="font-mono font-bold text-blue-600 hover:underline cursor-pointer"
-                  @click.stop="openDetail(row)"
-                >
-                  {{ row.id }}
-                </span>
+                <div class="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    class="p-0.5 text-ink-gray-4 hover:text-amber-500 transition shrink-0"
+                    title="Star task"
+                    @click.stop="toggleStar(row)"
+                  >
+                    <span
+                      class="size-3.5 block"
+                      :class="row.starred ? 'lucide-star fill-amber-500 text-amber-500' : 'lucide-star'"
+                    />
+                  </button>
+                  <span
+                    class="font-mono font-bold text-blue-600 hover:underline cursor-pointer"
+                    @click.stop="openDetail(row)"
+                  >
+                    {{ row.id }}
+                  </span>
+                </div>
               </template>
 
               <template #cell-title="{ row }">
@@ -718,25 +790,13 @@ onMounted(() => {
                 <span v-else class="text-ink-gray-4 italic text-sm">Unassigned</span>
               </template>
 
-              <template #cell-actions="{ row }">
-                <div class="inline-flex items-center gap-2" @click.stop>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon="lucide-external-link"
-                    @click="openDetail(row)"
-                  />
-                  <button
-                    type="button"
-                    class="p-1 text-ink-gray-4 hover:text-amber-500 transition"
-                    @click="toggleStar(row)"
-                  >
-                    <span
-                      class="size-4"
-                      :class="row.starred ? 'lucide-star fill-amber-500 text-amber-500' : 'lucide-star'"
-                    />
-                  </button>
-                </div>
+              <template #cell-modified="{ row }">
+                <span
+                  class="text-xs text-ink-gray-6 font-medium whitespace-nowrap"
+                  :title="row.modified ? `Modified: ${row.modified}` : ''"
+                >
+                  {{ formatPrettyDate(row) }}
+                </span>
               </template>
             </CommonListView>
           </div>
