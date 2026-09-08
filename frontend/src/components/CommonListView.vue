@@ -1,20 +1,20 @@
 <template>
-  <div class="flex flex-col flex-1 min-w-0 bg-white outline-none focus:outline-none focus:ring-0 ring-0">
+  <div class="flex flex-col flex-1 min-h-0 min-w-0 bg-white border border-gray-200 rounded-lg outline-none focus:outline-none focus:ring-0 ring-0 overflow-hidden">
     <!-- Optional Toolbar Slot (above the table) -->
-    <div v-if="$slots.toolbar" class="p-3 border-b border-gray-100 bg-white">
+    <div v-if="$slots.toolbar" class="shrink-0 p-3 border-b border-gray-100 bg-white">
       <slot name="toolbar" />
     </div>
 
-    <!-- Scrollable Table Container (Horizontal) -->
+    <!-- Scrollable Table Container (Horizontal & Vertical - ONLY rows scroll) -->
     <div
       ref="tableContainer"
       tabindex="-1"
-      class="relative flex-1 overflow-x-auto min-h-[380px] outline-none focus:outline-none focus:ring-0 ring-0"
+      class="relative flex-1 min-h-0 overflow-auto outline-none focus:outline-none focus:ring-0 ring-0"
       @scroll="handleScroll"
     >
       <table class="w-full text-left border-collapse text-xs select-text outline-none focus:outline-none">
-        <!-- Table Header -->
-        <thead class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200 text-gray-600 font-semibold tracking-wide uppercase text-[11px]">
+        <!-- Table Header (Sticky at top) -->
+        <thead class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200 text-gray-600 font-semibold tracking-wide uppercase text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
           <tr>
             <!-- Select All Checkbox -->
             <th
@@ -160,7 +160,7 @@
     <!-- Sticky Bottom Bar: Load More & Counter -->
     <div
       v-if="pagination"
-      class="sticky bottom-0 z-30 px-4 py-2.5 bg-white/95 backdrop-blur-md border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 select-none shadow-[0_-2px_10px_rgba(0,0,0,0.04)]"
+      class="shrink-0 sticky bottom-0 z-30 px-4 py-2.5 bg-white/95 backdrop-blur-md border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 select-none shadow-[0_-2px_10px_rgba(0,0,0,0.04)]"
     >
       <!-- Left: Item Count & Progress Indicator -->
       <div class="flex items-center gap-3">
