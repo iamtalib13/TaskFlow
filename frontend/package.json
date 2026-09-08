@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "dayjs": "^1.11.13",
     "feather-icons": "^4.28.0",
     "frappe-ui": "1.0.0-beta.56",
     "lucide-vue-next": "^1.0.0",

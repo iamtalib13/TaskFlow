@@ -148,24 +148,55 @@
 
           <div>
             <label class="block font-medium text-gray-600 mb-1">Due Date</label>
-            <div class="relative flex items-center">
-              <input
-                v-model="displayDueDate"
-                type="text"
-                placeholder="DD-MM-YYYY"
-                maxlength="10"
-                class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-              />
-              <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer" title="Pick date">
-                <Calendar class="size-4" />
-                <input
-                  type="date"
-                  :value="form.due_date"
-                  class="sr-only"
-                  @change="onNativeDateChange"
-                />
-              </label>
-            </div>
+            <DatePicker
+              v-model="form.due_date"
+              format="DD-MM-YYYY"
+              placeholder="DD-MM-YYYY"
+              size="sm"
+              variant="outline"
+              class="w-full"
+            >
+              <template #prefix>
+                <Calendar class="size-3.5 text-gray-400" />
+              </template>
+              <template #actions="{ setDate, close }">
+                <button
+                  type="button"
+                  :class="rowCls"
+                  @click="applyQuickDate(setDate, 0, 'day', close)"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  :class="rowCls"
+                  @click="applyQuickDate(setDate, 1, 'day', close)"
+                >
+                  Tomorrow
+                </button>
+                <button
+                  type="button"
+                  :class="rowCls"
+                  @click="applyQuickDate(setDate, 7, 'day', close)"
+                >
+                  One Week
+                </button>
+                <button
+                  type="button"
+                  :class="rowCls"
+                  @click="applyQuickDate(setDate, 15, 'day', close)"
+                >
+                  15 Days
+                </button>
+                <button
+                  type="button"
+                  :class="rowCls"
+                  @click="applyQuickDate(setDate, 1, 'month', close)"
+                >
+                  1 Month
+                </button>
+              </template>
+            </DatePicker>
           </div>
         </div>
 
@@ -204,7 +235,8 @@
 </template>
 
 <script>
-import { MultiSelect, toast } from 'frappe-ui'
+import { MultiSelect, DatePicker, toast } from 'frappe-ui'
+import dayjs from 'dayjs'
 import { saveTask, getErrorMessage, fetchTeamMembers } from '../data/api'
 import TaskRichEditor from './TaskRichEditor.vue'
 import { Calendar } from 'lucide-vue-next'
@@ -212,6 +244,7 @@ import { Calendar } from 'lucide-vue-next'
 export default {
   name: 'TaskCreateModal',
   components: {
+    DatePicker,
     MultiSelect,
     TaskRichEditor,
     Calendar,
@@ -267,6 +300,7 @@ export default {
         due_date: '',
         description: '',
       },
+      rowCls: 'w-full rounded px-2.5 py-1.5 text-left text-xs font-medium text-ink-gray-7 hover:bg-surface-gray-2 hover:text-ink-gray-9 transition cursor-pointer whitespace-nowrap',
     }
   },
   watch: {
@@ -387,6 +421,13 @@ export default {
         } catch (err) {
           console.warn('Failed to load team members for team:', team, err)
         }
+      }
+    },
+    applyQuickDate(setDate, amount, unit, close) {
+      const d = amount === 0 ? dayjs() : dayjs().add(amount, unit)
+      setDate(d)
+      if (typeof close === 'function') {
+        close()
       }
     },
     onNativeDateChange(e) {
