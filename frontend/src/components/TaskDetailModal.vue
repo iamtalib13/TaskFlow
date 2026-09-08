@@ -508,75 +508,131 @@
             </div>
           </div>
 
-          <!-- Attachments Row (Above Title: Small Cards + Plus Button) -->
-          <div class="flex flex-wrap items-center gap-2 pt-0.5 pb-0.5">
-            <!-- Small Attachment Cards -->
-            <div
-              v-for="(att, idx) in attachments"
-              :key="att.id || att.name || idx"
-              class="inline-flex items-center gap-2 px-2.5 py-1 bg-gray-50 hover:bg-gray-100/90 border border-gray-200 rounded-lg transition-all group text-xs select-none max-w-full"
-            >
-              <!-- File Icon -->
-              <div
-                class="size-6 rounded flex items-center justify-center shrink-0"
-                :class="isImageFile(att) ? 'bg-[#417c7d]/10 text-[#417c7d]' : 'bg-blue-50 text-blue-600'"
-              >
-                <Image v-if="isImageFile(att)" class="size-3.5" />
-                <FileText v-else class="size-3.5" />
-              </div>
-
-              <!-- File Name & Size -->
-              <div class="flex items-center gap-1.5 min-w-0">
-                <a
-                  :href="att.url || att.file_url || '#'"
-                  target="_blank"
-                  download
-                  class="font-medium text-gray-900 hover:text-[#417c7d] truncate max-w-[120px] sm:max-w-[180px] cursor-pointer"
-                  :title="att.name"
+          <!-- Attachments Section (Square Thumbnails + Add Tile) -->
+          <div class="space-y-1.5 pt-0.5 pb-1">
+            <div class="flex items-center justify-between">
+              <span class="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                <Paperclip class="size-3 text-gray-400" />
+                <span>Attachments</span>
+                <span
+                  v-if="attachments.length > 0"
+                  class="px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600"
                 >
-                  {{ att.name }}
-                </a>
-                <span v-if="att.size" class="text-[10px] text-gray-400 font-mono shrink-0">
-                  {{ att.size }}
+                  {{ attachments.length }}
                 </span>
-              </div>
+              </span>
 
-              <!-- Actions: Download & Delete with confirmation -->
-              <div class="flex items-center gap-0.5 shrink-0">
-                <a
-                  :href="att.url || att.file_url || '#'"
-                  target="_blank"
-                  download
-                  class="p-1 text-gray-400 hover:text-[#417c7d] rounded transition cursor-pointer"
-                  title="Download file"
-                >
-                  <Download class="size-3" />
-                </a>
-                <button
-                  type="button"
-                  class="p-1 text-gray-400 hover:text-rose-600 rounded transition cursor-pointer"
-                  title="Delete attachment"
-                  @click="confirmDeleteAttachment(att, idx)"
-                >
-                  <Trash2 class="size-3" />
-                </button>
-              </div>
+              <span v-if="attachments.length > 0" class="text-[10px] text-gray-400">
+                Hover to view, download, or delete
+              </span>
             </div>
 
-            <!-- + Add Attachment Button -->
-            <label
-              class="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-gray-50 border border-dashed border-gray-300 hover:border-[#417c7d] text-gray-600 hover:text-[#417c7d] rounded-lg cursor-pointer transition text-xs font-medium select-none shadow-2xs"
-              title="Add attachment"
-            >
-              <Plus class="size-3.5 stroke-[2.5]" />
-              <span class="text-[11px] font-semibold">Add</span>
-              <input
-                type="file"
-                multiple
-                class="sr-only"
-                @change="handleFileUpload"
-              />
-            </label>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <!-- Square Thumbnail Cards -->
+              <div
+                v-for="(att, idx) in attachments"
+                :key="att.id || att.name || idx"
+                class="relative group size-20 sm:size-22 rounded-xl border border-gray-200 bg-white hover:border-[#417c7d]/40 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col select-none"
+              >
+                <!-- If Image: Real Thumbnail Preview -->
+                <div v-if="isImageFile(att)" class="relative w-full h-full bg-gray-100">
+                  <img
+                    :src="att.url || att.file_url"
+                    :alt="att.name"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  <!-- Bottom title scrim -->
+                  <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-3 pb-1 px-1 text-[9px] font-medium text-white truncate text-center pointer-events-none">
+                    {{ att.name }}
+                  </div>
+                </div>
+
+                <!-- If Non-Image: Clean document/file tile -->
+                <div
+                  v-else
+                  class="w-full h-full flex flex-col items-center justify-between p-1.5 bg-gradient-to-b from-gray-50 to-white"
+                >
+                  <!-- Top Badge with file extension -->
+                  <span
+                    class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border uppercase tracking-wide shrink-0"
+                    :class="getFileTypeConfig(att).color"
+                  >
+                    {{ getFileTypeConfig(att).badge }}
+                  </span>
+
+                  <!-- Center Document Icon -->
+                  <FileText class="size-5 shrink-0" :class="getFileTypeConfig(att).iconColor" />
+
+                  <!-- Bottom File Info -->
+                  <div class="w-full text-center min-w-0">
+                    <p class="text-[9px] font-semibold text-gray-700 truncate w-full" :title="att.name">
+                      {{ att.name }}
+                    </p>
+                    <span v-if="att.size" class="text-[8px] text-gray-400 font-mono block -mt-0.5">
+                      {{ att.size }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Hover Actions Overlay -->
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1 z-10">
+                  <!-- View/Open File in New Tab -->
+                  <a
+                    :href="att.url || att.file_url || '#'"
+                    target="_blank"
+                    class="size-6 rounded-md bg-white/20 hover:bg-white text-white hover:text-gray-900 flex items-center justify-center transition cursor-pointer"
+                    title="Open in new tab"
+                  >
+                    <ExternalLink class="size-3" />
+                  </a>
+
+                  <!-- Download File -->
+                  <a
+                    :href="att.url || att.file_url || '#'"
+                    target="_blank"
+                    download
+                    class="size-6 rounded-md bg-white/20 hover:bg-white text-white hover:text-gray-900 flex items-center justify-center transition cursor-pointer"
+                    title="Download"
+                  >
+                    <Download class="size-3" />
+                  </a>
+
+                  <!-- Delete File -->
+                  <button
+                    type="button"
+                    class="size-6 rounded-md bg-white/20 hover:bg-rose-600 text-white flex items-center justify-center transition cursor-pointer"
+                    title="Delete attachment"
+                    @click.stop.prevent="confirmDeleteAttachment(att, idx)"
+                  >
+                    <Trash2 class="size-3" />
+                  </button>
+                </div>
+              </div>
+
+              <!-- + Add Attachment Square Tile -->
+              <label
+                class="relative size-20 sm:size-22 rounded-xl border-2 border-dashed border-gray-300 hover:border-[#417c7d] bg-gray-50/70 hover:bg-[#417c7d]/5 flex flex-col items-center justify-center gap-1 cursor-pointer transition select-none group text-gray-500 hover:text-[#417c7d] shadow-2xs shrink-0"
+                title="Upload attachments"
+              >
+                <div class="size-6 rounded-full bg-white group-hover:bg-[#417c7d]/10 border border-gray-200 group-hover:border-[#417c7d]/30 flex items-center justify-center shadow-xs transition">
+                  <Plus class="size-3.5 text-gray-500 group-hover:text-[#417c7d] stroke-[2.5]" />
+                </div>
+                <span class="text-[10px] font-semibold tracking-wide">Add</span>
+                <span
+                  v-if="uploadingAttachment"
+                  class="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center"
+                >
+                  <Loader2 class="size-5 animate-spin text-[#417c7d]" />
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  class="sr-only"
+                  @change="handleFileUpload"
+                />
+              </label>
+            </div>
           </div>
 
           <!-- Task Title (Editable headline input) -->
@@ -948,6 +1004,7 @@ import {
   Loader2,
   Send,
   Pencil,
+  ExternalLink,
 } from 'lucide-vue-next'
 
 export default {
@@ -987,6 +1044,7 @@ export default {
     Loader2,
     Send,
     Pencil,
+    ExternalLink,
   },
   props: {
     modelValue: {
@@ -1507,6 +1565,57 @@ export default {
         type.startsWith('image/') ||
         /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(name)
       )
+    },
+    getFileExtension(att) {
+      const name = att?.name || att?.file_name || ''
+      const parts = name.split('.')
+      if (parts.length > 1) {
+        return parts.pop().toUpperCase()
+      }
+      return 'FILE'
+    },
+    getFileTypeConfig(att) {
+      if (this.isImageFile(att)) {
+        return {
+          badge: 'IMG',
+          color: 'bg-teal-50 text-[#417c7d] border-teal-200',
+          iconColor: 'text-[#417c7d]',
+        }
+      }
+      const ext = this.getFileExtension(att).toLowerCase()
+      if (['pdf'].includes(ext)) {
+        return {
+          badge: 'PDF',
+          color: 'bg-rose-50 text-rose-700 border-rose-200',
+          iconColor: 'text-rose-600',
+        }
+      }
+      if (['xls', 'xlsx', 'csv'].includes(ext)) {
+        return {
+          badge: ext.toUpperCase(),
+          color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+          iconColor: 'text-emerald-600',
+        }
+      }
+      if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) {
+        return {
+          badge: ext.toUpperCase(),
+          color: 'bg-blue-50 text-blue-700 border-blue-200',
+          iconColor: 'text-blue-600',
+        }
+      }
+      if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+        return {
+          badge: 'ZIP',
+          color: 'bg-amber-50 text-amber-700 border-amber-200',
+          iconColor: 'text-amber-600',
+        }
+      }
+      return {
+        badge: ext ? ext.slice(0, 4).toUpperCase() : 'FILE',
+        color: 'bg-gray-100 text-gray-700 border-gray-200',
+        iconColor: 'text-gray-500',
+      }
     },
     async loadActualAttachments(taskId) {
       if (!taskId || taskId === 'new') return
