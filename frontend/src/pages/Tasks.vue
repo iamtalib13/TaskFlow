@@ -229,7 +229,11 @@ watch(statusTab, () => {
 })
 
 function formatPrettyDate(row) {
-  if (row?.modified_pretty) return row.modified_pretty
+  if (row?.modified_pretty) {
+    const p = String(row.modified_pretty).trim()
+    if (p.toLowerCase() === 'just now') return 'Just now'
+    return p
+  }
   if (!row?.modified) return '—'
 
   try {
@@ -241,7 +245,7 @@ function formatPrettyDate(row) {
     const now = new Date()
     const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000)
 
-    if (diffSec < 0 || diffSec < 60) return 'Just now'
+    if (diffSec < 0 || diffSec < 180) return 'Just now'
     const diffMin = Math.floor(diffSec / 60)
     if (diffMin < 60) return `${diffMin}m ago`
     const diffHours = Math.floor(diffMin / 60)
@@ -262,10 +266,30 @@ function formatPrettyDate(row) {
   }
 }
 
+function isRowJustNow(row) {
+  if (!row) return false
+  const p = (row.modified_pretty || '').toString().trim().toLowerCase()
+  if (p === 'just now') return true
+  const computed = formatPrettyDate(row).toString().trim().toLowerCase()
+  if (computed === 'just now') return true
+  if (row.modified) {
+    try {
+      const raw = String(row.modified).trim()
+      const isoString = raw.includes('T') ? raw : raw.replace(' ', 'T')
+      const d = new Date(isoString)
+      if (!isNaN(d.getTime())) {
+        const diffSec = Math.floor((Date.now() - d.getTime()) / 1000)
+        if (diffSec >= 0 && diffSec < 180) return true
+      }
+    } catch {}
+  }
+  return false
+}
+
 // Light green highlight for tasks modified 'Just now'
 function getTaskRowClass(row) {
-  if (formatPrettyDate(row) === 'Just now') {
-    return 'bg-emerald-50/80 hover:bg-emerald-100/70 border-l-2 border-l-emerald-500'
+  if (isRowJustNow(row)) {
+    return '!bg-emerald-50/90 hover:!bg-emerald-100/80 border-l-4 border-l-emerald-500 is-just-now'
   }
   return 'hover:bg-gray-50/80'
 }
@@ -893,12 +917,12 @@ onMounted(() => {
               <template #cell-modified="{ row }">
                 <span
                   class="text-xs font-medium whitespace-nowrap inline-flex items-center gap-1.5"
-                  :class="formatPrettyDate(row) === 'Just now' ? 'text-emerald-700 font-semibold' : 'text-ink-gray-6'"
+                  :class="isRowJustNow(row) ? 'text-emerald-700 font-bold' : 'text-ink-gray-6'"
                   :title="row.modified ? `Modified: ${row.modified}` : ''"
                 >
                   <span
-                    v-if="formatPrettyDate(row) === 'Just now'"
-                    class="size-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse"
+                    v-if="isRowJustNow(row)"
+                    class="size-2 rounded-full bg-emerald-500 shrink-0 animate-pulse"
                   />
                   {{ formatPrettyDate(row) }}
                 </span>

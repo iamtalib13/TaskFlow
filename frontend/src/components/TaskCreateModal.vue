@@ -43,7 +43,7 @@
             required
             type="text"
             placeholder="e.g. Implement Responsive Table View"
-            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition"
+            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
           />
         </div>
 
@@ -53,7 +53,7 @@
             <label class="block font-medium text-gray-600 mb-1">Project</label>
             <select
               v-model="form.project"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
+              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
             >
               <option value="">Select Project</option>
               <option v-for="p in projects" :key="p.name" :value="p.name">
@@ -66,7 +66,7 @@
             <label class="block font-medium text-gray-600 mb-1">Assigned To</label>
             <select
               v-model="form.assigned_to"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
+              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
             >
               <option value="">Unassigned</option>
               <option v-for="u in people" :key="u.email" :value="u.name">
@@ -79,7 +79,7 @@
             <label class="block font-medium text-gray-600 mb-1">Status</label>
             <select
               v-model="form.status"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
+              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
             >
               <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
             </select>
@@ -89,7 +89,7 @@
             <label class="block font-medium text-gray-600 mb-1">Priority</label>
             <select
               v-model="form.priority"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
+              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
             >
               <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
             </select>
@@ -106,7 +106,7 @@
                 type="text"
                 placeholder="DD-MM-YYYY"
                 maxlength="10"
-                class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
+                class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
               <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer" title="Pick date">
                 <Calendar class="size-4" />
@@ -143,7 +143,7 @@
           <button
             type="submit"
             :disabled="!form.title.trim() || creating"
-            class="px-5 py-2 bg-black hover:bg-gray-800 text-white text-xs font-semibold rounded-lg shadow-xs disabled:opacity-40 transition flex items-center gap-2"
+            class="px-5 py-2 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] text-white text-xs font-semibold rounded-lg shadow-xs disabled:opacity-40 transition flex items-center gap-2"
           >
             <span v-if="creating" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
             <span>Create Task</span>
