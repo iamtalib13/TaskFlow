@@ -153,19 +153,15 @@ const getAssignee = (name) => {
   }
 }
 
-// Table View Columns (non-sticky ID & Title as requested)
+// Table View Columns (clean list view: ID, TASK, PROJECT, STATUS, PRIORITY, ASSIGNED TO, DUE DATE, MODIFIED)
 const tableColumns = [
   { key: 'id', label: 'ID', width: '120px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'title', label: 'TASK', width: '220px', minWidth: '180px', sortable: true, visible: true },
-  { key: 'project', label: 'PROJECT', width: '140px', minWidth: '120px', sortable: true, visible: true },
-  { key: 'status', label: 'STATUS', width: '120px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'priority', label: 'PRIORITY', width: '100px', minWidth: '90px', sortable: true, visible: true },
-  { key: 'assigned_to', label: 'ASSIGNED TO', width: '160px', minWidth: '140px', sortable: true, visible: true },
-  { key: 'reporter', label: 'REPORTER', width: '140px', minWidth: '120px', sortable: true, visible: true },
-  { key: 'pending_with', label: 'PENDING WITH', width: '130px', minWidth: '110px', sortable: false, visible: true },
-  { key: 'due_date', label: 'DUE DATE', width: '110px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'estimated_hours', label: 'EST. HRS', width: '90px', minWidth: '80px', align: 'right', sortable: true, visible: true },
-  { key: 'logged_hours', label: 'LOGGED HRS', width: '90px', minWidth: '80px', align: 'right', sortable: true, visible: true },
+  { key: 'title', label: 'TASK', width: 'auto', minWidth: '220px', sortable: true, visible: true },
+  { key: 'project', label: 'PROJECT', width: '150px', minWidth: '130px', sortable: true, visible: true },
+  { key: 'status', label: 'STATUS', width: '130px', minWidth: '110px', sortable: true, visible: true },
+  { key: 'priority', label: 'PRIORITY', width: '110px', minWidth: '95px', sortable: true, visible: true },
+  { key: 'assigned_to', label: 'ASSIGNED TO', width: '180px', minWidth: '150px', sortable: true, visible: true },
+  { key: 'due_date', label: 'DUE DATE', width: '120px', minWidth: '105px', sortable: true, visible: true },
   { key: 'modified', label: 'MODIFIED', width: '130px', minWidth: '110px', sortable: true, visible: true },
 ]
 
@@ -750,7 +746,7 @@ onMounted(() => {
               </template>
 
               <template #cell-title="{ row }">
-                <div class="flex items-center gap-2 min-w-0 max-w-[220px]">
+                <div class="flex items-center gap-2 min-w-0">
                   <span class="text-sm font-medium text-ink-gray-9 truncate" :title="row.title">{{ row.title }}</span>
                   <span
                     v-if="row.badge"
@@ -777,6 +773,18 @@ onMounted(() => {
                 </Badge>
               </template>
 
+              <template #cell-priority="{ row }">
+                <Badge
+                  v-if="row.priority"
+                  :theme="row.priority === 'Critical' ? 'red' : row.priority === 'High' ? 'amber' : row.priority === 'Medium' ? 'blue' : 'gray'"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ row.priority }}
+                </Badge>
+                <span v-else class="text-ink-gray-4">—</span>
+              </template>
+
               <template #cell-assigned_to="{ row }">
                 <div v-if="row.assigned_to" class="flex items-center gap-2">
                   <Avatar
@@ -788,6 +796,13 @@ onMounted(() => {
                   <span class="text-sm text-ink-gray-8 truncate">{{ row.assigned_to }}</span>
                 </div>
                 <span v-else class="text-ink-gray-4 italic text-sm">Unassigned</span>
+              </template>
+
+              <template #cell-due_date="{ row }">
+                <span v-if="row.due_date" class="font-mono text-xs text-ink-gray-6">
+                  {{ row.due_date }}
+                </span>
+                <span v-else class="text-ink-gray-4">—</span>
               </template>
 
               <template #cell-modified="{ row }">
