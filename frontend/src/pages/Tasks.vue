@@ -137,6 +137,9 @@ watch(activeSection, (val) => {
     url.searchParams.set('section', val)
     window.history.replaceState(null, '', url.toString())
   } catch {}
+  if (val === 'Timesheet') {
+    loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
+  }
 })
 
 // Handle browser back/forward
@@ -258,7 +261,7 @@ const navItems = computed(() => {
 
   return [
     { id: 'Task', label: 'Task', icon: CheckSquare, badge: taskCount.length },
-    { id: 'Timesheet', label: 'Timesheet', icon: Clock, badge: timesheetListData.value.length },
+    { id: 'Timesheet', label: 'Timesheet', icon: Clock, badge: totalTsMonthlyHours.value ? `${totalTsMonthlyHours.value}h` : '' },
     { id: 'Project', label: 'Project', icon: FolderKanban, badge: projectsData.value.length },
     { id: 'Team', label: 'Team', icon: Users, badge: teamData.value.length },
   ]
@@ -765,69 +768,78 @@ const teamData = computed(() => {
   return []
 })
 
-// --- 4. Timesheet List View State & Columns ---
-const selectedTimesheetKeys = ref([])
-const timesheetListData = ref([])
-const timesheetListLoading = ref(false)
-const selectedTimesheet = ref(null)
+// --- 4. Timesheet Direct Component State & Methods ---
+const selectedTimesheetUser = ref('')
 const timesheetCalendarEvents = ref([])
 const timesheetCalendarLoading = ref(false)
-const selectedTsDayDate = ref('')
+const selectedTsDayDate = ref(new Date().toISOString().slice(0, 10))
 const selectedTsDayEntries = ref([])
 const timesheetFormOpen = ref(false)
 const timesheetFormDate = ref('')
 const timesheetFormItems = ref([])
 const timesheetFormStatus = ref('Draft')
 const timesheetFormSaving = ref(false)
+const currentUserName = ref('')
 
-const timesheetColumns = [
-  { key: 'employee_name', label: 'USER', width: '200px', minWidth: '160px', sortable: true, visible: true },
-  { key: 'timesheet_date', label: 'DATE', width: '120px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'total_working_hours', label: 'HOURS', width: '100px', minWidth: '80px', align: 'right', sortable: true, visible: true },
-  { key: 'status', label: 'STATUS', width: '110px', minWidth: '90px', sortable: true, visible: true },
-]
-
-async function loadTimesheetList() {
-  timesheetListLoading.value = true
-  try {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth()
-    const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
-    const lastDay = new Date(year, month + 1, 0).getDate()
-    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    timesheetListData.value = await fetchAllTimesheets(fromDate, toDate) || []
-  } catch (e) {
-    console.error('Failed to load timesheets', e)
-    timesheetListData.value = []
-  } finally {
-    timesheetListLoading.value = false
+const availableTimesheetMembers = computed(() => {
+  const list = []
+  const seen = new Set()
+  const me = (currentUserEmail.value || '').toLowerCase()
+  if (me) {
+    seen.add(me)
   }
-}
+  for (const m of (teamMembers.value || [])) {
+    const email = (m.user || m.email || '').toLowerCase()
+    if (email && !seen.has(email)) {
+      seen.add(email)
+      list.push(m)
+    }
+  }
+  for (const p of (people.value || [])) {
+    const email = (p.email || p.user || '').toLowerCase()
+    if (email && !seen.has(email)) {
+      seen.add(email)
+      list.push(p)
+    }
+  }
+  return list
+})
 
-function selectTimesheet(ts) {
-  selectedTimesheet.value = ts
-  loadTimesheetCalendar(ts.user)
-}
+const selectedTsUserDisplayName = computed(() => {
+  const user = (selectedTimesheetUser.value || currentUserEmail.value || '').toLowerCase()
+  if (!user) return ''
+  if (user === (currentUserEmail.value || '').toLowerCase() && currentUserName.value) {
+    return currentUserName.value
+  }
+  const found = [...(teamMembers.value || []), ...(people.value || [])].find((m) => {
+    return (m.user || m.email || '').toLowerCase() === user
+  })
+  return found?.employee_name || found?.name || found?.user || found?.email || selectedTimesheetUser.value
+})
 
-function backToTimesheetList() {
-  selectedTimesheet.value = null
-  timesheetCalendarEvents.value = []
-  selectedTsDayDate.value = ''
-  selectedTsDayEntries.value = []
-}
+const totalTsMonthlyHours = computed(() => {
+  return timesheetCalendarEvents.value.reduce((sum, ev) => sum + (Number(ev._hours) || 0), 0)
+})
+
+const tsWorkingDaysCount = computed(() => {
+  return timesheetCalendarEvents.value.filter((ev) => (Number(ev._hours) || 0) > 0).length
+})
+
+const tsAvgHoursPerDay = computed(() => {
+  if (!tsWorkingDaysCount.value) return '0.0'
+  return (totalTsMonthlyHours.value / tsWorkingDaysCount.value).toFixed(1)
+})
 
 async function loadTimesheetCalendar(user) {
-  if (!user) return
+  const targetUser = user || selectedTimesheetUser.value || currentUserEmail.value
+  if (!targetUser) return
   timesheetCalendarLoading.value = true
   try {
     const now = new Date()
     const year = now.getFullYear()
-    const month = now.getMonth()
-    const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
-    const lastDay = new Date(year, month + 1, 0).getDate()
-    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    const data = await fetchMemberTimesheets(user, fromDate, toDate)
+    const fromDate = `${year}-01-01`
+    const toDate = `${year}-12-31`
+    const data = await fetchMemberTimesheets(targetUser, fromDate, toDate)
     timesheetCalendarEvents.value = (data || []).map((ts) => ({
       id: ts.name,
       title: `${ts.total_hours}h logged`,
@@ -840,6 +852,13 @@ async function loadTimesheetCalendar(user) {
       _ts: ts,
       _hours: ts.total_hours || 0,
     }))
+    if (!selectedTsDayDate.value) {
+      selectedTsDayDate.value = new Date().toISOString().slice(0, 10)
+    }
+    selectedTsDayEntries.value = timesheetCalendarEvents.value
+      .filter((ev) => ev.fromDate === selectedTsDayDate.value)
+      .map((ev) => ev._ts)
+      .filter(Boolean)
   } catch (e) {
     console.error('Failed to load timesheet calendar', e)
     timesheetCalendarEvents.value = []
@@ -849,22 +868,51 @@ async function loadTimesheetCalendar(user) {
 }
 
 function handleTsCalendarClick(dateStr) {
-  selectedTsDayDate.value = dateStr
+  const date = typeof dateStr === 'string' ? dateStr : (dateStr?.date || dateStr)
+  selectedTsDayDate.value = date
   selectedTsDayEntries.value = timesheetCalendarEvents.value
-    .filter((ev) => ev.fromDate === dateStr)
+    .filter((ev) => ev.fromDate === date)
     .map((ev) => ev._ts)
     .filter(Boolean)
 }
 
-function openTimesheetForm(date) {
-  timesheetFormDate.value = date || new Date().toISOString().slice(0, 10)
-  timesheetFormStatus.value = 'Draft'
-  timesheetFormItems.value = [{ activity_type: 'Task', project: '', task: '', from_time: '', to_time: '', description: '' }]
+function openTimesheetForm(date, existingTs = null) {
+  timesheetFormDate.value = date || selectedTsDayDate.value || new Date().toISOString().slice(0, 10)
+  if (existingTs && existingTs.items && existingTs.items.length > 0) {
+    timesheetFormStatus.value = existingTs.status || 'Draft'
+    timesheetFormItems.value = existingTs.items.map((it) => ({
+      activity_type: it.activity_type || 'Task',
+      project: it.project || '',
+      task: it.task || '',
+      from_time: it.from_time ? (it.from_time.includes(' ') ? it.from_time.replace(' ', 'T').slice(0, 16) : it.from_time) : (timesheetFormDate.value ? `${timesheetFormDate.value}T09:00` : ''),
+      to_time: it.to_time ? (it.to_time.includes(' ') ? it.to_time.replace(' ', 'T').slice(0, 16) : it.to_time) : (timesheetFormDate.value ? `${timesheetFormDate.value}T10:00` : ''),
+      description: it.description || '',
+    }))
+  } else {
+    timesheetFormStatus.value = 'Draft'
+    const curDate = timesheetFormDate.value || new Date().toISOString().slice(0, 10)
+    timesheetFormItems.value = [{
+      activity_type: 'Task',
+      project: '',
+      task: '',
+      from_time: `${curDate}T09:00`,
+      to_time: `${curDate}T10:00`,
+      description: '',
+    }]
+  }
   timesheetFormOpen.value = true
 }
 
 function addTsFormItem() {
-  timesheetFormItems.value.push({ activity_type: 'Task', project: '', task: '', from_time: '', to_time: '', description: '' })
+  const curDate = timesheetFormDate.value || new Date().toISOString().slice(0, 10)
+  timesheetFormItems.value.push({
+    activity_type: 'Task',
+    project: '',
+    task: '',
+    from_time: `${curDate}T10:00`,
+    to_time: `${curDate}T11:00`,
+    description: '',
+  })
 }
 
 function removeTsFormItem(idx) {
@@ -877,10 +925,7 @@ async function submitTimesheet() {
     const items = timesheetFormItems.value.filter((item) => item.from_time && item.to_time)
     await saveTimesheet(timesheetFormDate.value, items, timesheetFormStatus.value)
     timesheetFormOpen.value = false
-    await loadTimesheetList()
-    if (selectedTimesheet.value) {
-      await loadTimesheetCalendar(selectedTimesheet.value.user)
-    }
+    await loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
   } catch (e) {
     console.error('Failed to save timesheet', e)
   } finally {
@@ -892,10 +937,7 @@ async function deleteTimesheetConfirm(ts) {
   if (!ts || !ts.name) return
   try {
     await deleteTimesheet(ts.name)
-    if (selectedTimesheet.value && selectedTimesheet.value.name === ts.name) {
-      backToTimesheetList()
-    }
-    await loadTimesheetList()
+    await loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
   } catch (e) {
     console.error('Failed to delete timesheet', e)
   }
@@ -919,6 +961,13 @@ async function loadData() {
     priorities.value = data.priorities || priorities.value
     if (data.me) {
       currentUserEmail.value = data.me.email || ''
+      currentUserName.value = data.me.name || ''
+      if (!selectedTimesheetUser.value) {
+        selectedTimesheetUser.value = data.me.email || ''
+      }
+      if (activeSection.value === 'Timesheet') {
+        loadTimesheetCalendar(selectedTimesheetUser.value)
+      }
     }
   } catch (e) {
     console.error('Failed to load tasks', e)
@@ -1360,7 +1409,9 @@ onMounted(() => {
   window.addEventListener('popstate', onPopState)
   loadData()
   loadTeams()
-  loadTimesheetList()
+  if (activeSection.value === 'Timesheet') {
+    loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
+  }
 })
 
 onUnmounted(() => {
@@ -1716,230 +1767,221 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <!-- 2. TIMESHEET VIEW (List view only) -->
+        <!-- 2. TIMESHEET VIEW (Direct Component: Calendar + Activity Log) -->
         <template v-else-if="activeSection === 'Timesheet'">
           <div class="shrink-0 mb-3 flex items-center justify-between">
             <div>
               <h2 class="text-lg font-bold text-ink-gray-9">Timesheet</h2>
               <p class="text-xs text-ink-gray-5">
-                Log and track your daily work hours
-                <span v-if="selectedTimesheet" class="text-blue-600 font-medium">
-                  — {{ selectedTimesheet.employee_name || selectedTimesheet.user }}
+                Log and track work hours
+                <span v-if="selectedTsUserDisplayName" class="text-[#417c7d] font-semibold">
+                  — {{ selectedTsUserDisplayName }}
                 </span>
               </p>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-ink-gray-5 font-medium">{{ timesheetListData.length }} entries</span>
+            <div class="flex items-center gap-2.5">
+              <!-- Member Selector (if multiple members available) -->
+              <div v-if="availableTimesheetMembers.length > 0" class="relative">
+                <select
+                  v-model="selectedTimesheetUser"
+                  class="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition cursor-pointer"
+                  @change="loadTimesheetCalendar(selectedTimesheetUser)"
+                >
+                  <option :value="currentUserEmail">
+                    {{ currentUserName ? `${currentUserName} (Me)` : 'My Timesheet' }}
+                  </option>
+                  <option
+                    v-for="m in availableTimesheetMembers"
+                    :key="m.user || m.email || m.employee"
+                    :value="m.user || m.email || m.employee"
+                  >
+                    {{ m.employee_name || m.name || m.user || m.email }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Quick Log Hours Button -->
               <Button
-                v-if="!selectedTimesheet"
                 variant="solid"
-                theme="gray"
-                label="Log Hours"
-                class="bg-gray-900 hover:bg-black text-white"
-                @click="openTimesheetForm()"
+                class="!bg-[#417c7d] hover:!bg-[#356667] !text-white"
+                @click="openTimesheetForm(selectedTsDayDate || '')"
               >
                 <template #prefix><Plus class="size-3.5" /></template>
+                <span>Log Hours</span>
               </Button>
             </div>
           </div>
 
-          <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
-            <!-- Empty state -->
-            <div
-              v-if="!selectedTimesheet && !timesheetListLoading && timesheetListData.length === 0"
-              class="flex-1 flex flex-col items-center justify-center text-center py-12"
-            >
-              <div class="size-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
-                <Clock class="size-7 text-gray-400" />
-              </div>
-              <p class="text-sm font-semibold text-gray-700 mb-1">No timesheets yet</p>
-              <p class="text-xs text-gray-400 mb-4 max-w-xs">Start logging your work hours for this month.</p>
-              <Button variant="solid" theme="gray" label="Log Hours" class="bg-gray-900 hover:bg-black text-white" @click="openTimesheetForm()">
-                <template #prefix><Plus class="size-3.5" /></template>
-              </Button>
-            </div>
-
-            <!-- Timesheet list -->
-            <div v-else-if="!selectedTimesheet" class="flex-1 min-h-0 overflow-auto">
-              <CommonListView
-                v-model:selectedRows="selectedTimesheetKeys"
-                :columns="timesheetColumns"
-                :rows="timesheetListData"
-                :loading="timesheetListLoading"
-                @row-click="(row) => selectTimesheet(row)"
-              >
-                <template #cell-employee_name="{ row }">
-                  <span class="font-medium text-ink-gray-9">{{ row.employee_name || row.user }}</span>
-                </template>
-
-                <template #cell-timesheet_date="{ row }">
-                  <span class="font-mono text-xs text-ink-gray-7">{{ row.timesheet_date }}</span>
-                </template>
-
-                <template #cell-total_working_hours="{ row }">
-                  <span class="text-xs font-bold text-ink-gray-8">{{ row.total_working_hours }}h</span>
-                </template>
-
-                <template #cell-status="{ row }">
-                  <Badge
-                    :theme="row.status === 'Submitted' ? 'green' : 'blue'"
-                    variant="subtle"
-                    size="sm"
-                  >
-                    {{ row.status }}
-                  </Badge>
-                </template>
-              </CommonListView>
-            </div>
-
-            <!-- Timesheet detail: list + calendar + activity log -->
-            <div v-else class="flex-1 min-h-0 flex overflow-hidden">
-              <!-- Profile card (260px) -->
-              <div class="w-[260px] shrink-0 overflow-y-auto border-r border-gray-200 bg-white">
-                <div class="py-5 px-5">
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 mb-4 cursor-pointer transition"
-                    @click="backToTimesheetList"
-                  >
-                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                    Back to list
-                  </button>
-
-                  <div class="flex flex-col items-center text-center mb-5">
-                    <div class="size-20 rounded-full bg-gray-100 overflow-hidden shadow-md mb-3">
-                      <Avatar
-                        :label="selectedTimesheet.employee_name || selectedTimesheet.user"
-                        size="3xl"
-                        shape="circle"
-                        class="size-20"
-                      />
-                    </div>
-                    <h3 class="text-base font-bold text-gray-900 leading-tight">{{ selectedTimesheet.employee_name || selectedTimesheet.user }}</h3>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ selectedTimesheet.user }}</p>
-                    <Badge
-                      :theme="selectedTimesheet.status === 'Submitted' ? 'green' : 'blue'"
-                      variant="subtle"
-                      size="sm"
-                      class="mt-2"
-                    >
-                      {{ selectedTimesheet.status }}
-                    </Badge>
+          <div class="flex-1 min-h-0 flex overflow-hidden bg-white border border-gray-200 rounded-xl shadow-xs outline-none focus:outline-none ring-0">
+            <!-- Left: Profile / Stats Card (240px) -->
+            <div class="w-[240px] shrink-0 overflow-y-auto border-r border-gray-200 bg-gray-50/40 p-4 flex flex-col justify-between">
+              <div>
+                <div class="flex flex-col items-center text-center mb-4">
+                  <div class="size-16 rounded-full bg-white ring-2 ring-gray-200 shadow-sm overflow-hidden mb-2.5">
+                    <Avatar
+                      :label="selectedTsUserDisplayName || selectedTimesheetUser || 'User'"
+                      size="2xl"
+                      shape="circle"
+                      class="size-16"
+                    />
                   </div>
+                  <h3 class="text-sm font-bold text-gray-900 leading-tight">
+                    {{ selectedTsUserDisplayName || selectedTimesheetUser || 'My Timesheet' }}
+                  </h3>
+                  <p class="text-[11px] text-gray-500 mt-0.5 truncate max-w-[200px]">
+                    {{ selectedTimesheetUser || currentUserEmail }}
+                  </p>
+                </div>
 
-                  <div class="grid grid-cols-2 gap-2.5 mb-5">
-                    <div class="text-center p-2.5 bg-gray-50 rounded-lg">
-                      <p class="text-lg font-bold text-gray-900">{{ selectedTimesheet.total_working_hours || 0 }}h</p>
-                      <p class="text-[10px] text-gray-500">Total</p>
-                    </div>
-                    <div class="text-center p-2.5 bg-gray-50 rounded-lg">
-                      <p class="text-lg font-bold text-gray-900">{{ selectedTimesheet.timesheet_date }}</p>
-                      <p class="text-[10px] text-gray-500">Date</p>
-                    </div>
+                <!-- Monthly summary stats -->
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                  <div class="text-center p-2 bg-white rounded-lg border border-gray-100 shadow-xs">
+                    <p class="text-base font-bold text-emerald-600">{{ totalTsMonthlyHours }}h</p>
+                    <p class="text-[10px] text-gray-500 font-medium">Logged</p>
                   </div>
-
-                  <div class="flex gap-2">
-                    <button
-                      type="button"
-                      class="flex-1 px-3 py-2 text-xs font-medium bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition cursor-pointer border border-blue-200"
-                      @click="openTimesheetForm(selectedTimesheet.timesheet_date)"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      class="flex-1 px-3 py-2 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition cursor-pointer border border-red-200"
-                      @click="deleteTimesheetConfirm(selectedTimesheet)"
-                    >
-                      Delete
-                    </button>
+                  <div class="text-center p-2 bg-white rounded-lg border border-gray-100 shadow-xs">
+                    <p class="text-base font-bold text-gray-800">{{ tsWorkingDaysCount }}</p>
+                    <p class="text-[10px] text-gray-500 font-medium">Days</p>
+                  </div>
+                  <div class="text-center p-2 bg-white rounded-lg border border-gray-100 shadow-xs col-span-2">
+                    <p class="text-xs font-semibold text-gray-700">{{ tsAvgHoursPerDay }} hrs / day</p>
+                    <p class="text-[9px] text-gray-400">Average on worked days</p>
                   </div>
                 </div>
               </div>
 
-              <!-- Calendar + Activity log (50/50) -->
-              <div class="flex-1 min-w-0 flex overflow-hidden">
-                <!-- Calendar (50%) -->
-                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-white border-r border-gray-200">
-                  <TimesheetCalendar
-                    :events="timesheetCalendarEvents"
-                    :loading="timesheetCalendarLoading"
-                    @cellClick="handleTsCalendarClick"
-                    class="flex-1 min-h-0"
-                  />
+              <!-- Quick action in sidebar -->
+              <div class="pt-3 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  class="w-full justify-center text-xs"
+                  @click="openTimesheetForm(new Date().toISOString().slice(0, 10))"
+                >
+                  <template #prefix><Plus class="size-3 text-gray-500" /></template>
+                  <span>Log Today's Work</span>
+                </Button>
+              </div>
+            </div>
+
+            <!-- Center: Timesheet Calendar Component -->
+            <div class="flex-1 min-w-0 flex flex-col overflow-hidden bg-white border-r border-gray-200">
+              <TimesheetCalendar
+                :events="timesheetCalendarEvents"
+                :loading="timesheetCalendarLoading"
+                :selected-date="selectedTsDayDate"
+                @cellClick="handleTsCalendarClick"
+                class="flex-1 min-h-0"
+              />
+            </div>
+
+            <!-- Right: Activity Log -->
+            <div class="w-[340px] xl:w-[380px] shrink-0 min-w-0 flex flex-col overflow-hidden bg-white">
+              <div class="shrink-0 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wide">Activity Log</h4>
+                  <p v-if="selectedTsDayDate" class="text-[11px] text-[#417c7d] font-semibold mt-0.5">
+                    {{ selectedTsDayDate }}
+                  </p>
                 </div>
+                <Button
+                  v-if="selectedTsDayDate"
+                  variant="ghost"
+                  size="sm"
+                  class="text-[11px] text-[#417c7d] font-semibold"
+                  @click="openTimesheetForm(selectedTsDayDate)"
+                >
+                  <template #prefix><Plus class="size-3" /></template>
+                  <span>Add Entry</span>
+                </Button>
+              </div>
 
-                <!-- Activity list (50%) -->
-                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-white">
-                  <div class="shrink-0 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
-                    <div>
-                      <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wide">Activity Log</h4>
-                      <p v-if="selectedTsDayDate" class="text-[11px] text-gray-500 mt-0.5">{{ selectedTsDayDate }}</p>
+              <!-- Placeholder when no day selected -->
+              <div v-if="!selectedTsDayDate" class="flex-1 flex flex-col items-center justify-center text-center px-4">
+                <div class="size-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
+                  <Clock class="size-5 text-gray-400" />
+                </div>
+                <p class="text-xs font-semibold text-gray-700 mb-1">Select a timesheet day</p>
+                <p class="text-[10px] text-gray-400 max-w-[200px]">
+                  Click on any day in the calendar to view or log your work activities
+                </p>
+              </div>
+
+              <!-- No entries for selected day -->
+              <div v-else-if="selectedTsDayEntries.length === 0" class="flex-1 flex flex-col items-center justify-center text-center px-4 py-10">
+                <div class="size-10 rounded-xl bg-rose-50 flex items-center justify-center mb-3">
+                  <Clock class="size-5 text-rose-400" />
+                </div>
+                <p class="text-xs font-semibold text-gray-700 mb-1">No timesheet logged</p>
+                <p class="text-[10px] text-gray-400 mb-4">No hours logged for {{ selectedTsDayDate }}</p>
+                <Button
+                  variant="subtle"
+                  size="sm"
+                  class="text-xs"
+                  @click="openTimesheetForm(selectedTsDayDate)"
+                >
+                  <template #prefix><Plus class="size-3" /></template>
+                  <span>Log Hours for this Day</span>
+                </Button>
+              </div>
+
+              <!-- Day Entries list -->
+              <div v-else class="flex-1 overflow-y-auto p-3 space-y-3">
+                <div
+                  v-for="(ts, tIdx) in selectedTsDayEntries"
+                  :key="ts.name || tIdx"
+                  class="p-3 rounded-lg border border-gray-100 bg-gray-50/50 space-y-2"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-bold text-gray-800">{{ ts.name }}</span>
+                      <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">
+                        {{ ts.status }}
+                      </Badge>
                     </div>
-                    <button
-                      v-if="selectedTsDayDate"
-                      type="button"
-                      class="text-[10px] font-medium text-blue-600 hover:text-blue-700 cursor-pointer transition"
-                      @click="openTimesheetForm(selectedTsDayDate)"
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-bold text-emerald-600">{{ ts.total_hours }}h</span>
+                      <button
+                        type="button"
+                        class="text-[10px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                        @click="openTimesheetForm(ts.date || selectedTsDayDate, ts)"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        class="text-[10px] text-rose-500 hover:text-rose-700 font-medium cursor-pointer"
+                        @click="deleteTimesheetConfirm(ts)"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="space-y-1.5">
+                    <div
+                      v-for="(item, iIdx) in ts.items"
+                      :key="iIdx"
+                      class="flex items-center gap-2 text-[10px] bg-white border border-gray-100 rounded-md px-2.5 py-2 shadow-2xs"
                     >
-                      + Add Entry
-                    </button>
-                  </div>
-
-                  <!-- Placeholder -->
-                  <div v-if="!selectedTsDayDate" class="flex-1 flex flex-col items-center justify-center text-center px-4">
-                    <div class="size-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
-                      <Clock class="size-5 text-gray-400" />
-                    </div>
-                    <p class="text-xs font-semibold text-gray-600 mb-1">Select a timesheet day</p>
-                    <p class="text-[10px] text-gray-400">Click on any day in the calendar to view work entries</p>
-                  </div>
-
-                  <!-- No entries -->
-                  <div v-else-if="selectedTsDayEntries.length === 0" class="flex flex-col items-center justify-center text-center px-4 py-10">
-                    <div class="size-10 rounded-xl bg-red-50 flex items-center justify-center mb-3">
-                      <Clock class="size-5 text-red-400" />
-                    </div>
-                    <p class="text-xs font-semibold text-gray-600 mb-1">No timesheet logged</p>
-                    <p class="text-[10px] text-gray-400">No work entries found for this day</p>
-                  </div>
-
-                  <!-- Entries -->
-                  <div v-else class="flex-1 overflow-y-auto">
-                    <div v-for="(ts, tIdx) in selectedTsDayEntries" :key="ts.name || tIdx" class="px-4 py-3 border-b border-gray-50 last:border-b-0">
-                      <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-2">
-                          <span class="text-[11px] font-bold text-gray-800">{{ ts.name }}</span>
-                          <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">{{ ts.status }}</Badge>
-                        </div>
-                        <span class="text-[11px] font-bold text-green-600">{{ ts.total_hours }}h</span>
+                      <span
+                        class="inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold border shrink-0"
+                        :class="{
+                          'bg-blue-50 text-blue-700 border-blue-200': item.activity_type === 'Task',
+                          'bg-amber-50 text-amber-700 border-amber-200': item.activity_type === 'Meeting',
+                          'bg-purple-50 text-purple-700 border-purple-200': item.activity_type === 'Research',
+                        }"
+                      >
+                        {{ item.activity_type }}
+                      </span>
+                      <div class="min-w-0 flex-1">
+                        <span v-if="item.project" class="text-gray-800 font-medium truncate block">{{ item.project }}</span>
+                        <span v-if="item.task" class="text-gray-500 truncate block">{{ item.task }}</span>
+                        <span v-if="item.description" class="text-gray-400 truncate block text-[9px]">{{ item.description }}</span>
                       </div>
-                      <div class="space-y-1.5">
-                        <div
-                          v-for="(item, iIdx) in ts.items"
-                          :key="iIdx"
-                          class="flex items-center gap-2 text-[10px] bg-gray-50 rounded-lg px-2.5 py-2"
-                        >
-                          <span
-                            class="inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold border shrink-0"
-                            :class="{
-                              'bg-blue-50 text-blue-700 border-blue-200': item.activity_type === 'Task',
-                              'bg-amber-50 text-amber-700 border-amber-200': item.activity_type === 'Meeting',
-                              'bg-purple-50 text-purple-700 border-purple-200': item.activity_type === 'Research',
-                            }"
-                          >
-                            {{ item.activity_type }}
-                          </span>
-                          <div class="min-w-0 flex-1">
-                            <span v-if="item.project" class="text-gray-700 font-medium truncate block">{{ item.project }}</span>
-                            <span v-if="item.task" class="text-gray-500 truncate block">/ {{ item.task }}</span>
-                          </div>
-                          <span class="text-gray-700 font-bold shrink-0">{{ item.hrs }}h</span>
-                          <span class="text-gray-400 shrink-0">
-                            {{ item.from_time?.slice(11, 16) }} – {{ item.to_time?.slice(11, 16) }}
-                          </span>
-                        </div>
-                      </div>
+                      <span class="text-gray-800 font-bold shrink-0">{{ item.hrs }}h</span>
+                      <span v-if="item.from_time || item.to_time" class="text-gray-400 font-mono text-[9px] shrink-0">
+                        {{ item.from_time?.slice(11, 16) || item.from_time }} – {{ item.to_time?.slice(11, 16) || item.to_time }}
+                      </span>
                     </div>
                   </div>
                 </div>
