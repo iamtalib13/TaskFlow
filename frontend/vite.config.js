@@ -1,16 +1,27 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
-import { getProxyOptions } from 'frappe-ui/src/utils/vite-dev-server'
-import { webserver_port } from '../../../sites/common_site_config.json'
+import frappeuiPlugin from 'frappe-ui/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   base: '/assets/taskflow/frontend/',
-  plugins: [vue()],
+  plugins: [
+    frappeuiPlugin({
+      frappeProxy: false,
+      buildConfig: false,
+    }),
+    vue(),
+  ],
   server: {
     port: 8080,
-    proxy: getProxyOptions({ port: webserver_port }),
+    proxy: {
+      '^/(app|api|assets|files|private)': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
   resolve: {
     alias: {
@@ -21,8 +32,5 @@ export default defineConfig({
     outDir: `../${path.basename(path.resolve('..'))}/public/frontend`,
     emptyOutDir: true,
     target: 'es2015',
-  },
-  optimizeDeps: {
-    include: ['frappe-ui > feather-icons', 'showdown', 'engine.io-client'],
   },
 })
