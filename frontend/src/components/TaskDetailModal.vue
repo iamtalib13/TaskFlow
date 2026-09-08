@@ -494,6 +494,77 @@
               </div>
             </div>
 
+            <!-- Attachments Row (Above Title: Small Cards + Plus Button) -->
+            <div class="flex flex-wrap items-center gap-2 pt-0.5 pb-0.5">
+              <!-- Small Attachment Cards -->
+              <div
+                v-for="(att, idx) in attachments"
+                :key="att.id || att.name || idx"
+                class="inline-flex items-center gap-2 px-2.5 py-1 bg-gray-50 hover:bg-gray-100/90 border border-gray-200/90 rounded-lg transition-all group text-xs select-none max-w-full"
+              >
+                <!-- File Icon -->
+                <div
+                  class="size-6 rounded flex items-center justify-center shrink-0"
+                  :class="isImageFile(att) ? 'bg-[#417c7d]/10 text-[#417c7d]' : 'bg-blue-50 text-blue-600'"
+                >
+                  <Image v-if="isImageFile(att)" class="size-3.5" />
+                  <FileText v-else class="size-3.5" />
+                </div>
+
+                <!-- File Name & Size -->
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <a
+                    :href="att.url || att.file_url || '#'"
+                    target="_blank"
+                    download
+                    class="font-medium text-gray-800 hover:text-[#417c7d] truncate max-w-[120px] sm:max-w-[180px] cursor-pointer"
+                    :title="att.name"
+                  >
+                    {{ att.name }}
+                  </a>
+                  <span v-if="att.size" class="text-[10px] text-gray-400 font-mono shrink-0">
+                    {{ att.size }}
+                  </span>
+                </div>
+
+                <!-- Actions: Download & Delete with confirmation -->
+                <div class="flex items-center gap-0.5 shrink-0">
+                  <a
+                    :href="att.url || att.file_url || '#'"
+                    target="_blank"
+                    download
+                    class="p-1 text-gray-400 hover:text-[#417c7d] rounded transition cursor-pointer"
+                    title="Download file"
+                  >
+                    <Download class="size-3" />
+                  </a>
+                  <button
+                    type="button"
+                    class="p-1 text-gray-400 hover:text-rose-600 rounded transition cursor-pointer"
+                    title="Delete attachment"
+                    @click="confirmDeleteAttachment(att, idx)"
+                  >
+                    <Trash2 class="size-3" />
+                  </button>
+                </div>
+              </div>
+
+              <!-- + Add Attachment Button -->
+              <label
+                class="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-gray-50 border border-dashed border-gray-300 hover:border-[#417c7d] text-gray-600 hover:text-[#417c7d] rounded-lg cursor-pointer transition text-xs font-medium select-none shadow-2xs"
+                title="Add attachment"
+              >
+                <Plus class="size-3.5 stroke-[2.5]" />
+                <span class="text-[11px] font-semibold">Add</span>
+                <input
+                  type="file"
+                  multiple
+                  class="sr-only"
+                  @change="handleFileUpload"
+                />
+              </label>
+            </div>
+
             <!-- Task Title (Editable headline input) -->
             <div>
               <input
@@ -535,69 +606,6 @@
               min-height="min-h-64"
               placeholder="Write description, acceptance criteria, or type / for blocks..."
             />
-          </div>
-
-          <!-- Attachments Card -->
-          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-4 space-y-3">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                  Attachments
-                </h4>
-                <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-600">
-                  {{ attachments.length }}
-                </span>
-              </div>
-              <button
-                type="button"
-                class="text-xs font-semibold text-[#417c7d] hover:text-[#2b5354] transition cursor-pointer"
-                @click="downloadAll"
-              >
-                Download all
-              </button>
-            </div>
-
-            <!-- Attachments Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div
-                v-for="att in attachments"
-                :key="att.name"
-                class="flex items-center justify-between p-2.5 bg-gray-50/70 hover:bg-gray-100/80 border border-gray-200/80 rounded-xl transition group"
-              >
-                <div class="flex items-center gap-2.5 min-w-0">
-                  <div
-                    class="size-8 rounded-lg flex items-center justify-center shrink-0"
-                    :class="att.type.includes('png') || att.type.includes('image') ? 'bg-[#417c7d]/10 text-[#417c7d]' : 'bg-blue-100 text-blue-700'"
-                  >
-                    <Image v-if="att.type.includes('png') || att.type.includes('image')" class="size-4" />
-                    <FileText v-else class="size-4" />
-                  </div>
-                  <div class="truncate">
-                    <p class="text-xs font-semibold text-gray-800 truncate" :title="att.name">{{ att.name }}</p>
-                    <p class="text-[11px] text-gray-500">{{ att.size }} • {{ att.type }}</p>
-                  </div>
-                </div>
-
-                <a
-                  :href="att.url || '#'"
-                  download
-                  class="p-1.5 text-gray-400 group-hover:text-gray-700 hover:bg-gray-200 rounded-lg transition shrink-0 cursor-pointer"
-                  title="Download file"
-                >
-                  <Download class="size-3.5" />
-                </a>
-              </div>
-            </div>
-
-            <!-- Drag & Drop Upload Zone -->
-            <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 hover:border-[#417c7d] hover:bg-[#417c7d]/5 rounded-xl p-4 cursor-pointer transition text-center group">
-              <UploadCloud class="size-6 text-[#417c7d] group-hover:scale-110 transition-transform mb-1.5" />
-              <p class="text-xs font-medium text-gray-700">
-                <span class="text-[#417c7d] font-semibold underline">Click to upload</span> or drag and drop files here
-              </p>
-              <p class="text-[10px] text-gray-400 mt-0.5">PNG, JPG, PDF, DOCX up to 25MB</p>
-              <input type="file" multiple class="sr-only" @change="handleFileUpload" />
-            </label>
           </div>
         </main>
 
@@ -759,7 +767,18 @@
 
 <script>
 import { MultiSelect, toast } from 'frappe-ui'
-import { fetchTaskComments, addTaskComment, deleteTaskComment, saveTask, deleteTask, getErrorMessage, fetchTeamMembers } from '../data/api'
+import {
+  fetchTaskComments,
+  addTaskComment,
+  deleteTaskComment,
+  saveTask,
+  deleteTask,
+  getErrorMessage,
+  fetchTeamMembers,
+  fetchTaskAttachments,
+  deleteTaskAttachment,
+  uploadTaskAttachment,
+} from '../data/api'
 import TaskRichEditor from './TaskRichEditor.vue'
 import {
   ArrowLeft,
@@ -767,6 +786,7 @@ import {
   Check,
   Info,
   X,
+  Plus,
   Calendar,
   AlertTriangle,
   CheckCircle2,
@@ -802,6 +822,7 @@ export default {
     Check,
     Info,
     X,
+    Plus,
     Calendar,
     AlertTriangle,
     CheckCircle2,
@@ -906,20 +927,8 @@ export default {
         ticket_raised_by: '',
         ticket_description: '',
       },
-      attachments: [
-        {
-          name: 'wireframe_v2_mockup.png',
-          size: '1.4 MB',
-          type: 'PNG Image',
-          url: '#',
-        },
-        {
-          name: 'drishti_ui_specs.pdf',
-          size: '420 KB',
-          type: 'PDF Document',
-          url: '#',
-        },
-      ],
+      attachments: [],
+      uploadingAttachment: false,
       comments: [],
       activityLog: [
         { user: 'Talib Sheikh', action: 'changed status from Open to On Hold', time: '1h ago' },
@@ -978,9 +987,16 @@ export default {
             this.comments = []
           }
 
+          if (Array.isArray(t.attachments) && t.attachments.length > 0) {
+            this.attachments = [...t.attachments]
+          } else {
+            this.attachments = []
+          }
+
           // Fetch fresh real comments from Frappe Comment doctype
           if (t.id && t.id !== 'new') {
             this.loadActualComments(t.id)
+            this.loadActualAttachments(t.id)
           }
 
           if (matchedTeam) {
@@ -1278,19 +1294,93 @@ export default {
     insertMentionShortcut() {
       this.newComment += ' @'
     },
-    handleFileUpload(e) {
-      const files = Array.from(e.target.files || [])
-      files.forEach((f) => {
-        this.attachments.push({
-          name: f.name,
-          size: `${Math.round(f.size / 1024)} KB`,
-          type: f.type || 'Document',
-          url: URL.createObjectURL(f),
-        })
-      })
+    isImageFile(att) {
+      if (!att) return false
+      const name = att.name || att.file_name || ''
+      const type = att.type || ''
+      return (
+        type === 'Image' ||
+        type === 'PNG Image' ||
+        type.startsWith('image/') ||
+        /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(name)
+      )
     },
-    downloadAll() {
-      alert(`Downloading all ${this.attachments.length} attachments...`)
+    async loadActualAttachments(taskId) {
+      if (!taskId || taskId === 'new') return
+      try {
+        const atts = await fetchTaskAttachments(taskId)
+        if (Array.isArray(atts)) {
+          this.attachments = atts
+        }
+      } catch (err) {
+        console.warn('Failed to load attachments for task:', taskId, err)
+      }
+    },
+    async confirmDeleteAttachment(att, idx) {
+      const fileName = att?.name || att?.file_name || 'this attachment'
+      if (!confirm(`Are you sure you want to delete "${fileName}"?`)) {
+        return
+      }
+
+      const fileId = att?.id || att?.name
+      try {
+        if (fileId && !String(fileId).startsWith('temp-')) {
+          await deleteTaskAttachment(fileId)
+        }
+        this.attachments.splice(idx, 1)
+        toast.success(`Deleted "${fileName}"`)
+      } catch (err) {
+        const msg = getErrorMessage(err, 'Failed to delete attachment')
+        toast.error(msg)
+      }
+    },
+    async handleFileUpload(e) {
+      const files = Array.from(e.target.files || [])
+      if (files.length === 0) return
+
+      const taskId = this.form.id || this.task?.id
+      this.uploadingAttachment = true
+      for (const file of files) {
+        if (taskId && taskId !== 'new') {
+          try {
+            const uploaded = await uploadTaskAttachment(taskId, file)
+            if (uploaded) {
+              const fname = uploaded.file_name || file.name
+              const fsize = uploaded.file_size || file.size
+              const sizeStr = fsize > 1024 * 1024
+                ? `${(fsize / (1024 * 1024)).toFixed(1)} MB`
+                : `${Math.round(fsize / 1024)} KB`
+              this.attachments.push({
+                id: uploaded.name,
+                name: fname,
+                url: uploaded.file_url,
+                file_url: uploaded.file_url,
+                size: sizeStr,
+                type: file.type || 'Document',
+              })
+              toast.success(`Attached "${file.name}"`)
+            }
+          } catch (err) {
+            console.error('Failed to upload file:', err)
+            const msg = getErrorMessage(err, 'Failed to upload attachment')
+            toast.error(msg)
+          }
+        } else {
+          this.attachments.push({
+            id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            name: file.name,
+            size: `${Math.round(file.size / 1024)} KB`,
+            type: file.type || 'Document',
+            url: URL.createObjectURL(file),
+            rawFile: file,
+          })
+          toast.info(`Attached "${file.name}"`)
+        }
+      }
+      this.uploadingAttachment = false
+      if (e.target) {
+        e.target.value = ''
+      }
     },
     async save() {
       if (!this.form.title || !this.form.title.trim()) {
