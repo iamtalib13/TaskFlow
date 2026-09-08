@@ -95,7 +95,7 @@ def get_spa_bootstrap() -> dict:
 				"reference_name": ["in", task_names],
 				"comment_type": "Comment",
 			},
-			fields=["reference_name", "comment_by", "content", "creation"],
+			fields=["name", "reference_name", "comment_by", "content", "creation", "owner"],
 			order_by="creation asc",
 		)
 
@@ -103,9 +103,13 @@ def get_spa_bootstrap() -> dict:
 	for c in comments_raw:
 		u_detail = user_map.get(c["comment_by"], {})
 		comments_map.setdefault(c["reference_name"], []).append({
+			"id": c["name"],
 			"author": u_detail.get("full_name") or c["comment_by"],
+			"author_email": c["comment_by"],
 			"time": frappe.utils.pretty_date(c["creation"]),
+			"creation": str(c["creation"]),
 			"text": frappe.utils.strip_html(c["content"]) if c["content"] else "",
+			"can_delete": (c.get("owner") == current_user or current_user == "Administrator"),
 		})
 
 	tasks = []
@@ -257,6 +261,9 @@ def save_task(payload: str = None, **kwargs) -> dict:
 					"assigned_by": current_employee or None,
 				})
 
+		if doc.meta.has_field("assigned_to"):
+			doc.assigned_to = ", ".join(assignee_list) if assignee_list else ""
+
 	if is_new:
 		doc.insert(ignore_permissions=False)
 	else:
@@ -278,6 +285,7 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		"modified_pretty": frappe.utils.pretty_date(doc.modified) if getattr(doc, "modified", None) else "Just now",
 		"description": doc.description or "",
 		"assignees": [r.user_id for r in doc.get("table_gqbl", []) if r.user_id],
+		"table_gqbl": [{"user_id": r.user_id, "employee_name": r.employee_name} for r in doc.get("table_gqbl", [])],
 		"pending_with": doc.pending_with or "",
 		"pending_from": str(doc.pending_from) if getattr(doc, "pending_from", None) else "",
 		"guided_by": doc.guided_by or "",
@@ -305,11 +313,53 @@ def delete_task(task_id: str) -> dict:
 	return {"success": True, "id": task_id}
 
 
+@frappe.whitelist(methods=["GET", "POST"])
+def get_task_comments(task_id: str) -> list:
+	_require_login()
+	if not task_id:
+		return []
+
+	comments_raw = frappe.get_all(
+		"Comment",
+		filters={
+			"reference_doctype": "Taskflow Task",
+			"reference_name": task_id,
+			"comment_type": "Comment",
+		},
+		fields=["name", "comment_by", "content", "creation", "owner"],
+		order_by="creation asc",
+	)
+
+	current_user = frappe.session.user
+	user_ids = list({c["comment_by"] for c in comments_raw if c.get("comment_by")})
+	user_map = {}
+	if user_ids:
+		users = frappe.get_all("User", filters={"name": ["in", user_ids]}, fields=["name", "full_name", "user_image"])
+		user_map = {u["name"]: u for u in users}
+
+	comments = []
+	for c in comments_raw:
+		u = user_map.get(c["comment_by"], {})
+		comments.append({
+			"id": c["name"],
+			"author": u.get("full_name") or c["comment_by"],
+			"author_email": c["comment_by"],
+			"time": frappe.utils.pretty_date(c["creation"]),
+			"creation": str(c["creation"]),
+			"text": frappe.utils.strip_html(c["content"]) if c["content"] else "",
+			"can_delete": (c.get("owner") == current_user or current_user == "Administrator"),
+		})
+
+	return comments
+
+
 @frappe.whitelist(methods=["POST"])
 def add_task_comment(task_id: str, text: str) -> dict:
 	_require_login()
 	if not text or not text.strip():
 		frappe.throw(_("Comment text cannot be empty"))
+	if not task_id:
+		frappe.throw(_("Task ID is required"))
 
 	doc = frappe.get_doc("Taskflow Task", task_id)
 	doc.check_permission("read")
@@ -318,7 +368,27 @@ def add_task_comment(task_id: str, text: str) -> dict:
 	author_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
 
 	return {
+		"id": comment.name,
 		"author": author_name,
+		"author_email": frappe.session.user,
 		"time": "Just now",
+		"creation": str(comment.creation) if getattr(comment, "creation", None) else "",
 		"text": frappe.utils.strip_html(comment.content) if comment.content else text.strip(),
+		"can_delete": True,
 	}
+
+
+@frappe.whitelist(methods=["POST"])
+def delete_task_comment(comment_id: str) -> dict:
+	_require_login()
+	if not comment_id:
+		frappe.throw(_("Comment ID is required"))
+
+	comment = frappe.get_doc("Comment", comment_id)
+	current_user = frappe.session.user
+	if comment.owner != current_user and current_user != "Administrator" and not frappe.has_permission("Comment", "delete"):
+		frappe.throw(_("Not permitted to delete this comment"), frappe.PermissionError)
+
+	frappe.delete_doc("Comment", comment_id, ignore_permissions=True)
+	return {"success": True, "id": comment_id}
+
