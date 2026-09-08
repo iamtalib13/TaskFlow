@@ -35,7 +35,7 @@ const model = defineModel({
 const props = defineProps({
   placeholder: {
     type: String,
-    default: 'Add details, acceptance criteria, or notes…',
+    default: 'Write something…',
   },
   people: {
     type: Array,
@@ -43,16 +43,15 @@ const props = defineProps({
   },
   minHeight: {
     type: String,
-    default: 'min-h-[140px]',
+    default: 'min-h-56',
   },
 })
 
 const defaultPeople = [
-  { id: 'talib', label: 'Talib Sheikh' },
   { id: 'sarah', label: 'Sarah Chen' },
-  { id: 'marcus', label: 'Marcus Brody' },
-  { id: 'elena', label: 'Elena Rostova' },
   { id: 'faris', label: 'Faris Ansari' },
+  { id: 'maria', label: 'Maria Garcia' },
+  { id: 'talib', label: 'Talib Sheikh' },
 ]
 
 const mentionItems = computed(() => {
@@ -66,12 +65,11 @@ const mentionItems = computed(() => {
 })
 
 const tags = [
+  { id: 'onboarding', label: 'onboarding' },
+  { id: 'billing', label: 'billing' },
   { id: 'urgent', label: 'urgent' },
   { id: 'bug', label: 'bug' },
   { id: 'feature', label: 'feature' },
-  { id: 'design', label: 'design' },
-  { id: 'review', label: 'review' },
-  { id: 'onboarding', label: 'onboarding' },
 ]
 
 const extensions = computed(() => [
@@ -127,16 +125,17 @@ const uploadFunction = async (file) => ({
       :placeholder="placeholder"
     >
       <template #default>
+        <!-- Inside <Editor>, the building blocks read the editor from context — no :editor prop needed -->
         <div
-          class="overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-base shadow-2xs focus-within:ring-2 focus-within:ring-black focus-within:border-black transition"
+          class="overflow-hidden rounded-6 border border-outline-gray-2 bg-surface-base shadow-2xs focus-within:ring-2 focus-within:ring-black focus-within:border-black transition"
         >
           <EditorBubbleMenu :items="bubbleToolbar" />
           <EditorFloatingMenu :items="toolbar" />
-          <div class="border-b border-outline-gray-1 px-2 py-1.5 bg-gray-50/70">
-            <EditorFixedMenu :items="toolbar" class="flex-wrap" button-size="xs" />
+          <div class="border-b border-outline-gray-1 px-2 py-1.5 bg-surface-gray-1">
+            <EditorFixedMenu :items="toolbar" class="flex-wrap gap-1" />
           </div>
           <EditorContent
-            :class="[minHeight, 'max-h-[360px] overflow-y-auto px-4 py-3 text-ink-gray-8 text-xs leading-relaxed outline-none focus:outline-none']"
+            :class="[minHeight, 'max-h-[420px] overflow-y-auto px-5 py-4 text-ink-gray-8 text-sm leading-relaxed outline-none focus:outline-none prose prose-v3 max-w-none']"
           />
         </div>
       </template>

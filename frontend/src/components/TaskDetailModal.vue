@@ -5,7 +5,7 @@
     @click.self="close"
   >
     <div
-      class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
+      class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
       role="dialog"
       aria-modal="true"
     >
