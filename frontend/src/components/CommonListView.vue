@@ -1,14 +1,14 @@
 <template>
-  <div class="flex flex-col flex-1 min-w-0 bg-white overflow-hidden">
+  <div class="flex flex-col flex-1 min-w-0 bg-white">
     <!-- Optional Toolbar Slot (above the table) -->
     <div v-if="$slots.toolbar" class="p-3 border-b border-gray-100 bg-white">
       <slot name="toolbar" />
     </div>
 
-    <!-- Scrollable Table Container (Horizontal & Vertical) -->
+    <!-- Scrollable Table Container (Horizontal) -->
     <div
       ref="tableContainer"
-      class="relative flex-1 overflow-x-auto overflow-y-auto min-h-[380px]"
+      class="relative flex-1 overflow-x-auto min-h-[380px]"
       @scroll="handleScroll"
     >
       <table class="w-full text-left border-collapse text-xs select-text">
@@ -197,10 +197,10 @@
       </table>
     </div>
 
-    <!-- Pagination & Bottom Controls -->
+    <!-- Pagination & Bottom Controls (Sticky to bottom) -->
     <div
       v-if="pagination"
-      class="px-4 py-2.5 bg-white border-t border-gray-200/80 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 select-none"
+      class="sticky bottom-0 z-30 px-3 py-2 bg-white/95 backdrop-blur-md border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 select-none shadow-[0_-2px_10px_rgba(0,0,0,0.04)]"
     >
       <!-- Page Size Selector -->
       <div class="flex items-center gap-2">
