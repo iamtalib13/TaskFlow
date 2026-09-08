@@ -102,7 +102,9 @@
               'group transition-colors duration-150 cursor-pointer',
               isRowSelected(row)
                 ? 'bg-blue-50/50 hover:bg-blue-50/80'
-                : (getRowClass(row, idx) || 'hover:bg-gray-50/80'),
+                : isJustNowRow(row)
+                  ? '!bg-emerald-50/90 hover:!bg-emerald-100/80 border-l-4 border-l-emerald-500 shadow-xs'
+                  : (getRowClass(row, idx) || 'hover:bg-gray-50/80'),
             ]"
             @click="onRowClick(row, $event)"
           >
@@ -111,8 +113,12 @@
               v-if="selectable"
               :class="[
                 'w-9 px-2 py-2 text-center border-r border-gray-100 transition-colors',
-                isCheckboxSticky ? 'sticky left-0 z-20 bg-white' : 'bg-transparent',
-                isRowSelected(row) ? '!bg-blue-50/60' : '',
+                isCheckboxSticky ? 'sticky left-0 z-20' : '',
+                isRowSelected(row)
+                  ? '!bg-blue-50/60'
+                  : isJustNowRow(row)
+                    ? '!bg-emerald-50/90 group-hover:!bg-emerald-100/80'
+                    : (isCheckboxSticky ? 'bg-white' : 'bg-transparent'),
               ]"
               @click.stop
             >
@@ -135,10 +141,14 @@
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
-                'px-3 py-2 whitespace-nowrap text-gray-700 text-xs',
-                col.sticky ? 'sticky z-20 bg-white group-hover:bg-gray-50/90 border-r border-gray-100 font-medium' : '',
+                'px-3 py-2 whitespace-nowrap text-gray-700 text-xs transition-colors',
+                col.sticky ? 'sticky z-20 border-r border-gray-100 font-medium' : '',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
-                isRowSelected(row) && col.sticky ? '!bg-blue-50/60' : '',
+                isRowSelected(row)
+                  ? (col.sticky ? '!bg-blue-50/60' : '')
+                  : isJustNowRow(row)
+                    ? (col.sticky ? '!bg-emerald-50/90 group-hover:!bg-emerald-100/80' : '')
+                    : (col.sticky ? 'bg-white group-hover:bg-gray-50/90' : ''),
               ]"
             >
               <!-- Scoped Cell Slot -->
@@ -355,6 +365,15 @@ export default {
         return this.rowClass(row, idx)
       }
       return this.rowClass || ''
+    },
+    isJustNowRow(row) {
+      if (!row) return false
+      const rowCls = this.getRowClass(row)
+      if (typeof rowCls === 'string' && (rowCls.includes('emerald') || rowCls.includes('is-just-now'))) {
+        return true
+      }
+      const p = (row.modified_pretty || '').toString().trim().toLowerCase()
+      return p === 'just now'
     },
     getRowKey(row, idx) {
       return row[this.rowKey] || idx

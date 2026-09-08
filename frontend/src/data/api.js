@@ -41,7 +41,7 @@ export const mockBootstrap = {
         { author: 'Marcus Brody', time: '2 hours ago', text: 'Please ensure responsive mobile wrapping works smoothly.' },
         { author: 'Talib Sheikh', time: '1 hour ago', text: 'Implemented grid layout, testing on tablet breakpoint.' },
       ],
-      modified: '2026-09-08 15:42:00',
+      modified: new Date().toISOString(),
       modified_pretty: 'Just now',
     },
     {

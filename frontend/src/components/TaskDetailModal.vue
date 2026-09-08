@@ -27,12 +27,12 @@
           <nav class="flex items-center gap-1.5 text-xs truncate">
             <span class="text-gray-500 font-medium">Tasks</span>
             <span class="text-gray-400">/</span>
-            <div class="inline-flex items-center gap-1 font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200/70">
-              <span class="size-1.5 rounded-full bg-purple-600"></span>
+            <div class="inline-flex items-center gap-1 font-semibold text-[#417c7d] bg-[#417c7d]/10 px-2 py-0.5 rounded-md border border-[#417c7d]/30">
+              <span class="size-1.5 rounded-full bg-[#417c7d]"></span>
               <span class="truncate max-w-[160px]">{{ form.project || 'Project' }}</span>
             </div>
             <span class="text-gray-400">/</span>
-            <span class="font-mono font-bold text-purple-700">{{ form.id || 'TASK' }}</span>
+            <span class="font-mono font-bold text-[#417c7d]">{{ form.id || 'TASK' }}</span>
           </nav>
         </div>
 
@@ -40,7 +40,7 @@
         <div class="flex items-center gap-2.5 shrink-0">
           <!-- Save Status Indicator -->
           <div class="hidden sm:flex items-center gap-1.5 text-xs text-gray-500 font-medium mr-1">
-            <Cloud class="size-3.5 text-blue-500" />
+            <Cloud class="size-3.5 text-[#417c7d]" />
             <span>All changes saved</span>
           </div>
 
@@ -48,7 +48,7 @@
           <div class="relative">
             <select
               v-model="form.status"
-              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
+              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none"
               :class="getStatusSelectClass(form.status)"
             >
               <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
@@ -64,7 +64,7 @@
           <div class="relative">
             <select
               v-model="form.priority"
-              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none bg-blue-50/60 text-blue-700 border-blue-200"
+              class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-full border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none bg-blue-50/60 text-blue-700 border-blue-200"
             >
               <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
             </select>
@@ -85,7 +85,7 @@
           <button
             type="button"
             :disabled="saving"
-            class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
+            class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
             title="Save Task (⌘S)"
             @click="save"
           >
@@ -114,15 +114,15 @@
               <div class="flex flex-wrap items-center gap-1.5">
                 <div
                   v-if="form.assigned_to"
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-purple-800 border border-purple-200 font-semibold text-xs"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#417c7d]/10 text-[#417c7d] border border-[#417c7d]/30 font-semibold text-xs"
                 >
-                  <span class="size-4.5 rounded-full bg-purple-700 text-white font-bold text-[9px] flex items-center justify-center">
+                  <span class="size-4.5 rounded-full bg-[#417c7d] text-white font-bold text-[9px] flex items-center justify-center">
                     {{ getInitials(form.assigned_to) }}
                   </span>
                   <span class="truncate max-w-[130px]">{{ form.assigned_to }}</span>
                   <button
                     type="button"
-                    class="text-purple-600 hover:text-purple-900 ml-0.5 cursor-pointer"
+                    class="text-[#417c7d] hover:text-[#2b5354] ml-0.5 cursor-pointer"
                     title="Remove assignee"
                     @click="form.assigned_to = ''"
                   >
@@ -134,7 +134,7 @@
                 <div class="relative flex-1 min-w-[90px]">
                   <select
                     v-model="form.assigned_to"
-                    class="w-full text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-dashed border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 cursor-pointer transition"
+                    class="w-full text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-dashed border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] cursor-pointer transition"
                   >
                     <option value="">+ Assign</option>
                     <option v-for="person in people" :key="person.email" :value="person.name">
@@ -151,7 +151,7 @@
               <div class="relative">
                 <select
                   v-model="form.pending_with"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
+                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 >
                   <option value="">Unassigned</option>
                   <option value="Talib Sheikh (Tech Lead)">Talib Sheikh (Tech Lead)</option>
@@ -170,7 +170,7 @@
               <div class="relative">
                 <select
                   v-model="form.pending_from"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
+                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 >
                   <option value="Frontend Architecture Team">Frontend Architecture Team</option>
                   <option value="Core Engineering">Core Engineering</option>
@@ -187,7 +187,7 @@
               <div class="relative">
                 <select
                   v-model="form.guided_by"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
+                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 >
                   <option value="Sarah Chen (Principal Arch)">Sarah Chen (Principal Arch)</option>
                   <option value="Talib Sheikh (Tech Lead)">Talib Sheikh (Tech Lead)</option>
@@ -202,7 +202,7 @@
               <label class="block font-medium text-gray-600 mb-1">Responsible Person</label>
               <div class="flex items-center justify-between p-1.5 bg-gray-50 border border-gray-200 rounded-lg">
                 <div class="flex items-center gap-2">
-                  <span class="size-5 rounded-full bg-blue-600 text-white font-bold text-[9px] flex items-center justify-center">
+                  <span class="size-5 rounded-full bg-[#417c7d] text-white font-bold text-[9px] flex items-center justify-center">
                     {{ getInitials(form.responsible_person || 'Mukesh Khanna') }}
                   </span>
                   <span class="font-medium text-gray-800 text-xs">{{ form.responsible_person || 'Mukesh Khanna' }}</span>
@@ -227,7 +227,7 @@
                   v-model="displayStartDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
+                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 />
                 <label class="absolute right-2.5 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <Calendar class="size-3.5" />
@@ -255,7 +255,7 @@
                   type="text"
                   placeholder="DD-MM-YYYY"
                   class="w-full rounded-lg pl-2.5 pr-8 py-1.5 text-xs font-mono outline-none transition"
-                  :class="isOverdue ? 'bg-rose-50/50 border border-rose-300 text-rose-700 font-semibold focus:ring-2 focus:ring-rose-200 focus:border-rose-400' : 'bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-purple-200 focus:border-purple-400'"
+                  :class="isOverdue ? 'bg-rose-50/50 border border-rose-300 text-rose-700 font-semibold focus:ring-2 focus:ring-rose-200 focus:border-rose-400' : 'bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d]'"
                 />
                 <label class="absolute right-2.5 cursor-pointer">
                   <AlertTriangle v-if="isOverdue" class="size-3.5 text-rose-600" />
@@ -278,7 +278,7 @@
                   v-model="displayResolutionDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition"
+                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 />
                 <label class="absolute right-2.5 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <Calendar class="size-3.5" />
@@ -315,7 +315,7 @@
             <!-- Project & Task Type Pill Bar -->
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-1.5">
-                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200/80">
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#417c7d]/10 text-[#417c7d] border border-[#417c7d]/25">
                   {{ form.project || 'Drishti Core' }}
                 </span>
                 <ChevronRight class="size-3.5 text-gray-400" />
@@ -386,7 +386,7 @@
               </div>
               <button
                 type="button"
-                class="text-xs font-semibold text-purple-700 hover:text-purple-900 transition cursor-pointer"
+                class="text-xs font-semibold text-[#417c7d] hover:text-[#2b5354] transition cursor-pointer"
                 @click="downloadAll"
               >
                 Download all
@@ -403,7 +403,7 @@
                 <div class="flex items-center gap-2.5 min-w-0">
                   <div
                     class="size-8 rounded-lg flex items-center justify-center shrink-0"
-                    :class="att.type.includes('png') || att.type.includes('image') ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
+                    :class="att.type.includes('png') || att.type.includes('image') ? 'bg-[#417c7d]/10 text-[#417c7d]' : 'bg-blue-100 text-blue-700'"
                   >
                     <Image v-if="att.type.includes('png') || att.type.includes('image')" class="size-4" />
                     <FileText v-else class="size-4" />
@@ -426,10 +426,10 @@
             </div>
 
             <!-- Drag & Drop Upload Zone -->
-            <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 hover:border-purple-400 hover:bg-purple-50/20 rounded-xl p-4 cursor-pointer transition text-center group">
-              <UploadCloud class="size-6 text-purple-600 group-hover:scale-110 transition-transform mb-1.5" />
+            <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 hover:border-[#417c7d] hover:bg-[#417c7d]/5 rounded-xl p-4 cursor-pointer transition text-center group">
+              <UploadCloud class="size-6 text-[#417c7d] group-hover:scale-110 transition-transform mb-1.5" />
               <p class="text-xs font-medium text-gray-700">
-                <span class="text-purple-700 font-semibold underline">Click to upload</span> or drag and drop files here
+                <span class="text-[#417c7d] font-semibold underline">Click to upload</span> or drag and drop files here
               </p>
               <p class="text-[10px] text-gray-400 mt-0.5">PNG, JPG, PDF, DOCX up to 25MB</p>
               <input type="file" multiple class="sr-only" @change="handleFileUpload" />
@@ -445,7 +445,7 @@
               <button
                 type="button"
                 class="pb-2.5 text-xs font-bold transition border-b-2 cursor-pointer"
-                :class="activeRightTab === 'comments' ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'"
+                :class="activeRightTab === 'comments' ? 'border-[#417c7d] text-[#417c7d]' : 'border-transparent text-gray-500 hover:text-gray-800'"
                 @click="activeRightTab = 'comments'"
               >
                 Comments ({{ comments.length }})
@@ -453,7 +453,7 @@
               <button
                 type="button"
                 class="pb-2.5 text-xs font-bold transition border-b-2 cursor-pointer"
-                :class="activeRightTab === 'activity' ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'"
+                :class="activeRightTab === 'activity' ? 'border-[#417c7d] text-[#417c7d]' : 'border-transparent text-gray-500 hover:text-gray-800'"
                 @click="activeRightTab = 'activity'"
               >
                 Activity Audit
@@ -504,7 +504,7 @@
               :key="idx"
               class="flex items-start gap-2 text-gray-600 pb-2 border-b border-gray-100 last:border-b-0"
             >
-              <div class="size-1.5 rounded-full bg-purple-600 mt-1.5 shrink-0"></div>
+              <div class="size-1.5 rounded-full bg-[#417c7d] mt-1.5 shrink-0"></div>
               <div class="flex-1">
                 <p><strong class="text-gray-900">{{ act.user }}</strong> {{ act.action }}</p>
                 <span class="text-[10px] text-gray-400">{{ act.time }}</span>
@@ -518,7 +518,7 @@
               v-model="newComment"
               rows="3"
               placeholder="Write a comment or type @ to mention..."
-              class="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs text-gray-800 outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition resize-none placeholder-gray-400"
+              class="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs text-gray-800 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition resize-none placeholder-gray-400"
               @keydown.meta.enter="addComment"
               @keydown.ctrl.enter="addComment"
             ></textarea>
@@ -551,7 +551,7 @@
               <button
                 type="button"
                 :disabled="!newComment.trim()"
-                class="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-700 hover:bg-purple-800 disabled:opacity-40 text-white font-semibold text-xs rounded-lg shadow-xs transition cursor-pointer"
+                class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] disabled:opacity-40 text-white font-semibold text-xs rounded-lg shadow-xs transition cursor-pointer"
                 @click="addComment"
               >
                 <span>Comment</span>
@@ -794,7 +794,7 @@ export default {
   },
   methods: {
     getDefaultDescription() {
-      return `<p>During the client review meeting with the Regional Operations Directorate, it was reported that having <span class="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-medium">Branch Name</span> and <span class="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-medium">District Code</span> on stacked separate lines causes excessive vertical scrolling on 1080p dashboard terminals.</p>
+      return `<p>During the client review meeting with the Regional Operations Directorate, it was reported that having <span class="px-1.5 py-0.5 rounded bg-[#417c7d]/10 text-[#417c7d] font-semibold">Branch Name</span> and <span class="px-1.5 py-0.5 rounded bg-[#417c7d]/10 text-[#417c7d] font-semibold">District Code</span> on stacked separate lines causes excessive vertical scrolling on 1080p dashboard terminals.</p>
 <p><strong>Proposed Layout Modification:</strong></p>
 <ul>
 <li>Refactor the master filter header into a flex-grid layout aligning both selects on the horizontal axis.</li>
@@ -838,7 +838,7 @@ export default {
     },
     getAvatarColor(name) {
       const colors = [
-        'bg-purple-700',
+        'bg-[#417c7d]',
         'bg-blue-600',
         'bg-emerald-600',
         'bg-indigo-600',

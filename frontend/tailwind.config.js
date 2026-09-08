@@ -46,6 +46,19 @@ export default {
         '2xl': ['20px', { lineHeight: '1.35' }],
       },
       colors: {
+        primary: {
+          50: '#f0f7f7',
+          100: '#dceeed',
+          200: '#bcdcdc',
+          300: '#94c2c3',
+          400: '#68a4a5',
+          500: '#417c7d',
+          600: '#366869',
+          700: '#2b5354',
+          800: '#234445',
+          900: '#1b3435',
+          DEFAULT: '#417c7d',
+        },
         'surface-base': '#ffffff',
         surface: {
           base: '#ffffff',

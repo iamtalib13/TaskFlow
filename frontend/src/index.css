@@ -46,8 +46,8 @@
   }
   .focus-ring {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
-    border-color: #c084fc;
+    box-shadow: 0 0 0 2px rgba(65, 124, 125, 0.25);
+    border-color: #417c7d;
   }
 }
 
