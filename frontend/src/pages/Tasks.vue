@@ -70,7 +70,24 @@ const priorities = ref(['Critical', 'High', 'Medium', 'Low'])
 
 // Active Navigation: ONLY Task, Timesheet, Project, Team
 const activeSection = ref('Task')
-const isSidebarCollapsed = ref(false)
+
+const SIDEBAR_COLLAPSED_KEY = 'taskflow:sidebar_collapsed'
+const getStoredSidebarState = () => {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+const isSidebarCollapsed = ref(getStoredSidebarState())
+
+watch(isSidebarCollapsed, (val) => {
+  try {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(val))
+  } catch (e) {
+    console.error('Failed to save sidebar state to localStorage', e)
+  }
+})
 
 const navItems = computed(() => [
   { id: 'Task', label: 'Task', icon: CheckSquare, badge: visibleTasks.value.length },
@@ -560,7 +577,7 @@ onMounted(() => {
 
 <template>
   <div class="h-screen w-full bg-surface-base text-ink-gray-9 antialiased">
-    <DesktopShell>
+    <DesktopShell :scroll="false">
       <!-- Collapsable Sidebar Slot (No icon-rail, exactly Task, Timesheet, Project, Team) -->
       <template #sidebar>
         <Sidebar
@@ -570,8 +587,16 @@ onMounted(() => {
           class="border-r border-outline-gray-2 bg-surface-base flex flex-col h-full"
         >
           <!-- Sidebar Header: Brand & Collapse Toggle -->
-          <div class="flex h-14 items-center justify-between px-3 border-b border-outline-gray-1">
-            <div class="flex items-center gap-2.5 overflow-hidden">
+          <div
+            class="flex h-14 items-center border-b border-outline-gray-1 transition-all"
+            :class="isSidebarCollapsed ? 'justify-center px-1' : 'justify-between px-3'"
+          >
+            <div
+              class="flex items-center gap-2.5 overflow-hidden"
+              :class="{ 'justify-center w-full cursor-pointer': isSidebarCollapsed }"
+              :title="isSidebarCollapsed ? 'Click to expand sidebar' : ''"
+              @click="isSidebarCollapsed ? (isSidebarCollapsed = false) : null"
+            >
               <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black text-white font-bold text-xs shadow-xs select-none">
                 TF
               </div>
@@ -581,57 +606,93 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Collapse Toggle Button -->
+            <!-- Collapse Toggle Button (Shown when expanded) -->
             <button
+              v-if="!isSidebarCollapsed"
               type="button"
               class="flex size-7 items-center justify-center rounded-md text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8 transition shrink-0 cursor-pointer"
-              :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-              @click="isSidebarCollapsed = !isSidebarCollapsed"
+              title="Collapse sidebar"
+              @click="isSidebarCollapsed = true"
             >
-              <PanelLeftOpen v-if="isSidebarCollapsed" class="size-4" />
-              <PanelLeftClose v-else class="size-4" />
+              <PanelLeftClose class="size-4" />
             </button>
           </div>
 
           <!-- Navigation Items: Only Task, Timesheet, Project, Team with Icons -->
-          <ScrollArea class="min-h-0 flex-1" viewport-class="px-2 pt-3 pb-6">
+          <ScrollArea class="min-h-0 flex-1" :viewport-class="isSidebarCollapsed ? 'px-1 pt-2 pb-6' : 'px-2 pt-3 pb-6'">
             <nav class="space-y-1">
-              <SidebarItem
-                v-for="item in navItems"
-                :key="item.id"
-                :active="activeSection === item.id"
-                :icon="item.icon"
-                :class="[
-                  '!h-9 cursor-pointer transition-all duration-150 mb-1 rounded-lg',
-                  activeSection === item.id
-                    ? '!bg-gray-100 !text-gray-950 font-semibold shadow-xs border border-gray-200/80'
-                    : 'text-gray-600 hover:!bg-gray-50 hover:!text-gray-900 border border-transparent'
-                ]"
-                @click="activeSection = item.id"
-              >
-                <template #prefix>
+              <!-- Collapsed Mode: Centered icon with small label underneath -->
+              <template v-if="isSidebarCollapsed">
+                <button
+                  v-for="item in navItems"
+                  :key="item.id"
+                  type="button"
+                  :title="item.label"
+                  :class="[
+                    'w-full flex flex-col items-center justify-center py-2 px-0.5 mb-1 rounded-lg cursor-pointer transition-all duration-150 select-none relative group',
+                    activeSection === item.id
+                      ? 'bg-gray-100 text-gray-950 font-semibold shadow-xs border border-gray-200/80'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent'
+                  ]"
+                  @click="activeSection = item.id"
+                >
                   <component
                     :is="item.icon"
                     class="size-4 shrink-0 transition-colors"
-                    :class="activeSection === item.id ? 'text-gray-950 stroke-[2.2]' : 'text-gray-500'"
+                    :class="activeSection === item.id ? 'text-gray-950 stroke-[2.2]' : 'text-gray-500 group-hover:text-gray-800'"
                   />
-                </template>
-                <span
-                  class="flex-1 truncate text-sm"
-                  :class="activeSection === item.id ? 'font-semibold text-gray-950' : 'font-medium text-gray-600'"
-                >
-                  {{ item.label }}
-                </span>
-                <template #suffix>
                   <span
-                    v-if="!isSidebarCollapsed && item.badge !== undefined"
-                    class="mr-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors"
-                    :class="activeSection === item.id ? 'bg-gray-200 text-gray-900 font-bold' : 'bg-gray-100 text-gray-500'"
+                    class="text-[10px] leading-tight mt-1 text-center truncate max-w-full font-medium"
+                    :class="activeSection === item.id ? 'text-gray-950 font-semibold' : 'text-gray-500 group-hover:text-gray-700'"
                   >
-                    {{ item.badge }}
+                    {{ item.label }}
                   </span>
-                </template>
-              </SidebarItem>
+                  <span
+                    v-if="item.badge"
+                    class="absolute top-1 right-1.5 size-1.5 rounded-full bg-blue-600"
+                  />
+                </button>
+              </template>
+
+              <!-- Expanded Mode: Standard SidebarItem with row layout -->
+              <template v-else>
+                <SidebarItem
+                  v-for="item in navItems"
+                  :key="item.id"
+                  :active="activeSection === item.id"
+                  :icon="item.icon"
+                  :class="[
+                    '!h-9 cursor-pointer transition-all duration-150 mb-1 rounded-lg',
+                    activeSection === item.id
+                      ? '!bg-gray-100 !text-gray-950 font-semibold shadow-xs border border-gray-200/80'
+                      : 'text-gray-600 hover:!bg-gray-50 hover:!text-gray-900 border border-transparent'
+                  ]"
+                  @click="activeSection = item.id"
+                >
+                  <template #prefix>
+                    <component
+                      :is="item.icon"
+                      class="size-4 shrink-0 transition-colors"
+                      :class="activeSection === item.id ? 'text-gray-950 stroke-[2.2]' : 'text-gray-500'"
+                    />
+                  </template>
+                  <span
+                    class="flex-1 truncate text-sm"
+                    :class="activeSection === item.id ? 'font-semibold text-gray-950' : 'font-medium text-gray-600'"
+                  >
+                    {{ item.label }}
+                  </span>
+                  <template #suffix>
+                    <span
+                      v-if="item.badge !== undefined"
+                      class="mr-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors"
+                      :class="activeSection === item.id ? 'bg-gray-200 text-gray-900 font-bold' : 'bg-gray-100 text-gray-500'"
+                    >
+                      {{ item.badge }}
+                    </span>
+                  </template>
+                </SidebarItem>
+              </template>
             </nav>
           </ScrollArea>
 
@@ -714,12 +775,12 @@ onMounted(() => {
         </div>
       </PageHeader>
 
-      <!-- Main Body Container: Full width, minor padding, no unnecessary gaps -->
-      <div class="w-full px-3 pt-3 pb-1">
+      <!-- Main Body Container: Full height flex layout, no page scroll -->
+      <div class="w-full flex-1 min-h-0 flex flex-col px-3 pt-2 pb-2 overflow-hidden">
         <!-- 1. TASK VIEW -->
         <template v-if="activeSection === 'Task'">
-          <!-- Sub-Header Tabs & Task Count (Sticky with backdrop-blur & dynamic counts) -->
-          <div class="sticky top-0 z-20 -mt-3 pt-3 pb-2 mb-2 bg-white/95 backdrop-blur-md flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
+          <!-- Sub-Header Tabs & Task Count (Locked sticky filter header) -->
+          <div class="shrink-0 pb-2 mb-2 bg-white flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
             <TabButtons
               v-model="statusTab"
               :options="statusOptions"
@@ -729,8 +790,8 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- Tasks List Table View -->
-          <div class="outline-none focus:outline-none ring-0">
+          <!-- Tasks List Table View: Fills remaining height, rows scroll under sticky thead -->
+          <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
             <CommonListView
               v-model:selectedRows="selectedRowKeys"
               :columns="tableColumns"
@@ -848,7 +909,7 @@ onMounted(() => {
 
         <!-- 2. TIMESHEET VIEW (List view only) -->
         <template v-else-if="activeSection === 'Timesheet'">
-          <div class="mb-4 flex items-center justify-between">
+          <div class="shrink-0 mb-3 flex items-center justify-between">
             <div>
               <h2 class="text-lg font-bold text-ink-gray-9">Timesheet Logs</h2>
               <p class="text-xs text-ink-gray-5">All time entries logged across active projects</p>
@@ -858,59 +919,61 @@ onMounted(() => {
             </div>
           </div>
 
-          <CommonListView
-            v-model:selectedRows="selectedTimesheetKeys"
-            :columns="timesheetColumns"
-            :rows="timesheetData"
-            :loading="loading"
-          >
-            <template #cell-id="{ row }">
-              <span class="font-mono font-bold text-ink-gray-7">{{ row.id }}</span>
-            </template>
+          <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
+            <CommonListView
+              v-model:selectedRows="selectedTimesheetKeys"
+              :columns="timesheetColumns"
+              :rows="timesheetData"
+              :loading="loading"
+            >
+              <template #cell-id="{ row }">
+                <span class="font-mono font-bold text-ink-gray-7">{{ row.id }}</span>
+              </template>
 
-            <template #cell-user="{ row }">
-              <div class="flex items-center gap-2">
-                <Avatar
-                  :image="getAssignee(row.user).image"
-                  :label="row.user"
+              <template #cell-user="{ row }">
+                <div class="flex items-center gap-2">
+                  <Avatar
+                    :image="getAssignee(row.user).image"
+                    :label="row.user"
+                    size="sm"
+                    shape="circle"
+                  />
+                  <span class="font-medium text-ink-gray-8 truncate">{{ row.user }}</span>
+                </div>
+              </template>
+
+              <template #cell-task_title="{ row }">
+                <div class="truncate max-w-[260px] font-medium text-ink-gray-9" :title="row.task_title">
+                  {{ row.task_title }}
+                </div>
+              </template>
+
+              <template #cell-project="{ row }">
+                <span class="text-xs font-medium text-gray-700 truncate block max-w-[140px]" :title="row.project">
+                  {{ row.project }}
+                </span>
+              </template>
+
+              <template #cell-activity_type="{ row }">
+                <span class="text-xs text-ink-gray-7">{{ row.activity_type }}</span>
+              </template>
+
+              <template #cell-status="{ row }">
+                <Badge
+                  :theme="row.status === 'Approved' ? 'green' : 'amber'"
+                  variant="subtle"
                   size="sm"
-                  shape="circle"
-                />
-                <span class="font-medium text-ink-gray-8 truncate">{{ row.user }}</span>
-              </div>
-            </template>
-
-            <template #cell-task_title="{ row }">
-              <div class="truncate max-w-[260px] font-medium text-ink-gray-9" :title="row.task_title">
-                {{ row.task_title }}
-              </div>
-            </template>
-
-            <template #cell-project="{ row }">
-              <span class="text-xs font-medium text-gray-700 truncate block max-w-[140px]" :title="row.project">
-                {{ row.project }}
-              </span>
-            </template>
-
-            <template #cell-activity_type="{ row }">
-              <span class="text-xs text-ink-gray-7">{{ row.activity_type }}</span>
-            </template>
-
-            <template #cell-status="{ row }">
-              <Badge
-                :theme="row.status === 'Approved' ? 'green' : 'amber'"
-                variant="subtle"
-                size="sm"
-              >
-                {{ row.status }}
-              </Badge>
-            </template>
-          </CommonListView>
+                >
+                  {{ row.status }}
+                </Badge>
+              </template>
+            </CommonListView>
+          </div>
         </template>
 
         <!-- 3. PROJECT VIEW (List view only as requested) -->
         <template v-else-if="activeSection === 'Project'">
-          <div class="mb-4 flex items-center justify-between">
+          <div class="shrink-0 mb-3 flex items-center justify-between">
             <div>
               <h2 class="text-lg font-bold text-ink-gray-9">Projects List</h2>
               <p class="text-xs text-ink-gray-5">Active project spaces and tracking metrics</p>
@@ -918,58 +981,60 @@ onMounted(() => {
             <span class="text-xs text-ink-gray-5 font-medium">{{ projectsData.length }} projects</span>
           </div>
 
-          <CommonListView
-            v-model:selectedRows="selectedProjectKeys"
-            :columns="projectColumns"
-            :rows="projectsData"
-            :loading="loading"
-          >
-            <template #cell-name="{ row }">
-              <div class="flex items-center gap-2">
-                <Folder class="size-4 text-blue-600 shrink-0" />
-                <span class="font-semibold text-ink-gray-9">{{ row.name }}</span>
-              </div>
-            </template>
-
-            <template #cell-status="{ row }">
-              <Badge
-                :theme="row.status === 'Completed' ? 'green' : 'blue'"
-                variant="subtle"
-                size="sm"
-              >
-                {{ row.status }}
-              </Badge>
-            </template>
-
-            <template #cell-lead="{ row }">
-              <div class="flex items-center gap-2">
-                <Avatar
-                  :image="getAssignee(row.lead).image"
-                  :label="row.lead"
-                  size="sm"
-                  shape="circle"
-                />
-                <span class="font-medium text-ink-gray-8">{{ row.lead }}</span>
-              </div>
-            </template>
-
-            <template #cell-progress="{ row }">
-              <div class="flex items-center gap-2 w-full">
-                <div class="flex-1 bg-surface-gray-2 rounded-full h-2 overflow-hidden">
-                  <div
-                    class="h-full bg-blue-600 rounded-full transition-all duration-300"
-                    :style="{ width: `${row.progress}%` }"
-                  />
+          <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
+            <CommonListView
+              v-model:selectedRows="selectedProjectKeys"
+              :columns="projectColumns"
+              :rows="projectsData"
+              :loading="loading"
+            >
+              <template #cell-name="{ row }">
+                <div class="flex items-center gap-2">
+                  <Folder class="size-4 text-blue-600 shrink-0" />
+                  <span class="font-semibold text-ink-gray-9">{{ row.name }}</span>
                 </div>
-                <span class="text-xs font-mono text-ink-gray-6 w-8 text-right">{{ row.progress }}%</span>
-              </div>
-            </template>
-          </CommonListView>
+              </template>
+
+              <template #cell-status="{ row }">
+                <Badge
+                  :theme="row.status === 'Completed' ? 'green' : 'blue'"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ row.status }}
+                </Badge>
+              </template>
+
+              <template #cell-lead="{ row }">
+                <div class="flex items-center gap-2">
+                  <Avatar
+                    :image="getAssignee(row.lead).image"
+                    :label="row.lead"
+                    size="sm"
+                    shape="circle"
+                  />
+                  <span class="font-medium text-ink-gray-8">{{ row.lead }}</span>
+                </div>
+              </template>
+
+              <template #cell-progress="{ row }">
+                <div class="flex items-center gap-2 w-full">
+                  <div class="flex-1 bg-surface-gray-2 rounded-full h-2 overflow-hidden">
+                    <div
+                      class="h-full bg-blue-600 rounded-full transition-all duration-300"
+                      :style="{ width: `${row.progress}%` }"
+                    />
+                  </div>
+                  <span class="text-xs font-mono text-ink-gray-6 w-8 text-right">{{ row.progress }}%</span>
+                </div>
+              </template>
+            </CommonListView>
+          </div>
         </template>
 
         <!-- 4. TEAM VIEW (List view only as requested) -->
         <template v-else-if="activeSection === 'Team'">
-          <div class="mb-4 flex items-center justify-between">
+          <div class="shrink-0 mb-3 flex items-center justify-between">
             <div>
               <h2 class="text-lg font-bold text-ink-gray-9">Team Members</h2>
               <p class="text-xs text-ink-gray-5">Workspace collaborators and task allocation</p>
@@ -977,47 +1042,49 @@ onMounted(() => {
             <span class="text-xs text-ink-gray-5 font-medium">{{ teamData.length }} members</span>
           </div>
 
-          <CommonListView
-            v-model:selectedRows="selectedTeamKeys"
-            :columns="teamColumns"
-            :rows="teamData"
-            :loading="loading"
-          >
-            <template #cell-member="{ row }">
-              <div class="flex items-center gap-2.5">
-                <Avatar
-                  :image="row.image"
-                  :label="row.name"
-                  size="lg"
-                  shape="circle"
-                />
-                <div>
-                  <p class="font-semibold text-ink-gray-9 leading-tight">{{ row.name }}</p>
-                  <p class="text-[11px] text-ink-gray-5 leading-tight">{{ row.role }}</p>
+          <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
+            <CommonListView
+              v-model:selectedRows="selectedTeamKeys"
+              :columns="teamColumns"
+              :rows="teamData"
+              :loading="loading"
+            >
+              <template #cell-member="{ row }">
+                <div class="flex items-center gap-2.5">
+                  <Avatar
+                    :image="row.image"
+                    :label="row.name"
+                    size="lg"
+                    shape="circle"
+                  />
+                  <div>
+                    <p class="font-semibold text-ink-gray-9 leading-tight">{{ row.name }}</p>
+                    <p class="text-[11px] text-ink-gray-5 leading-tight">{{ row.role }}</p>
+                  </div>
                 </div>
-              </div>
-            </template>
+              </template>
 
-            <template #cell-email="{ row }">
-              <span class="font-mono text-xs text-ink-gray-6">{{ row.email }}</span>
-            </template>
+              <template #cell-email="{ row }">
+                <span class="font-mono text-xs text-ink-gray-6">{{ row.email }}</span>
+              </template>
 
-            <template #cell-department="{ row }">
-              <span class="px-2 py-0.5 rounded-full text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200">
-                {{ row.department }}
-              </span>
-            </template>
+              <template #cell-department="{ row }">
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200">
+                  {{ row.department }}
+                </span>
+              </template>
 
-            <template #cell-status="{ row }">
-              <Badge
-                theme="green"
-                variant="subtle"
-                size="sm"
-              >
-                {{ row.status }}
-              </Badge>
-            </template>
-          </CommonListView>
+              <template #cell-status="{ row }">
+                <Badge
+                  theme="green"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ row.status }}
+                </Badge>
+              </template>
+            </CommonListView>
+          </div>
         </template>
       </div>
     </DesktopShell>
