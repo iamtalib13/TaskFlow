@@ -287,23 +287,55 @@
             <!-- Start Date -->
             <div>
               <label class="block font-medium text-[11px] text-gray-700 mb-1">Start Date</label>
-              <div class="relative flex items-center">
-                <input
-                  v-model="displayStartDate"
-                  type="text"
-                  placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                />
-                <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
-                  <Calendar class="size-3.5" />
-                  <input
-                    type="date"
-                    :value="form.start_date"
-                    class="sr-only"
-                    @change="onStartDateChange"
-                  />
-                </label>
-              </div>
+              <DatePicker
+                v-model="form.start_date"
+                format="DD-MM-YYYY"
+                placeholder="DD-MM-YYYY"
+                size="sm"
+                variant="outline"
+                class="w-full"
+              >
+                <template #prefix>
+                  <Calendar class="size-3.5 text-gray-400" />
+                </template>
+                <template #actions="{ setDate, close }">
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 0, 'day', close)"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 1, 'day', close)"
+                  >
+                    Tomorrow
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 7, 'day', close)"
+                  >
+                    One Week
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 15, 'day', close)"
+                  >
+                    15 Days
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 1, 'month', close)"
+                  >
+                    1 Month
+                  </button>
+                </template>
+              </DatePicker>
             </div>
 
             <!-- Due Date -->
@@ -318,69 +350,164 @@
                   {{ isOverdue ? 'OVERDUE' : 'On Time' }}
                 </span>
               </div>
-              <div class="relative flex items-center">
-                <input
-                  v-model="displayDueDate"
-                  type="text"
-                  placeholder="DD-MM-YYYY"
-                  class="w-full rounded-lg pl-2.5 pr-7 py-1.5 text-xs font-mono outline-none transition"
-                  :class="isOverdue ? 'bg-rose-50/50 border border-rose-300 text-rose-700 font-semibold focus:ring-2 focus:ring-rose-200 focus:border-rose-400' : 'bg-white border border-gray-200 hover:border-gray-300 text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d]'"
-                />
-                <label class="absolute right-2 cursor-pointer">
-                  <AlertTriangle v-if="isOverdue" class="size-3.5 text-rose-600" />
-                  <Calendar v-else class="size-3.5 text-gray-400 hover:text-gray-700" />
-                  <input
-                    type="date"
-                    :value="form.due_date"
-                    class="sr-only"
-                    @change="onNativeDateChange"
-                  />
-                </label>
-              </div>
+              <DatePicker
+                v-model="form.due_date"
+                format="DD-MM-YYYY"
+                placeholder="DD-MM-YYYY"
+                size="sm"
+                variant="outline"
+                class="w-full"
+              >
+                <template #prefix>
+                  <AlertTriangle v-if="isOverdue" class="size-3.5 text-rose-500" />
+                  <Calendar v-else class="size-3.5 text-gray-400" />
+                </template>
+                <template #actions="{ setDate, close }">
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 0, 'day', close)"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 1, 'day', close)"
+                  >
+                    Tomorrow
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 7, 'day', close)"
+                  >
+                    One Week
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 15, 'day', close)"
+                  >
+                    15 Days
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 1, 'month', close)"
+                  >
+                    1 Month
+                  </button>
+                </template>
+              </DatePicker>
             </div>
 
             <!-- Expected Resolution Date -->
             <div>
               <label class="block font-medium text-[11px] text-gray-700 mb-1">Expected Resolution Date</label>
-              <div class="relative flex items-center">
-                <input
-                  v-model="displayResolutionDate"
-                  type="text"
-                  placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                />
-                <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
-                  <Calendar class="size-3.5" />
-                  <input
-                    type="date"
-                    :value="form.expected_resolution_date"
-                    class="sr-only"
-                    @change="form.expected_resolution_date = $event.target.value"
-                  />
-                </label>
-              </div>
+              <DatePicker
+                v-model="form.expected_resolution_date"
+                format="DD-MM-YYYY"
+                placeholder="DD-MM-YYYY"
+                size="sm"
+                variant="outline"
+                class="w-full"
+              >
+                <template #prefix>
+                  <Calendar class="size-3.5 text-gray-400" />
+                </template>
+                <template #actions="{ setDate, close }">
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 0, 'day', close)"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 1, 'day', close)"
+                  >
+                    Tomorrow
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 7, 'day', close)"
+                  >
+                    One Week
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 15, 'day', close)"
+                  >
+                    15 Days
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 1, 'month', close)"
+                  >
+                    1 Month
+                  </button>
+                </template>
+              </DatePicker>
             </div>
 
             <!-- Completed On -->
             <div>
               <label class="block font-medium text-[11px] text-gray-700 mb-1">Completed On</label>
-              <div class="relative flex items-center">
-                <input
-                  v-model="displayCompletedOn"
-                  type="text"
-                  placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                />
-                <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
-                  <Calendar class="size-3.5" />
-                  <input
-                    type="date"
-                    :value="form.completed_on"
-                    class="sr-only"
-                    @change="form.completed_on = $event.target.value"
-                  />
-                </label>
-              </div>
+              <DatePicker
+                v-model="form.completed_on"
+                format="DD-MM-YYYY"
+                placeholder="DD-MM-YYYY"
+                size="sm"
+                variant="outline"
+                class="w-full"
+              >
+                <template #prefix>
+                  <Calendar class="size-3.5 text-gray-400" />
+                </template>
+                <template #actions="{ setDate, close }">
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 0, 'day', close)"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 1, 'day', close)"
+                  >
+                    Tomorrow
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 7, 'day', close)"
+                  >
+                    One Week
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 15, 'day', close)"
+                  >
+                    15 Days
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 1, 'month', close)"
+                  >
+                    1 Month
+                  </button>
+                </template>
+              </DatePicker>
             </div>
 
             <!-- Time Estimate -->
@@ -416,23 +543,55 @@
             <!-- Ticket Date -->
             <div>
               <label class="block font-medium text-[11px] text-gray-700 mb-1">Ticket Date</label>
-              <div class="relative flex items-center">
-                <input
-                  v-model="displayTicketDate"
-                  type="text"
-                  placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                />
-                <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
-                  <Calendar class="size-3.5" />
-                  <input
-                    type="date"
-                    :value="form.ticket_date"
-                    class="sr-only"
-                    @change="form.ticket_date = $event.target.value"
-                  />
-                </label>
-              </div>
+              <DatePicker
+                v-model="form.ticket_date"
+                format="DD-MM-YYYY"
+                placeholder="DD-MM-YYYY"
+                size="sm"
+                variant="outline"
+                class="w-full"
+              >
+                <template #prefix>
+                  <Calendar class="size-3.5 text-gray-400" />
+                </template>
+                <template #actions="{ setDate, close }">
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 0, 'day', close)"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 1, 'day', close)"
+                  >
+                    Tomorrow
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 7, 'day', close)"
+                  >
+                    One Week
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 15, 'day', close)"
+                  >
+                    15 Days
+                  </button>
+                  <button
+                    type="button"
+                    :class="rowCls"
+                    @click="applyQuickDate(setDate, 1, 'month', close)"
+                  >
+                    1 Month
+                  </button>
+                </template>
+              </DatePicker>
             </div>
 
             <!-- Toll ID -->
@@ -956,7 +1115,8 @@
 </template>
 
 <script>
-import { MultiSelect, toast } from 'frappe-ui'
+import { MultiSelect, DatePicker, toast } from 'frappe-ui'
+import dayjs from 'dayjs'
 import {
   fetchTaskComments,
   addTaskComment,
@@ -1009,6 +1169,7 @@ import {
 export default {
   name: 'TaskDetailModal',
   components: {
+    DatePicker,
     MultiSelect,
     TaskRichEditor,
     ArrowLeft,
@@ -1135,6 +1296,7 @@ export default {
       uploadingAttachment: false,
       comments: [],
       activityLog: [],
+      rowCls: 'w-full rounded px-2.5 py-1.5 text-left text-xs font-medium text-ink-gray-7 hover:bg-surface-gray-2 hover:text-ink-gray-9 transition cursor-pointer whitespace-nowrap',
     }
   },
   watch: {
@@ -1168,13 +1330,13 @@ export default {
             pending_from: t.pending_from || '',
             guided_by: t.guided_by || '',
             responsible_person: t.responsible_person || '',
-            start_date: t.start_date || '',
-            due_date: t.due_date || t.due || '',
-            expected_resolution_date: t.expected_resolution_date || '',
-            completed_on: t.completed_on || '',
+            start_date: this.normalizeDate(t.start_date),
+            due_date: this.normalizeDate(t.due_date || t.due),
+            expected_resolution_date: this.normalizeDate(t.expected_resolution_date),
+            completed_on: this.normalizeDate(t.completed_on),
             estimated_hours: t.estimated_hours != null && t.estimated_hours !== 0 ? t.estimated_hours : '',
             logged_hours: t.logged_hours != null && t.logged_hours !== 0 ? t.logged_hours : '',
-            ticket_date: t.ticket_date || '',
+            ticket_date: this.normalizeDate(t.ticket_date),
             toll_id: t.toll_id || '',
             ticket_id: t.ticket_id || '',
             ticket_raised_by: t.ticket_raised_by || '',
@@ -1405,6 +1567,22 @@ export default {
     },
     parseDateInput(val) {
       return this.parseDisplayDate(val)
+    },
+    applyQuickDate(setDate, amount, unit, close) {
+      const d = amount === 0 ? dayjs() : dayjs().add(amount, unit)
+      setDate(d)
+      if (typeof close === 'function') {
+        close()
+      }
+    },
+    normalizeDate(val) {
+      if (!val) return ''
+      const str = String(val).trim()
+      if (str.length >= 10 && str[4] === '-' && str[7] === '-') {
+        return str.slice(0, 10)
+      }
+      const d = dayjs(str)
+      return d.isValid() ? d.format('YYYY-MM-DD') : ''
     },
     onNativeDateChange(e) {
       this.form.due_date = e.target.value
