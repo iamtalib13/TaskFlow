@@ -8,8 +8,6 @@ import {
   Dropdown,
   PageHeader,
   PageHeaderTitle,
-  Rail,
-  RailItem,
   ScrollArea,
   Select,
   SettingsBody,
@@ -50,39 +48,16 @@ const people = ref([])
 const statuses = ref(['Open', 'In Progress', 'Review', 'Completed', 'On Hold', 'Cancelled'])
 const priorities = ref(['Critical', 'High', 'Medium', 'Low'])
 
-// Rail / Workspaces
-const communities = [
-  {
-    id: 'core',
-    name: 'Taskflow Core',
-    unread: 3,
-    image: 'https://avatars.githubusercontent.com/u/6128107?v=4',
-  },
-  {
-    id: 'design',
-    name: 'Product & Design',
-    unread: 0,
-    image: 'https://github.com/figma.png?size=200',
-  },
-  {
-    id: 'marketing',
-    name: 'Marketing & Ops',
-    unread: 1,
-    image: 'https://avatars.githubusercontent.com/u/9919?v=4',
-  },
-]
-const activeCommunity = ref('core')
+// Active Navigation: ONLY Task, Timesheet, Project, Team
+const activeSection = ref('Task')
+const isSidebarCollapsed = ref(false)
 
-// Spaces / Projects in Sidebar
-const spaces = ref([
-  { name: 'All Tasks', icon: 'lucide-layout-list', unread: 0 },
-  { name: 'drishti Core', icon: 'lucide-folder-git-2', unread: 3 },
-  { name: 'ERPNext Impl', icon: 'lucide-layers', unread: 2 },
-  { name: 'CRM Revamp', icon: 'lucide-users', unread: 1 },
-  { name: 'Core Platform 2.0', icon: 'lucide-cpu', unread: 0 },
-  { name: 'Mobile App', icon: 'lucide-smartphone', unread: 1 },
+const navItems = computed(() => [
+  { id: 'Task', label: 'Task', icon: 'lucide-check-square', badge: visibleTasks.value.length },
+  { id: 'Timesheet', label: 'Timesheet', icon: 'lucide-clock', badge: timesheetData.value.length },
+  { id: 'Project', label: 'Project', icon: 'lucide-folder-kanban', badge: projectsData.value.length },
+  { id: 'Team', label: 'Team', icon: 'lucide-users', badge: teamData.value.length },
 ])
-const activeSpace = ref('All Tasks')
 
 // User Menu
 const showSettings = ref(false)
@@ -200,16 +175,10 @@ const tablePageSize = ref(20)
 const sortKey = ref('creation')
 const sortOrder = ref('desc')
 
-// Filtered tasks based on active space and feed tab
+// Filtered tasks based on feed tab
 const visibleTasks = computed(() => {
   let list = [...tasks.value]
 
-  // Filter by sidebar space/project
-  if (activeSpace.value && activeSpace.value !== 'All Tasks') {
-    list = list.filter((t) => t.project === activeSpace.value)
-  }
-
-  // Filter by tab
   if (feedTab.value === 'In Progress') {
     list = list.filter((t) => t.status === 'In Progress')
   } else if (feedTab.value === 'Review') {
@@ -230,6 +199,114 @@ const paginationInfo = computed(() => ({
 const paginatedTableTasks = computed(() => {
   const start = (tablePage.value - 1) * tablePageSize.value
   return visibleTasks.value.slice(start, start + tablePageSize.value)
+})
+
+// --- 2. Project List View State & Columns ---
+const selectedProjectKeys = ref([])
+const projectColumns = [
+  { key: 'name', label: 'PROJECT', width: '220px', minWidth: '180px', sortable: true, visible: true },
+  { key: 'status', label: 'STATUS', width: '120px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'lead', label: 'PROJECT LEAD', width: '180px', minWidth: '150px', sortable: true, visible: true },
+  { key: 'open_tasks', label: 'OPEN TASKS', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
+  { key: 'completed_tasks', label: 'COMPLETED', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
+  { key: 'progress', label: 'PROGRESS', width: '150px', minWidth: '130px', sortable: true, visible: true },
+  { key: 'logged_hours', label: 'LOGGED HRS', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
+  { key: 'due_date', label: 'TARGET DATE', width: '130px', minWidth: '110px', sortable: true, visible: true },
+]
+
+const projectsData = computed(() => {
+  const list = projects.value.length > 0
+    ? projects.value.map((p) => p.name)
+    : ['drishti Core', 'ERPNext Impl', 'CRM Revamp', 'Core Platform 2.0', 'Mobile App']
+
+  return list.map((pName, idx) => {
+    const pTasks = tasks.value.filter((t) => t.project === pName)
+    const completedTasks = pTasks.filter((t) => t.status === 'Completed').length
+    const totalHours = pTasks.reduce((acc, t) => acc + (Number(t.logged_hours) || 0), 0)
+    const estHours = pTasks.reduce((acc, t) => acc + (Number(t.estimated_hours) || 0), 0)
+    const lead = members[idx % members.length]?.name || 'Talib Sheikh'
+    const pct = pTasks.length > 0 ? Math.round((completedTasks / pTasks.length) * 100) : (idx === 1 ? 80 : 50)
+
+    return {
+      id: `PRJ-00${idx + 1}`,
+      name: pName,
+      status: completedTasks === pTasks.length && pTasks.length > 0 ? 'Completed' : 'Active',
+      total_tasks: pTasks.length,
+      open_tasks: pTasks.filter((t) => t.status !== 'Completed').length,
+      completed_tasks: completedTasks,
+      logged_hours: totalHours || (idx + 2) * 14,
+      estimated_hours: estHours || (idx + 3) * 18,
+      lead,
+      progress: pct,
+      due_date: `2026-10-${String(10 + idx * 3).padStart(2, '0')}`,
+    }
+  })
+})
+
+// --- 3. Team List View State & Columns ---
+const selectedTeamKeys = ref([])
+const teamColumns = [
+  { key: 'member', label: 'MEMBER', width: '220px', minWidth: '180px', sortable: true, visible: true },
+  { key: 'email', label: 'EMAIL', width: '220px', minWidth: '180px', sortable: true, visible: true },
+  { key: 'role', label: 'ROLE', width: '160px', minWidth: '140px', sortable: true, visible: true },
+  { key: 'department', label: 'DEPARTMENT', width: '160px', minWidth: '140px', sortable: true, visible: true },
+  { key: 'active_tasks', label: 'ACTIVE TASKS', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
+  { key: 'logged_hours', label: 'HOURS LOGGED', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
+  { key: 'status', label: 'STATUS', width: '110px', minWidth: '90px', sortable: true, visible: true },
+]
+
+const teamData = computed(() => {
+  return members.map((m, idx) => {
+    const mTasks = tasks.value.filter((t) => t.assigned_to === m.name)
+    const activeTasks = mTasks.filter((t) => t.status !== 'Completed').length
+    const loggedHours = mTasks.reduce((acc, t) => acc + (Number(t.logged_hours) || 0), 0)
+
+    return {
+      id: `USR-${idx + 1}`,
+      name: m.name,
+      email: m.email,
+      role: m.role,
+      image: m.image,
+      department: idx === 1 ? 'Engineering' : idx === 3 ? 'Design' : idx === 4 ? 'DevOps' : 'Product & Mgmt',
+      active_tasks: activeTasks || (idx + 1),
+      total_tasks: mTasks.length || (idx + 3),
+      logged_hours: loggedHours || (idx + 1) * 12,
+      status: 'Active',
+    }
+  })
+})
+
+// --- 4. Timesheet List View State & Columns ---
+const selectedTimesheetKeys = ref([])
+const timesheetColumns = [
+  { key: 'id', label: 'ENTRY ID', width: '130px', minWidth: '110px', sortable: true, visible: true },
+  { key: 'date', label: 'DATE', width: '120px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'user', label: 'USER', width: '180px', minWidth: '150px', sortable: true, visible: true },
+  { key: 'task_title', label: 'TASK', width: '260px', minWidth: '200px', sortable: true, visible: true },
+  { key: 'project', label: 'PROJECT', width: '140px', minWidth: '120px', sortable: true, visible: true },
+  { key: 'activity_type', label: 'ACTIVITY', width: '140px', minWidth: '120px', sortable: true, visible: true },
+  { key: 'hours', label: 'HOURS', width: '100px', minWidth: '80px', align: 'right', sortable: true, visible: true },
+  { key: 'status', label: 'STATUS', width: '110px', minWidth: '90px', sortable: true, visible: true },
+]
+
+const timesheetData = computed(() => {
+  const entries = []
+  tasks.value.forEach((t, i) => {
+    if (t.logged_hours > 0 || i < 6) {
+      entries.push({
+        id: `TS-2026-${String(1001 + i).padStart(4, '0')}`,
+        task_id: t.id,
+        task_title: t.title,
+        project: t.project,
+        user: t.assigned_to || 'Talib Sheikh',
+        date: t.due_date || '2026-09-08',
+        activity_type: i % 3 === 0 ? 'Development' : i % 3 === 1 ? 'Code Review' : 'UI/UX Design',
+        hours: t.logged_hours || (4 + (i % 5)),
+        status: i % 4 === 0 ? 'Submitted' : 'Approved',
+      })
+    }
+  })
+  return entries
 })
 
 // Load bootstrap data
@@ -295,173 +372,115 @@ onMounted(() => {
 <template>
   <div class="h-screen w-full bg-surface-base text-ink-gray-9 antialiased">
     <DesktopShell>
-      <!-- Rail Slot -->
-      <template #rail>
-        <Rail class="border-r border-outline-gray-2 bg-surface-base">
-          <!-- Taskflow Logo Cell -->
-          <button
-            type="button"
-            class="flex size-7 items-center justify-center rounded-[7px] bg-black text-white font-bold text-xs transition hover:opacity-90 focus-visible:ring-0 focus-visible:focus-ring shadow-2xs"
-            aria-label="Home"
-          >
-            TF
-          </button>
-
-          <!-- Communities / Workspaces -->
-          <div class="flex w-full flex-1 flex-col items-center gap-3 pt-3">
-            <RailItem
-              v-for="c in communities"
-              :key="c.id"
-              :label="c.name"
-              :active="activeCommunity === c.id"
-              :badge="c.unread"
-              badge-style="count"
-              @click="activeCommunity = c.id"
-            >
-              <Avatar
-                :image="c.image"
-                :label="c.name"
-                size="lg"
-                shape="square"
-                class="size-7"
-              />
-            </RailItem>
-          </div>
-
-          <!-- Bottom Cluster -->
-          <div class="flex flex-col items-center gap-2.5">
-            <RailItem label="Search" variant="ghost" icon="lucide-search" />
-            <RailItem
-              label="Settings"
-              variant="ghost"
-              icon="lucide-settings"
-              @click="showSettings = true"
-            />
-
-            <!-- User Menu Trigger -->
-            <Dropdown :options="userMenu">
-              <template #trigger="{ open }">
-                <button
-                  type="button"
-                  class="flex size-7 items-center justify-center rounded-full transition focus-visible:ring-0 focus-visible:focus-ring"
-                  :class="open ? '' : 'hover:opacity-90'"
-                  aria-label="Account"
-                >
-                  <Avatar
-                    :image="userImage"
-                    :label="fullName"
-                    size="lg"
-                    class="size-7"
-                  />
-                </button>
-              </template>
-            </Dropdown>
-          </div>
-        </Rail>
-      </template>
-
-      <!-- Sidebar Slot -->
+      <!-- Collapsable Sidebar Slot (No icon-rail, exactly Task, Timesheet, Project, Team) -->
       <template #sidebar>
-        <Sidebar width="14rem" class="border-r border-outline-gray-2 bg-surface-base">
-          <SidebarHeader
-            title="Taskflow"
-            subtitle="ERPNext Platform"
-            :show-logo="false"
-            :menu-items="[
-              {
-                label: 'Invite people',
-                icon: 'lucide-user-plus',
-                onClick: () => (showSettings = true),
-              },
-              {
-                label: 'Workspace settings',
-                icon: 'lucide-settings-2',
-                onClick: () => (showSettings = true),
-              },
-            ]"
-          />
-
-          <!-- Scrollable Nav -->
-          <ScrollArea class="min-h-0 flex-1" viewport-class="px-2 pt-0.5 pb-10">
-            <nav class="space-y-0.5">
-              <SidebarItem
-                :active="activeSpace === 'All Tasks'"
-                @click="activeSpace = 'All Tasks'"
-              >
-                <template #prefix>
-                  <span class="lucide-layout-list size-4" aria-hidden="true" />
-                </template>
-                <span class="flex-1 truncate text-sm">All Tasks</span>
-                <template #suffix>
-                  <span class="mr-1 size-4 grid place-content-center text-xs text-ink-gray-5 font-medium">
-                    {{ tasks.length }}
-                  </span>
-                </template>
-              </SidebarItem>
-
-              <SidebarItem>
-                <template #prefix>
-                  <span class="lucide-search size-4" aria-hidden="true" />
-                </template>
-                <span class="flex-1 truncate text-sm">Search</span>
-              </SidebarItem>
-            </nav>
-
-            <!-- Spaces Section Label -->
-            <div class="mt-4 flex h-7 items-center justify-between">
-              <SidebarLabel>Projects & Spaces</SidebarLabel>
-              <div class="flex items-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="lucide-arrow-up-down text-ink-gray-5"
-                  label="Sort spaces"
-                />
+        <Sidebar
+          v-model:collapsed="isSidebarCollapsed"
+          width="15rem"
+          collapsed-width="4.25rem"
+          class="border-r border-outline-gray-2 bg-surface-base flex flex-col h-full"
+        >
+          <!-- Sidebar Header: Brand & Collapse Toggle -->
+          <div class="flex h-14 items-center justify-between px-3 border-b border-outline-gray-1">
+            <div class="flex items-center gap-2.5 overflow-hidden">
+              <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black text-white font-bold text-xs shadow-xs select-none">
+                TF
+              </div>
+              <div v-if="!isSidebarCollapsed" class="flex flex-col truncate transition-opacity">
+                <span class="text-sm font-bold tracking-tight text-ink-gray-9 leading-tight">Taskflow</span>
+                <span class="text-[11px] text-ink-gray-5 leading-tight">Workspace</span>
               </div>
             </div>
 
-            <!-- Project Spaces List -->
-            <nav class="mt-0.5 space-y-0.5">
+            <!-- Collapse Toggle Button -->
+            <button
+              type="button"
+              class="flex size-7 items-center justify-center rounded-md text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8 transition shrink-0"
+              :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+              @click="isSidebarCollapsed = !isSidebarCollapsed"
+            >
+              <span
+                class="size-4 block"
+                :class="isSidebarCollapsed ? 'lucide-panel-left-open' : 'lucide-panel-left-close'"
+              />
+            </button>
+          </div>
+
+          <!-- Navigation Items: Only Task, Timesheet, Project, Team with Icons -->
+          <ScrollArea class="min-h-0 flex-1" viewport-class="px-2 pt-3 pb-6">
+            <nav class="space-y-1">
               <SidebarItem
-                v-for="space in spaces.filter((s) => s.name !== 'All Tasks')"
-                :key="space.name"
-                :active="space.name === activeSpace"
-                @click="activeSpace = space.name"
+                v-for="item in navItems"
+                :key="item.id"
+                :active="activeSection === item.id"
+                @click="activeSection = item.id"
               >
                 <template #prefix>
-                  <span :class="space.icon" class="size-4" aria-hidden="true" />
+                  <span :class="[item.icon, 'size-4 shrink-0']" aria-hidden="true" />
                 </template>
-                <span class="flex-1 truncate text-sm">{{ space.name }}</span>
+                <span class="flex-1 truncate text-sm font-medium">{{ item.label }}</span>
                 <template #suffix>
                   <span
-                    v-if="space.unread"
-                    class="mr-1 size-4 grid place-content-center text-xs text-ink-gray-5"
+                    v-if="!isSidebarCollapsed && item.badge"
+                    class="mr-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-surface-gray-2 text-ink-gray-6"
                   >
-                    {{ space.unread }}
+                    {{ item.badge }}
                   </span>
                 </template>
               </SidebarItem>
             </nav>
           </ScrollArea>
+
+          <!-- Sidebar Footer (User Account & Settings) -->
+          <div class="p-2 border-t border-outline-gray-1 bg-surface-base">
+            <Dropdown :options="userMenu">
+              <template #trigger="{ open }">
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2.5 rounded-lg p-1.5 hover:bg-surface-gray-1 transition text-left"
+                  :class="{ 'justify-center': isSidebarCollapsed }"
+                >
+                  <Avatar
+                    :image="userImage"
+                    :label="fullName"
+                    size="lg"
+                    shape="circle"
+                    class="shrink-0"
+                  />
+                  <div v-if="!isSidebarCollapsed" class="flex-1 min-w-0">
+                    <p class="text-xs font-semibold text-ink-gray-9 truncate">{{ fullName }}</p>
+                    <p class="text-[11px] text-ink-gray-5 truncate">Administrator</p>
+                  </div>
+                  <span
+                    v-if="!isSidebarCollapsed"
+                    class="lucide-chevron-up size-3.5 text-ink-gray-4 shrink-0"
+                  />
+                </button>
+              </template>
+            </Dropdown>
+          </div>
         </Sidebar>
       </template>
 
       <!-- Pinned Page Header -->
       <PageHeader>
-        <div class="flex items-center gap-2">
-          <PageHeaderTitle>{{ activeSpace }}</PageHeaderTitle>
-          <Dropdown :options="spaceActions">
-            <Button
-              variant="ghost"
-              icon="lucide-ellipsis"
-              label="Space actions"
-            />
-          </Dropdown>
+        <div class="flex items-center gap-2.5">
+          <!-- Sidebar Toggle Button in Header -->
+          <Button
+            variant="ghost"
+            :icon="isSidebarCollapsed ? 'lucide-panel-left-open' : 'lucide-panel-left-close'"
+            :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            @click="isSidebarCollapsed = !isSidebarCollapsed"
+          />
+          <PageHeaderTitle>{{ activeSection }}</PageHeaderTitle>
         </div>
 
         <div class="flex items-center gap-2">
-          <!-- View Switcher Toggle -->
-          <div class="inline-flex rounded-lg border border-outline-gray-2 bg-surface-base p-0.5 text-xs font-medium">
+          <!-- View Switcher Toggle (Only in Task view) -->
+          <div
+            v-if="activeSection === 'Task'"
+            class="inline-flex rounded-lg border border-outline-gray-2 bg-surface-base p-0.5 text-xs font-medium"
+          >
             <button
               type="button"
               :class="[
@@ -484,164 +503,262 @@ onMounted(() => {
             </button>
           </div>
 
-          <!-- Add Task Button -->
+          <!-- Add Task Button (in Task view) -->
           <Button
+            v-if="activeSection === 'Task'"
             label="Add task"
             icon-left="lucide-plus"
             @click="createModalOpen = true"
+          />
+
+          <!-- Refresh Button -->
+          <Button
+            variant="ghost"
+            icon="lucide-refresh-cw"
+            :loading="loading"
+            @click="loadData"
           />
         </div>
       </PageHeader>
 
       <!-- Main Body Container -->
       <div class="mx-auto mt-5 w-full max-w-[1280px] px-4 pb-10 sm:px-6">
-        <!-- Sub-Header Tabs & Task Count -->
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <TabButtons
-            v-model="feedTab"
-            :options="[
-              { label: 'All', value: 'All' },
-              { label: 'In Progress', value: 'In Progress' },
-              { label: 'Review', value: 'Review' },
-              { label: 'Completed', value: 'Completed' },
-            ]"
-          />
-          <div class="flex items-center gap-3 text-sm text-ink-gray-5">
-            <span>{{ visibleTasks.length }} tasks</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="lucide-refresh-cw"
-              :loading="loading"
-              @click="loadData"
+        <!-- 1. TASK VIEW -->
+        <template v-if="activeSection === 'Task'">
+          <!-- Sub-Header Tabs & Task Count -->
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <TabButtons
+              v-model="feedTab"
+              :options="[
+                { label: 'All', value: 'All' },
+                { label: 'In Progress', value: 'In Progress' },
+                { label: 'Review', value: 'Review' },
+                { label: 'Completed', value: 'Completed' },
+              ]"
             />
+            <div class="flex items-center gap-3 text-sm text-ink-gray-5">
+              <span>{{ visibleTasks.length }} tasks</span>
+            </div>
           </div>
-        </div>
 
-        <!-- 1. FEED LIST VIEW (Frappe UI List Layout) -->
-        <div v-if="currentView === 'feed'">
-          <List
-            :columns="['auto', 'minmax(0, 1fr)', 'auto']"
-            class="-mx-3 sm:list-gap-2 bg-surface-base rounded-xl border border-outline-gray-2 shadow-xs p-1"
-          >
-            <ListRow
-              v-for="task in visibleTasks"
-              :key="task.id"
-              class="h-16 px-4 cursor-pointer hover:bg-surface-gray-1 transition-colors rounded-lg items-center"
-              @click="openDetail(task)"
+          <!-- FEED VIEW -->
+          <div v-if="currentView === 'feed'">
+            <List
+              :columns="['auto', 'minmax(0, 1fr)', 'auto']"
+              class="-mx-3 sm:list-gap-2 bg-surface-base rounded-xl border border-outline-gray-2 shadow-xs p-1"
             >
-              <!-- Cell 1: Assignee Avatar -->
-              <ListCell class="shrink-0">
-                <Avatar
-                  :image="getAssignee(task.assigned_to).image"
-                  :label="task.assigned_to || 'Task'"
-                  size="2xl"
-                  shape="circle"
-                  :title="task.assigned_to ? 'Assigned to ' + task.assigned_to : 'Unassigned'"
-                />
-              </ListCell>
+              <ListRow
+                v-for="task in visibleTasks"
+                :key="task.id"
+                class="h-16 px-4 cursor-pointer hover:bg-surface-gray-1 transition-colors rounded-lg items-center"
+                @click="openDetail(task)"
+              >
+                <!-- Cell 1: Assignee Avatar -->
+                <ListCell class="shrink-0">
+                  <Avatar
+                    :image="getAssignee(task.assigned_to).image"
+                    :label="task.assigned_to || 'Task'"
+                    size="2xl"
+                    shape="circle"
+                    :title="task.assigned_to ? 'Assigned to ' + task.assigned_to : 'Unassigned'"
+                  />
+                </ListCell>
 
-              <!-- Cell 2: Title & Project/Assignee metadata (No description) -->
-              <ListCell class="min-w-0 flex-1 px-3">
-                <div class="flex flex-col justify-center min-w-0">
-                  <div class="flex items-center gap-2 truncate leading-snug text-ink-gray-9">
-                    <span class="text-base-semibold truncate">
-                      {{ task.title }}
-                    </span>
-                    <span
-                      v-if="task.badge"
-                      class="shrink-0 px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md"
-                    >
-                      {{ task.badge }}
-                    </span>
-                  </div>
-                  <div class="mt-1 flex items-center gap-2 text-xs text-ink-gray-5 truncate">
-                    <span class="font-mono font-medium text-ink-gray-6">{{ task.id }}</span>
-                    <span>·</span>
-                    <span class="flex items-center gap-1 font-medium text-ink-gray-7 shrink-0">
-                      <span class="lucide-folder size-3.5 text-ink-gray-4" aria-hidden="true" />
-                      {{ task.project }}
-                    </span>
-                    <template v-if="task.assigned_to">
-                      <span>·</span>
-                      <span class="truncate">
-                        Assigned to <strong class="font-medium text-ink-gray-8">{{ task.assigned_to }}</strong>
+                <!-- Cell 2: Title & Project/Assignee metadata (No description) -->
+                <ListCell class="min-w-0 flex-1 px-3">
+                  <div class="flex flex-col justify-center min-w-0">
+                    <div class="flex items-center gap-2 truncate leading-snug text-ink-gray-9">
+                      <span class="text-base-semibold truncate">
+                        {{ task.title }}
                       </span>
-                    </template>
+                      <span
+                        v-if="task.badge"
+                        class="shrink-0 px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md"
+                      >
+                        {{ task.badge }}
+                      </span>
+                    </div>
+                    <div class="mt-1 flex items-center gap-2 text-xs text-ink-gray-5 truncate">
+                      <span class="font-mono font-medium text-ink-gray-6">{{ task.id }}</span>
+                      <span>·</span>
+                      <span class="flex items-center gap-1 font-medium text-ink-gray-7 shrink-0">
+                        <span class="lucide-folder size-3.5 text-ink-gray-4" aria-hidden="true" />
+                        {{ task.project }}
+                      </span>
+                      <template v-if="task.assigned_to">
+                        <span>·</span>
+                        <span class="truncate">
+                          Assigned to <strong class="font-medium text-ink-gray-8">{{ task.assigned_to }}</strong>
+                        </span>
+                      </template>
+                    </div>
                   </div>
-                </div>
-              </ListCell>
+                </ListCell>
 
-              <!-- Cell 3: Right meta (Due Date, Priority, Status Badge & Actions) -->
-              <ListCell class="justify-end shrink-0">
-                <div class="flex items-center gap-3">
-                  <div v-if="task.due_date" class="hidden sm:block text-right text-xs text-ink-gray-5 font-mono">
-                    {{ task.due_date }}
+                <!-- Cell 3: Right meta (Due Date, Priority, Status Badge & Actions) -->
+                <ListCell class="justify-end shrink-0">
+                  <div class="flex items-center gap-3">
+                    <div v-if="task.due_date" class="hidden sm:block text-right text-xs text-ink-gray-5 font-mono">
+                      {{ task.due_date }}
+                    </div>
+                    <Badge
+                      v-if="task.priority"
+                      :theme="task.priority === 'Critical' ? 'red' : task.priority === 'High' ? 'amber' : 'gray'"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {{ task.priority }}
+                    </Badge>
+                    <Badge
+                      :theme="task.status === 'Completed' ? 'green' : task.status === 'In Progress' ? 'blue' : task.status === 'Review' ? 'purple' : 'gray'"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {{ task.status }}
+                    </Badge>
+                    <button
+                      type="button"
+                      class="p-1.5 text-ink-gray-4 hover:text-amber-500 rounded hover:bg-surface-gray-2 transition"
+                      @click.stop="toggleStar(task)"
+                    >
+                      <span
+                        class="size-4 block"
+                        :class="task.starred ? 'lucide-star fill-amber-500 text-amber-500' : 'lucide-star'"
+                      />
+                    </button>
                   </div>
-                  <Badge
-                    v-if="task.priority"
-                    :theme="task.priority === 'Critical' ? 'red' : task.priority === 'High' ? 'amber' : 'gray'"
-                    variant="subtle"
-                    size="sm"
+                </ListCell>
+              </ListRow>
+            </List>
+          </div>
+
+          <!-- TABLE VIEW (Non-sticky ID & Title Horizontal Scroll Table) -->
+          <div v-else>
+            <CommonListView
+              v-model:selectedRows="selectedRowKeys"
+              :columns="tableColumns"
+              :rows="paginatedTableTasks"
+              :loading="loading"
+              :totals="true"
+              :sort-key="sortKey"
+              :sort-order="sortOrder"
+              :pagination="paginationInfo"
+              @row-click="openDetail"
+              @page-change="(p) => (tablePage = p)"
+              @page-size-change="(s) => { tablePageSize = s; tablePage = 1; }"
+            >
+              <template #cell-id="{ row }">
+                <span
+                  class="font-mono font-bold text-blue-600 hover:underline cursor-pointer"
+                  @click.stop="openDetail(row)"
+                >
+                  {{ row.id }}
+                </span>
+              </template>
+
+              <template #cell-title="{ row }">
+                <div class="flex items-center gap-2 min-w-0 max-w-[220px]">
+                  <span class="text-sm font-medium text-ink-gray-9 truncate" :title="row.title">{{ row.title }}</span>
+                  <span
+                    v-if="row.badge"
+                    class="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md"
                   >
-                    {{ task.priority }}
-                  </Badge>
-                  <Badge
-                    :theme="task.status === 'Completed' ? 'green' : task.status === 'In Progress' ? 'blue' : task.status === 'Review' ? 'purple' : 'gray'"
-                    variant="subtle"
+                    {{ row.badge }}
+                  </span>
+                </div>
+              </template>
+
+              <template #cell-project="{ row }">
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200">
+                  {{ row.project }}
+                </span>
+              </template>
+
+              <template #cell-status="{ row }">
+                <Badge
+                  :theme="row.status === 'Completed' ? 'green' : row.status === 'In Progress' ? 'blue' : row.status === 'Review' ? 'purple' : 'gray'"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ row.status }}
+                </Badge>
+              </template>
+
+              <template #cell-assigned_to="{ row }">
+                <div v-if="row.assigned_to" class="flex items-center gap-2">
+                  <Avatar
+                    :image="getAssignee(row.assigned_to).image"
+                    :label="row.assigned_to"
                     size="sm"
-                  >
-                    {{ task.status }}
-                  </Badge>
+                    shape="circle"
+                  />
+                  <span class="text-sm text-ink-gray-8 truncate">{{ row.assigned_to }}</span>
+                </div>
+                <span v-else class="text-ink-gray-4 italic text-sm">Unassigned</span>
+              </template>
+
+              <template #cell-actions="{ row }">
+                <div class="inline-flex items-center gap-2" @click.stop>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="lucide-external-link"
+                    @click="openDetail(row)"
+                  />
                   <button
                     type="button"
-                    class="p-1.5 text-ink-gray-4 hover:text-amber-500 rounded hover:bg-surface-gray-2 transition"
-                    @click.stop="toggleStar(task)"
+                    class="p-1 text-ink-gray-4 hover:text-amber-500 transition"
+                    @click="toggleStar(row)"
                   >
                     <span
-                      class="size-4 block"
-                      :class="task.starred ? 'lucide-star fill-amber-500 text-amber-500' : 'lucide-star'"
+                      class="size-4"
+                      :class="row.starred ? 'lucide-star fill-amber-500 text-amber-500' : 'lucide-star'"
                     />
                   </button>
                 </div>
-              </ListCell>
-            </ListRow>
-          </List>
-        </div>
+              </template>
+            </CommonListView>
+          </div>
+        </template>
 
-        <!-- 2. TABLE VIEW (Non-sticky ID & Title Horizontal Scroll Table) -->
-        <div v-else>
+        <!-- 2. TIMESHEET VIEW (List view only) -->
+        <template v-else-if="activeSection === 'Timesheet'">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-bold text-ink-gray-9">Timesheet Logs</h2>
+              <p class="text-xs text-ink-gray-5">All time entries logged across active projects</p>
+            </div>
+            <div class="text-xs font-medium text-ink-gray-6">
+              Total Logged: <strong class="text-ink-gray-9">{{ timesheetData.reduce((acc, t) => acc + (Number(t.hours) || 0), 0) }} hrs</strong>
+            </div>
+          </div>
+
           <CommonListView
-            v-model:selectedRows="selectedRowKeys"
-            :columns="tableColumns"
-            :rows="paginatedTableTasks"
+            v-model:selectedRows="selectedTimesheetKeys"
+            :columns="timesheetColumns"
+            :rows="timesheetData"
             :loading="loading"
             :totals="true"
-            :sort-key="sortKey"
-            :sort-order="sortOrder"
-            :pagination="paginationInfo"
-            @row-click="openDetail"
-            @page-change="(p) => (tablePage = p)"
-            @page-size-change="(s) => { tablePageSize = s; tablePage = 1; }"
           >
             <template #cell-id="{ row }">
-              <span
-                class="font-mono font-bold text-blue-600 hover:underline cursor-pointer"
-                @click.stop="openDetail(row)"
-              >
-                {{ row.id }}
-              </span>
+              <span class="font-mono font-bold text-ink-gray-7">{{ row.id }}</span>
             </template>
 
-            <template #cell-title="{ row }">
-              <div class="flex items-center gap-2 min-w-0 max-w-[220px]">
-                <span class="text-sm font-medium text-ink-gray-9 truncate" :title="row.title">{{ row.title }}</span>
-                <span
-                  v-if="row.badge"
-                  class="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md"
-                >
-                  {{ row.badge }}
-                </span>
+            <template #cell-user="{ row }">
+              <div class="flex items-center gap-2">
+                <Avatar
+                  :image="getAssignee(row.user).image"
+                  :label="row.user"
+                  size="sm"
+                  shape="circle"
+                />
+                <span class="font-medium text-ink-gray-8 truncate">{{ row.user }}</span>
+              </div>
+            </template>
+
+            <template #cell-task_title="{ row }">
+              <div class="truncate max-w-[260px] font-medium text-ink-gray-9" :title="row.task_title">
+                {{ row.task_title }}
               </div>
             </template>
 
@@ -651,9 +768,49 @@ onMounted(() => {
               </span>
             </template>
 
+            <template #cell-activity_type="{ row }">
+              <span class="text-xs text-ink-gray-7">{{ row.activity_type }}</span>
+            </template>
+
             <template #cell-status="{ row }">
               <Badge
-                :theme="row.status === 'Completed' ? 'green' : row.status === 'In Progress' ? 'blue' : row.status === 'Review' ? 'purple' : 'gray'"
+                :theme="row.status === 'Approved' ? 'green' : 'amber'"
+                variant="subtle"
+                size="sm"
+              >
+                {{ row.status }}
+              </Badge>
+            </template>
+          </CommonListView>
+        </template>
+
+        <!-- 3. PROJECT VIEW (List view only as requested) -->
+        <template v-else-if="activeSection === 'Project'">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-bold text-ink-gray-9">Projects List</h2>
+              <p class="text-xs text-ink-gray-5">Active project spaces and tracking metrics</p>
+            </div>
+            <span class="text-xs text-ink-gray-5 font-medium">{{ projectsData.length }} projects</span>
+          </div>
+
+          <CommonListView
+            v-model:selectedRows="selectedProjectKeys"
+            :columns="projectColumns"
+            :rows="projectsData"
+            :loading="loading"
+            :totals="true"
+          >
+            <template #cell-name="{ row }">
+              <div class="flex items-center gap-2">
+                <span class="lucide-folder size-4 text-blue-600 shrink-0" aria-hidden="true" />
+                <span class="font-semibold text-ink-gray-9">{{ row.name }}</span>
+              </div>
+            </template>
+
+            <template #cell-status="{ row }">
+              <Badge
+                :theme="row.status === 'Completed' ? 'green' : 'blue'"
                 variant="subtle"
                 size="sm"
               >
@@ -661,36 +818,85 @@ onMounted(() => {
               </Badge>
             </template>
 
-            <template #cell-assigned_to="{ row }">
-              <div v-if="row.assigned_to" class="flex items-center gap-2">
-                <Avatar :label="row.assigned_to" size="sm" />
-                <span class="text-sm text-ink-gray-8 truncate">{{ row.assigned_to }}</span>
+            <template #cell-lead="{ row }">
+              <div class="flex items-center gap-2">
+                <Avatar
+                  :image="getAssignee(row.lead).image"
+                  :label="row.lead"
+                  size="sm"
+                  shape="circle"
+                />
+                <span class="font-medium text-ink-gray-8">{{ row.lead }}</span>
               </div>
-              <span v-else class="text-ink-gray-4 italic text-sm">Unassigned</span>
             </template>
 
-            <template #cell-actions="{ row }">
-              <div class="inline-flex items-center gap-2" @click.stop>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="lucide-external-link"
-                  @click="openDetail(row)"
-                />
-                <button
-                  type="button"
-                  class="p-1 text-ink-gray-4 hover:text-amber-500 transition"
-                  @click="toggleStar(row)"
-                >
-                  <span
-                    class="size-4"
-                    :class="row.starred ? 'lucide-star fill-amber-500 text-amber-500' : 'lucide-star'"
+            <template #cell-progress="{ row }">
+              <div class="flex items-center gap-2 w-full">
+                <div class="flex-1 bg-surface-gray-2 rounded-full h-2 overflow-hidden">
+                  <div
+                    class="h-full bg-blue-600 rounded-full transition-all duration-300"
+                    :style="{ width: `${row.progress}%` }"
                   />
-                </button>
+                </div>
+                <span class="text-xs font-mono text-ink-gray-6 w-8 text-right">{{ row.progress }}%</span>
               </div>
             </template>
           </CommonListView>
-        </div>
+        </template>
+
+        <!-- 4. TEAM VIEW (List view only as requested) -->
+        <template v-else-if="activeSection === 'Team'">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-bold text-ink-gray-9">Team Members</h2>
+              <p class="text-xs text-ink-gray-5">Workspace collaborators and task allocation</p>
+            </div>
+            <span class="text-xs text-ink-gray-5 font-medium">{{ teamData.length }} members</span>
+          </div>
+
+          <CommonListView
+            v-model:selectedRows="selectedTeamKeys"
+            :columns="teamColumns"
+            :rows="teamData"
+            :loading="loading"
+            :totals="false"
+          >
+            <template #cell-member="{ row }">
+              <div class="flex items-center gap-2.5">
+                <Avatar
+                  :image="row.image"
+                  :label="row.name"
+                  size="lg"
+                  shape="circle"
+                />
+                <div>
+                  <p class="font-semibold text-ink-gray-9 leading-tight">{{ row.name }}</p>
+                  <p class="text-[11px] text-ink-gray-5 leading-tight">{{ row.role }}</p>
+                </div>
+              </div>
+            </template>
+
+            <template #cell-email="{ row }">
+              <span class="font-mono text-xs text-ink-gray-6">{{ row.email }}</span>
+            </template>
+
+            <template #cell-department="{ row }">
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200">
+                {{ row.department }}
+              </span>
+            </template>
+
+            <template #cell-status="{ row }">
+              <Badge
+                theme="green"
+                variant="subtle"
+                size="sm"
+              >
+                {{ row.status }}
+              </Badge>
+            </template>
+          </CommonListView>
+        </template>
       </div>
     </DesktopShell>
 
