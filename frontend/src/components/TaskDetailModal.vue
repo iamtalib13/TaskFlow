@@ -135,23 +135,24 @@
       </div>
 
       <!-- 3-COLUMN MAIN BODY LAYOUT -->
-      <div class="flex-1 min-h-0 overflow-y-auto p-4 bg-[#f8fafc] flex flex-col xl:flex-row gap-4">
+      <!-- 3-COLUMN MAIN BODY LAYOUT (Clean flat layout separated by Frappe UI Dividers) -->
+      <div class="flex-1 min-h-0 flex flex-col xl:flex-row overflow-hidden bg-white">
         <!-- COLUMN 1: LEFT SIDEBAR (Assignment, Schedule & Ticket) -->
-        <aside class="w-full xl:w-[270px] shrink-0 space-y-3 text-xs select-none">
-          <!-- Card 1: ASSIGNMENT -->
-          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-3 space-y-2.5">
+        <aside class="w-full xl:w-[280px] 2xl:w-[300px] shrink-0 overflow-y-auto p-4 space-y-4 text-xs select-none">
+          <!-- Section 1: ASSIGNMENT -->
+          <div class="space-y-3">
             <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-              <span>ASSIGNMENT</span>
+              <span>Assignment</span>
               <Info class="size-3.5 text-gray-400 hover:text-gray-600 cursor-pointer" title="Assignment details" />
             </div>
 
             <!-- Project & Team selectors -->
-            <div class="space-y-2 pb-2.5 border-b border-gray-100">
+            <div class="space-y-2.5 pb-1">
               <div>
-                <label class="block font-semibold text-[11px] text-gray-600 mb-1">Project</label>
+                <label class="block font-medium text-[11px] text-gray-700 mb-1">Project</label>
                 <select
                   v-model="form.project"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                   @change="onProjectChange"
                 >
                   <option value="">Select Project</option>
@@ -163,14 +164,14 @@
 
               <div>
                 <div class="flex items-center justify-between mb-1">
-                  <label class="block font-semibold text-[11px] text-gray-600">Team</label>
+                  <label class="block font-medium text-[11px] text-gray-700">Team</label>
                   <span v-if="effectiveTeam" class="text-[10px] font-semibold text-[#417c7d] bg-[#417c7d]/10 px-1.5 py-0.5 rounded">
                     {{ effectiveTeam }}
                   </span>
                 </div>
                 <select
                   v-model="form.team"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                   @change="onTeamChange"
                 >
                   <option value="">Select Team</option>
@@ -184,7 +185,7 @@
             <!-- Assigned to -->
             <div>
               <div class="flex items-center justify-between mb-1">
-                <label class="block font-semibold text-[11px] text-gray-600">Assigned to</label>
+                <label class="block font-medium text-[11px] text-gray-700">Assigned to</label>
                 <span v-if="assigneeOptions.length > 0" class="text-[10px] text-gray-400">
                   {{ assigneeOptions.length }} team members
                 </span>
@@ -194,7 +195,7 @@
                 <div
                   v-for="assignee in form.assignees"
                   :key="getAssigneeValue(assignee)"
-                  class="flex items-center justify-between px-2 py-1 rounded-lg bg-gray-50 border border-gray-200/80 hover:bg-gray-100/70 transition"
+                  class="flex items-center justify-between px-2 py-1 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100/70 transition"
                 >
                   <div class="flex items-center gap-1.5 min-w-0">
                     <span class="size-4.5 rounded-full bg-[#417c7d] text-white font-bold text-[9px] flex items-center justify-center shrink-0">
@@ -230,65 +231,68 @@
 
             <!-- Pending With -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Pending With</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Pending With</label>
               <input
                 v-model="form.pending_with"
                 type="text"
                 placeholder="Pending with..."
-                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
             </div>
 
             <!-- Pending From -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Pending From</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Pending From</label>
               <input
                 v-model="form.pending_from"
                 type="text"
                 placeholder="Pending from (vendor / client / dept)..."
-                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
             </div>
 
             <!-- Guided By -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Guided By</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Guided By</label>
               <input
                 v-model="form.guided_by"
                 type="text"
                 placeholder="Guided by / mentor..."
-                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
             </div>
 
             <!-- Responsible Person -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Responsible Person</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Responsible Person</label>
               <input
                 v-model="form.responsible_person"
                 type="text"
                 placeholder="Responsible person..."
-                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
             </div>
           </div>
 
-          <!-- Card 2: SCHEDULE -->
-          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-3 space-y-2.5">
+          <!-- Section Divider -->
+          <Divider />
+
+          <!-- Section 2: SCHEDULE -->
+          <div class="space-y-3">
             <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-              <span>SCHEDULE</span>
+              <span>Schedule</span>
               <Calendar class="size-3.5 text-gray-400" />
             </div>
 
             <!-- Start Date -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Start Date</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Start Date</label>
               <div class="relative flex items-center">
                 <input
                   v-model="displayStartDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 />
                 <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <Calendar class="size-3.5" />
@@ -305,8 +309,9 @@
             <!-- Due Date -->
             <div>
               <div class="flex items-center justify-between mb-1">
-                <label class="font-semibold text-[11px] text-gray-600">Due Date</label>
+                <label class="font-medium text-[11px] text-gray-700">Due Date</label>
                 <span
+                  v-if="form.due_date"
                   class="px-1.5 py-0.2 rounded text-[10px] font-bold border tracking-wide uppercase"
                   :class="isOverdue ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
                 >
@@ -318,8 +323,8 @@
                   v-model="displayDueDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full rounded-lg pl-2.5 pr-7 py-1 text-xs font-mono outline-none transition"
-                  :class="isOverdue ? 'bg-rose-50/50 border border-rose-300 text-rose-700 font-semibold focus:ring-2 focus:ring-rose-200 focus:border-rose-400' : 'bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d]'"
+                  class="w-full rounded-lg pl-2.5 pr-7 py-1.5 text-xs font-mono outline-none transition"
+                  :class="isOverdue ? 'bg-rose-50/50 border border-rose-300 text-rose-700 font-semibold focus:ring-2 focus:ring-rose-200 focus:border-rose-400' : 'bg-white border border-gray-200 hover:border-gray-300 text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d]'"
                 />
                 <label class="absolute right-2 cursor-pointer">
                   <AlertTriangle v-if="isOverdue" class="size-3.5 text-rose-600" />
@@ -336,13 +341,13 @@
 
             <!-- Expected Resolution Date -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Expected Resolution Date</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Expected Resolution Date</label>
               <div class="relative flex items-center">
                 <input
                   v-model="displayResolutionDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 />
                 <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <Calendar class="size-3.5" />
@@ -358,13 +363,13 @@
 
             <!-- Completed On -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Completed On</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Completed On</label>
               <div class="relative flex items-center">
                 <input
                   v-model="displayCompletedOn"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 />
                 <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <Calendar class="size-3.5" />
@@ -380,7 +385,7 @@
 
             <!-- Time Estimate -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Time Estimate</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Time Estimate</label>
               <div class="relative flex items-center">
                 <input
                   v-model.number="form.estimated_hours"
@@ -388,15 +393,18 @@
                   step="0.25"
                   min="0"
                   placeholder="0.00"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-9 py-1 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-2.5 pr-9 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 />
                 <span class="absolute right-2 text-[10px] font-semibold text-gray-400 pointer-events-none">hrs</span>
               </div>
             </div>
           </div>
 
-          <!-- Card 3: 🎫 TICKET -->
-          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-3 space-y-2.5">
+          <!-- Section Divider -->
+          <Divider />
+
+          <!-- Section 3: 🎫 TICKET -->
+          <div class="space-y-3">
             <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
               <span class="flex items-center gap-1">
                 <span>🎫</span>
@@ -407,13 +415,13 @@
 
             <!-- Ticket Date -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Ticket Date</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Ticket Date</label>
               <div class="relative flex items-center">
                 <input
                   v-model="displayTicketDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 />
                 <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <Calendar class="size-3.5" />
@@ -429,172 +437,176 @@
 
             <!-- Toll ID -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Toll ID</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Toll ID</label>
               <input
                 v-model="form.toll_id"
                 type="text"
                 placeholder="Enter Toll ID"
-                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
             </div>
 
             <!-- Ticket ID -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Ticket ID</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Ticket ID</label>
               <input
                 v-model="form.ticket_id"
                 type="text"
                 placeholder="e.g. TKT-001"
-                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-mono font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-mono font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
             </div>
 
             <!-- Raised By -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Raised By</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Raised By</label>
               <input
                 v-model="form.ticket_raised_by"
                 type="text"
                 placeholder="Name or email"
-                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
             </div>
 
             <!-- Ticket Description -->
             <div>
-              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Ticket Description</label>
+              <label class="block font-medium text-[11px] text-gray-700 mb-1">Ticket Description</label>
               <textarea
                 v-model="form.ticket_description"
                 rows="2"
                 placeholder="Brief description of the ticket..."
-                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition resize-none"
+                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition resize-none"
               ></textarea>
             </div>
           </div>
         </aside>
 
-        <!-- COLUMN 2: CENTER MAIN CONTENT (Header, Rich Description & Attachments) -->
-        <main class="flex-1 min-w-0 space-y-4">
-          <!-- Header Info Card -->
-          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-5 space-y-3">
-            <!-- Project & Task Type Pill Bar -->
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="flex items-center gap-1.5">
-                <span v-if="form.project" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#417c7d]/10 text-[#417c7d] border border-[#417c7d]/25">
-                  {{ form.project }}
-                </span>
-                <span v-else class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200/60">
-                  No Project
-                </span>
-                <ChevronRight class="size-3.5 text-gray-400" />
-                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200/60">
-                  <CheckCircle class="size-3 text-emerald-600 stroke-[2.5]" />
-                  Task
-                </span>
-              </div>
+        <!-- Vertical Divider between Column 1 and Column 2 -->
+        <Divider orientation="vertical" flex-item class="hidden xl:block" />
+        <Divider class="xl:hidden" />
 
-              <div class="font-mono text-xs font-bold text-gray-500">
-                ID: {{ form.id || 'New' }}
-              </div>
-            </div>
-
-            <!-- Attachments Row (Above Title: Small Cards + Plus Button) -->
-            <div class="flex flex-wrap items-center gap-2 pt-0.5 pb-0.5">
-              <!-- Small Attachment Cards -->
-              <div
-                v-for="(att, idx) in attachments"
-                :key="att.id || att.name || idx"
-                class="inline-flex items-center gap-2 px-2.5 py-1 bg-gray-50 hover:bg-gray-100/90 border border-gray-200/90 rounded-lg transition-all group text-xs select-none max-w-full"
-              >
-                <!-- File Icon -->
-                <div
-                  class="size-6 rounded flex items-center justify-center shrink-0"
-                  :class="isImageFile(att) ? 'bg-[#417c7d]/10 text-[#417c7d]' : 'bg-blue-50 text-blue-600'"
-                >
-                  <Image v-if="isImageFile(att)" class="size-3.5" />
-                  <FileText v-else class="size-3.5" />
-                </div>
-
-                <!-- File Name & Size -->
-                <div class="flex items-center gap-1.5 min-w-0">
-                  <a
-                    :href="att.url || att.file_url || '#'"
-                    target="_blank"
-                    download
-                    class="font-medium text-gray-800 hover:text-[#417c7d] truncate max-w-[120px] sm:max-w-[180px] cursor-pointer"
-                    :title="att.name"
-                  >
-                    {{ att.name }}
-                  </a>
-                  <span v-if="att.size" class="text-[10px] text-gray-400 font-mono shrink-0">
-                    {{ att.size }}
-                  </span>
-                </div>
-
-                <!-- Actions: Download & Delete with confirmation -->
-                <div class="flex items-center gap-0.5 shrink-0">
-                  <a
-                    :href="att.url || att.file_url || '#'"
-                    target="_blank"
-                    download
-                    class="p-1 text-gray-400 hover:text-[#417c7d] rounded transition cursor-pointer"
-                    title="Download file"
-                  >
-                    <Download class="size-3" />
-                  </a>
-                  <button
-                    type="button"
-                    class="p-1 text-gray-400 hover:text-rose-600 rounded transition cursor-pointer"
-                    title="Delete attachment"
-                    @click="confirmDeleteAttachment(att, idx)"
-                  >
-                    <Trash2 class="size-3" />
-                  </button>
-                </div>
-              </div>
-
-              <!-- + Add Attachment Button -->
-              <label
-                class="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-gray-50 border border-dashed border-gray-300 hover:border-[#417c7d] text-gray-600 hover:text-[#417c7d] rounded-lg cursor-pointer transition text-xs font-medium select-none shadow-2xs"
-                title="Add attachment"
-              >
-                <Plus class="size-3.5 stroke-[2.5]" />
-                <span class="text-[11px] font-semibold">Add</span>
-                <input
-                  type="file"
-                  multiple
-                  class="sr-only"
-                  @change="handleFileUpload"
-                />
-              </label>
-            </div>
-
-            <!-- Task Title (Editable headline input) -->
-            <div>
-              <input
-                v-model="form.title"
-                type="text"
-                placeholder="Task title..."
-                class="w-full text-xl sm:text-2xl font-bold text-gray-900 border-none p-0 focus:ring-0 focus:outline-none placeholder-gray-300 tracking-tight leading-snug"
-              />
-            </div>
-
-            <!-- Meta: Created By & Updated Time -->
-            <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 pt-1">
-              <span class="inline-flex items-center gap-1.5">
-                <User class="size-3.5 text-gray-400" />
-                <span>Created by <strong class="text-gray-700">{{ form.reporter || '—' }}</strong></span>
+        <!-- COLUMN 2: CENTER MAIN CONTENT (Header, Attachments, Title & Description) -->
+        <main class="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 space-y-4">
+          <!-- Project & Task Type Pill Bar -->
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5">
+              <span v-if="form.project" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#417c7d]/10 text-[#417c7d] border border-[#417c7d]/25">
+                {{ form.project }}
               </span>
-              <span class="text-gray-300">•</span>
-              <span class="inline-flex items-center gap-1.5">
-                <Clock class="size-3.5 text-gray-400" />
-                <span>Updated {{ updatedTimeAgo }}</span>
+              <span v-else class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200/60">
+                No Project
               </span>
+              <ChevronRight class="size-3.5 text-gray-400" />
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200/60">
+                <CheckCircle class="size-3 text-emerald-600 stroke-[2.5]" />
+                Task
+              </span>
+            </div>
+
+            <div class="font-mono text-xs font-bold text-gray-500">
+              ID: {{ form.id || 'New' }}
             </div>
           </div>
 
-          <!-- Rich Text Description Card -->
-          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-4 space-y-2">
+          <!-- Attachments Row (Above Title: Small Cards + Plus Button) -->
+          <div class="flex flex-wrap items-center gap-2 pt-0.5 pb-0.5">
+            <!-- Small Attachment Cards -->
+            <div
+              v-for="(att, idx) in attachments"
+              :key="att.id || att.name || idx"
+              class="inline-flex items-center gap-2 px-2.5 py-1 bg-gray-50 hover:bg-gray-100/90 border border-gray-200 rounded-lg transition-all group text-xs select-none max-w-full"
+            >
+              <!-- File Icon -->
+              <div
+                class="size-6 rounded flex items-center justify-center shrink-0"
+                :class="isImageFile(att) ? 'bg-[#417c7d]/10 text-[#417c7d]' : 'bg-blue-50 text-blue-600'"
+              >
+                <Image v-if="isImageFile(att)" class="size-3.5" />
+                <FileText v-else class="size-3.5" />
+              </div>
+
+              <!-- File Name & Size -->
+              <div class="flex items-center gap-1.5 min-w-0">
+                <a
+                  :href="att.url || att.file_url || '#'"
+                  target="_blank"
+                  download
+                  class="font-medium text-gray-900 hover:text-[#417c7d] truncate max-w-[120px] sm:max-w-[180px] cursor-pointer"
+                  :title="att.name"
+                >
+                  {{ att.name }}
+                </a>
+                <span v-if="att.size" class="text-[10px] text-gray-400 font-mono shrink-0">
+                  {{ att.size }}
+                </span>
+              </div>
+
+              <!-- Actions: Download & Delete with confirmation -->
+              <div class="flex items-center gap-0.5 shrink-0">
+                <a
+                  :href="att.url || att.file_url || '#'"
+                  target="_blank"
+                  download
+                  class="p-1 text-gray-400 hover:text-[#417c7d] rounded transition cursor-pointer"
+                  title="Download file"
+                >
+                  <Download class="size-3" />
+                </a>
+                <button
+                  type="button"
+                  class="p-1 text-gray-400 hover:text-rose-600 rounded transition cursor-pointer"
+                  title="Delete attachment"
+                  @click="confirmDeleteAttachment(att, idx)"
+                >
+                  <Trash2 class="size-3" />
+                </button>
+              </div>
+            </div>
+
+            <!-- + Add Attachment Button -->
+            <label
+              class="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-gray-50 border border-dashed border-gray-300 hover:border-[#417c7d] text-gray-600 hover:text-[#417c7d] rounded-lg cursor-pointer transition text-xs font-medium select-none shadow-2xs"
+              title="Add attachment"
+            >
+              <Plus class="size-3.5 stroke-[2.5]" />
+              <span class="text-[11px] font-semibold">Add</span>
+              <input
+                type="file"
+                multiple
+                class="sr-only"
+                @change="handleFileUpload"
+              />
+            </label>
+          </div>
+
+          <!-- Task Title (Editable headline input) -->
+          <div>
+            <input
+              v-model="form.title"
+              type="text"
+              placeholder="Task title..."
+              class="w-full text-xl sm:text-2xl font-bold text-gray-900 border-none p-0 focus:ring-0 focus:outline-none placeholder-gray-300 tracking-tight leading-snug"
+            />
+          </div>
+
+          <!-- Meta: Created By & Updated Time -->
+          <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 pt-0.5 pb-1">
+            <span class="inline-flex items-center gap-1.5">
+              <User class="size-3.5 text-gray-400" />
+              <span>Created by <strong class="text-gray-700">{{ form.reporter || '—' }}</strong></span>
+            </span>
+            <span class="text-gray-300">•</span>
+            <span class="inline-flex items-center gap-1.5">
+              <Clock class="size-3.5 text-gray-400" />
+              <span>Updated {{ updatedTimeAgo }}</span>
+            </span>
+          </div>
+
+          <!-- Divider between Title and Description -->
+          <Divider />
+
+          <!-- Description Section (Clean full canvas) -->
+          <div class="space-y-2">
             <div class="flex items-center justify-between mb-1">
               <h4 class="text-xs font-bold text-gray-600 uppercase tracking-wider">
                 Description
@@ -607,47 +619,53 @@
             <TaskRichEditor
               v-model="form.description"
               :people="people"
-              min-height="min-h-64"
+              min-height="min-h-72"
               placeholder="Write description, acceptance criteria, or type / for blocks..."
             />
           </div>
         </main>
 
-        <!-- COLUMN 3: RIGHT SIDEBAR (Comments Stream & Activity Audit) -->
-        <aside class="w-full xl:w-[340px] shrink-0 flex flex-col bg-white rounded-xl border border-gray-200/80 shadow-xs overflow-hidden">
+        <!-- Vertical Divider between Column 2 and Column 3 -->
+        <Divider orientation="vertical" flex-item class="hidden xl:block" />
+        <Divider class="xl:hidden" />
+
+        <!-- COLUMN 3: RIGHT SIDEBAR (Comments & Activity Audit) -->
+        <aside class="w-full xl:w-[320px] 2xl:w-[350px] shrink-0 flex flex-col bg-white overflow-hidden">
           <!-- Top Tabs Header -->
-          <div class="flex items-center justify-between border-b border-gray-200 px-4 pt-3 shrink-0 select-none">
+          <div class="flex items-center justify-between px-4 pt-3 pb-2.5 shrink-0 select-none">
             <div class="flex items-center gap-4">
               <button
                 type="button"
-                class="pb-2.5 text-xs font-bold transition border-b-2 cursor-pointer inline-flex items-center gap-1.5"
+                class="pb-1 text-xs font-bold transition border-b-2 cursor-pointer inline-flex items-center gap-1.5"
                 :class="activeRightTab === 'comments' ? 'border-[#417c7d] text-[#417c7d]' : 'border-transparent text-gray-500 hover:text-gray-800'"
-                @click="activeRightTab = 'comments'"
+                @click="activeRightTab === 'comments'"
               >
                 <span>Comments ({{ comments.length }})</span>
                 <Loader2 v-if="loadingComments" class="size-3 animate-spin text-[#417c7d]" />
               </button>
               <button
                 type="button"
-                class="pb-2.5 text-xs font-bold transition border-b-2 cursor-pointer"
+                class="pb-1 text-xs font-bold transition border-b-2 cursor-pointer"
                 :class="activeRightTab === 'activity' ? 'border-[#417c7d] text-[#417c7d]' : 'border-transparent text-gray-500 hover:text-gray-800'"
-                @click="activeRightTab = 'activity'"
+                @click="activeRightTab === 'activity'"
               >
                 Activity Audit
               </button>
             </div>
 
-            <button type="button" class="pb-2 text-gray-400 hover:text-gray-700 cursor-pointer" title="Timeline options">
+            <button type="button" class="text-gray-400 hover:text-gray-700 cursor-pointer" title="Timeline options">
               <SlidersHorizontal class="size-3.5" />
             </button>
           </div>
+
+          <Divider />
 
           <!-- Comments Feed Tab Content -->
           <div v-if="activeRightTab === 'comments'" class="flex-1 overflow-y-auto p-4 space-y-3.5 min-h-[300px]">
             <!-- Loading indicator when fetching comments -->
             <div v-if="loadingComments && comments.length === 0" class="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
               <Loader2 class="size-5 animate-spin text-[#417c7d]" />
-              <span class="text-xs text-gray-500 font-medium">Loading actual comments...</span>
+              <span class="text-xs text-gray-500 font-medium">Loading comments...</span>
             </div>
 
             <!-- Empty state when no comments exist -->
@@ -659,7 +677,6 @@
 
             <!-- Comments List -->
             <template v-else v-for="(cmt, idx) in comments" :key="cmt.id || idx">
-              <!-- Regular Comment Bubble -->
               <div v-if="!cmt.isDivider" class="space-y-1 text-xs group">
                 <div class="flex items-center justify-between text-gray-500">
                   <div class="flex items-center gap-2 min-w-0">
@@ -673,7 +690,6 @@
                   </div>
                   <div class="flex items-center gap-1.5">
                     <span class="text-[10px] text-gray-400">{{ cmt.time }}</span>
-                    <!-- Delete comment action -->
                     <button
                       v-if="cmt.can_delete || cmt.id"
                       type="button"
@@ -685,7 +701,7 @@
                     </button>
                   </div>
                 </div>
-                <div class="ml-7 p-2.5 bg-gray-50/80 hover:bg-gray-100/70 border border-gray-200/60 rounded-xl text-gray-700 leading-relaxed transition whitespace-pre-wrap">
+                <div class="ml-7 p-2.5 bg-gray-50/80 hover:bg-gray-100/70 border border-gray-200 rounded-xl text-gray-700 leading-relaxed transition whitespace-pre-wrap">
                   {{ cmt.text }}
                 </div>
               </div>
@@ -721,8 +737,10 @@
             </div>
           </div>
 
+          <Divider />
+
           <!-- Comment Input Box (Pinned at bottom) -->
-          <div class="p-3 border-t border-gray-200 bg-gray-50/50 space-y-2 shrink-0">
+          <div class="p-3 bg-gray-50/50 space-y-2 shrink-0">
             <textarea
               v-model="newComment"
               rows="3"
@@ -776,7 +794,7 @@
 </template>
 
 <script>
-import { MultiSelect, toast } from 'frappe-ui'
+import { Divider, MultiSelect, toast } from 'frappe-ui'
 import {
   fetchTaskComments,
   addTaskComment,
@@ -825,6 +843,7 @@ import {
 export default {
   name: 'TaskDetailModal',
   components: {
+    Divider,
     MultiSelect,
     TaskRichEditor,
     ArrowLeft,
