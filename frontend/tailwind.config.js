@@ -28,6 +28,7 @@ export default {
           'gray-2': '#f4f5f6',
           'gray-3': '#ebeef0',
           'gray-4': '#dce0e3',
+          'elevation-2': '#ffffff',
           'elevation-3': '#f3f4f6',
         },
         ink: {
