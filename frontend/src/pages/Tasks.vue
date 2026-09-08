@@ -7,6 +7,9 @@ import {
   Button,
   DesktopShell,
   Dropdown,
+  MobileNav,
+  MobileShell,
+  MultiSelect,
   PageHeader,
   PageHeaderTitle,
   ScrollArea,
@@ -124,6 +127,28 @@ const userMenu = [
 // Active status tab filter
 const statusTab = ref('All')
 
+// Multi-select project filter
+const selectedProjects = ref([])
+
+const projectOptions = computed(() => {
+  const set = new Set()
+  if (Array.isArray(projects.value)) {
+    projects.value.forEach((p) => {
+      const val = p.name || p.display_name
+      if (val) set.add(val)
+    })
+  }
+  if (Array.isArray(tasks.value)) {
+    tasks.value.forEach((t) => {
+      if (t.project) set.add(t.project)
+    })
+  }
+  return Array.from(set).map((p) => ({
+    value: p,
+    label: p,
+  }))
+})
+
 // Modals
 const detailModalOpen = ref(false)
 const activeTask = ref(null)
@@ -224,7 +249,7 @@ function handleSortChange({ key, order }) {
   sortOrder.value = order
 }
 
-watch(statusTab, () => {
+watch([statusTab, selectedProjects], () => {
   tasksDisplayLimit.value = 20
 })
 
@@ -354,7 +379,7 @@ const getPriorityBadgeClass = (priority) => {
 // Reactive status tab options with counts for each status
 const statusOptions = computed(() => {
   const counts = {
-    All: tasks.value.length,
+    All: 0,
     Open: 0,
     'In Progress': 0,
     Review: 0,
@@ -364,7 +389,13 @@ const statusOptions = computed(() => {
     Overdue: 0,
   }
 
-  tasks.value.forEach((t) => {
+  const baseTasks = selectedProjects.value && selectedProjects.value.length > 0
+    ? tasks.value.filter((t) => selectedProjects.value.includes(t.project))
+    : tasks.value
+
+  counts.All = baseTasks.length
+
+  baseTasks.forEach((t) => {
     const s = t.status || 'Open'
     if (counts[s] !== undefined) {
       counts[s]++
@@ -383,9 +414,13 @@ const statusOptions = computed(() => {
   ]
 })
 
-// Filtered tasks based on status tab and sort
+// Filtered tasks based on status tab, project filter, and sort
 const visibleTasks = computed(() => {
   let list = [...tasks.value]
+
+  if (selectedProjects.value && selectedProjects.value.length > 0) {
+    list = list.filter((t) => selectedProjects.value.includes(t.project))
+  }
 
   if (statusTab.value && statusTab.value !== 'All') {
     list = list.filter((t) => t.status === statusTab.value)
@@ -810,7 +845,13 @@ onMounted(() => {
               :options="statusOptions"
             />
             <div class="flex items-center gap-3 text-xs font-medium text-ink-gray-6">
-              <span>{{ visibleTasks.length }} tasks</span>
+              <MultiSelect
+                v-model="selectedProjects"
+                :options="projectOptions"
+                placeholder="Select Project"
+                class="w-64"
+              />
+              <span class="whitespace-nowrap">{{ visibleTasks.length }} tasks</span>
             </div>
           </div>
 
