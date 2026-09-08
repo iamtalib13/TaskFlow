@@ -231,6 +231,38 @@ const getStatusTheme = (status) => {
   }
 }
 
+// Reactive status tab options with counts for each status
+const statusOptions = computed(() => {
+  const counts = {
+    All: tasks.value.length,
+    Open: 0,
+    'In Progress': 0,
+    Review: 0,
+    'On Hold': 0,
+    Completed: 0,
+    Cancelled: 0,
+    Overdue: 0,
+  }
+
+  tasks.value.forEach((t) => {
+    const s = t.status || 'Open'
+    if (counts[s] !== undefined) {
+      counts[s]++
+    }
+  })
+
+  return [
+    { label: `All (${counts.All})`, value: 'All' },
+    { label: `Open (${counts.Open})`, value: 'Open' },
+    { label: `In Progress (${counts['In Progress']})`, value: 'In Progress' },
+    { label: `Review (${counts.Review})`, value: 'Review' },
+    { label: `On Hold (${counts['On Hold']})`, value: 'On Hold' },
+    { label: `Completed (${counts.Completed})`, value: 'Completed' },
+    { label: `Cancelled (${counts.Cancelled})`, value: 'Cancelled' },
+    { label: `Overdue (${counts.Overdue})`, value: 'Overdue' },
+  ]
+})
+
 // Filtered tasks based on feed tab and sort
 const visibleTasks = computed(() => {
   let list = [...tasks.value]
@@ -596,22 +628,13 @@ onMounted(() => {
       <div class="w-full px-3 pt-3 pb-1">
         <!-- 1. TASK VIEW -->
         <template v-if="activeSection === 'Task'">
-          <!-- Sub-Header Tabs & Task Count -->
-          <div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+          <!-- Sub-Header Tabs & Task Count (Sticky with backdrop-blur & dynamic counts) -->
+          <div class="sticky top-0 z-20 -mt-3 pt-3 pb-2 mb-2 bg-white/95 backdrop-blur-md flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
             <TabButtons
               v-model="feedTab"
-              :options="[
-                { label: 'All', value: 'All' },
-                { label: 'Open', value: 'Open' },
-                { label: 'In Progress', value: 'In Progress' },
-                { label: 'Review', value: 'Review' },
-                { label: 'On Hold', value: 'On Hold' },
-                { label: 'Completed', value: 'Completed' },
-                { label: 'Cancelled', value: 'Cancelled' },
-                { label: 'Overdue', value: 'Overdue' },
-              ]"
+              :options="statusOptions"
             />
-            <div class="flex items-center gap-3 text-sm text-ink-gray-5">
+            <div class="flex items-center gap-3 text-xs font-medium text-ink-gray-6">
               <span>{{ visibleTasks.length }} tasks</span>
             </div>
           </div>
@@ -708,7 +731,7 @@ onMounted(() => {
           </div>
 
           <!-- TABLE VIEW (Non-sticky ID & Title Horizontal Scroll Table) -->
-          <div v-else>
+          <div v-else class="outline-none focus:outline-none ring-0">
             <CommonListView
               v-model:selectedRows="selectedRowKeys"
               :columns="tableColumns"

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col flex-1 min-w-0 bg-white">
+  <div class="flex flex-col flex-1 min-w-0 bg-white outline-none focus:outline-none focus:ring-0 ring-0">
     <!-- Optional Toolbar Slot (above the table) -->
     <div v-if="$slots.toolbar" class="p-3 border-b border-gray-100 bg-white">
       <slot name="toolbar" />
@@ -8,10 +8,11 @@
     <!-- Scrollable Table Container (Horizontal) -->
     <div
       ref="tableContainer"
-      class="relative flex-1 overflow-x-auto min-h-[380px]"
+      tabindex="-1"
+      class="relative flex-1 overflow-x-auto min-h-[380px] outline-none focus:outline-none focus:ring-0 ring-0"
       @scroll="handleScroll"
     >
-      <table class="w-full text-left border-collapse text-xs select-text">
+      <table class="w-full text-left border-collapse text-xs select-text outline-none focus:outline-none">
         <!-- Table Header -->
         <thead class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200 text-gray-600 font-semibold tracking-wide uppercase text-[11px]">
           <tr>
