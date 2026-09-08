@@ -69,8 +69,8 @@
           />
         </div>
 
-        <!-- Row 1: Project & Team & Status & Priority -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <!-- Row 1: Project & Team & Task Type & Status & Priority -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <div>
             <label class="block font-medium text-gray-600 mb-1">Project</label>
             <select
@@ -105,6 +105,24 @@
           </div>
 
           <div>
+            <label class="block font-medium text-gray-600 mb-1">Task Type</label>
+            <div class="relative flex items-center">
+              <select
+                v-model="form.task_type"
+                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-7 pr-7 py-1.5 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
+              >
+                <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
+              </select>
+              <component
+                :is="getTaskTypeIcon(form.task_type)"
+                class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
+                :class="getTaskTypeIconClass(form.task_type)"
+              />
+              <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none text-gray-400" />
+            </div>
+          </div>
+
+          <div>
             <label class="block font-medium text-gray-600 mb-1">Status</label>
             <select
               v-model="form.status"
@@ -125,7 +143,7 @@
           </div>
         </div>
 
-        <!-- Row 2: Assigned To (MultiSelect) & Task Type & Due Date -->
+        <!-- Row 2: Assigned To (MultiSelect) & Start Date & Due Date side-by-side -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div class="md:col-span-2">
             <div class="flex items-center justify-between mb-1">
@@ -147,21 +165,56 @@
           </div>
 
           <div>
-            <label class="block font-medium text-gray-600 mb-1">Task Type</label>
-            <div class="relative flex items-center">
-              <select
-                v-model="form.task_type"
-                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-7 pr-7 py-1.5 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
-              >
-                <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
-              </select>
-              <component
-                :is="getTaskTypeIcon(form.task_type)"
-                class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
-                :class="getTaskTypeIconClass(form.task_type)"
-              />
-              <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none text-gray-400" />
-            </div>
+            <label class="block font-medium text-gray-600 mb-1">Start Date</label>
+            <DatePicker
+              v-model="form.start_date"
+              format="DD-MM-YYYY"
+              placeholder="DD-MM-YYYY"
+              size="sm"
+              variant="outline"
+              class="w-full"
+            >
+              <template #prefix>
+                <Calendar class="size-3.5 text-gray-400" />
+              </template>
+              <template #actions="{ setDate, close }">
+                <button
+                  type="button"
+                  :class="rowCls"
+                  @click="applyQuickDate(setDate, 0, 'day', close)"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  :class="rowCls"
+                  @click="applyQuickDate(setDate, 1, 'day', close)"
+                >
+                  Tomorrow
+                </button>
+                <button
+                  type="button"
+                  :class="rowCls"
+                  @click="applyQuickDate(setDate, 7, 'day', close)"
+                >
+                  One Week
+                </button>
+                <button
+                  type="button"
+                  :class="rowCls"
+                  @click="applyQuickDate(setDate, 15, 'day', close)"
+                >
+                  15 Days
+                </button>
+                <button
+                  type="button"
+                  :class="rowCls"
+                  @click="applyQuickDate(setDate, 1, 'month', close)"
+                >
+                  1 Month
+                </button>
+              </template>
+            </DatePicker>
           </div>
 
           <div>
@@ -321,6 +374,7 @@ export default {
         assigned_to: '',
         status: 'Open',
         priority: 'Medium',
+        start_date: '',
         due_date: '',
         description: '',
       },
@@ -342,6 +396,7 @@ export default {
           assigned_to: '',
           status: 'Open',
           priority: 'Medium',
+          start_date: '',
           due_date: '',
           description: '',
         }
