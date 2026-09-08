@@ -1,0 +1,38 @@
+@import './assets/Inter/inter.css';
+@import 'frappe-ui/src/style.css';
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    color: #111827;
+    background-color: #f9fafb;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Sleek custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Glassmorphism modal helpers */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.sticky-shadow-right {
+  box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.04);
+}
