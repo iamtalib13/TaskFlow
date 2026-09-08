@@ -633,3 +633,49 @@ export async function deleteTimesheet(timesheetName) {
   )
 }
 
+export async function fetchTaskAttachments(taskId) {
+  if (!taskId) return []
+  const res = await callFrappe('taskflow.taskflow.api.spa.get_task_attachments', { task_id: taskId })
+  return Array.isArray(res) ? res : []
+}
+
+export async function deleteTaskAttachment(fileId) {
+  if (!fileId) return false
+  return await callFrappe('taskflow.taskflow.api.spa.delete_task_attachment', { file_id: fileId }, 'POST')
+}
+
+export async function uploadTaskAttachment(taskId, file) {
+  if (!file) return null
+  const formData = new FormData()
+  formData.append('file', file, file.name)
+  formData.append('is_private', '0')
+  if (taskId && taskId !== 'new') {
+    formData.append('doctype', 'Taskflow Task')
+    formData.append('docname', taskId)
+  }
+
+  const csrfToken = window.csrf_token || ''
+  const resp = await fetch('/api/method/upload_file', {
+    method: 'POST',
+    headers: {
+      'X-Frappe-CSRF-Token': csrfToken,
+    },
+    credentials: 'same-origin',
+    body: formData,
+  })
+
+  if (!resp.ok) {
+    let msg = 'Failed to upload attachment'
+    try {
+      const err = await resp.json()
+      msg = err._server_messages || err.message || msg
+    } catch (_) {}
+    throw new Error(msg)
+  }
+
+  const json = await resp.json()
+  return json.message
+}
+
+
+

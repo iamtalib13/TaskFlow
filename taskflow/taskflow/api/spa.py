@@ -124,6 +124,44 @@ def get_spa_bootstrap() -> dict:
 			"can_delete": (c.get("owner") == current_user or current_user == "Administrator"),
 		})
 
+	# Fetch attachments
+	attachments_raw = []
+	if task_names:
+		attachments_raw = frappe.get_all(
+			"File",
+			filters={
+				"attached_to_doctype": "Taskflow Task",
+				"attached_to_name": ["in", task_names],
+			},
+			fields=["name", "file_name", "file_url", "file_size", "attached_to_name"],
+			order_by="creation desc",
+		)
+
+	attachments_map = {}
+	for f in attachments_raw:
+		f_size = f.get("file_size") or 0
+		if f_size > 1024 * 1024:
+			size_str = f"{round(f_size / (1024 * 1024), 1)} MB"
+		elif f_size > 1024:
+			size_str = f"{round(f_size / 1024)} KB"
+		elif f_size > 0:
+			size_str = f"{f_size} B"
+		else:
+			size_str = ""
+
+		fname = f.get("file_name") or f["name"]
+		ext = fname.split(".")[-1].lower() if "." in fname else ""
+		ftype = "Image" if ext in ["png", "jpg", "jpeg", "gif", "svg", "webp"] else ("PDF" if ext == "pdf" else "Document")
+
+		attachments_map.setdefault(f["attached_to_name"], []).append({
+			"id": f["name"],
+			"name": fname,
+			"file_url": f.get("file_url") or "",
+			"url": f.get("file_url") or "",
+			"size": size_str,
+			"type": ftype,
+		})
+
 	tasks = []
 	for t in tasks_raw:
 		assignee_rows = assignment_map.get(t["name"], [])
@@ -156,6 +194,7 @@ def get_spa_bootstrap() -> dict:
 			"modified_pretty": frappe.utils.pretty_date(t["modified"]) if t.get("modified") else "",
 			"description": t.get("description") or "",
 			"comments": comments_map.get(t["name"], []),
+			"attachments": attachments_map.get(t["name"], []),
 			"pending_with": t.get("pending_with") or "",
 			"pending_from": str(t["pending_from"]) if t.get("pending_from") else "",
 			"guided_by": t.get("guided_by") or "",
@@ -526,4 +565,67 @@ def delete_task_comment(comment_id: str) -> dict:
 
 	frappe.delete_doc("Comment", comment_id, ignore_permissions=True)
 	return {"success": True, "id": comment_id}
+
+
+@frappe.whitelist()
+def get_task_attachments(task_id: str) -> list:
+	_require_login()
+	if not task_id:
+		return []
+
+	files = frappe.get_all(
+		"File",
+		filters={
+			"attached_to_doctype": "Taskflow Task",
+			"attached_to_name": task_id,
+		},
+		fields=["name", "file_name", "file_url", "file_size", "creation", "owner"],
+		order_by="creation desc",
+	)
+	res = []
+	for f in files:
+		f_size = f.get("file_size") or 0
+		if f_size > 1024 * 1024:
+			size_str = f"{round(f_size / (1024 * 1024), 1)} MB"
+		elif f_size > 1024:
+			size_str = f"{round(f_size / 1024)} KB"
+		elif f_size > 0:
+			size_str = f"{f_size} B"
+		else:
+			size_str = ""
+
+		fname = f.get("file_name") or f["name"]
+		ext = fname.split(".")[-1].lower() if "." in fname else ""
+		ftype = "Image" if ext in ["png", "jpg", "jpeg", "gif", "svg", "webp"] else ("PDF" if ext == "pdf" else "Document")
+		res.append({
+			"id": f["name"],
+			"name": fname,
+			"file_url": f.get("file_url") or "",
+			"url": f.get("file_url") or "",
+			"size": size_str,
+			"type": ftype,
+		})
+	return res
+
+
+@frappe.whitelist(methods=["POST"])
+def delete_task_attachment(file_id: str) -> dict:
+	_require_login()
+	if not file_id:
+		frappe.throw(_("File ID is required"))
+
+	if frappe.db.exists("File", file_id):
+		file_doc = frappe.get_doc("File", file_id)
+		current_user = frappe.session.user
+		is_admin = current_user == "Administrator" or bool({"System Manager", "Taskflow Admin"} & set(frappe.get_roles(current_user)))
+		if not is_admin and file_doc.owner != current_user:
+			if file_doc.attached_to_doctype == "Taskflow Task" and file_doc.attached_to_name:
+				task_team = frappe.db.get_value("Taskflow Task", file_doc.attached_to_name, "team")
+				from taskflow.taskflow.service.team_hierarchy import can_manage_team
+				if not can_manage_team(current_user, task_team):
+					frappe.throw(_("Not permitted to delete this attachment"), frappe.PermissionError)
+
+		frappe.delete_doc("File", file_id, ignore_permissions=True)
+	return {"success": True, "id": file_id}
+
 
