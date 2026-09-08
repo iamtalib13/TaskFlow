@@ -173,7 +173,34 @@ const currentUserEmail = ref('')
 
 // Active status tab filter
 const statusTab = ref('All')
-const showAssignedToMe = ref(true)
+
+const STORAGE_KEY_ASSIGNED_TO_ME = 'taskflow_assigned_to_me'
+
+function getInitialAssignedToMe() {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY_ASSIGNED_TO_ME)
+      if (saved !== null) {
+        return saved === 'true'
+      }
+    } catch (e) {
+      console.warn('Failed to read assigned_to_me from localStorage', e)
+    }
+  }
+  return true
+}
+
+const showAssignedToMe = ref(getInitialAssignedToMe())
+
+watch(showAssignedToMe, (val) => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY_ASSIGNED_TO_ME, String(val))
+    } catch (e) {
+      console.warn('Failed to save assigned_to_me to localStorage', e)
+    }
+  }
+})
 
 function isAssignedToCurrentUser(t) {
   if (!t) return false
