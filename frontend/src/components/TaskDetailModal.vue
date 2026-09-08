@@ -99,137 +99,117 @@
 
       <!-- 3-COLUMN MAIN BODY LAYOUT -->
       <div class="flex-1 min-h-0 overflow-y-auto p-4 bg-[#f8fafc] flex flex-col xl:flex-row gap-4">
-        <!-- COLUMN 1: LEFT SIDEBAR (Assignment & Schedule) -->
-        <aside class="w-full xl:w-[270px] shrink-0 space-y-4 text-xs select-none">
+        <!-- COLUMN 1: LEFT SIDEBAR (Assignment, Schedule & Ticket) -->
+        <aside class="w-full xl:w-[270px] shrink-0 space-y-3 text-xs select-none">
           <!-- Card 1: ASSIGNMENT -->
-          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-4 space-y-3.5">
+          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-3 space-y-2.5">
             <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
               <span>ASSIGNMENT</span>
-              <Info class="size-3.5 text-gray-400 hover:text-gray-600 cursor-pointer" title="Assignment information" />
+              <Info class="size-3.5 text-gray-400 hover:text-gray-600 cursor-pointer" title="Assignment details" />
             </div>
 
-            <!-- Assigned To -->
+            <!-- Assigned to -->
             <div>
-              <label class="block font-medium text-gray-600 mb-1.5">Assigned To</label>
-              <div class="flex flex-wrap items-center gap-1.5">
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Assigned to</label>
+              <!-- Selected assignees chips with avatar and remove icon -->
+              <div v-if="form.assignees && form.assignees.length > 0" class="space-y-1 mb-1.5">
                 <div
-                  v-if="form.assigned_to"
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#417c7d]/10 text-[#417c7d] border border-[#417c7d]/30 font-semibold text-xs"
+                  v-for="assignee in form.assignees"
+                  :key="getAssigneeValue(assignee)"
+                  class="flex items-center justify-between px-2 py-1 rounded-lg bg-gray-50 border border-gray-200/80 hover:bg-gray-100/70 transition"
                 >
-                  <span class="size-4.5 rounded-full bg-[#417c7d] text-white font-bold text-[9px] flex items-center justify-center">
-                    {{ getInitials(form.assigned_to) }}
-                  </span>
-                  <span class="truncate max-w-[130px]">{{ form.assigned_to }}</span>
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="size-4.5 rounded-full bg-[#417c7d] text-white font-bold text-[9px] flex items-center justify-center shrink-0">
+                      {{ getInitials(getAssigneeName(assignee)) }}
+                    </span>
+                    <span class="text-[11px] font-semibold text-gray-800 truncate uppercase tracking-tight">
+                      {{ getAssigneeName(assignee) }}
+                    </span>
+                  </div>
                   <button
                     type="button"
-                    class="text-[#417c7d] hover:text-[#2b5354] ml-0.5 cursor-pointer"
+                    class="text-gray-400 hover:text-rose-600 p-0.5 rounded cursor-pointer transition shrink-0"
                     title="Remove assignee"
-                    @click="form.assigned_to = ''"
+                    @click="removeAssignee(assignee)"
                   >
                     <X class="size-3" />
                   </button>
                 </div>
-
-                <!-- Assign Dropdown / Button -->
-                <div class="relative flex-1 min-w-[90px]">
-                  <select
-                    v-model="form.assigned_to"
-                    class="w-full text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-dashed border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] cursor-pointer transition"
-                  >
-                    <option value="">+ Assign</option>
-                    <option v-for="person in people" :key="person.email" :value="person.name">
-                      {{ person.name }}
-                    </option>
-                  </select>
-                </div>
               </div>
+
+              <!-- MultiSelect employee search and select control -->
+              <MultiSelect
+                v-model="form.assignees"
+                :options="assigneeOptions"
+                placeholder="Add Assignee..."
+                size="sm"
+                class="w-full"
+              />
             </div>
 
             <!-- Pending With -->
             <div>
-              <label class="block font-medium text-gray-600 mb-1">Pending With</label>
-              <div class="relative">
-                <select
-                  v-model="form.pending_with"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                >
-                  <option value="">Unassigned</option>
-                  <option value="Talib Sheikh (Tech Lead)">Talib Sheikh (Tech Lead)</option>
-                  <option value="Frontend Architecture Team">Frontend Architecture Team</option>
-                  <option value="Sarah Chen (Principal Arch)">Sarah Chen (Principal Arch)</option>
-                  <option value="Faijan Qureshi">Faijan Qureshi</option>
-                  <option value="Client Review Team">Client Review Team</option>
-                </select>
-                <ChevronsUpDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 pointer-events-none" />
-              </div>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Pending With</label>
+              <input
+                v-model="form.pending_with"
+                type="text"
+                placeholder="Pending with..."
+                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              />
             </div>
 
             <!-- Pending From -->
             <div>
-              <label class="block font-medium text-gray-600 mb-1">Pending From</label>
-              <div class="relative">
-                <select
-                  v-model="form.pending_from"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                >
-                  <option value="Frontend Architecture Team">Frontend Architecture Team</option>
-                  <option value="Core Engineering">Core Engineering</option>
-                  <option value="Product Operations">Product Operations</option>
-                  <option value="QA Team">QA Team</option>
-                </select>
-                <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 pointer-events-none" />
-              </div>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Pending From</label>
+              <input
+                v-model="form.pending_from"
+                type="text"
+                placeholder="Whitestone Vendor"
+                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              />
             </div>
 
             <!-- Guided By -->
             <div>
-              <label class="block font-medium text-gray-600 mb-1">Guided By</label>
-              <div class="relative">
-                <select
-                  v-model="form.guided_by"
-                  class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 appearance-none font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                >
-                  <option value="Sarah Chen (Principal Arch)">Sarah Chen (Principal Arch)</option>
-                  <option value="Talib Sheikh (Tech Lead)">Talib Sheikh (Tech Lead)</option>
-                  <option value="Mukesh Khanna (Advisor)">Mukesh Khanna (Advisor)</option>
-                </select>
-                <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 pointer-events-none" />
-              </div>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Guided By</label>
+              <input
+                v-model="form.guided_by"
+                type="text"
+                placeholder="MANSI DHARMARAJ YADAV"
+                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              />
             </div>
 
             <!-- Responsible Person -->
             <div>
-              <label class="block font-medium text-gray-600 mb-1">Responsible Person</label>
-              <div class="flex items-center justify-between p-1.5 bg-gray-50 border border-gray-200 rounded-lg">
-                <div class="flex items-center gap-2">
-                  <span class="size-5 rounded-full bg-[#417c7d] text-white font-bold text-[9px] flex items-center justify-center">
-                    {{ getInitials(form.responsible_person || 'Mukesh Khanna') }}
-                  </span>
-                  <span class="font-medium text-gray-800 text-xs">{{ form.responsible_person || 'Mukesh Khanna' }}</span>
-                </div>
-                <Search class="size-3.5 text-gray-400 cursor-pointer hover:text-gray-700" />
-              </div>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Responsible Person</label>
+              <input
+                v-model="form.responsible_person"
+                type="text"
+                placeholder="SNEHAL YADORAO BORKAR"
+                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              />
             </div>
           </div>
 
-          <!-- Card 2: SCHEDULE & ESTIMATES -->
-          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-4 space-y-3">
+          <!-- Card 2: SCHEDULE -->
+          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-3 space-y-2.5">
             <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-              <span>SCHEDULE & ESTIMATES</span>
+              <span>SCHEDULE</span>
               <Calendar class="size-3.5 text-gray-400" />
             </div>
 
             <!-- Start Date -->
             <div>
-              <label class="block font-medium text-gray-600 mb-1">Start Date</label>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Start Date</label>
               <div class="relative flex items-center">
                 <input
                   v-model="displayStartDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 />
-                <label class="absolute right-2.5 text-gray-400 hover:text-gray-700 cursor-pointer">
+                <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <Calendar class="size-3.5" />
                   <input
                     type="date"
@@ -244,9 +224,12 @@
             <!-- Due Date -->
             <div>
               <div class="flex items-center justify-between mb-1">
-                <label class="font-medium text-gray-600">Due Date</label>
-                <span v-if="isOverdue" class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                  OVERDUE
+                <label class="font-semibold text-[11px] text-gray-600">Due Date</label>
+                <span
+                  class="px-1.5 py-0.2 rounded text-[10px] font-bold border tracking-wide uppercase"
+                  :class="isOverdue ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                >
+                  {{ isOverdue ? 'OVERDUE' : 'On Time' }}
                 </span>
               </div>
               <div class="relative flex items-center">
@@ -254,10 +237,10 @@
                   v-model="displayDueDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full rounded-lg pl-2.5 pr-8 py-1.5 text-xs font-mono outline-none transition"
+                  class="w-full rounded-lg pl-2.5 pr-7 py-1 text-xs font-mono outline-none transition"
                   :class="isOverdue ? 'bg-rose-50/50 border border-rose-300 text-rose-700 font-semibold focus:ring-2 focus:ring-rose-200 focus:border-rose-400' : 'bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d]'"
                 />
-                <label class="absolute right-2.5 cursor-pointer">
+                <label class="absolute right-2 cursor-pointer">
                   <AlertTriangle v-if="isOverdue" class="size-3.5 text-rose-600" />
                   <Calendar v-else class="size-3.5 text-gray-400 hover:text-gray-700" />
                   <input
@@ -272,15 +255,15 @@
 
             <!-- Expected Resolution Date -->
             <div>
-              <label class="block font-medium text-gray-600 mb-1">Expected Resolution Date</label>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Expected Resolution Date</label>
               <div class="relative flex items-center">
                 <input
                   v-model="displayResolutionDate"
                   type="text"
                   placeholder="DD-MM-YYYY"
-                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 />
-                <label class="absolute right-2.5 text-gray-400 hover:text-gray-700 cursor-pointer">
+                <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <Calendar class="size-3.5" />
                   <input
                     type="date"
@@ -294,16 +277,117 @@
 
             <!-- Completed On -->
             <div>
-              <label class="block font-medium text-gray-600 mb-1">Completed On</label>
-              <div class="flex items-center justify-between px-2.5 py-1.5 bg-gray-50/70 border border-gray-200 rounded-lg text-xs">
-                <span :class="form.status === 'Completed' ? 'font-mono text-emerald-700 font-medium' : 'italic text-gray-400'">
-                  {{ form.status === 'Completed' ? (form.completed_on || '12-08-2026') : 'Not completed yet' }}
-                </span>
-                <CheckCircle2
-                  class="size-3.5"
-                  :class="form.status === 'Completed' ? 'text-emerald-600' : 'text-gray-300'"
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Completed On</label>
+              <div class="relative flex items-center">
+                <input
+                  v-model="displayCompletedOn"
+                  type="text"
+                  placeholder="DD-MM-YYYY"
+                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                 />
+                <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
+                  <Calendar class="size-3.5" />
+                  <input
+                    type="date"
+                    :value="form.completed_on"
+                    class="sr-only"
+                    @change="form.completed_on = $event.target.value"
+                  />
+                </label>
               </div>
+            </div>
+
+            <!-- Time Estimate -->
+            <div>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Time Estimate</label>
+              <div class="relative flex items-center">
+                <input
+                  v-model.number="form.estimated_hours"
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  placeholder="0.00"
+                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-9 py-1 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                />
+                <span class="absolute right-2 text-[10px] font-semibold text-gray-400 pointer-events-none">hrs</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: 🎫 TICKET -->
+          <div class="bg-white rounded-xl border border-gray-200/80 shadow-xs p-3 space-y-2.5">
+            <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+              <span class="flex items-center gap-1">
+                <span>🎫</span>
+                <span>Ticket</span>
+              </span>
+              <Ticket class="size-3.5 text-gray-400" />
+            </div>
+
+            <!-- Ticket Date -->
+            <div>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Ticket Date</label>
+              <div class="relative flex items-center">
+                <input
+                  v-model="displayTicketDate"
+                  type="text"
+                  placeholder="DD-MM-YYYY"
+                  class="w-full bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1 text-xs text-gray-800 font-mono focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                />
+                <label class="absolute right-2 text-gray-400 hover:text-gray-700 cursor-pointer">
+                  <Calendar class="size-3.5" />
+                  <input
+                    type="date"
+                    :value="form.ticket_date"
+                    class="sr-only"
+                    @change="form.ticket_date = $event.target.value"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <!-- Toll ID -->
+            <div>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Toll ID</label>
+              <input
+                v-model="form.toll_id"
+                type="text"
+                placeholder="Enter Toll ID"
+                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              />
+            </div>
+
+            <!-- Ticket ID -->
+            <div>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Ticket ID</label>
+              <input
+                v-model="form.ticket_id"
+                type="text"
+                placeholder="e.g. TKT-001"
+                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-mono font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              />
+            </div>
+
+            <!-- Raised By -->
+            <div>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Raised By</label>
+              <input
+                v-model="form.ticket_raised_by"
+                type="text"
+                placeholder="Name or email"
+                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              />
+            </div>
+
+            <!-- Ticket Description -->
+            <div>
+              <label class="block font-semibold text-[11px] text-gray-600 mb-1">Ticket Description</label>
+              <textarea
+                v-model="form.ticket_description"
+                rows="2"
+                placeholder="Brief description of the ticket..."
+                class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition resize-none"
+              ></textarea>
             </div>
           </div>
         </aside>
@@ -444,11 +528,12 @@
             <div class="flex items-center gap-4">
               <button
                 type="button"
-                class="pb-2.5 text-xs font-bold transition border-b-2 cursor-pointer"
+                class="pb-2.5 text-xs font-bold transition border-b-2 cursor-pointer inline-flex items-center gap-1.5"
                 :class="activeRightTab === 'comments' ? 'border-[#417c7d] text-[#417c7d]' : 'border-transparent text-gray-500 hover:text-gray-800'"
                 @click="activeRightTab = 'comments'"
               >
-                Comments ({{ comments.length }})
+                <span>Comments ({{ comments.length }})</span>
+                <Loader2 v-if="loadingComments" class="size-3 animate-spin text-[#417c7d]" />
               </button>
               <button
                 type="button"
@@ -467,11 +552,25 @@
 
           <!-- Comments Feed Tab Content -->
           <div v-if="activeRightTab === 'comments'" class="flex-1 overflow-y-auto p-4 space-y-3.5 min-h-[300px]">
-            <template v-for="(cmt, idx) in comments" :key="idx">
+            <!-- Loading indicator when fetching comments -->
+            <div v-if="loadingComments && comments.length === 0" class="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
+              <Loader2 class="size-5 animate-spin text-[#417c7d]" />
+              <span class="text-xs text-gray-500 font-medium">Loading actual comments...</span>
+            </div>
+
+            <!-- Empty state when no comments exist -->
+            <div v-else-if="comments.length === 0" class="py-12 text-center text-gray-400 space-y-1.5 select-none">
+              <MessageSquare class="size-6 mx-auto stroke-1 text-gray-300 mb-1" />
+              <p class="text-xs font-semibold text-gray-600">No comments yet</p>
+              <p class="text-[11px] text-gray-400">Be the first to leave a comment or note.</p>
+            </div>
+
+            <!-- Comments List -->
+            <template v-else v-for="(cmt, idx) in comments" :key="cmt.id || idx">
               <!-- Regular Comment Bubble -->
-              <div v-if="!cmt.isDivider" class="space-y-1 text-xs">
+              <div v-if="!cmt.isDivider" class="space-y-1 text-xs group">
                 <div class="flex items-center justify-between text-gray-500">
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
                     <span
                       class="size-5 rounded-full text-white font-bold text-[9px] flex items-center justify-center shrink-0"
                       :class="getAvatarColor(cmt.author)"
@@ -480,9 +579,21 @@
                     </span>
                     <span class="font-bold text-gray-800 truncate max-w-[150px]">{{ cmt.author }}</span>
                   </div>
-                  <span class="text-[10px] text-gray-400">{{ cmt.time }}</span>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-gray-400">{{ cmt.time }}</span>
+                    <!-- Delete comment action -->
+                    <button
+                      v-if="cmt.can_delete || cmt.id"
+                      type="button"
+                      class="opacity-0 group-hover:opacity-100 transition p-1 rounded hover:bg-rose-50 text-gray-400 hover:text-rose-600 cursor-pointer"
+                      title="Delete comment"
+                      @click="deleteComment(cmt.id, idx)"
+                    >
+                      <Trash2 class="size-3" />
+                    </button>
+                  </div>
                 </div>
-                <div class="ml-7 p-2.5 bg-gray-50/80 hover:bg-gray-100/70 border border-gray-200/60 rounded-xl text-gray-700 leading-relaxed transition">
+                <div class="ml-7 p-2.5 bg-gray-50/80 hover:bg-gray-100/70 border border-gray-200/60 rounded-xl text-gray-700 leading-relaxed transition whitespace-pre-wrap">
                   {{ cmt.text }}
                 </div>
               </div>
@@ -550,12 +661,13 @@
               <!-- Submit Comment Button -->
               <button
                 type="button"
-                :disabled="!newComment.trim()"
+                :disabled="!newComment.trim() || submittingComment"
                 class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] disabled:opacity-40 text-white font-semibold text-xs rounded-lg shadow-xs transition cursor-pointer"
                 @click="addComment"
               >
-                <span>Comment</span>
-                <kbd class="text-[10px] bg-white/20 px-1 py-0.2 rounded font-mono">⌘↵</kbd>
+                <Loader2 v-if="submittingComment" class="size-3 animate-spin" />
+                <span>{{ submittingComment ? 'Posting...' : 'Comment' }}</span>
+                <kbd v-if="!submittingComment" class="text-[10px] bg-white/20 px-1 py-0.2 rounded font-mono">⌘↵</kbd>
               </button>
             </div>
           </div>
@@ -566,6 +678,8 @@
 </template>
 
 <script>
+import { MultiSelect } from 'frappe-ui'
+import { fetchTaskComments, addTaskComment, deleteTaskComment } from '../data/api'
 import TaskRichEditor from './TaskRichEditor.vue'
 import {
   ArrowLeft,
@@ -592,11 +706,16 @@ import {
   Smile,
   Flag,
   Search,
+  Trash2,
+  Ticket,
+  MessageSquare,
+  Loader2,
 } from 'lucide-vue-next'
 
 export default {
   name: 'TaskDetailModal',
   components: {
+    MultiSelect,
     TaskRichEditor,
     ArrowLeft,
     Cloud,
@@ -622,6 +741,10 @@ export default {
     Smile,
     Flag,
     Search,
+    Trash2,
+    Ticket,
+    MessageSquare,
+    Loader2,
   },
   props: {
     modelValue: {
@@ -653,6 +776,8 @@ export default {
   data() {
     return {
       saving: false,
+      loadingComments: false,
+      submittingComment: false,
       newComment: '',
       activeRightTab: 'comments',
       form: {
@@ -662,18 +787,24 @@ export default {
         status: 'On Hold',
         priority: 'Medium',
         project: 'Drishti Core',
-        assigned_to: 'Faijan Qureshi',
+        assignees: [],
+        assigned_to: '',
         reporter: 'Talib Sheikh',
-        pending_with: 'Talib Sheikh (Tech Lead)',
-        pending_from: 'Frontend Architecture Team',
-        guided_by: 'Sarah Chen (Principal Arch)',
-        responsible_person: 'Mukesh Khanna',
-        start_date: '2026-08-10',
-        due_date: '2026-08-10',
-        expected_resolution_date: '2026-08-14',
+        pending_with: '',
+        pending_from: 'Whitestone Vendor',
+        guided_by: 'MANSI DHARMARAJ YADAV',
+        responsible_person: 'SNEHAL YADORAO BORKAR',
+        start_date: '2026-09-05',
+        due_date: '2026-09-11',
+        expected_resolution_date: '',
         completed_on: '',
-        estimated_hours: 12,
-        logged_hours: 4.5,
+        estimated_hours: 0,
+        logged_hours: 0,
+        ticket_date: '',
+        toll_id: '',
+        ticket_id: '',
+        ticket_raised_by: '',
+        ticket_description: '',
       },
       attachments: [
         {
@@ -689,31 +820,10 @@ export default {
           url: '#',
         },
       ],
-      comments: [
-        {
-          author: 'Talib Sheikh',
-          time: '2h ago',
-          text: "Please ensure that district codes with prefix letters don't cause an ellipsis cutoff inside the select trigger wrapper.",
-        },
-        {
-          author: 'Sarah Chen',
-          time: '1h ago',
-          text: 'Approved the updated layout draft. Faijan, make sure you merge against the release/2.4 branch once done.',
-        },
-        {
-          isDivider: true,
-          text: 'STATUS CHANGED TO ON HOLD',
-        },
-        {
-          author: 'Faijan Qureshi',
-          time: '25m ago',
-          text: 'Working on the grid breakpoint now. Will ping QA once deployed to preview env.',
-        },
-      ],
+      comments: [],
       activityLog: [
         { user: 'Talib Sheikh', action: 'changed status from Open to On Hold', time: '1h ago' },
-        { user: 'Sarah Chen', action: 'added comment and approved layout', time: '1h ago' },
-        { user: 'Faijan Qureshi', action: 'assigned task to self', time: '2h ago' },
+        { user: 'Sarah Chen', action: 'approved layout changes', time: '2h ago' },
         { user: 'Talib Sheikh', action: 'created this task in Drishti Core', time: 'Yesterday' },
       ],
     }
@@ -723,28 +833,51 @@ export default {
       immediate: true,
       handler(t) {
         if (t) {
+          let assigneesList = []
+          if (Array.isArray(t.assignees)) {
+            assigneesList = [...t.assignees]
+          } else if (Array.isArray(t.table_gqbl)) {
+            assigneesList = t.table_gqbl.map((row) => row.user_id || row.employee_name).filter(Boolean)
+          } else if (typeof t.assigned_to === 'string' && t.assigned_to.trim()) {
+            assigneesList = t.assigned_to.split(',').map((s) => s.trim()).filter(Boolean)
+          }
+
           this.form = {
-            id: t.id || 'TASK-135459',
-            title: t.title || 'Display Branch and District in a Single Row in the New UI',
+            id: t.id || '',
+            title: t.title || '',
             description: t.description || this.getDefaultDescription(),
-            status: t.status || 'On Hold',
+            status: t.status || 'Open',
             priority: t.priority || 'Medium',
             project: t.project || 'Drishti Core',
-            assigned_to: t.assigned_to || 'Faijan Qureshi',
-            reporter: t.reporter || 'Talib Sheikh',
-            pending_with: t.pending_with || 'Talib Sheikh (Tech Lead)',
-            pending_from: t.pending_from || 'Frontend Architecture Team',
-            guided_by: t.guided_by || 'Sarah Chen (Principal Arch)',
-            responsible_person: t.responsible_person || 'Mukesh Khanna',
-            start_date: t.start_date || '2026-08-10',
-            due_date: t.due_date || '2026-08-10',
-            expected_resolution_date: t.expected_resolution_date || '2026-08-14',
+            assignees: assigneesList,
+            assigned_to: t.assigned_to || '',
+            reporter: t.reporter || t.owner || 'Talib Sheikh',
+            pending_with: t.pending_with || '',
+            pending_from: t.pending_from || 'Whitestone Vendor',
+            guided_by: t.guided_by || 'MANSI DHARMARAJ YADAV',
+            responsible_person: t.responsible_person || 'SNEHAL YADORAO BORKAR',
+            start_date: t.start_date || '2026-09-05',
+            due_date: t.due_date || t.due || '2026-09-11',
+            expected_resolution_date: t.expected_resolution_date || '',
             completed_on: t.completed_on || '',
-            estimated_hours: t.estimated_hours || 12,
-            logged_hours: t.logged_hours || 4.5,
+            estimated_hours: t.estimated_hours || 0,
+            logged_hours: t.logged_hours || 0,
+            ticket_date: t.ticket_date || '',
+            toll_id: t.toll_id || '',
+            ticket_id: t.ticket_id || '',
+            ticket_raised_by: t.ticket_raised_by || '',
+            ticket_description: t.ticket_description || '',
           }
+
           if (Array.isArray(t.comments) && t.comments.length > 0) {
             this.comments = [...t.comments]
+          } else {
+            this.comments = []
+          }
+
+          // Fetch fresh real comments from Frappe Comment doctype
+          if (t.id && t.id !== 'new') {
+            this.loadActualComments(t.id)
           }
         }
       },
@@ -761,11 +894,21 @@ export default {
     window.removeEventListener('keydown', this.handleKeyDown)
   },
   computed: {
+    assigneeOptions() {
+      const list = Array.isArray(this.people) ? this.people : []
+      return list.map((p) => ({
+        value: p.email || p.name,
+        label: p.name || p.email,
+      }))
+    },
     isOverdue() {
-      return this.form.status === 'Overdue' || (this.form.due_date && this.form.due_date <= '2026-08-10')
+      if (this.form.status === 'Overdue') return true
+      if (!this.form.due_date) return false
+      const today = new Date().toISOString().slice(0, 10)
+      return this.form.due_date < today && this.form.status !== 'Completed' && this.form.status !== 'Cancelled'
     },
     updatedTimeAgo() {
-      return '28 mins ago'
+      return 'Just now'
     },
     displayStartDate: {
       get() {
@@ -791,8 +934,52 @@ export default {
         this.form.expected_resolution_date = this.parseDateInput(val)
       },
     },
+    displayCompletedOn: {
+      get() {
+        return this.formatDateDisplay(this.form.completed_on)
+      },
+      set(val) {
+        this.form.completed_on = this.parseDateInput(val)
+      },
+    },
+    displayTicketDate: {
+      get() {
+        return this.formatDateDisplay(this.form.ticket_date)
+      },
+      set(val) {
+        this.form.ticket_date = this.parseDateInput(val)
+      },
+    },
   },
   methods: {
+    getAssigneeValue(assignee) {
+      if (!assignee) return ''
+      return typeof assignee === 'object' ? (assignee.value || assignee.name || assignee.email) : assignee
+    },
+    getAssigneeName(assignee) {
+      const val = this.getAssigneeValue(assignee)
+      if (!val) return ''
+      const p = (this.people || []).find((x) => x.email === val || x.name === val)
+      return p ? (p.name || p.email) : val
+    },
+    removeAssignee(assignee) {
+      const targetVal = this.getAssigneeValue(assignee)
+      this.form.assignees = this.form.assignees.filter((a) => this.getAssigneeValue(a) !== targetVal)
+    },
+    async loadActualComments(taskId) {
+      if (!taskId) return
+      this.loadingComments = true
+      try {
+        const comments = await fetchTaskComments(taskId)
+        if (Array.isArray(comments) && comments.length > 0) {
+          this.comments = comments
+        }
+      } catch (err) {
+        console.warn('Failed to load actual comments:', err)
+      } finally {
+        this.loadingComments = false
+      }
+    },
     getDefaultDescription() {
       return `<p>During the client review meeting with the Regional Operations Directorate, it was reported that having <span class="px-1.5 py-0.5 rounded bg-[#417c7d]/10 text-[#417c7d] font-semibold">Branch Name</span> and <span class="px-1.5 py-0.5 rounded bg-[#417c7d]/10 text-[#417c7d] font-semibold">District Code</span> on stacked separate lines causes excessive vertical scrolling on 1080p dashboard terminals.</p>
 <p><strong>Proposed Layout Modification:</strong></p>
@@ -859,19 +1046,53 @@ export default {
         this.save()
       }
     },
-    addComment() {
-      if (!this.newComment.trim()) return
-      this.comments.push({
-        author: 'Administrator',
-        time: 'Just now',
-        text: this.newComment.trim(),
-      })
-      this.activityLog.unshift({
-        user: 'Administrator',
-        action: 'added a new comment',
-        time: 'Just now',
-      })
-      this.newComment = ''
+    async addComment() {
+      const text = this.newComment.trim()
+      if (!text || this.submittingComment) return
+
+      this.submittingComment = true
+      try {
+        let added = null
+        if (this.form.id && this.form.id !== 'new') {
+          added = await addTaskComment(this.form.id, text)
+        }
+        if (!added) {
+          added = {
+            id: `temp-${Date.now()}`,
+            author: 'You',
+            time: 'Just now',
+            text: text,
+            can_delete: true,
+          }
+        }
+        this.comments.push(added)
+        this.activityLog.unshift({
+          user: added.author || 'You',
+          action: 'added a new comment',
+          time: 'Just now',
+        })
+        this.newComment = ''
+      } catch (e) {
+        console.error('Error posting comment:', e)
+      } finally {
+        this.submittingComment = false
+      }
+    },
+    async deleteComment(commentId, index) {
+      if (!confirm('Are you sure you want to delete this comment?')) return
+      try {
+        if (commentId && !String(commentId).startsWith('temp-')) {
+          await deleteTaskComment(commentId)
+        }
+        this.comments.splice(index, 1)
+        this.activityLog.unshift({
+          user: 'You',
+          action: 'deleted a comment',
+          time: 'Just now',
+        })
+      } catch (e) {
+        console.error('Error deleting comment:', e)
+      }
     },
     insertMentionShortcut() {
       this.newComment += ' @'
@@ -892,9 +1113,16 @@ export default {
     },
     save() {
       this.saving = true
+      const assigneeIds = (this.form.assignees || []).map((a) => this.getAssigneeValue(a)).filter(Boolean)
       const updated = {
         ...this.task,
         ...this.form,
+        assignees: assigneeIds,
+        assigned_to: assigneeIds.map((id) => this.getAssigneeName(id)).join(', '),
+        table_gqbl: assigneeIds.map((id) => ({
+          user_id: id,
+          employee_name: this.getAssigneeName(id),
+        })),
         comments: this.comments,
         attachments: this.attachments,
       }

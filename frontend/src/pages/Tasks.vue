@@ -809,7 +809,10 @@ onMounted(() => {
           <!-- Add Task Button (in Task view) -->
           <Button
             v-if="activeSection === 'Task'"
+            variant="solid"
+            theme="gray"
             label="Add task"
+            class="bg-gray-900 hover:bg-black text-white"
             @click="createModalOpen = true"
           >
             <template #prefix>

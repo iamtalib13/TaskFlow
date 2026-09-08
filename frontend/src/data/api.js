@@ -16,6 +16,8 @@ export const mockBootstrap = {
     { name: 'Talib Sheikh', email: 'talibsheikh16@gmail.com', initials: 'TS', color: 'bg-blue-500' },
     { name: 'Sarah Chen', email: 'sarah.chen@example.com', initials: 'SC', color: 'bg-purple-500' },
     { name: 'Marcus Brody', email: 'marcus.brody@example.com', initials: 'MB', color: 'bg-emerald-500' },
+    { name: 'SNEHAL YADORAO BORKAR', email: 'snehal.borkar@example.com', initials: 'SY', color: 'bg-teal-600' },
+    { name: 'MANSI DHARMARAJ YADAV', email: 'mansi.yadav@example.com', initials: 'MD', color: 'bg-indigo-600' },
     { name: 'Elena Rostova', email: 'elena.rostova@example.com', initials: 'ER', color: 'bg-amber-500' },
     { name: 'Devon Vance', email: 'devon.vance@example.com', initials: 'DV', color: 'bg-rose-500' },
   ],
@@ -328,3 +330,117 @@ export async function saveTask(taskData) {
 
   return { ok: true, task: taskData }
 }
+
+// Fetch actual comments for a task
+export async function fetchTaskComments(taskId) {
+  if (!taskId) return []
+  if (typeof window !== 'undefined' && window.frappe && window.frappe.call) {
+    try {
+      const res = await window.frappe.call({
+        method: 'taskflow.taskflow.api.spa.get_task_comments',
+        args: { task_id: taskId },
+      })
+      if (res && Array.isArray(res.message)) return res.message
+    } catch (e) {
+      console.warn('Failed to fetch comments via frappe.call', e)
+    }
+  }
+
+  try {
+    const csrfToken = window.csrf_token || ''
+    const resp = await fetch(`/api/method/taskflow.taskflow.api.spa.get_task_comments?task_id=${encodeURIComponent(taskId)}`, {
+      headers: {
+        'Accept': 'application/json',
+        'X-Frappe-CSRF-Token': csrfToken,
+      },
+    })
+    if (resp.ok) {
+      const json = await resp.json()
+      if (json && Array.isArray(json.message)) return json.message
+    }
+  } catch (e) {
+    // Offline
+  }
+  return []
+}
+
+// Add a real comment to a task
+export async function addTaskComment(taskId, text) {
+  if (!taskId || !text) return null
+  if (typeof window !== 'undefined' && window.frappe && window.frappe.call) {
+    try {
+      const res = await window.frappe.call({
+        method: 'taskflow.taskflow.api.spa.add_task_comment',
+        args: { task_id: taskId, text },
+      })
+      if (res && res.message) return res.message
+    } catch (e) {
+      console.error('Failed to add comment via frappe.call', e)
+    }
+  }
+
+  try {
+    const csrfToken = window.csrf_token || ''
+    const resp = await fetch('/api/method/taskflow.taskflow.api.spa.add_task_comment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Frappe-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify({ task_id: taskId, text }),
+    })
+    if (resp.ok) {
+      const json = await resp.json()
+      return json.message
+    }
+  } catch (e) {
+    // Offline
+  }
+
+  return {
+    id: `temp-${Date.now()}`,
+    author: 'Administrator',
+    time: 'Just now',
+    text,
+    can_delete: true,
+  }
+}
+
+// Delete a comment
+export async function deleteTaskComment(commentId) {
+  if (!commentId) return false
+  if (typeof window !== 'undefined' && window.frappe && window.frappe.call) {
+    try {
+      const res = await window.frappe.call({
+        method: 'taskflow.taskflow.api.spa.delete_task_comment',
+        args: { comment_id: commentId },
+      })
+      if (res && res.message) return res.message.success
+    } catch (e) {
+      console.error('Failed to delete comment via frappe.call', e)
+    }
+  }
+
+  try {
+    const csrfToken = window.csrf_token || ''
+    const resp = await fetch('/api/method/taskflow.taskflow.api.spa.delete_task_comment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Frappe-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify({ comment_id: commentId }),
+    })
+    if (resp.ok) {
+      const json = await resp.json()
+      return json.message && json.message.success
+    }
+  } catch (e) {
+    // Offline
+  }
+
+  return true
+}
+
