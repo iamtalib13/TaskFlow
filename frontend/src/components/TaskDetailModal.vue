@@ -165,7 +165,7 @@
       <!-- 3-COLUMN MAIN BODY LAYOUT (Clean flat layout separated by Frappe UI Dividers) -->
       <div class="flex-1 min-h-0 flex flex-col xl:flex-row overflow-hidden bg-white">
         <!-- COLUMN 1: LEFT SIDEBAR (Assignment, Schedule & Ticket) -->
-        <aside class="w-full xl:w-[280px] 2xl:w-[300px] shrink-0 overflow-y-auto p-4 space-y-4 text-xs select-none border-b xl:border-b-0 xl:border-r border-gray-200">
+        <aside class="w-full xl:w-[320px] 2xl:w-[340px] shrink-0 overflow-y-auto p-4 space-y-4 text-xs select-none border-b xl:border-b-0 xl:border-r border-gray-200">
           <!-- Section 1: ASSIGNMENT -->
           <div class="space-y-3">
             <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
@@ -329,122 +329,125 @@
               <Calendar class="size-3.5 text-gray-400" />
             </div>
 
-            <!-- Start Date -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Start Date</label>
-              <DatePicker
-                v-model="form.start_date"
-                format="DD-MM-YYYY"
-                placeholder="DD-MM-YYYY"
-                size="sm"
-                variant="outline"
-                class="w-full"
-              >
-                <template #prefix>
-                  <Calendar class="size-3.5 text-gray-400" />
-                </template>
-                <template #actions="{ setDate, close }">
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 0, 'day', close)"
-                  >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 1, 'day', close)"
-                  >
-                    Tomorrow
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 7, 'day', close)"
-                  >
-                    One Week
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 15, 'day', close)"
-                  >
-                    15 Days
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 1, 'month', close)"
-                  >
-                    1 Month
-                  </button>
-                </template>
-              </DatePicker>
-            </div>
-
-            <!-- Due Date -->
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <label class="font-medium text-[11px] text-gray-700">Due Date</label>
-                <span
-                  v-if="form.due_date"
-                  class="px-1.5 py-0.2 rounded text-[10px] font-bold border tracking-wide uppercase"
-                  :class="isOverdue ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+            <!-- Start Date & Due Date (Side by Side) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <!-- Start Date -->
+              <div>
+                <label class="block font-medium text-[11px] text-gray-700 mb-1">Start Date</label>
+                <DatePicker
+                  v-model="form.start_date"
+                  format="DD-MM-YYYY"
+                  placeholder="DD-MM-YYYY"
+                  size="sm"
+                  variant="outline"
+                  class="w-full"
                 >
-                  {{ isOverdue ? 'OVERDUE' : 'On Time' }}
-                </span>
+                  <template #prefix>
+                    <Calendar class="size-3.5 text-gray-400" />
+                  </template>
+                  <template #actions="{ setDate, close }">
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 0, 'day', close)"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 1, 'day', close)"
+                    >
+                      Tomorrow
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 7, 'day', close)"
+                    >
+                      One Week
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 15, 'day', close)"
+                    >
+                      15 Days
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 1, 'month', close)"
+                    >
+                      1 Month
+                    </button>
+                  </template>
+                </DatePicker>
               </div>
-              <DatePicker
-                v-model="form.due_date"
-                format="DD-MM-YYYY"
-                placeholder="DD-MM-YYYY"
-                size="sm"
-                variant="outline"
-                class="w-full"
-              >
-                <template #prefix>
-                  <AlertTriangle v-if="isOverdue" class="size-3.5 text-rose-500" />
-                  <Calendar v-else class="size-3.5 text-gray-400" />
-                </template>
-                <template #actions="{ setDate, close }">
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 0, 'day', close)"
+
+              <!-- Due Date -->
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="font-medium text-[11px] text-gray-700 truncate">Due Date</label>
+                  <span
+                    v-if="form.due_date"
+                    class="px-1 py-0.2 rounded text-[9px] font-bold border tracking-wide uppercase shrink-0"
+                    :class="isOverdue ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
                   >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 1, 'day', close)"
-                  >
-                    Tomorrow
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 7, 'day', close)"
-                  >
-                    One Week
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 15, 'day', close)"
-                  >
-                    15 Days
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 1, 'month', close)"
-                  >
-                    1 Month
-                  </button>
-                </template>
-              </DatePicker>
+                    {{ isOverdue ? 'OVERDUE' : 'On Time' }}
+                  </span>
+                </div>
+                <DatePicker
+                  v-model="form.due_date"
+                  format="DD-MM-YYYY"
+                  placeholder="DD-MM-YYYY"
+                  size="sm"
+                  variant="outline"
+                  class="w-full"
+                >
+                  <template #prefix>
+                    <AlertTriangle v-if="isOverdue" class="size-3.5 text-rose-500" />
+                    <Calendar v-else class="size-3.5 text-gray-400" />
+                  </template>
+                  <template #actions="{ setDate, close }">
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 0, 'day', close)"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 1, 'day', close)"
+                    >
+                      Tomorrow
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 7, 'day', close)"
+                    >
+                      One Week
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 15, 'day', close)"
+                    >
+                      15 Days
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 1, 'month', close)"
+                    >
+                      1 Month
+                    </button>
+                  </template>
+                </DatePicker>
+              </div>
             </div>
 
             <!-- Expected Resolution Date -->
