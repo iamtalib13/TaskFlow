@@ -450,112 +450,115 @@
               </div>
             </div>
 
-            <!-- Expected Resolution Date -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Expected Resolution Date</label>
-              <DatePicker
-                v-model="form.expected_resolution_date"
-                format="DD-MM-YYYY"
-                placeholder="DD-MM-YYYY"
-                size="sm"
-                variant="outline"
-                class="w-full"
-              >
-                <template #prefix>
-                  <Calendar class="size-3.5 text-gray-400" />
-                </template>
-                <template #actions="{ setDate, close }">
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 0, 'day', close)"
-                  >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 1, 'day', close)"
-                  >
-                    Tomorrow
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 7, 'day', close)"
-                  >
-                    One Week
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 15, 'day', close)"
-                  >
-                    15 Days
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 1, 'month', close)"
-                  >
-                    1 Month
-                  </button>
-                </template>
-              </DatePicker>
-            </div>
+            <!-- Estimated Date & Completed Date (Side by Side) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <!-- Estimated Date (Expected Resolution Date) -->
+              <div>
+                <label class="block font-medium text-[11px] text-gray-700 mb-1 truncate" title="Expected Resolution Date">Estimated Date</label>
+                <DatePicker
+                  v-model="form.expected_resolution_date"
+                  format="DD-MM-YYYY"
+                  placeholder="DD-MM-YYYY"
+                  size="sm"
+                  variant="outline"
+                  class="w-full"
+                >
+                  <template #prefix>
+                    <Calendar class="size-3.5 text-gray-400" />
+                  </template>
+                  <template #actions="{ setDate, close }">
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 0, 'day', close)"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 1, 'day', close)"
+                    >
+                      Tomorrow
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 7, 'day', close)"
+                    >
+                      One Week
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 15, 'day', close)"
+                    >
+                      15 Days
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 1, 'month', close)"
+                    >
+                      1 Month
+                    </button>
+                  </template>
+                </DatePicker>
+              </div>
 
-            <!-- Completed On -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Completed On</label>
-              <DatePicker
-                v-model="form.completed_on"
-                format="DD-MM-YYYY"
-                placeholder="DD-MM-YYYY"
-                size="sm"
-                variant="outline"
-                class="w-full"
-              >
-                <template #prefix>
-                  <Calendar class="size-3.5 text-gray-400" />
-                </template>
-                <template #actions="{ setDate, close }">
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 0, 'day', close)"
-                  >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 1, 'day', close)"
-                  >
-                    Tomorrow
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 7, 'day', close)"
-                  >
-                    One Week
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 15, 'day', close)"
-                  >
-                    15 Days
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 1, 'month', close)"
-                  >
-                    1 Month
-                  </button>
-                </template>
-              </DatePicker>
+              <!-- Completed Date (Completed On) -->
+              <div>
+                <label class="block font-medium text-[11px] text-gray-700 mb-1 truncate" title="Completed On">Completed Date</label>
+                <DatePicker
+                  v-model="form.completed_on"
+                  format="DD-MM-YYYY"
+                  placeholder="DD-MM-YYYY"
+                  size="sm"
+                  variant="outline"
+                  class="w-full"
+                >
+                  <template #prefix>
+                    <Calendar class="size-3.5 text-gray-400" />
+                  </template>
+                  <template #actions="{ setDate, close }">
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 0, 'day', close)"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 1, 'day', close)"
+                    >
+                      Tomorrow
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 7, 'day', close)"
+                    >
+                      One Week
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 15, 'day', close)"
+                    >
+                      15 Days
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 1, 'month', close)"
+                    >
+                      1 Month
+                    </button>
+                  </template>
+                </DatePicker>
+              </div>
             </div>
 
             <!-- Time Estimate -->
