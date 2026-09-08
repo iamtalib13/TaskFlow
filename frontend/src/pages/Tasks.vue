@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import {
   Avatar,
   Badge,
@@ -29,6 +29,30 @@ import {
   TextInput,
   Tooltip,
 } from 'frappe-ui'
+import {
+  CheckSquare,
+  Clock,
+  FolderKanban,
+  Users,
+  RefreshCw,
+  Plus,
+  PanelLeftOpen,
+  PanelLeftClose,
+  Star,
+  ChevronUp,
+  Folder,
+  SlidersHorizontal,
+  Bell,
+  User,
+  Settings,
+  LogOut,
+  Link as LinkIcon,
+  Check,
+  Archive,
+  UserPlus,
+  MoreHorizontal,
+  LayoutDashboard,
+} from 'lucide-vue-next'
 
 import CommonListView from '@/components/CommonListView.vue'
 import TaskDetailModal from '@/components/TaskDetailModal.vue'
@@ -48,22 +72,21 @@ const activeSection = ref('Task')
 const isSidebarCollapsed = ref(false)
 
 const navItems = computed(() => [
-  { id: 'Task', label: 'Task', icon: 'lucide-check-square', badge: visibleTasks.value.length },
-  { id: 'Timesheet', label: 'Timesheet', icon: 'lucide-clock', badge: timesheetData.value.length },
-  { id: 'Project', label: 'Project', icon: 'lucide-folder-kanban', badge: projectsData.value.length },
-  { id: 'Team', label: 'Team', icon: 'lucide-users', badge: teamData.value.length },
+  { id: 'Task', label: 'Task', icon: CheckSquare, badge: visibleTasks.value.length },
+  { id: 'Timesheet', label: 'Timesheet', icon: Clock, badge: timesheetData.value.length },
+  { id: 'Project', label: 'Project', icon: FolderKanban, badge: projectsData.value.length },
+  { id: 'Team', label: 'Team', icon: Users, badge: teamData.value.length },
 ])
 
 // User Menu
-const showSettings = ref(false)
 const userMenu = [
-  { label: 'My profile', icon: 'lucide-user' },
+  { label: 'My profile', icon: User },
   {
     label: 'Settings',
-    icon: 'lucide-settings',
+    icon: Settings,
     onClick: () => (showSettings.value = true),
   },
-  { label: 'Log out', icon: 'lucide-log-out' },
+  { label: 'Log out', icon: LogOut },
 ]
 
 // Active status tab filter
@@ -95,10 +118,10 @@ const digestFrequency = ref('Weekly')
 const digestDay = ref('Monday')
 
 const spaceActions = [
-  { label: 'Copy link', icon: 'lucide-link' },
-  { label: 'Mark all as read', icon: 'lucide-check' },
-  { label: 'Manage access', icon: 'lucide-users' },
-  { label: 'Archive', icon: 'lucide-archive' },
+  { label: 'Copy link', icon: LinkIcon },
+  { label: 'Mark all as read', icon: Check },
+  { label: 'Manage access', icon: Users },
+  { label: 'Archive', icon: Archive },
 ]
 
 // Members list in Settings & Avatar lookup
@@ -160,8 +183,7 @@ const tableColumns = [
 ]
 
 const selectedRowKeys = ref([])
-const tablePage = ref(1)
-const tablePageSize = ref(20)
+const tasksDisplayLimit = ref(20)
 const sortKey = ref('modified')
 const sortOrder = ref('desc')
 
@@ -169,6 +191,10 @@ function handleSortChange({ key, order }) {
   sortKey.value = key
   sortOrder.value = order
 }
+
+watch(statusTab, () => {
+  tasksDisplayLimit.value = 20
+})
 
 function formatPrettyDate(row) {
   if (row?.modified_pretty) return row.modified_pretty
@@ -325,15 +351,22 @@ const visibleTasks = computed(() => {
 })
 
 const paginationInfo = computed(() => ({
-  page: tablePage.value,
-  pageSize: tablePageSize.value,
+  loaded: paginatedTableTasks.value.length,
   total: visibleTasks.value.length,
+  step: 20,
 }))
 
 const paginatedTableTasks = computed(() => {
-  const start = (tablePage.value - 1) * tablePageSize.value
-  return visibleTasks.value.slice(start, start + tablePageSize.value)
+  return visibleTasks.value.slice(0, tasksDisplayLimit.value)
 })
+
+function handleLoadMore() {
+  tasksDisplayLimit.value += 20
+}
+
+function handleLoadAll() {
+  tasksDisplayLimit.value = visibleTasks.value.length
+}
 
 // --- 2. Project List View State & Columns ---
 const selectedProjectKeys = ref([])
@@ -536,14 +569,12 @@ onMounted(() => {
             <!-- Collapse Toggle Button -->
             <button
               type="button"
-              class="flex size-7 items-center justify-center rounded-md text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8 transition shrink-0"
+              class="flex size-7 items-center justify-center rounded-md text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8 transition shrink-0 cursor-pointer"
               :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
               @click="isSidebarCollapsed = !isSidebarCollapsed"
             >
-              <span
-                class="size-4 block"
-                :class="isSidebarCollapsed ? 'lucide-panel-left-open' : 'lucide-panel-left-close'"
-              />
+              <PanelLeftOpen v-if="isSidebarCollapsed" class="size-4" />
+              <PanelLeftClose v-else class="size-4" />
             </button>
           </div>
 
@@ -554,16 +585,33 @@ onMounted(() => {
                 v-for="item in navItems"
                 :key="item.id"
                 :active="activeSection === item.id"
+                :icon="item.icon"
+                :class="[
+                  '!h-9 cursor-pointer transition-all duration-150 mb-1 rounded-lg',
+                  activeSection === item.id
+                    ? '!bg-gray-100 !text-gray-950 font-semibold shadow-xs border border-gray-200/80'
+                    : 'text-gray-600 hover:!bg-gray-50 hover:!text-gray-900 border border-transparent'
+                ]"
                 @click="activeSection = item.id"
               >
                 <template #prefix>
-                  <span :class="[item.icon, 'size-4 shrink-0']" aria-hidden="true" />
+                  <component
+                    :is="item.icon"
+                    class="size-4 shrink-0 transition-colors"
+                    :class="activeSection === item.id ? 'text-gray-950 stroke-[2.2]' : 'text-gray-500'"
+                  />
                 </template>
-                <span class="flex-1 truncate text-sm font-medium">{{ item.label }}</span>
+                <span
+                  class="flex-1 truncate text-sm"
+                  :class="activeSection === item.id ? 'font-semibold text-gray-950' : 'font-medium text-gray-600'"
+                >
+                  {{ item.label }}
+                </span>
                 <template #suffix>
                   <span
-                    v-if="!isSidebarCollapsed && item.badge"
-                    class="mr-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-surface-gray-2 text-ink-gray-6"
+                    v-if="!isSidebarCollapsed && item.badge !== undefined"
+                    class="mr-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors"
+                    :class="activeSection === item.id ? 'bg-gray-200 text-gray-900 font-bold' : 'bg-gray-100 text-gray-500'"
                   >
                     {{ item.badge }}
                   </span>
@@ -578,7 +626,7 @@ onMounted(() => {
               <template #trigger="{ open }">
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2.5 rounded-lg p-1.5 hover:bg-surface-gray-1 transition text-left"
+                  class="flex w-full items-center gap-2.5 rounded-lg p-1.5 hover:bg-surface-gray-1 transition text-left cursor-pointer"
                   :class="{ 'justify-center': isSidebarCollapsed }"
                 >
                   <Avatar
@@ -592,9 +640,9 @@ onMounted(() => {
                     <p class="text-xs font-semibold text-ink-gray-9 truncate">{{ fullName }}</p>
                     <p class="text-[11px] text-ink-gray-5 truncate">Administrator</p>
                   </div>
-                  <span
+                  <ChevronUp
                     v-if="!isSidebarCollapsed"
-                    class="lucide-chevron-up size-3.5 text-ink-gray-4 shrink-0"
+                    class="size-3.5 text-ink-gray-4 shrink-0"
                   />
                 </button>
               </template>
@@ -609,10 +657,14 @@ onMounted(() => {
           <!-- Sidebar Toggle Button in Header -->
           <Button
             variant="ghost"
-            :icon="isSidebarCollapsed ? 'lucide-panel-left-open' : 'lucide-panel-left-close'"
             :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
             @click="isSidebarCollapsed = !isSidebarCollapsed"
-          />
+          >
+            <template #icon>
+              <PanelLeftOpen v-if="isSidebarCollapsed" class="size-4 text-gray-600" />
+              <PanelLeftClose v-else class="size-4 text-gray-600" />
+            </template>
+          </Button>
           <PageHeaderTitle>{{ activeSection }}</PageHeaderTitle>
         </div>
 
@@ -621,17 +673,27 @@ onMounted(() => {
           <Button
             v-if="activeSection === 'Task'"
             label="Add task"
-            icon-left="lucide-plus"
             @click="createModalOpen = true"
-          />
+          >
+            <template #prefix>
+              <Plus class="size-4 mr-0.5" />
+            </template>
+          </Button>
 
           <!-- Refresh Button -->
           <Button
             variant="ghost"
-            icon="lucide-refresh-cw"
+            title="Refresh"
             :loading="loading"
             @click="loadData"
-          />
+          >
+            <template #icon>
+              <RefreshCw
+                class="size-4 text-gray-700 hover:text-gray-950 transition-colors"
+                :class="{ 'animate-spin': loading }"
+              />
+            </template>
+          </Button>
         </div>
       </PageHeader>
 
@@ -663,8 +725,8 @@ onMounted(() => {
               :row-class="getTaskRowClass"
               @row-click="openDetail"
               @sort-change="handleSortChange"
-              @page-change="(p) => (tablePage = p)"
-              @page-size-change="(s) => { tablePageSize = s; tablePage = 1; }"
+              @load-more="handleLoadMore"
+              @load-all="handleLoadAll"
             >
               <template #cell-id="{ row }">
                 <div class="flex items-center gap-1.5">
@@ -674,9 +736,9 @@ onMounted(() => {
                     title="Star task"
                     @click.stop="toggleStar(row)"
                   >
-                    <span
+                    <Star
                       class="size-3.5 block"
-                      :class="row.starred ? 'lucide-star fill-amber-500 text-amber-500' : 'lucide-star'"
+                      :class="row.starred ? 'fill-amber-500 text-amber-500' : 'text-gray-400 hover:text-amber-500'"
                     />
                   </button>
                   <span
@@ -847,7 +909,7 @@ onMounted(() => {
           >
             <template #cell-name="{ row }">
               <div class="flex items-center gap-2">
-                <span class="lucide-folder size-4 text-blue-600 shrink-0" aria-hidden="true" />
+                <Folder class="size-4 text-blue-600 shrink-0" />
                 <span class="font-semibold text-ink-gray-9">{{ row.name }}</span>
               </div>
             </template>
@@ -960,13 +1022,13 @@ onMounted(() => {
           </SettingsNavItem>
           <SettingsNavItem value="preferences">
             <template #prefix>
-              <span class="lucide-sliders-horizontal size-4 shrink-0 text-ink-gray-6" />
+              <SlidersHorizontal class="size-4 shrink-0 text-ink-gray-6" />
             </template>
             Preferences
           </SettingsNavItem>
           <SettingsNavItem value="notifications">
             <template #prefix>
-              <span class="lucide-bell size-4 shrink-0 text-ink-gray-6" />
+              <Bell class="size-4 shrink-0 text-ink-gray-6" />
             </template>
             Notifications
           </SettingsNavItem>
@@ -975,7 +1037,7 @@ onMounted(() => {
         <SettingsNavGroup label="Administration">
           <SettingsNavItem value="users">
             <template #prefix>
-              <span class="lucide-users size-4 shrink-0 text-ink-gray-6" />
+              <Users class="size-4 shrink-0 text-ink-gray-6" />
             </template>
             Users & Roles
           </SettingsNavItem>
@@ -1017,8 +1079,14 @@ onMounted(() => {
                     description="View your public page or customize its card layout"
                   >
                     <div class="flex gap-2">
-                      <Button icon-left="lucide-user">View</Button>
-                      <Button icon-left="lucide-layout-dashboard">Customize</Button>
+                      <Button>
+                        <template #prefix><User class="size-4 mr-1" /></template>
+                        View
+                      </Button>
+                      <Button>
+                        <template #prefix><LayoutDashboard class="size-4 mr-1" /></template>
+                        Customize
+                      </Button>
                     </div>
                   </SettingsRow>
                   <SettingsRow
@@ -1144,7 +1212,10 @@ onMounted(() => {
         <SettingsPanel value="users">
           <SettingsHeader title="Users">
             <template #actions>
-              <Button icon-left="lucide-user-plus">Invite</Button>
+              <Button>
+                <template #prefix><UserPlus class="size-4 mr-1" /></template>
+                Invite
+              </Button>
             </template>
           </SettingsHeader>
           <SettingsBody>
@@ -1163,7 +1234,9 @@ onMounted(() => {
                 </div>
                 <div class="flex items-center gap-3">
                   <span class="text-sm text-ink-gray-7">{{ member.role }}</span>
-                  <Button variant="ghost" icon="lucide-ellipsis" label="Member options" />
+                  <Button variant="ghost" label="Member options">
+                    <template #icon><MoreHorizontal class="size-4" /></template>
+                  </Button>
                 </div>
               </div>
             </div>
