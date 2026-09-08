@@ -93,44 +93,48 @@
           </div>
 
           <!-- Action Buttons -->
-          <div class="flex items-center gap-1.5 pb-0.5">
+          <div class="flex items-center gap-2 pb-0.5">
             <!-- Delete Task Button -->
-            <button
+            <Button
               v-if="form.id"
-              type="button"
+              variant="subtle"
+              theme="red"
+              size="sm"
+              :loading="deleting"
               :disabled="deleting || saving"
-              class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-200 transition cursor-pointer disabled:opacity-40"
               title="Delete Task"
               @click="confirmDelete"
             >
-              <span v-if="deleting" class="size-3.5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></span>
-              <Trash2 v-else class="size-3.5" />
-              <span class="hidden sm:inline">{{ deleting ? 'Deleting...' : 'Delete' }}</span>
-            </button>
+              <template #prefix>
+                <Trash2 v-if="!deleting" class="size-3.5" />
+              </template>
+              Delete
+            </Button>
 
             <!-- Cancel Button -->
-            <button
-              type="button"
+            <Button
+              size="sm"
               :disabled="saving || deleting"
-              class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition cursor-pointer disabled:opacity-50"
               @click="close"
             >
               Cancel
-            </button>
+            </Button>
 
             <!-- Save Task Button -->
-            <button
-              type="button"
+            <Button
+              variant="solid"
+              size="sm"
+              :loading="saving"
               :disabled="saving || deleting"
-              class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
               title="Save Task (⌘S)"
               @click="save"
             >
-              <Check v-if="!saving" class="size-3.5 stroke-[2.5]" />
-              <span v-else class="size-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              <span>{{ saving ? 'Saving...' : 'Save Task' }}</span>
-              <kbd class="ml-0.5 px-1 py-0.2 rounded text-[10px] bg-white/20 font-mono font-normal">⌘S</kbd>
-            </button>
+              <template #prefix>
+                <Check v-if="!saving" class="size-3.5 stroke-[2.5]" />
+              </template>
+              <span>Save Task</span>
+              <kbd class="ml-1 px-1 py-0.2 rounded text-[10px] bg-white/20 font-mono font-normal">⌘S</kbd>
+            </Button>
           </div>
         </div>
       </header>
@@ -1121,7 +1125,7 @@
 </template>
 
 <script>
-import { MultiSelect, DatePicker, toast } from 'frappe-ui'
+import { MultiSelect, DatePicker, Button, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
 import {
   fetchTaskComments,
@@ -1178,6 +1182,7 @@ import {
 export default {
   name: 'TaskDetailModal',
   components: {
+    Button,
     DatePicker,
     MultiSelect,
     TaskRichEditor,
