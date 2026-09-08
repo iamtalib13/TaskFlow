@@ -155,14 +155,14 @@ const getAssignee = (name) => {
 
 // Table View Columns (clean list view: ID, TASK, PROJECT, STATUS, PRIORITY, ASSIGNED TO, DUE DATE, MODIFIED)
 const tableColumns = [
-  { key: 'id', label: 'ID', width: '120px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'title', label: 'TASK', width: 'auto', minWidth: '220px', sortable: true, visible: true },
-  { key: 'project', label: 'PROJECT', width: '150px', minWidth: '130px', sortable: true, visible: true },
-  { key: 'status', label: 'STATUS', width: '130px', minWidth: '110px', sortable: true, visible: true },
-  { key: 'priority', label: 'PRIORITY', width: '110px', minWidth: '95px', sortable: true, visible: true },
-  { key: 'assigned_to', label: 'ASSIGNED TO', width: '180px', minWidth: '150px', sortable: true, visible: true },
-  { key: 'due_date', label: 'DUE DATE', width: '120px', minWidth: '105px', sortable: true, visible: true },
-  { key: 'modified', label: 'MODIFIED', width: '130px', minWidth: '110px', sortable: true, visible: true },
+  { key: 'id', label: 'ID', width: '110px', minWidth: '95px', sortable: true, visible: true },
+  { key: 'title', label: 'TASK', width: '150px', minWidth: '120px', sortable: true, visible: true },
+  { key: 'project', label: 'PROJECT', width: '140px', minWidth: '120px', sortable: true, visible: true },
+  { key: 'status', label: 'STATUS', width: '120px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'priority', label: 'PRIORITY', width: '100px', minWidth: '90px', sortable: true, visible: true },
+  { key: 'assigned_to', label: 'ASSIGNED TO', width: '160px', minWidth: '140px', sortable: true, visible: true },
+  { key: 'due_date', label: 'DUE DATE', width: '110px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'modified', label: 'MODIFIED', width: '120px', minWidth: '100px', sortable: true, visible: true },
 ]
 
 const selectedRowKeys = ref([])
@@ -745,11 +745,11 @@ onMounted(() => {
               </template>
 
               <template #cell-title="{ row }">
-                <div class="flex items-center gap-2 min-w-0">
-                  <span class="text-sm font-medium text-ink-gray-9 truncate" :title="row.title">{{ row.title }}</span>
+                <div class="flex items-center gap-1.5 min-w-0 max-w-[150px]">
+                  <span class="text-xs font-medium text-ink-gray-9 truncate" :title="row.title">{{ row.title }}</span>
                   <span
                     v-if="row.badge"
-                    class="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md"
+                    class="shrink-0 px-1 py-0.5 text-[9px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded"
                   >
                     {{ row.badge }}
                   </span>
