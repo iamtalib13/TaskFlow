@@ -71,3 +71,18 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
+
+/* Prevent unwanted focus ring / black border on scroll containers, tables and clicked lists */
+.overflow-x-auto,
+.overflow-y-auto,
+.overflow-auto,
+table,
+[tabindex="-1"] {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+*:focus:not(input):not(textarea):not(select):not(button):not([role="button"]):not([tabindex="0"]) {
+  outline: none !important;
+  box-shadow: none !important;
+}
