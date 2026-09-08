@@ -138,7 +138,7 @@
       <!-- 3-COLUMN MAIN BODY LAYOUT (Clean flat layout separated by Frappe UI Dividers) -->
       <div class="flex-1 min-h-0 flex flex-col xl:flex-row overflow-hidden bg-white">
         <!-- COLUMN 1: LEFT SIDEBAR (Assignment, Schedule & Ticket) -->
-        <aside class="w-full xl:w-[280px] 2xl:w-[300px] shrink-0 overflow-y-auto p-4 space-y-4 text-xs select-none">
+        <aside class="w-full xl:w-[280px] 2xl:w-[300px] shrink-0 overflow-y-auto p-4 space-y-4 text-xs select-none border-b xl:border-b-0 xl:border-r border-gray-200">
           <!-- Section 1: ASSIGNMENT -->
           <div class="space-y-3">
             <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
@@ -275,7 +275,7 @@
           </div>
 
           <!-- Section Divider -->
-          <Divider />
+          <hr class="border-t border-gray-200 my-1" />
 
           <!-- Section 2: SCHEDULE -->
           <div class="space-y-3">
@@ -401,7 +401,7 @@
           </div>
 
           <!-- Section Divider -->
-          <Divider />
+          <hr class="border-t border-gray-200 my-1" />
 
           <!-- Section 3: 🎫 TICKET -->
           <div class="space-y-3">
@@ -481,13 +481,9 @@
           </div>
         </aside>
 
-        <!-- Vertical Divider between Column 1 and Column 2 -->
-        <Divider orientation="vertical" flex-item class="hidden xl:block" />
-        <Divider class="xl:hidden" />
-
         <!-- COLUMN 2: CENTER MAIN CONTENT (Header, Attachments, Title & Description) -->
         <main class="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 space-y-4">
-          <!-- Project & Task Type Pill Bar -->
+          <!-- Project & Task Type Pill Bar with Metadata -->
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-1.5">
               <span v-if="form.project" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#417c7d]/10 text-[#417c7d] border border-[#417c7d]/25">
@@ -503,8 +499,22 @@
               </span>
             </div>
 
-            <div class="font-mono text-xs font-bold text-gray-500">
-              ID: {{ form.id || 'New' }}
+            <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 font-medium">
+              <span class="font-mono font-bold text-[#417c7d]">ID: {{ form.id || 'New' }}</span>
+              <template v-if="form.reporter">
+                <span class="text-gray-300">•</span>
+                <span class="inline-flex items-center gap-1">
+                  <User class="size-3 text-gray-400" />
+                  <span>By <strong class="text-gray-700">{{ form.reporter }}</strong></span>
+                </span>
+              </template>
+              <template v-if="updatedTimeAgo">
+                <span class="text-gray-300">•</span>
+                <span class="inline-flex items-center gap-1">
+                  <Clock class="size-3 text-gray-400" />
+                  <span>{{ updatedTimeAgo }}</span>
+                </span>
+              </template>
             </div>
           </div>
 
@@ -636,7 +646,7 @@
           </div>
 
           <!-- Task Title (Editable headline input) -->
-          <div>
+          <div class="pt-1">
             <input
               v-model="form.title"
               type="text"
@@ -645,29 +655,13 @@
             />
           </div>
 
-          <!-- Meta: Created By & Updated Time -->
-          <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 pt-0.5 pb-1">
-            <span class="inline-flex items-center gap-1.5">
-              <User class="size-3.5 text-gray-400" />
-              <span>Created by <strong class="text-gray-700">{{ form.reporter || '—' }}</strong></span>
-            </span>
-            <span class="text-gray-300">•</span>
-            <span class="inline-flex items-center gap-1.5">
-              <Clock class="size-3.5 text-gray-400" />
-              <span>Updated {{ updatedTimeAgo }}</span>
-            </span>
-          </div>
-
-          <!-- Divider between Title and Description -->
-          <Divider />
-
-          <!-- Description Section (Clean full canvas) -->
-          <div class="space-y-2">
-            <div class="flex items-center justify-between mb-1">
-              <h4 class="text-xs font-bold text-gray-600 uppercase tracking-wider">
+          <!-- Description Section (Directly below Title, zero blank gaps) -->
+          <div class="space-y-1.5 pt-0.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                 Description
-              </h4>
-              <span class="text-[11px] text-gray-400 italic font-normal">
+              </span>
+              <span class="text-[10px] text-gray-400">
                 Markdown & Rich formatting supported
               </span>
             </div>
@@ -957,7 +951,7 @@
 </template>
 
 <script>
-import { Divider, MultiSelect, toast } from 'frappe-ui'
+import { MultiSelect, toast } from 'frappe-ui'
 import {
   fetchTaskComments,
   addTaskComment,
@@ -1010,7 +1004,6 @@ import {
 export default {
   name: 'TaskDetailModal',
   components: {
-    Divider,
     MultiSelect,
     TaskRichEditor,
     ArrowLeft,
