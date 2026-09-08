@@ -42,7 +42,7 @@ export const mockBootstrap = {
         { author: 'Talib Sheikh', time: '1 hour ago', text: 'Implemented grid layout, testing on tablet breakpoint.' },
       ],
       modified: '2026-09-08 15:42:00',
-      modified_pretty: '10m ago',
+      modified_pretty: 'Just now',
     },
     {
       id: 'ERP-104',

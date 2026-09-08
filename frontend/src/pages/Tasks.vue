@@ -204,6 +204,14 @@ function formatPrettyDate(row) {
   }
 }
 
+// Light green highlight for tasks modified 'Just now'
+function getTaskRowClass(row) {
+  if (formatPrettyDate(row) === 'Just now') {
+    return 'bg-emerald-50/80 hover:bg-emerald-100/70 border-l-2 border-l-emerald-500'
+  }
+  return 'hover:bg-gray-50/80'
+}
+
 // Colorful status badge styling: Completed (Green), Overdue (Red), Open (Blue), etc.
 const getStatusBadgeClass = (status) => {
   switch (status) {
@@ -652,6 +660,7 @@ onMounted(() => {
               :sort-key="sortKey"
               :sort-order="sortOrder"
               :pagination="paginationInfo"
+              :row-class="getTaskRowClass"
               @row-click="openDetail"
               @sort-change="handleSortChange"
               @page-change="(p) => (tablePage = p)"
@@ -743,9 +752,14 @@ onMounted(() => {
 
               <template #cell-modified="{ row }">
                 <span
-                  class="text-xs text-ink-gray-6 font-medium whitespace-nowrap"
+                  class="text-xs font-medium whitespace-nowrap inline-flex items-center gap-1.5"
+                  :class="formatPrettyDate(row) === 'Just now' ? 'text-emerald-700 font-semibold' : 'text-ink-gray-6'"
                   :title="row.modified ? `Modified: ${row.modified}` : ''"
                 >
+                  <span
+                    v-if="formatPrettyDate(row) === 'Just now'"
+                    class="size-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse"
+                  />
                   {{ formatPrettyDate(row) }}
                 </span>
               </template>

@@ -99,8 +99,10 @@
             v-else
             :key="getRowKey(row, idx)"
             :class="[
-              'group transition-colors duration-100 cursor-pointer',
-              isRowSelected(row) ? 'bg-blue-50/50 hover:bg-blue-50/80' : 'hover:bg-gray-50/80',
+              'group transition-colors duration-150 cursor-pointer',
+              isRowSelected(row)
+                ? 'bg-blue-50/50 hover:bg-blue-50/80'
+                : (getRowClass(row, idx) || 'hover:bg-gray-50/80'),
             ]"
             @click="onRowClick(row, $event)"
           >
@@ -108,8 +110,8 @@
             <td
               v-if="selectable"
               :class="[
-                'w-9 px-2 py-2 text-center bg-white group-hover:bg-gray-50/90 border-r border-gray-100 transition-colors',
-                isCheckboxSticky ? 'sticky left-0 z-20' : '',
+                'w-9 px-2 py-2 text-center border-r border-gray-100 transition-colors',
+                isCheckboxSticky ? 'sticky left-0 z-20 bg-white' : 'bg-transparent',
                 isRowSelected(row) ? '!bg-blue-50/60' : '',
               ]"
               @click.stop
@@ -272,6 +274,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    rowClass: {
+      type: [Function, String],
+      default: null,
+    },
   },
   emits: [
     'update:selectedRows',
@@ -319,6 +325,12 @@ export default {
     },
   },
   methods: {
+    getRowClass(row, idx) {
+      if (typeof this.rowClass === 'function') {
+        return this.rowClass(row, idx)
+      }
+      return this.rowClass || ''
+    },
     getRowKey(row, idx) {
       return row[this.rowKey] || idx
     },
