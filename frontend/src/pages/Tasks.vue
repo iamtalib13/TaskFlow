@@ -291,7 +291,7 @@ function getTaskRowClass(row) {
   if (isRowJustNow(row)) {
     return '!bg-emerald-50/90 hover:!bg-emerald-100/80 border-l-4 border-l-emerald-500 is-just-now'
   }
-  return 'hover:bg-gray-50/80'
+  return 'hover:bg-[#f0f7f7]'
 }
 
 // Colorful status badge styling: Completed (Green), Overdue (Red), Open (Blue), etc.
@@ -831,25 +831,12 @@ onMounted(() => {
               @load-all="handleLoadAll"
             >
               <template #cell-id="{ row }">
-                <div class="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    class="p-0.5 text-ink-gray-4 hover:text-amber-500 transition shrink-0"
-                    title="Star task"
-                    @click.stop="toggleStar(row)"
-                  >
-                    <Star
-                      class="size-3.5 block"
-                      :class="row.starred ? 'fill-amber-500 text-amber-500' : 'text-gray-400 hover:text-amber-500'"
-                    />
-                  </button>
-                  <span
-                    class="font-mono font-semibold text-ink-gray-8 hover:text-ink-gray-9 hover:underline cursor-pointer"
-                    @click.stop="openDetail(row)"
-                  >
-                    {{ row.id }}
-                  </span>
-                </div>
+                <span
+                  class="font-mono font-semibold text-ink-gray-8 hover:text-[#417c7d] hover:underline cursor-pointer"
+                  @click.stop="openDetail(row)"
+                >
+                  {{ row.id }}
+                </span>
               </template>
 
               <template #cell-title="{ row }">

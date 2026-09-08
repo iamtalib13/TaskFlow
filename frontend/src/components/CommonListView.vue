@@ -104,7 +104,7 @@
                 ? 'bg-blue-50/50 hover:bg-blue-50/80'
                 : isJustNowRow(row)
                   ? '!bg-emerald-50/90 hover:!bg-emerald-100/80 border-l-4 border-l-emerald-500 shadow-xs'
-                  : (getRowClass(row, idx) || 'hover:bg-gray-50/80'),
+                  : (getRowClass(row, idx) || 'hover:bg-[#f0f7f7]'),
             ]"
             @click="onRowClick(row, $event)"
           >
@@ -118,7 +118,7 @@
                   ? '!bg-blue-50/60'
                   : isJustNowRow(row)
                     ? '!bg-emerald-50/90 group-hover:!bg-emerald-100/80'
-                    : (isCheckboxSticky ? 'bg-white' : 'bg-transparent'),
+                    : (isCheckboxSticky ? 'bg-white group-hover:bg-[#f0f7f7]' : 'bg-transparent group-hover:bg-[#f0f7f7]'),
               ]"
               @click.stop
             >
@@ -148,7 +148,7 @@
                   ? (col.sticky ? '!bg-blue-50/60' : '')
                   : isJustNowRow(row)
                     ? (col.sticky ? '!bg-emerald-50/90 group-hover:!bg-emerald-100/80' : '')
-                    : (col.sticky ? 'bg-white group-hover:bg-gray-50/90' : ''),
+                    : (col.sticky ? 'bg-white group-hover:bg-[#f0f7f7]' : ''),
               ]"
             >
               <!-- Scoped Cell Slot -->
