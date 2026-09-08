@@ -239,10 +239,10 @@
               </span>
             </div>
 
-            <!-- Dual-Axis Scroll Pill Badge -->
+            <!-- Scrollable Table Badge -->
             <div class="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[11px] font-medium whitespace-nowrap shadow-2xs">
               <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-              <span>Dual-Axis Scroll • 14 Columns (ID & Title Frozen)</span>
+              <span>Scrollable View • 12 Columns</span>
               <span class="text-indigo-400 text-[10px] font-bold">⇄</span>
             </div>
           </div>
@@ -640,8 +640,8 @@ export default {
 
       // Column Definitions
       columns: [
-        { key: 'id', label: 'ID', width: '130px', minWidth: '120px', sticky: true, stickyLeft: '48px', sortable: true, visible: true },
-        { key: 'title', label: 'TITLE & KEY TASK', width: '360px', minWidth: '320px', sticky: true, stickyLeft: '178px', sortable: true, visible: true },
+        { key: 'id', label: 'ID', width: '130px', minWidth: '120px', sortable: true, visible: true },
+        { key: 'title', label: 'TITLE & KEY TASK', width: '360px', minWidth: '320px', sortable: true, visible: true },
         { key: 'project', label: 'PROJECT', width: '150px', minWidth: '130px', sortable: true, visible: true },
         { key: 'status', label: 'STATUS', width: '130px', minWidth: '120px', sortable: true, visible: true },
         { key: 'priority', label: 'PRIORITY', width: '110px', minWidth: '100px', sortable: true, visible: true },

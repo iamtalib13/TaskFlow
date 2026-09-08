@@ -15,11 +15,14 @@
         <!-- Table Header -->
         <thead class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200 text-gray-600 font-semibold tracking-wide uppercase text-[11px]">
           <tr>
-            <!-- Select All Checkbox (Sticky Left) -->
+            <!-- Select All Checkbox -->
             <th
               v-if="selectable"
               scope="col"
-              class="w-12 px-3.5 py-2.5 text-center sticky left-0 z-40 bg-gray-50 border-r border-gray-200/60"
+              :class="[
+                'w-12 px-3.5 py-2.5 text-center bg-gray-50 border-r border-gray-200/60',
+                isCheckboxSticky ? 'sticky left-0 z-40' : '',
+              ]"
             >
               <input
                 type="checkbox"
@@ -99,11 +102,14 @@
             ]"
             @click="onRowClick(row, $event)"
           >
-            <!-- Row Checkbox (Sticky Left) -->
+            <!-- Row Checkbox -->
             <td
               v-if="selectable"
-              class="w-12 px-3.5 py-2.5 text-center sticky left-0 z-20 bg-white group-hover:bg-gray-50/90 border-r border-gray-100 transition-colors"
-              :class="isRowSelected(row) ? '!bg-blue-50/60' : ''"
+              :class="[
+                'w-12 px-3.5 py-2.5 text-center bg-white group-hover:bg-gray-50/90 border-r border-gray-100 transition-colors',
+                isCheckboxSticky ? 'sticky left-0 z-20' : '',
+                isRowSelected(row) ? '!bg-blue-50/60' : '',
+              ]"
               @click.stop
             >
               <input
@@ -145,7 +151,13 @@
         <!-- Table Totals / Summary Footer Row -->
         <tfoot v-if="totals && rows.length > 0" class="bg-gray-50/90 border-t border-gray-200 text-gray-700 text-xs font-semibold">
           <tr>
-            <td v-if="selectable" class="px-3.5 py-2.5 text-center sticky left-0 z-20 bg-gray-50 border-r border-gray-200/60 font-bold uppercase text-[10px] tracking-wider text-gray-500">
+            <td
+              v-if="selectable"
+              :class="[
+                'px-3.5 py-2.5 text-center bg-gray-50 border-r border-gray-200/60 font-bold uppercase text-[10px] tracking-wider text-gray-500',
+                isCheckboxSticky ? 'sticky left-0 z-20' : '',
+              ]"
+            >
               TOTALS
             </td>
             <td
@@ -298,6 +310,10 @@ export default {
       type: Object,
       default: null, // { page: 1, pageSize: 20, total: 100 }
     },
+    stickyCheckbox: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: [
     'update:selectedRows',
@@ -315,6 +331,9 @@ export default {
   computed: {
     visibleColumns() {
       return this.columns.filter((col) => col.visible !== false)
+    },
+    isCheckboxSticky() {
+      return this.stickyCheckbox && this.visibleColumns.some((col) => col.sticky)
     },
     columnSpan() {
       return this.visibleColumns.length + (this.selectable ? 1 : 0)
