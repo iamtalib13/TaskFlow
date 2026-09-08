@@ -714,7 +714,6 @@ onMounted(() => {
               :columns="tableColumns"
               :rows="paginatedTableTasks"
               :loading="loading"
-              :totals="true"
               :sort-key="sortKey"
               :sort-order="sortOrder"
               :pagination="paginationInfo"
@@ -834,7 +833,6 @@ onMounted(() => {
             :columns="timesheetColumns"
             :rows="timesheetData"
             :loading="loading"
-            :totals="true"
           >
             <template #cell-id="{ row }">
               <span class="font-mono font-bold text-ink-gray-7">{{ row.id }}</span>
@@ -895,7 +893,6 @@ onMounted(() => {
             :columns="projectColumns"
             :rows="projectsData"
             :loading="loading"
-            :totals="true"
           >
             <template #cell-name="{ row }">
               <div class="flex items-center gap-2">
@@ -955,7 +952,6 @@ onMounted(() => {
             :columns="teamColumns"
             :rows="teamData"
             :loading="loading"
-            :totals="false"
           >
             <template #cell-member="{ row }">
               <div class="flex items-center gap-2.5">

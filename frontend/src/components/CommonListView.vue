@@ -151,49 +151,6 @@
             </td>
           </tr>
         </tbody>
-
-        <!-- Table Totals / Summary Footer Row -->
-        <tfoot v-if="totals && rows.length > 0" class="bg-gray-50/90 border-t border-gray-200 text-gray-700 text-xs font-semibold">
-          <tr>
-            <td
-              v-if="selectable"
-              :class="[
-                'px-2 py-2 text-center bg-gray-50 border-r border-gray-200/60 font-bold uppercase text-[10px] tracking-wider text-gray-500',
-                isCheckboxSticky ? 'sticky left-0 z-20' : '',
-              ]"
-            >
-              TOTALS
-            </td>
-            <td
-              v-for="col in visibleColumns"
-              :key="'total-' + col.key"
-              :style="{ left: col.sticky ? col.stickyLeft || '48px' : 'auto' }"
-              :class="[
-                'px-3 py-2 whitespace-nowrap text-gray-800 text-xs',
-                col.sticky ? 'sticky z-20 bg-gray-50 border-r border-gray-200/60' : '',
-                col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
-              ]"
-            >
-              <slot :name="'total-' + col.key" :rows="rows" :col="col">
-                <template v-if="col.key === 'title'">
-                  <span class="text-gray-900 font-medium">{{ rows.length }} Active Tasks Visible ({{ pagination?.total || rows.length }} Total)</span>
-                </template>
-                <template v-else-if="col.key === 'project'">
-                  <span class="text-gray-600 font-normal">Projects</span>
-                </template>
-                <template v-else-if="col.key === 'assigned_to'">
-                  <span class="text-gray-600 font-normal">{{ uniqueAssigneesCount }} Assignees</span>
-                </template>
-                <template v-else-if="col.key === 'actions'">
-                  <span class="text-gray-400 font-normal">All</span>
-                </template>
-                <template v-else>
-                  <span class="text-gray-400">—</span>
-                </template>
-              </slot>
-            </td>
-          </tr>
-        </tfoot>
       </table>
     </div>
 
@@ -294,10 +251,6 @@ export default {
       type: Boolean,
       default: false,
     },
-    totals: {
-      type: Boolean,
-      default: true,
-    },
     emptyText: {
       type: String,
       default: 'No records found',
@@ -362,13 +315,6 @@ export default {
     endIndex() {
       if (!this.pagination || !this.pagination.total) return 0
       return Math.min(this.pagination.total, this.pagination.page * this.pagination.pageSize)
-    },
-    uniqueAssigneesCount() {
-      const set = new Set()
-      this.rows.forEach((r) => {
-        if (r.assigned_to) set.add(r.assigned_to)
-      })
-      return set.size || 0
     },
   },
   methods: {
