@@ -154,6 +154,7 @@
                   class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
                   @change="onProjectChange"
                 >
+                  <option value="">Select Project</option>
                   <option v-for="p in projects" :key="p.name" :value="p.name">
                     {{ p.display_name || p.name }}
                   </option>
@@ -244,7 +245,7 @@
               <input
                 v-model="form.pending_from"
                 type="text"
-                placeholder="Whitestone Vendor"
+                placeholder="Pending from (vendor / client / dept)..."
                 class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
             </div>
@@ -255,7 +256,7 @@
               <input
                 v-model="form.guided_by"
                 type="text"
-                placeholder="MANSI DHARMARAJ YADAV"
+                placeholder="Guided by / mentor..."
                 class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
             </div>
@@ -266,7 +267,7 @@
               <input
                 v-model="form.responsible_person"
                 type="text"
-                placeholder="SNEHAL YADORAO BORKAR"
+                placeholder="Responsible person..."
                 class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               />
             </div>
@@ -479,8 +480,11 @@
             <!-- Project & Task Type Pill Bar -->
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-1.5">
-                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#417c7d]/10 text-[#417c7d] border border-[#417c7d]/25">
-                  {{ form.project || 'Drishti Core' }}
+                <span v-if="form.project" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#417c7d]/10 text-[#417c7d] border border-[#417c7d]/25">
+                  {{ form.project }}
+                </span>
+                <span v-else class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200/60">
+                  No Project
                 </span>
                 <ChevronRight class="size-3.5 text-gray-400" />
                 <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200/60">
@@ -490,7 +494,7 @@
               </div>
 
               <div class="font-mono text-xs font-bold text-gray-500">
-                ID: {{ form.id || '849204' }}
+                ID: {{ form.id || 'New' }}
               </div>
             </div>
 
@@ -579,7 +583,7 @@
             <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 pt-1">
               <span class="inline-flex items-center gap-1.5">
                 <User class="size-3.5 text-gray-400" />
-                <span>Created by <strong class="text-gray-700">{{ form.reporter || 'Talib Sheikh' }}</strong></span>
+                <span>Created by <strong class="text-gray-700">{{ form.reporter || '—' }}</strong></span>
               </span>
               <span class="text-gray-300">•</span>
               <span class="inline-flex items-center gap-1.5">
@@ -698,7 +702,13 @@
 
           <!-- Activity Audit Tab Content -->
           <div v-else class="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] text-xs">
+            <div v-if="activityLog.length === 0" class="py-12 text-center text-gray-400 space-y-1.5 select-none">
+              <Clock class="size-6 mx-auto stroke-1 text-gray-300 mb-1" />
+              <p class="text-xs font-semibold text-gray-600">No activity logged</p>
+              <p class="text-[11px] text-gray-400">Activity changes will appear here.</p>
+            </div>
             <div
+              v-else
               v-for="(act, idx) in activityLog"
               :key="idx"
               class="flex items-start gap-2 text-gray-600 pb-2 border-b border-gray-100 last:border-b-0"
@@ -904,23 +914,23 @@ export default {
         id: '',
         title: '',
         description: '',
-        status: 'On Hold',
+        status: 'Open',
         priority: 'Medium',
-        project: 'Drishti Core',
+        project: '',
         team: '',
         assignees: [],
         assigned_to: '',
-        reporter: 'Talib Sheikh',
+        reporter: '',
         pending_with: '',
-        pending_from: 'Whitestone Vendor',
-        guided_by: 'MANSI DHARMARAJ YADAV',
-        responsible_person: 'SNEHAL YADORAO BORKAR',
-        start_date: '2026-09-05',
-        due_date: '2026-09-11',
+        pending_from: '',
+        guided_by: '',
+        responsible_person: '',
+        start_date: '',
+        due_date: '',
         expected_resolution_date: '',
         completed_on: '',
-        estimated_hours: 0,
-        logged_hours: 0,
+        estimated_hours: '',
+        logged_hours: '',
         ticket_date: '',
         toll_id: '',
         ticket_id: '',
@@ -930,11 +940,7 @@ export default {
       attachments: [],
       uploadingAttachment: false,
       comments: [],
-      activityLog: [
-        { user: 'Talib Sheikh', action: 'changed status from Open to On Hold', time: '1h ago' },
-        { user: 'Sarah Chen', action: 'approved layout changes', time: '2h ago' },
-        { user: 'Talib Sheikh', action: 'created this task in Drishti Core', time: 'Yesterday' },
-      ],
+      activityLog: [],
     }
   },
   watch: {
@@ -956,24 +962,24 @@ export default {
           this.form = {
             id: t.id || '',
             title: t.title || '',
-            description: t.description || this.getDefaultDescription(),
+            description: t.description || '',
             status: t.status || 'Open',
             priority: t.priority || 'Medium',
-            project: t.project || 'Drishti Core',
-            team: matchedTeam,
+            project: t.project || '',
+            team: matchedTeam || '',
             assignees: assigneesList,
             assigned_to: t.assigned_to || '',
-            reporter: t.reporter || t.owner || 'Talib Sheikh',
+            reporter: t.reporter || t.owner || '',
             pending_with: t.pending_with || '',
-            pending_from: t.pending_from || 'Whitestone Vendor',
-            guided_by: t.guided_by || 'MANSI DHARMARAJ YADAV',
-            responsible_person: t.responsible_person || 'SNEHAL YADORAO BORKAR',
-            start_date: t.start_date || '2026-09-05',
-            due_date: t.due_date || t.due || '2026-09-11',
+            pending_from: t.pending_from || '',
+            guided_by: t.guided_by || '',
+            responsible_person: t.responsible_person || '',
+            start_date: t.start_date || '',
+            due_date: t.due_date || t.due || '',
             expected_resolution_date: t.expected_resolution_date || '',
             completed_on: t.completed_on || '',
-            estimated_hours: t.estimated_hours || 0,
-            logged_hours: t.logged_hours || 0,
+            estimated_hours: t.estimated_hours != null && t.estimated_hours !== 0 ? t.estimated_hours : '',
+            logged_hours: t.logged_hours != null && t.logged_hours !== 0 ? t.logged_hours : '',
             ticket_date: t.ticket_date || '',
             toll_id: t.toll_id || '',
             ticket_id: t.ticket_id || '',
@@ -1178,13 +1184,7 @@ export default {
       }
     },
     getDefaultDescription() {
-      return `<p>During the client review meeting with the Regional Operations Directorate, it was reported that having <span class="px-1.5 py-0.5 rounded bg-[#417c7d]/10 text-[#417c7d] font-semibold">Branch Name</span> and <span class="px-1.5 py-0.5 rounded bg-[#417c7d]/10 text-[#417c7d] font-semibold">District Code</span> on stacked separate lines causes excessive vertical scrolling on 1080p dashboard terminals.</p>
-<p><strong>Proposed Layout Modification:</strong></p>
-<ul>
-<li>Refactor the master filter header into a flex-grid layout aligning both selects on the horizontal axis.</li>
-<li>Enforce responsive behavior: collapse into stacked fields below the <code>768px</code> tablet breakpoint.</li>
-<li>Maintain existing autocomplete API throttle and pre-cache parameters without altering query parameters.</li>
-</ul>`
+      return ''
     },
     formatDateDisplay(isoDate) {
       if (!isoDate) return ''
