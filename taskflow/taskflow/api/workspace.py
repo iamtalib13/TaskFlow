@@ -843,6 +843,13 @@ def bulk_insert_tasks() -> dict[str, Any]:
                 if field in task_data:
                     doc.set(field, task_data[field])
             
+            # Handle guided_by - append @sahayog.com if not an email
+            if "guided_by" in task_data:
+                guided_by_val = task_data["guided_by"]
+                if guided_by_val and "@" not in guided_by_val:
+                    guided_by_val = f"{guided_by_val}@sahayog.com"
+                doc.set("guided_by", guided_by_val)
+            
             # Set date fields — flexible format, empty/invalid values are skipped
             for field in ["start_date", "due_date", "completed_on", "expected_resolution_date", 
                          "estimated_completion_date", "ticket_date"]:
