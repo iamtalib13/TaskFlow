@@ -1,155 +1,175 @@
 <template>
   <div
     v-if="modelValue"
-    class="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 transition-opacity duration-200"
+    class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 transition-all duration-200 animate-in fade-in"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="task-title-input"
     @click.self="close"
   >
     <div
-      class="bg-white rounded-2xl shadow-2xl border border-gray-200/90 w-full max-w-[96vw] 2xl:max-w-[1440px] h-[94vh] max-h-[960px] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
-      role="dialog"
-      aria-modal="true"
+      class="bg-white rounded-2xl shadow-2xl border border-slate-200/90 w-full max-w-[96vw] 2xl:max-w-[1480px] h-[95vh] max-h-[980px] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
     >
-      <!-- TOP ACTION BAR -->
-      <header class="px-4 py-2.5 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between gap-3 shrink-0 select-none">
-        <!-- Left: Back Navigation & Breadcrumb -->
-        <div class="flex items-center gap-3 min-w-0">
+      <!-- TOP HEADER / BREADCRUMBS BAR (Clarity Minimal Design) -->
+      <header class="h-11 sm:h-12 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 select-none">
+        <!-- Left: Sleek Breadcrumbs & Subtle Auto-save indicator -->
+        <div class="flex items-center space-x-3 text-xs min-w-0">
           <button
             type="button"
-            class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-gray-950 transition cursor-pointer px-2 py-1 rounded-md hover:bg-gray-100"
+            class="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1 -ml-1 rounded transition-colors inline-flex items-center justify-center cursor-pointer"
+            title="Back to Tasks"
             @click="close"
           >
-            <ArrowLeft class="size-3.5 stroke-[2.2]" />
-            <span>Back to Tasks</span>
+            <ArrowLeft class="size-3.5 text-slate-500" />
           </button>
 
-          <span class="text-gray-300">|</span>
+          <div class="h-3.5 w-px bg-slate-200"></div>
 
-          <nav class="flex items-center gap-1.5 text-xs truncate">
-            <span class="text-gray-500 font-medium">Tasks</span>
-            <span class="text-gray-400">/</span>
-            <div class="inline-flex items-center gap-1 font-semibold text-[#417c7d] bg-[#417c7d]/10 px-2 py-0.5 rounded-md border border-[#417c7d]/30">
-              <span class="size-1.5 rounded-full bg-[#417c7d]"></span>
-              <span class="truncate max-w-[160px]">{{ form.project || 'Project' }}</span>
-            </div>
-            <span class="text-gray-400">/</span>
-            <span class="font-mono font-bold text-[#417c7d]">{{ form.id || 'TASK' }}</span>
-          </nav>
-        </div>
-
-        <!-- Right: Status / Priority Controls & Action Buttons -->
-        <div class="flex items-end gap-3 shrink-0">
-          <!-- Task Type Dropdown Selector with Label Above -->
-          <div class="flex flex-col">
-            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Task Type</label>
-            <div class="relative">
-              <select
-                v-model="form.task_type"
-                class="appearance-none pl-6 pr-6 py-1 text-xs font-semibold rounded-lg border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none"
-                :class="getTaskTypeSelectClass(form.task_type)"
-              >
-                <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
-              </select>
-              <component
-                :is="getTaskTypeIcon(form.task_type)"
-                class="absolute left-2 top-1/2 -translate-y-1/2 size-3 pointer-events-none"
-                :class="getTaskTypeIconClass(form.task_type)"
-              />
-              <ChevronDown class="absolute right-1.5 top-1/2 -translate-y-1/2 size-3 pointer-events-none opacity-60" />
-            </div>
-          </div>
-
-          <!-- Status Dropdown Selector with Label Above -->
-          <div class="flex flex-col">
-            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Status</label>
-            <div class="relative">
-              <select
-                v-model="form.status"
-                class="appearance-none pl-5.5 pr-6 py-1 text-xs font-semibold rounded-lg border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none"
-                :class="getStatusSelectClass(form.status)"
-              >
-                <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
-              </select>
-              <span
-                class="absolute left-2 top-1/2 -translate-y-1/2 size-2 rounded-full pointer-events-none"
-                :class="getStatusDotClass(form.status)"
-              />
-              <ChevronDown class="absolute right-1.5 top-1/2 -translate-y-1/2 size-3 pointer-events-none opacity-60" />
-            </div>
-          </div>
-
-          <!-- Priority Dropdown Selector with Label Above -->
-          <div class="flex flex-col">
-            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Priority</label>
-            <div class="relative">
-              <select
-                v-model="form.priority"
-                class="appearance-none pl-5.5 pr-6 py-1 text-xs font-semibold rounded-lg border cursor-pointer transition focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none bg-blue-50/60 text-blue-700 border-blue-200"
-              >
-                <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
-              </select>
-              <Flag class="absolute left-2 top-1/2 -translate-y-1/2 size-3 pointer-events-none text-blue-600" />
-              <ChevronDown class="absolute right-1.5 top-1/2 -translate-y-1/2 size-3 pointer-events-none text-blue-500" />
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="flex items-center gap-2 pb-0.5">
-            <!-- Delete Task Button -->
-            <Button
-              v-if="form.id"
-              variant="subtle"
-              theme="red"
-              size="sm"
-              :loading="deleting"
-              :disabled="deleting || saving"
-              title="Delete Task"
-              @click="confirmDelete"
-            >
-              <template #prefix>
-                <Trash2 v-if="!deleting" class="size-3.5" />
-              </template>
-              Delete
-            </Button>
-
-            <!-- Cancel Button -->
-            <Button
-              size="sm"
-              :disabled="saving || deleting"
+          <nav aria-label="Breadcrumb" class="flex items-center space-x-2 text-xs truncate">
+            <button
+              type="button"
+              class="text-slate-500 hover:text-slate-800 transition-colors font-medium cursor-pointer"
               @click="close"
             >
-              Cancel
-            </Button>
-
-            <!-- Save Task Button -->
-            <Button
-              variant="solid"
-              size="sm"
-              :loading="saving"
-              :disabled="saving || deleting"
-              title="Save Task (⌘S)"
-              @click="save"
+              Tasks
+            </button>
+            <span class="text-slate-300 font-normal">/</span>
+            <span class="text-slate-600 hover:text-slate-900 font-medium truncate max-w-[140px] sm:max-w-[200px]">
+              {{ form.project || 'Audit Management' }}
+            </span>
+            <span class="text-slate-300 font-normal">/</span>
+            <div
+              class="flex items-center gap-1 group cursor-pointer"
+              title="Click to copy task ID"
+              @click="copyTaskId"
             >
-              <template #prefix>
-                <Check v-if="!saving" class="size-3.5 stroke-[2.5]" />
-              </template>
-              <span>Save Task</span>
-              <kbd class="ml-1 px-1 py-0.2 rounded text-[10px] bg-white/20 font-mono font-normal">⌘S</kbd>
-            </Button>
+              <span class="font-mono text-slate-800 font-medium text-[11px]">
+                {{ form.id || 'NEW-TASK' }}
+              </span>
+              <button
+                type="button"
+                class="text-slate-400 hover:text-slate-600 p-0.5 rounded opacity-60 group-hover:opacity-100 transition-opacity"
+                title="Copy task ID"
+              >
+                <Copy class="size-2.5" />
+              </button>
+            </div>
+          </nav>
+
+          <div class="h-3 w-px bg-slate-200 hidden md:block"></div>
+
+          <!-- Save Status Indicator -->
+          <div class="hidden md:flex items-center gap-1.5 text-[11px] font-normal">
+            <span
+              class="w-1.5 h-1.5 rounded-full"
+              :class="saving ? 'bg-amber-500 animate-pulse' : 'bg-teal-600'"
+            ></span>
+            <span class="text-slate-400">{{ saving ? 'Saving...' : 'Saved' }}</span>
           </div>
+        </div>
+
+        <!-- Right: Refined lightweight actions & selectors -->
+        <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          <!-- Task Type Dropdown Selector -->
+          <div class="relative flex items-center">
+            <select
+              v-model="form.task_type"
+              class="appearance-none text-[11px] font-semibold pl-6 pr-5 py-1 rounded-md border border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700 cursor-pointer focus:ring-1 focus:ring-teal-600 focus:outline-none transition"
+              :class="getTaskTypeSelectClass(form.task_type)"
+            >
+              <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
+            </select>
+            <component
+              :is="getTaskTypeIcon(form.task_type)"
+              class="absolute left-2 size-3 pointer-events-none"
+              :class="getTaskTypeIconClass(form.task_type)"
+            />
+            <ChevronDown class="absolute right-1.5 size-2.5 text-slate-400 pointer-events-none" />
+          </div>
+
+          <!-- Status Dropdown Selector -->
+          <div class="relative flex items-center">
+            <select
+              v-model="form.status"
+              class="appearance-none text-[11px] font-semibold pl-5 pr-5 py-1 rounded-md border border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700 cursor-pointer focus:ring-1 focus:ring-teal-600 focus:outline-none transition"
+            >
+              <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+            </select>
+            <span
+              class="absolute left-2 size-2 rounded-full pointer-events-none"
+              :class="getStatusDotClass(form.status)"
+            />
+            <ChevronDown class="absolute right-1.5 size-2.5 text-slate-400 pointer-events-none" />
+          </div>
+
+          <!-- Priority Dropdown Selector -->
+          <div class="relative flex items-center hidden sm:flex">
+            <select
+              v-model="form.priority"
+              class="appearance-none text-[11px] font-semibold pl-5 pr-5 py-1 rounded-md border border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700 cursor-pointer focus:ring-1 focus:ring-teal-600 focus:outline-none transition"
+            >
+              <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
+            </select>
+            <Flag class="absolute left-2 size-2.5 text-blue-600 pointer-events-none" />
+            <ChevronDown class="absolute right-1.5 size-2.5 text-slate-400 pointer-events-none" />
+          </div>
+
+          <!-- Share Button -->
+          <button
+            type="button"
+            class="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors text-xs inline-flex items-center gap-1.5 px-2 cursor-pointer"
+            title="Share Task Link"
+            @click="copyShareLink"
+          >
+            <Share2 class="size-3 text-slate-400" />
+            <span class="hidden sm:inline-block font-normal">Share</span>
+          </button>
+
+          <!-- Delete Task Button -->
+          <button
+            v-if="form.id && form.id !== 'new'"
+            type="button"
+            class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+            title="Delete Task"
+            :disabled="deleting || saving"
+            @click="confirmDelete"
+          >
+            <Trash2 class="size-3.5" />
+          </button>
+
+          <div class="h-3.5 w-px bg-slate-200 mx-1"></div>
+
+          <!-- Cancel Button -->
+          <button
+            type="button"
+            class="px-2.5 py-1 text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+            @click="close"
+          >
+            Cancel
+          </button>
+
+          <!-- Save Task Button (Dark slate button with teal checkmark) -->
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 active:bg-slate-950 rounded-md shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            :disabled="saving || deleting"
+            @click="save"
+          >
+            <Loader2 v-if="saving" class="size-3 animate-spin text-teal-400" />
+            <Check v-else class="size-3 text-teal-400 stroke-[2.5]" />
+            <span>Save Task</span>
+            <kbd class="ml-1 px-1 py-0.2 rounded text-[9px] bg-white/20 font-mono font-normal hidden sm:inline-block">⌘S</kbd>
+          </button>
         </div>
       </header>
 
       <!-- Error Message Banner -->
       <div
         v-if="errorMessage"
-        class="px-6 py-2.5 bg-rose-50 border-b border-rose-200 text-rose-700 text-xs flex items-center justify-between shrink-0"
+        class="px-6 py-2 bg-rose-50 border-b border-rose-200 text-rose-700 text-xs flex items-center justify-between shrink-0"
       >
         <span class="font-medium flex items-center gap-1.5">
-          <svg class="size-4 shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" stroke-width="2"/>
-            <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"/>
-            <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"/>
-          </svg>
+          <AlertTriangle class="size-3.5 text-rose-500 shrink-0" />
           {{ errorMessage }}
         </span>
         <button
@@ -161,925 +181,720 @@
         </button>
       </div>
 
-      <!-- 3-COLUMN MAIN BODY LAYOUT -->
-      <!-- 3-COLUMN MAIN BODY LAYOUT (Clean flat layout separated by Frappe UI Dividers) -->
-      <div class="flex-1 min-h-0 flex flex-col xl:flex-row overflow-hidden bg-white">
-        <!-- COLUMN 1: LEFT SIDEBAR (Assignment, Schedule & Ticket) -->
-        <aside class="w-full xl:w-[320px] 2xl:w-[340px] shrink-0 overflow-y-auto p-4 space-y-4 text-xs select-none border-b xl:border-b-0 xl:border-r border-gray-200">
-          <!-- Section 1: ASSIGNMENT -->
-          <div class="space-y-3">
-            <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-              <span>Assignment</span>
-              <Info class="size-3.5 text-gray-400 hover:text-gray-600 cursor-pointer" title="Assignment details" />
-            </div>
-
-            <!-- Project selector -->
-            <div class="space-y-2.5 pb-1">
-              <div>
-                <label class="block font-medium text-[11px] text-gray-700 mb-1">Project</label>
-                <select
-                  v-model="form.project"
-                  class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                  @change="onProjectChange"
-                >
-                  <option value="">Select Project</option>
-                  <option v-for="p in projects" :key="p.name" :value="p.name">
-                    {{ p.display_name || p.name }}
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Assigned to -->
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <label class="block font-medium text-[11px] text-gray-700">Assigned to</label>
-                <span v-if="assigneeOptions.length > 0" class="text-[10px] text-gray-400">
-                  {{ assigneeOptions.length }} team members
+      <!-- 2-COLUMN BALANCED DESKTOP LAYOUT (68% Work Area / 32% Inspector Sidebar) -->
+      <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <!-- LEFT MAIN AREA: Work, Document Flow, Attachments, Dates & Ticket (~68%) -->
+        <section
+          aria-label="Task Content and Document Area"
+          class="flex-1 overflow-y-auto px-4 sm:px-8 py-5 border-b lg:border-b-0 lg:border-r border-slate-200"
+        >
+          <div class="max-w-4xl mx-auto space-y-4">
+            <!-- SLA Overdue Alert Strip (shown dynamically when overdue) -->
+            <div
+              v-if="isOverdue"
+              class="flex items-center justify-between px-3.5 py-2 bg-amber-50/70 border border-amber-200/80 rounded-lg text-xs text-amber-900 shadow-xs animate-in fade-in"
+              data-purpose="sla-warning-banner"
+            >
+              <div class="flex items-center space-x-2.5 min-w-0">
+                <span class="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 shrink-0 text-[11px]">
+                  <AlertTriangle class="size-3 text-amber-700" />
                 </span>
-              </div>
-              <!-- Selected assignees chips with avatar and remove icon -->
-              <div v-if="form.assignees && form.assignees.length > 0" class="space-y-1 mb-1.5">
-                <div
-                  v-for="assignee in form.assignees"
-                  :key="getAssigneeValue(assignee)"
-                  class="flex items-center justify-between px-2 py-1 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100/70 transition"
-                >
-                  <div class="flex items-center gap-1.5 min-w-0">
-                    <span class="size-4.5 rounded-full bg-[#417c7d] text-white font-bold text-[9px] flex items-center justify-center shrink-0">
-                      {{ getInitials(getAssigneeName(assignee)) }}
-                    </span>
-                    <span class="text-[11px] font-semibold text-gray-800 truncate uppercase tracking-tight">
-                      {{ getAssigneeName(assignee) }}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    class="text-gray-400 hover:text-rose-600 p-0.5 rounded cursor-pointer transition shrink-0"
-                    title="Remove assignee"
-                    @click="removeAssignee(assignee)"
-                  >
-                    <X class="size-3" />
-                  </button>
-                </div>
-              </div>
-
-              <!-- MultiSelect employee search and select control -->
-              <MultiSelect
-                v-model="form.assignees"
-                :options="assigneeOptions"
-                :placeholder="effectiveTeam ? `Select ${effectiveTeam} member...` : 'Add Assignee...'"
-                size="sm"
-                class="w-full"
-              />
-              <p v-if="effectiveTeam && assigneeOptions.length === 0" class="text-[10px] text-amber-600 mt-1">
-                No team members found in {{ effectiveTeam }}.
-              </p>
-            </div>
-
-            <!-- Pending With -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Pending With</label>
-              <input
-                v-model="form.pending_with"
-                type="text"
-                placeholder="Pending with..."
-                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-              />
-            </div>
-
-            <!-- Pending From -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Pending From</label>
-              <input
-                v-model="form.pending_from"
-                type="text"
-                placeholder="Pending from (vendor / client / dept)..."
-                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-              />
-            </div>
-
-            <!-- Guided By -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Guided By</label>
-              <input
-                v-model="form.guided_by"
-                type="text"
-                placeholder="Guided by / mentor..."
-                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-              />
-            </div>
-
-            <!-- Responsible Person -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Responsible Person</label>
-              <input
-                v-model="form.responsible_person"
-                type="text"
-                placeholder="Responsible person..."
-                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-              />
-            </div>
-          </div>
-
-          <!-- Section Divider -->
-          <hr class="border-t border-gray-200 my-1" />
-
-          <!-- Section 2: SCHEDULE -->
-          <div class="space-y-3">
-            <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-              <span>Schedule</span>
-              <Calendar class="size-3.5 text-gray-400" />
-            </div>
-
-            <!-- Start Date & Due Date (Side by Side) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <!-- Start Date -->
-              <div>
-                <label class="block font-medium text-[11px] text-gray-700 mb-1">Start Date</label>
-                <DatePicker
-                  v-model="form.start_date"
-                  format="DD-MM-YYYY"
-                  placeholder="DD-MM-YYYY"
-                  size="sm"
-                  variant="outline"
-                  class="w-full"
-                >
-                  <template #prefix>
-                    <Calendar class="size-3.5 text-gray-400" />
-                  </template>
-                  <template #actions="{ setDate, close }">
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 0, 'day', close)"
-                    >
-                      Today
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 1, 'day', close)"
-                    >
-                      Tomorrow
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 7, 'day', close)"
-                    >
-                      One Week
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 15, 'day', close)"
-                    >
-                      15 Days
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 1, 'month', close)"
-                    >
-                      1 Month
-                    </button>
-                  </template>
-                </DatePicker>
-              </div>
-
-              <!-- Due Date -->
-              <div>
-                <div class="flex items-center justify-between mb-1">
-                  <label class="font-medium text-[11px] text-gray-700 truncate">Due Date</label>
-                  <span
-                    v-if="form.due_date"
-                    class="px-1 py-0.2 rounded text-[9px] font-bold border tracking-wide uppercase shrink-0"
-                    :class="isOverdue ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
-                  >
-                    {{ isOverdue ? 'OVERDUE' : 'On Time' }}
+                <div class="flex flex-wrap items-center gap-1.5 min-w-0">
+                  <span class="font-semibold text-amber-950">
+                    Task is overdue by {{ overdueDays }} {{ overdueDays === 1 ? 'day' : 'days' }}.
+                  </span>
+                  <span class="text-amber-800">
+                    Target completion date was {{ formattedDueDate || 'not met' }}. Please expedite or update timelines.
                   </span>
                 </div>
-                <DatePicker
-                  v-model="form.due_date"
-                  format="DD-MM-YYYY"
-                  placeholder="DD-MM-YYYY"
-                  size="sm"
-                  variant="outline"
-                  class="w-full"
-                >
-                  <template #prefix>
-                    <AlertTriangle v-if="isOverdue" class="size-3.5 text-rose-500" />
-                    <Calendar v-else class="size-3.5 text-gray-400" />
-                  </template>
-                  <template #actions="{ setDate, close }">
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 0, 'day', close)"
-                    >
-                      Today
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 1, 'day', close)"
-                    >
-                      Tomorrow
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 7, 'day', close)"
-                    >
-                      One Week
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 15, 'day', close)"
-                    >
-                      15 Days
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 1, 'month', close)"
-                    >
-                      1 Month
-                    </button>
-                  </template>
-                </DatePicker>
               </div>
-            </div>
-
-            <!-- Estimated Date & Completed Date (Side by Side) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <!-- Estimated Date (Expected Resolution Date) -->
-              <div>
-                <label class="block font-medium text-[11px] text-gray-700 mb-1 truncate" title="Expected Resolution Date">Estimated Date</label>
-                <DatePicker
-                  v-model="form.expected_resolution_date"
-                  format="DD-MM-YYYY"
-                  placeholder="DD-MM-YYYY"
-                  size="sm"
-                  variant="outline"
-                  class="w-full"
-                >
-                  <template #prefix>
-                    <Calendar class="size-3.5 text-gray-400" />
-                  </template>
-                  <template #actions="{ setDate, close }">
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 0, 'day', close)"
-                    >
-                      Today
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 1, 'day', close)"
-                    >
-                      Tomorrow
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 7, 'day', close)"
-                    >
-                      One Week
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 15, 'day', close)"
-                    >
-                      15 Days
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 1, 'month', close)"
-                    >
-                      1 Month
-                    </button>
-                  </template>
-                </DatePicker>
-              </div>
-
-              <!-- Completed Date (Completed On) -->
-              <div>
-                <label class="block font-medium text-[11px] text-gray-700 mb-1 truncate" title="Completed On">Completed Date</label>
-                <DatePicker
-                  v-model="form.completed_on"
-                  format="DD-MM-YYYY"
-                  placeholder="DD-MM-YYYY"
-                  size="sm"
-                  variant="outline"
-                  class="w-full"
-                >
-                  <template #prefix>
-                    <Calendar class="size-3.5 text-gray-400" />
-                  </template>
-                  <template #actions="{ setDate, close }">
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 0, 'day', close)"
-                    >
-                      Today
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 1, 'day', close)"
-                    >
-                      Tomorrow
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 7, 'day', close)"
-                    >
-                      One Week
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 15, 'day', close)"
-                    >
-                      15 Days
-                    </button>
-                    <button
-                      type="button"
-                      :class="rowCls"
-                      @click="applyQuickDate(setDate, 1, 'month', close)"
-                    >
-                      1 Month
-                    </button>
-                  </template>
-                </DatePicker>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section Divider -->
-          <hr class="border-t border-gray-200 my-1" />
-
-          <!-- Section 3: 🎫 TICKET -->
-          <div class="space-y-3">
-            <div class="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-              <span class="flex items-center gap-1">
-                <span>🎫</span>
-                <span>Ticket</span>
-              </span>
-              <Ticket class="size-3.5 text-gray-400" />
-            </div>
-
-            <!-- Ticket Date -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Ticket Date</label>
-              <DatePicker
-                v-model="form.ticket_date"
-                format="DD-MM-YYYY"
-                placeholder="DD-MM-YYYY"
-                size="sm"
-                variant="outline"
-                class="w-full"
+              <button
+                type="button"
+                class="text-amber-900 font-semibold hover:text-amber-950 text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded hover:bg-amber-100/60 transition-colors shrink-0 cursor-pointer"
+                @click="extendDueDate(7)"
               >
-                <template #prefix>
-                  <Calendar class="size-3.5 text-gray-400" />
-                </template>
-                <template #actions="{ setDate, close }">
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 0, 'day', close)"
-                  >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 1, 'day', close)"
-                  >
-                    Tomorrow
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 7, 'day', close)"
-                  >
-                    One Week
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 15, 'day', close)"
-                  >
-                    15 Days
-                  </button>
-                  <button
-                    type="button"
-                    :class="rowCls"
-                    @click="applyQuickDate(setDate, 1, 'month', close)"
-                  >
-                    1 Month
-                  </button>
-                </template>
-              </DatePicker>
+                <span>Extend / Reschedule (+7d)</span>
+                <ArrowRight class="size-2.5" />
+              </button>
             </div>
 
-            <!-- Toll ID -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Toll ID</label>
-              <input
-                v-model="form.toll_id"
-                type="text"
-                placeholder="Enter Toll ID"
-                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-              />
-            </div>
-
-            <!-- Ticket ID -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Ticket ID</label>
-              <input
-                v-model="form.ticket_id"
-                type="text"
-                placeholder="e.g. TKT-001"
-                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-mono font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-              />
-            </div>
-
-            <!-- Raised By -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Raised By</label>
-              <input
-                v-model="form.ticket_raised_by"
-                type="text"
-                placeholder="Name or email"
-                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-              />
-            </div>
-
-            <!-- Ticket Description -->
-            <div>
-              <label class="block font-medium text-[11px] text-gray-700 mb-1">Ticket Description</label>
-              <textarea
-                v-model="form.ticket_description"
-                rows="2"
-                placeholder="Brief description of the ticket..."
-                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition resize-none"
-              ></textarea>
-            </div>
-          </div>
-        </aside>
-
-        <!-- COLUMN 2: CENTER MAIN CONTENT (Header, Attachments, Title & Description) -->
-        <main class="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 space-y-4">
-          <!-- Attachments Section (Square Thumbnails + Add Tile) -->
-          <div class="space-y-1.5 pt-0.5 pb-1">
-            <div class="flex items-center justify-between">
-              <span class="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                <Paperclip class="size-3 text-gray-400" />
-                <span>Attachments</span>
-                <span
-                  v-if="attachments.length > 0"
-                  class="px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600"
-                >
-                  {{ attachments.length }}
-                </span>
-              </span>
-
-              <span v-if="attachments.length > 0" class="text-[10px] text-gray-400">
-                Hover to view, download, or delete
-              </span>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2.5">
-              <!-- Square Thumbnail Cards -->
-              <div
-                v-for="(att, idx) in attachments"
-                :key="att.id || att.name || idx"
-                class="relative group size-20 sm:size-22 rounded-xl border border-gray-200 bg-white hover:border-[#417c7d]/40 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col select-none"
-              >
-                <!-- If Image: Real Thumbnail Preview -->
-                <div v-if="isImageFile(att)" class="relative w-full h-full bg-gray-100">
-                  <img
-                    :src="att.url || att.file_url"
-                    :alt="att.name"
-                    class="w-full h-full object-cover"
-                    loading="lazy"
+            <!-- Unified Document Canvas -->
+            <div
+              class="bg-white divide-y overflow-hidden divide-slate-200 border border-slate-200/80 rounded-xl shadow-xs"
+              data-purpose="document-canvas"
+            >
+              <!-- Section 1: Task Title & Description Editor -->
+              <div class="p-5 space-y-3" data-purpose="task-title-and-description-section">
+                <div class="space-y-1" data-purpose="task-title-section">
+                  <input
+                    id="task-title-input"
+                    v-model="form.title"
+                    class="w-full text-2xl font-bold text-slate-900 placeholder-slate-300 border-0 border-b border-transparent hover:border-slate-200 focus:border-teal-600 focus:ring-0 px-0 py-0.5 bg-transparent tracking-tight transition-colors"
+                    placeholder="Task title..."
+                    type="text"
                   />
-                  <!-- Bottom title scrim -->
-                  <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-3 pb-1 px-1 text-[9px] font-medium text-white truncate text-center pointer-events-none">
-                    {{ att.name }}
+                  <div class="text-[11px] text-slate-400 font-normal flex items-center gap-2">
+                    <span>{{ form.project || 'Audit Management' }}</span>
+                    <span>•</span>
+                    <span>{{ createdTimeAgo }}</span>
+                    <span v-if="form.estimated_hours">• {{ form.estimated_hours }}h estimated</span>
                   </div>
                 </div>
 
-                <!-- If Non-Image: Clean document/file tile -->
+                <!-- Rich Text Description Editor Component -->
+                <div class="rounded-lg border border-slate-200/80 overflow-hidden" data-purpose="task-description-editor">
+                  <TaskRichEditor
+                    v-model="form.description"
+                    :people="people"
+                    min-height="min-h-48"
+                    placeholder="Review the server farm cabling alignment and verify calibration records... (Markdown supported)"
+                  />
+                </div>
+              </div>
+
+              <!-- Section 2: Attachments Section -->
+              <div class="p-5 space-y-3" data-purpose="attachments-section">
+                <div class="flex items-center justify-between pb-1">
+                  <div class="flex items-center space-x-2">
+                    <Paperclip class="size-3 text-slate-400" />
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-600">Attachments</h2>
+                    <span class="bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.2 rounded-full">
+                      {{ attachments.length }} {{ attachments.length === 1 ? 'File' : 'Files' }}
+                    </span>
+                  </div>
+                  <span class="text-[11px] text-slate-400">Max size 25MB per file</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <!-- File Cards -->
+                  <div
+                    v-for="(att, idx) in attachments"
+                    :key="att.id || att.name || idx"
+                    class="flex items-center p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-teal-300 hover:shadow-xs transition-all group relative"
+                  >
+                    <div
+                      class="w-8 h-8 rounded flex items-center justify-center mr-2.5 shrink-0"
+                      :class="getFileTypePill(att).bg"
+                    >
+                      <component :is="getFileTypePill(att).icon" class="size-4" :class="getFileTypePill(att).iconColor" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-xs font-medium text-slate-800 truncate" :title="att.name">
+                        {{ att.name }}
+                      </p>
+                      <p class="text-[10px] text-slate-400 font-mono">
+                        {{ att.size || 'File' }} • {{ getFileExtension(att) }}
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <a
+                        :href="att.url || att.file_url || '#'"
+                        target="_blank"
+                        download
+                        class="text-slate-400 hover:text-slate-700 p-1"
+                        title="Download"
+                      >
+                        <Download class="size-3.5" />
+                      </a>
+                      <button
+                        type="button"
+                        class="text-slate-400 hover:text-rose-600 p-1"
+                        title="Delete"
+                        @click.stop="confirmDeleteAttachment(att, idx)"
+                      >
+                        <Trash2 class="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Upload Files Card -->
+                  <label
+                    class="border border-dashed border-slate-300 hover:border-teal-500 rounded-lg p-2.5 flex items-center justify-center gap-2 text-slate-500 hover:text-teal-700 hover:bg-teal-50/30 cursor-pointer transition-all"
+                  >
+                    <UploadCloud class="size-3.5 text-slate-400" />
+                    <span class="text-xs font-medium">+ Upload files</span>
+                    <Loader2 v-if="uploadingAttachment" class="size-3.5 animate-spin text-teal-600 ml-1" />
+                    <input type="file" multiple class="sr-only" @change="handleFileUpload" />
+                  </label>
+                </div>
+              </div>
+
+              <!-- Section 3: Schedule & Dates -->
+              <div class="p-5 space-y-3" data-purpose="schedule-section">
+                <div class="flex items-center justify-between pb-1">
+                  <div class="flex items-center space-x-2">
+                    <Calendar class="size-3 text-teal-600" />
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-600">Schedule & Dates</h2>
+                  </div>
+                  <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs font-mono font-medium">
+                    Duration: {{ computedDuration }}
+                  </span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <!-- Start Date -->
+                  <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+                    <span class="text-[11px] font-medium text-slate-500 mb-1 flex items-center gap-1.5">
+                      <Calendar class="size-3 text-slate-400" />
+                      Start Date
+                    </span>
+                    <DatePicker
+                      v-model="form.start_date"
+                      format="DD-MM-YYYY"
+                      placeholder="DD-MM-YYYY"
+                      size="sm"
+                      variant="outline"
+                      class="w-full text-xs font-semibold font-mono"
+                    >
+                      <template #actions="{ setDate, close }">
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
+                      </template>
+                    </DatePicker>
+                  </div>
+
+                  <!-- Due Date (with Overdue alert styling) -->
+                  <div
+                    class="p-2.5 rounded-lg border flex flex-col justify-between"
+                    :class="isOverdue ? 'border-rose-200 bg-rose-50/50' : 'border-slate-200 bg-slate-50/50'"
+                  >
+                    <div class="flex items-center justify-between mb-1">
+                      <span
+                        class="text-[11px] font-medium flex items-center gap-1.5"
+                        :class="isOverdue ? 'text-rose-700' : 'text-slate-500'"
+                      >
+                        <AlertTriangle v-if="isOverdue" class="size-3 text-rose-500" />
+                        <Calendar v-else class="size-3 text-slate-400" />
+                        Due Date
+                      </span>
+                      <span
+                        v-if="isOverdue"
+                        class="text-[10px] font-semibold text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded"
+                      >
+                        {{ overdueDays }}d Overdue
+                      </span>
+                    </div>
+                    <DatePicker
+                      v-model="form.due_date"
+                      format="DD-MM-YYYY"
+                      placeholder="DD-MM-YYYY"
+                      size="sm"
+                      variant="outline"
+                      class="w-full text-xs font-bold font-mono"
+                      :class="isOverdue ? 'text-rose-700' : 'text-slate-800'"
+                    >
+                      <template #actions="{ setDate, close }">
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
+                      </template>
+                    </DatePicker>
+                  </div>
+
+                  <!-- Estimated Date -->
+                  <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+                    <span class="text-[11px] font-medium text-slate-500 mb-1 flex items-center gap-1.5">
+                      <Calendar class="size-3 text-slate-400" />
+                      Estimated Date
+                    </span>
+                    <DatePicker
+                      v-model="form.expected_resolution_date"
+                      format="DD-MM-YYYY"
+                      placeholder="DD-MM-YYYY"
+                      size="sm"
+                      variant="outline"
+                      class="w-full text-xs font-semibold font-mono text-slate-800"
+                    >
+                      <template #actions="{ setDate, close }">
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
+                      </template>
+                    </DatePicker>
+                  </div>
+
+                  <!-- Completed Date -->
+                  <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+                    <span class="text-[11px] font-medium text-slate-500 mb-1 flex items-center gap-1.5">
+                      <Calendar class="size-3 text-slate-400" />
+                      Completed Date
+                    </span>
+                    <DatePicker
+                      v-model="form.completed_on"
+                      format="DD-MM-YYYY"
+                      placeholder="DD-MM-YYYY"
+                      size="sm"
+                      variant="outline"
+                      class="w-full text-xs font-semibold font-mono text-slate-800"
+                    >
+                      <template #actions="{ setDate, close }">
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
+                      </template>
+                    </DatePicker>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section 4: Ticket Details -->
+              <div class="p-5 space-y-3" data-purpose="ticket-details-section">
+                <div class="flex items-center justify-between pb-1">
+                  <div class="flex items-center space-x-2">
+                    <Ticket class="size-3 text-teal-600" />
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-600">Ticket Details</h2>
+                    <span
+                      v-if="form.ticket_id || form.toll_id"
+                      class="bg-teal-50 text-teal-800 border border-teal-200/60 text-[10px] font-semibold px-2 py-0.2 rounded-full"
+                    >
+                      Linked Ticket
+                    </span>
+                  </div>
+                  <span v-if="form.ticket_id || form.toll_id" class="font-mono text-[11px] text-slate-400">
+                    {{ form.ticket_id || 'TCK-NEW' }} {{ form.toll_id ? '• ' + form.toll_id : '' }}
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <!-- Ticket Date -->
+                  <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+                    <span class="text-[11px] font-medium text-slate-500 mb-1 flex items-center gap-1.5">
+                      <Calendar class="size-3 text-slate-400" />
+                      Ticket Date
+                    </span>
+                    <DatePicker
+                      v-model="form.ticket_date"
+                      format="DD-MM-YYYY"
+                      placeholder="DD-MM-YYYY"
+                      size="sm"
+                      variant="outline"
+                      class="w-full text-xs font-semibold font-mono"
+                    >
+                      <template #actions="{ setDate, close }">
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Yesterday</button>
+                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
+                      </template>
+                    </DatePicker>
+                  </div>
+
+                  <!-- Toll ID -->
+                  <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+                    <span class="text-[11px] font-medium text-slate-500 mb-1 flex items-center gap-1.5">
+                      <Flag class="size-3 text-slate-400" />
+                      Toll ID
+                    </span>
+                    <input
+                      v-model="form.toll_id"
+                      type="text"
+                      placeholder="TL-XXXX"
+                      class="w-full text-xs font-semibold text-slate-800 font-mono bg-transparent border-0 p-0 focus:ring-0 outline-none"
+                    />
+                  </div>
+
+                  <!-- Ticket ID -->
+                  <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between group">
+                    <span class="text-[11px] font-medium text-slate-500 mb-1 flex items-center justify-between">
+                      <span class="flex items-center gap-1.5">
+                        <Ticket class="size-3 text-amber-500" />
+                        Ticket ID
+                      </span>
+                      <button
+                        v-if="form.ticket_id"
+                        type="button"
+                        class="text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Copy Ticket ID"
+                        @click="copyText(form.ticket_id)"
+                      >
+                        <Copy class="size-2.5" />
+                      </button>
+                    </span>
+                    <input
+                      v-model="form.ticket_id"
+                      type="text"
+                      placeholder="TCK-XXXX"
+                      class="w-full text-xs font-bold text-slate-800 font-mono bg-transparent border-0 p-0 focus:ring-0 outline-none"
+                    />
+                  </div>
+
+                  <!-- Raised By -->
+                  <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+                    <span class="text-[11px] font-medium text-slate-500 mb-1 flex items-center gap-1.5">
+                      <User class="size-3 text-slate-400" />
+                      Raised By
+                    </span>
+                    <div class="flex items-center gap-1.5 min-w-0">
+                      <div class="w-4 h-4 rounded-full bg-teal-700 text-white text-[8px] font-bold flex items-center justify-center shrink-0">
+                        {{ getInitials(form.ticket_raised_by || 'TK') }}
+                      </div>
+                      <input
+                        v-model="form.ticket_raised_by"
+                        type="text"
+                        placeholder="Name / Email"
+                        class="w-full text-xs font-semibold text-slate-800 bg-transparent border-0 p-0 focus:ring-0 outline-none truncate"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-medium text-slate-500 block">Ticket Description</label>
+                  <textarea
+                    v-model="form.ticket_description"
+                    rows="2"
+                    placeholder="Ticket details or incident report..."
+                    class="w-full p-3 rounded-lg border border-slate-200 bg-slate-50/50 text-xs text-slate-700 leading-relaxed font-sans focus:border-teal-600 focus:bg-white transition-colors outline-none resize-none"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RIGHT INSPECTOR SIDEBAR (~32% width, approx 380px-420px) -->
+        <aside
+          aria-label="Task Inspector and Activity Timeline"
+          class="w-full lg:w-[380px] xl:w-[410px] bg-white border-t lg:border-t-0 lg:border-l border-slate-200 flex flex-col shrink-0 h-full overflow-hidden"
+        >
+          <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <!-- TOP INSPECTOR SECTION: Assignment & Attributes -->
+            <div class="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+                <div class="flex items-center space-x-2">
+                  <UserCheck class="size-3.5 text-teal-600" />
+                  <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700">Assignment</h2>
+                </div>
+                <span class="font-mono text-[10px] text-slate-400">{{ form.id || 'NEW' }}</span>
+              </div>
+
+              <div class="space-y-3.5 text-xs">
+                <!-- Project Selector -->
+                <div class="space-y-1">
+                  <label class="text-[11px] font-semibold text-slate-600 block">Project</label>
+                  <select
+                    v-model="form.project"
+                    class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-teal-600 focus:outline-none focus:ring-0 text-slate-800 transition-colors"
+                    @change="onProjectChange"
+                  >
+                    <option value="">Select Project</option>
+                    <option v-for="p in projects" :key="p.name" :value="p.name">
+                      {{ p.display_name || p.name }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Assigned To List -->
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-[11px] font-semibold text-slate-600">Assigned To</label>
+                    <span v-if="form.assignees && form.assignees.length > 0" class="text-[10px] text-slate-400">
+                      {{ form.assignees.length }} assigned
+                    </span>
+                  </div>
+
+                  <div v-if="form.assignees && form.assignees.length > 0" class="space-y-2">
+                    <div
+                      v-for="assignee in form.assignees"
+                      :key="getAssigneeValue(assignee)"
+                      class="flex items-center justify-between p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300 transition-colors group"
+                    >
+                      <div class="flex items-center space-x-2.5 min-w-0">
+                        <div
+                          class="w-7 h-7 rounded-full text-white text-[10px] font-bold flex items-center justify-center shrink-0 shadow-xs"
+                          :class="getAvatarColor(getAssigneeName(assignee))"
+                        >
+                          {{ getInitials(getAssigneeName(assignee)) }}
+                        </div>
+                        <div class="min-w-0">
+                          <p class="font-semibold text-slate-800 text-xs truncate">
+                            {{ getAssigneeName(assignee) }}
+                          </p>
+                          <p class="text-[10px] text-slate-400 truncate">
+                            {{ getAssigneeRole(assignee) }}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        class="text-slate-400 hover:text-rose-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        :title="'Remove ' + getAssigneeName(assignee)"
+                        @click="removeAssignee(assignee)"
+                      >
+                        <Trash2 class="size-3" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- MultiSelect employee selector -->
+                  <div class="pt-0.5">
+                    <MultiSelect
+                      v-model="form.assignees"
+                      :options="assigneeOptions"
+                      :placeholder="effectiveTeam ? `+ Add ${effectiveTeam} member...` : '+ Add Assignee...'"
+                      size="sm"
+                      class="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div class="space-y-3 pt-3 border-t border-slate-200">
+                  <!-- Pending With -->
+                  <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-slate-600 block">Pending With</label>
+                    <input
+                      v-model="form.pending_with"
+                      type="text"
+                      placeholder="Pending with..."
+                      class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-teal-600 focus:outline-none focus:ring-0 text-slate-800 placeholder-slate-400 transition-colors"
+                    />
+                  </div>
+
+                  <!-- Pending From -->
+                  <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-slate-600 block">Pending From</label>
+                    <select
+                      v-model="form.pending_from"
+                      class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-teal-600 focus:outline-none focus:ring-0 text-slate-800 transition-colors"
+                    >
+                      <option value="" disabled selected>Pending from...</option>
+                      <option v-for="v in vendorOptions" :key="v" :value="v">{{ v }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Guided By -->
+                  <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-slate-600 block">Guided By</label>
+                    <select
+                      v-model="form.guided_by"
+                      class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-teal-600 focus:outline-none focus:ring-0 text-slate-800 transition-colors"
+                    >
+                      <option value="" disabled selected>Guided by...</option>
+                      <option v-for="person in guideOptions" :key="person" :value="person">{{ person }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Responsible Person -->
+                  <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-slate-600 block">Responsible Person</label>
+                    <select
+                      v-model="form.responsible_person"
+                      class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-teal-600 focus:outline-none focus:ring-0 text-slate-800 transition-colors"
+                    >
+                      <option value="" disabled selected>Select responsible person...</option>
+                      <option v-for="person in guideOptions" :key="person" :value="person">{{ person }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Hours tracking -->
+                  <div class="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <label class="text-[11px] font-semibold text-slate-600 block mb-1">Est. Hours</label>
+                      <input
+                        v-model="form.estimated_hours"
+                        type="number"
+                        step="0.5"
+                        placeholder="e.g. 8"
+                        class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-teal-600 focus:outline-none focus:ring-0 text-slate-800 transition-colors font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label class="text-[11px] font-semibold text-slate-600 block mb-1">Logged Hours</label>
+                      <input
+                        v-model="form.logged_hours"
+                        type="number"
+                        step="0.5"
+                        placeholder="e.g. 4"
+                        class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-teal-600 focus:outline-none focus:ring-0 text-slate-800 transition-colors font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- BOTTOM INSPECTOR SECTION: Comments & Activity Audit -->
+            <div class="flex-1 flex flex-col min-h-[280px] max-h-[46vh] border-t border-slate-200 bg-slate-50/50">
+              <!-- Tabs Header -->
+              <div class="px-4 sm:px-5 pt-3 pb-2 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 select-none">
+                <div class="flex items-center space-x-4">
+                  <button
+                    type="button"
+                    class="text-xs pb-2 -mb-2 flex items-center gap-1.5 cursor-pointer transition"
+                    :class="activeRightTab === 'comments' ? 'font-bold text-teal-700 border-b-2 border-teal-600' : 'font-medium text-slate-400 hover:text-slate-700 border-b-2 border-transparent'"
+                    @click="activeRightTab = 'comments'"
+                  >
+                    <span>Comments</span>
+                    <span
+                      class="text-[10px] font-semibold px-1.5 py-0.2 rounded-full border"
+                      :class="activeRightTab === 'comments' ? 'bg-teal-50 text-teal-700 border-teal-200/60' : 'bg-slate-100 text-slate-500 border-slate-200'"
+                    >
+                      {{ comments.length }}
+                    </span>
+                    <Loader2 v-if="loadingComments" class="size-2.5 animate-spin text-teal-600" />
+                  </button>
+
+                  <button
+                    type="button"
+                    class="text-xs pb-2 -mb-2 flex items-center gap-1.5 cursor-pointer transition"
+                    :class="activeRightTab === 'activity' ? 'font-bold text-teal-700 border-b-2 border-teal-600' : 'font-medium text-slate-400 hover:text-slate-700 border-b-2 border-transparent'"
+                    @click="activeRightTab = 'activity'"
+                  >
+                    <span>Activity Audit</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Comments Feed -->
+              <div
+                v-if="activeRightTab === 'comments'"
+                ref="commentsContainer"
+                class="flex-1 p-4 overflow-y-auto space-y-3 min-h-0 text-xs"
+              >
+                <div v-if="loadingComments && comments.length === 0" class="py-6 text-center text-slate-400">
+                  <Loader2 class="size-4 animate-spin text-teal-600 mx-auto mb-1" />
+                  <span class="text-xs">Loading comments...</span>
+                </div>
+                <div v-else-if="comments.length === 0" class="py-6 text-center text-slate-400 select-none">
+                  <MessageSquare class="size-5 mx-auto text-slate-300 mb-1" />
+                  <p class="font-medium text-slate-600 text-xs">No comments yet</p>
+                  <p class="text-[10px] text-slate-400">Add a comment below to start discussion.</p>
+                </div>
                 <div
                   v-else
-                  class="w-full h-full flex flex-col items-center justify-between p-1.5 bg-gradient-to-b from-gray-50 to-white"
+                  v-for="(cmt, idx) in comments"
+                  :key="cmt.id || idx"
+                  class="space-y-1.5 group"
                 >
-                  <!-- Top Badge with file extension -->
-                  <span
-                    class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border uppercase tracking-wide shrink-0"
-                    :class="getFileTypeConfig(att).color"
-                  >
-                    {{ getFileTypeConfig(att).badge }}
-                  </span>
-
-                  <!-- Center Document Icon -->
-                  <FileText class="size-5 shrink-0" :class="getFileTypeConfig(att).iconColor" />
-
-                  <!-- Bottom File Info -->
-                  <div class="w-full text-center min-w-0">
-                    <p class="text-[9px] font-semibold text-gray-700 truncate w-full" :title="att.name">
-                      {{ att.name }}
-                    </p>
-                    <span v-if="att.size" class="text-[8px] text-gray-400 font-mono block -mt-0.5">
-                      {{ att.size }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Hover Actions Overlay -->
-                <div class="absolute inset-0 bg-black/60 backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1 z-10">
-                  <!-- View/Open File in New Tab -->
-                  <a
-                    :href="att.url || att.file_url || '#'"
-                    target="_blank"
-                    class="size-6 rounded-md bg-white/20 hover:bg-white text-white hover:text-gray-900 flex items-center justify-center transition cursor-pointer"
-                    title="Open in new tab"
-                  >
-                    <ExternalLink class="size-3" />
-                  </a>
-
-                  <!-- Download File -->
-                  <a
-                    :href="att.url || att.file_url || '#'"
-                    target="_blank"
-                    download
-                    class="size-6 rounded-md bg-white/20 hover:bg-white text-white hover:text-gray-900 flex items-center justify-center transition cursor-pointer"
-                    title="Download"
-                  >
-                    <Download class="size-3" />
-                  </a>
-
-                  <!-- Delete File -->
-                  <button
-                    type="button"
-                    class="size-6 rounded-md bg-white/20 hover:bg-rose-600 text-white flex items-center justify-center transition cursor-pointer"
-                    title="Delete attachment"
-                    @click.stop.prevent="confirmDeleteAttachment(att, idx)"
-                  >
-                    <Trash2 class="size-3" />
-                  </button>
-                </div>
-              </div>
-
-              <!-- + Add Attachment Square Tile -->
-              <label
-                class="relative size-20 sm:size-22 rounded-xl border-2 border-dashed border-gray-300 hover:border-[#417c7d] bg-gray-50/70 hover:bg-[#417c7d]/5 flex flex-col items-center justify-center gap-1 cursor-pointer transition select-none group text-gray-500 hover:text-[#417c7d] shadow-2xs shrink-0"
-                title="Upload attachments"
-              >
-                <div class="size-6 rounded-full bg-white group-hover:bg-[#417c7d]/10 border border-gray-200 group-hover:border-[#417c7d]/30 flex items-center justify-center shadow-xs transition">
-                  <Plus class="size-3.5 text-gray-500 group-hover:text-[#417c7d] stroke-[2.5]" />
-                </div>
-                <span class="text-[10px] font-semibold tracking-wide">Add</span>
-                <span
-                  v-if="uploadingAttachment"
-                  class="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center"
-                >
-                  <Loader2 class="size-5 animate-spin text-[#417c7d]" />
-                </span>
-                <input
-                  type="file"
-                  multiple
-                  class="sr-only"
-                  @change="handleFileUpload"
-                />
-              </label>
-            </div>
-          </div>
-
-          <!-- Task Title (Proper Input Box) -->
-          <div class="space-y-1 pt-0.5">
-            <div class="flex items-center justify-between">
-              <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider">
-                Task Title <span class="text-rose-500">*</span>
-              </label>
-            </div>
-            <input
-              v-model="form.title"
-              type="text"
-              placeholder="Enter task title..."
-              class="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#417c7d] focus:ring-2 focus:ring-[#417c7d]/15 rounded-xl px-3.5 py-2 text-sm sm:text-base font-semibold text-gray-900 placeholder-gray-400 outline-none transition shadow-2xs"
-            />
-          </div>
-
-          <!-- Description Section (Directly below Title, zero blank gaps) -->
-          <div class="space-y-1 pt-0.5">
-            <div class="flex items-center justify-between">
-              <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider">
-                Description
-              </label>
-              <span class="text-[10px] text-gray-400">
-                Markdown & Rich formatting supported
-              </span>
-            </div>
-
-            <TaskRichEditor
-              v-model="form.description"
-              :people="people"
-              min-height="min-h-72"
-              placeholder="Write description, acceptance criteria, or type / for blocks..."
-            />
-          </div>
-        </main>
-
-        <!-- COLUMN 3: RIGHT SIDEBAR (Comments & Activity Audit) -->
-        <aside class="w-full xl:w-[320px] 2xl:w-[360px] shrink-0 flex flex-col bg-white overflow-hidden h-full border-t xl:border-t-0 xl:border-l border-gray-200">
-          <!-- Top Tabs Header -->
-          <div class="flex items-center justify-between px-3.5 py-2.5 shrink-0 select-none bg-white border-b border-gray-200">
-            <div class="flex items-center gap-3">
-              <button
-                type="button"
-                class="pb-1 text-xs font-bold transition border-b-2 cursor-pointer inline-flex items-center gap-1.5"
-                :class="activeRightTab === 'comments' ? 'border-[#417c7d] text-[#417c7d]' : 'border-transparent text-gray-500 hover:text-gray-800'"
-                @click="activeRightTab = 'comments'"
-              >
-                <span>Comments</span>
-                <span
-                  class="px-1.5 py-0.2 rounded-full text-[10px] font-semibold"
-                  :class="activeRightTab === 'comments' ? 'bg-[#417c7d]/10 text-[#417c7d]' : 'bg-gray-100 text-gray-500'"
-                >
-                  {{ comments.length }}
-                </span>
-                <Loader2 v-if="loadingComments" class="size-3 animate-spin text-[#417c7d]" />
-              </button>
-              <button
-                type="button"
-                class="pb-1 text-xs font-bold transition border-b-2 cursor-pointer"
-                :class="activeRightTab === 'activity' ? 'border-[#417c7d] text-[#417c7d]' : 'border-transparent text-gray-500 hover:text-gray-800'"
-                @click="activeRightTab = 'activity'"
-              >
-                Activity Audit
-              </button>
-            </div>
-
-            <button type="button" class="text-gray-400 hover:text-gray-700 cursor-pointer p-1 rounded hover:bg-gray-100" title="Timeline options">
-              <SlidersHorizontal class="size-3.5" />
-            </button>
-          </div>
-
-          <!-- Comments Feed Tab Content -->
-          <div
-            v-if="activeRightTab === 'comments'"
-            ref="commentsContainer"
-            class="flex-1 overflow-y-auto p-3 space-y-3 min-h-0 text-xs"
-          >
-            <!-- Loading indicator when fetching comments -->
-            <div v-if="loadingComments && comments.length === 0" class="py-8 flex flex-col items-center justify-center gap-1.5 text-gray-400">
-              <Loader2 class="size-4.5 animate-spin text-[#417c7d]" />
-              <span class="text-xs text-gray-500 font-medium">Loading comments...</span>
-            </div>
-
-            <!-- Empty state when no comments exist -->
-            <div v-else-if="comments.length === 0" class="py-8 text-center text-gray-400 space-y-1 select-none">
-              <MessageSquare class="size-5 mx-auto stroke-1 text-gray-300 mb-1" />
-              <p class="text-xs font-semibold text-gray-600">No comments yet</p>
-              <p class="text-[11px] text-gray-400">Send a comment below to start the conversation.</p>
-            </div>
-
-            <!-- Comments List: Chat style with current user on right, others on left -->
-            <template v-else v-for="(cmt, idx) in comments" :key="cmt.id || idx">
-              <!-- CURRENT USER MESSAGE (Right-Aligned) -->
-              <div
-                v-if="isCurrentUser(cmt)"
-                class="flex flex-col items-end group max-w-[90%] ml-auto"
-              >
-                <!-- Edit Mode -->
-                <div v-if="editingCommentId === cmt.id" class="w-full space-y-1.5">
-                  <textarea
-                    v-model="editingCommentText"
-                    rows="2"
-                    class="w-full bg-white border border-[#417c7d] focus:ring-2 focus:ring-[#417c7d]/20 rounded-xl px-2.5 py-1.5 text-xs text-gray-800 outline-none resize-none transition leading-normal"
-                    placeholder="Edit comment..."
-                    @keydown.enter.exact.prevent="saveEditComment(cmt, idx)"
-                    @keydown.escape.prevent="cancelEditComment"
-                  ></textarea>
-                  <div class="flex items-center justify-end gap-1.5 text-[11px]">
-                    <button
-                      type="button"
-                      class="px-2 py-0.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
-                      @click="cancelEditComment"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      :disabled="updatingComment || !editingCommentText.trim()"
-                      class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-[#417c7d] hover:bg-[#366869] text-white font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
-                      @click="saveEditComment(cmt, idx)"
-                    >
-                      <Loader2 v-if="updatingComment" class="size-3 animate-spin" />
-                      <span>Save</span>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Display Mode -->
-                <template v-else>
-                  <div class="bg-[#417c7d] text-white rounded-2xl rounded-br-xs px-3.5 py-2 text-xs shadow-xs leading-relaxed break-words whitespace-pre-wrap select-text">
-                    {{ cmt.text }}
-                  </div>
-                  <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-gray-400">
-                    <span>{{ cmt.time || 'Just now' }}</span>
-                    <!-- Edit Button -->
-                    <button
-                      type="button"
-                      class="opacity-0 group-hover:opacity-100 transition hover:text-[#417c7d] text-gray-400 cursor-pointer p-0.5"
-                      title="Edit comment"
-                      @click="startEditComment(cmt)"
-                    >
-                      <Pencil class="size-2.5" />
-                    </button>
-                    <!-- Delete Button -->
-                    <button
-                      v-if="cmt.can_delete || cmt.id"
-                      type="button"
-                      class="opacity-0 group-hover:opacity-100 transition hover:text-rose-600 text-gray-400 cursor-pointer p-0.5"
-                      title="Delete comment"
-                      @click="deleteComment(cmt.id, idx)"
-                    >
-                      <Trash2 class="size-2.5" />
-                    </button>
-                  </div>
-                </template>
-              </div>
-
-              <!-- OTHER USERS MESSAGE (Left-Aligned) -->
-              <div
-                v-else
-                class="flex items-start gap-2 group max-w-[90%] mr-auto"
-              >
-                <span
-                  class="size-5 rounded-full text-white font-bold text-[9px] flex items-center justify-center shrink-0 mt-0.5"
-                  :class="getAvatarColor(cmt.author)"
-                >
-                  {{ getInitials(cmt.author) }}
-                </span>
-                <div class="flex flex-col items-start min-w-0 flex-1">
-                  <span class="text-[10px] font-semibold text-gray-600 mb-0.5 truncate max-w-[150px]">
-                    {{ cmt.author }}
-                  </span>
-
-                  <!-- Edit Mode for other user (if permitted) -->
-                  <div v-if="editingCommentId === cmt.id" class="w-full space-y-1.5">
-                    <textarea
-                      v-model="editingCommentText"
-                      rows="2"
-                      class="w-full bg-white border border-[#417c7d] focus:ring-2 focus:ring-[#417c7d]/20 rounded-xl px-2.5 py-1.5 text-xs text-gray-800 outline-none resize-none transition leading-normal"
-                      placeholder="Edit comment..."
-                      @keydown.enter.exact.prevent="saveEditComment(cmt, idx)"
-                      @keydown.escape.prevent="cancelEditComment"
-                    ></textarea>
-                    <div class="flex items-center justify-end gap-1.5 text-[11px]">
-                      <button
-                        type="button"
-                        class="px-2 py-0.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
-                        @click="cancelEditComment"
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2 min-w-0">
+                      <div
+                        class="w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center shrink-0"
+                        :class="getAvatarColor(cmt.author)"
                       >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        :disabled="updatingComment || !editingCommentText.trim()"
-                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-[#417c7d] hover:bg-[#366869] text-white font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
-                        @click="saveEditComment(cmt, idx)"
-                      >
-                        <Loader2 v-if="updatingComment" class="size-3 animate-spin" />
-                        <span>Save</span>
-                      </button>
+                        {{ getInitials(cmt.author) }}
+                      </div>
+                      <span class="text-xs font-semibold text-slate-800 truncate">{{ cmt.author }}</span>
                     </div>
-                  </div>
-
-                  <!-- Display Mode -->
-                  <template v-else>
-                    <div class="bg-gray-100 hover:bg-gray-100/90 text-gray-800 border border-gray-200/80 rounded-2xl rounded-tl-xs px-3.5 py-2 text-xs leading-relaxed break-words whitespace-pre-wrap select-text">
-                      {{ cmt.text }}
-                    </div>
-                    <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-gray-400">
-                      <span>{{ cmt.time }}</span>
+                    <div class="flex items-center gap-1.5 text-[10px] text-slate-400 shrink-0">
+                      <span>{{ cmt.time || 'Just now' }}</span>
                       <button
-                        v-if="cmt.can_edit"
+                        v-if="cmt.can_delete || isCurrentUser(cmt)"
                         type="button"
-                        class="opacity-0 group-hover:opacity-100 transition hover:text-[#417c7d] text-gray-400 cursor-pointer p-0.5"
-                        title="Edit comment"
-                        @click="startEditComment(cmt)"
-                      >
-                        <Pencil class="size-2.5" />
-                      </button>
-                      <button
-                        v-if="cmt.can_delete"
-                        type="button"
-                        class="opacity-0 group-hover:opacity-100 transition hover:text-rose-600 text-gray-400 cursor-pointer p-0.5"
+                        class="opacity-0 group-hover:opacity-100 transition hover:text-rose-600 p-0.5 cursor-pointer"
                         title="Delete comment"
                         @click="deleteComment(cmt.id, idx)"
                       >
                         <Trash2 class="size-2.5" />
                       </button>
                     </div>
-                  </template>
+                  </div>
+                  <div class="bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 shadow-xs leading-relaxed break-words whitespace-pre-wrap select-text">
+                    {{ cmt.text }}
+                  </div>
                 </div>
               </div>
-            </template>
-          </div>
 
-          <!-- Activity Audit Tab Content -->
-          <div v-else class="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-0 text-xs">
-            <div v-if="activityLog.length === 0" class="py-8 text-center text-gray-400 space-y-1 select-none">
-              <Clock class="size-5 mx-auto stroke-1 text-gray-300 mb-1" />
-              <p class="text-xs font-semibold text-gray-600">No activity logged</p>
-              <p class="text-[11px] text-gray-400">Activity changes will appear here.</p>
-            </div>
-            <div
-              v-else
-              v-for="(act, idx) in activityLog"
-              :key="idx"
-              class="flex items-start gap-2 text-gray-600 pb-2 border-b border-gray-100 last:border-b-0"
-            >
-              <div class="size-1.5 rounded-full bg-[#417c7d] mt-1.5 shrink-0"></div>
-              <div class="flex-1">
-                <p><strong class="text-gray-900">{{ act.user }}</strong> {{ act.action }}</p>
-                <span class="text-[10px] text-gray-400">{{ act.time }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Comment Input Box (Pinned at bottom, compact, no extra gap, clean border-t) -->
-          <div class="p-2.5 bg-gray-50/60 space-y-1.5 shrink-0 border-t border-gray-200">
-            <textarea
-              v-model="newComment"
-              rows="2"
-              placeholder="Write a comment... (Enter to send, Shift+Enter for newline)"
-              class="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#417c7d] focus:ring-2 focus:ring-[#417c7d]/15 rounded-xl px-2.5 py-1.5 text-xs text-gray-800 outline-none transition resize-none placeholder-gray-400 leading-normal"
-              @keydown.enter.exact.prevent="addComment"
-              @keydown.meta.enter="addComment"
-              @keydown.ctrl.enter="addComment"
-            ></textarea>
-
-            <div class="flex items-center justify-between">
-              <!-- Mention, Attach, Emoji Actions -->
-              <div class="flex items-center gap-0.5 text-gray-400">
-                <button
-                  type="button"
-                  class="p-1 hover:text-gray-700 hover:bg-gray-200/60 rounded-md transition cursor-pointer"
-                  title="Mention someone (@)"
-                  @click="insertMentionShortcut"
+              <!-- Activity Tab Content -->
+              <div v-else class="flex-1 p-4 overflow-y-auto space-y-2.5 min-h-0 text-xs">
+                <div v-if="activityLog.length === 0" class="py-6 text-center text-slate-400 select-none">
+                  <Clock class="size-5 mx-auto text-slate-300 mb-1" />
+                  <p class="font-medium text-slate-600 text-xs">No activity logged yet</p>
+                </div>
+                <div
+                  v-else
+                  v-for="(act, idx) in activityLog"
+                  :key="idx"
+                  class="flex items-start gap-2 text-slate-600 pb-2 border-b border-slate-100 last:border-b-0"
                 >
-                  <AtSign class="size-3.5" />
-                </button>
-                <label class="p-1 hover:text-gray-700 hover:bg-gray-200/60 rounded-md transition cursor-pointer" title="Attach file">
-                  <Paperclip class="size-3.5" />
-                  <input type="file" class="sr-only" @change="handleFileUpload" />
-                </label>
-                <button
-                  type="button"
-                  class="p-1 hover:text-gray-700 hover:bg-gray-200/60 rounded-md transition cursor-pointer"
-                  title="Add emoji"
-                >
-                  <Smile class="size-3.5" />
-                </button>
+                  <div class="size-1.5 rounded-full bg-teal-600 mt-1.5 shrink-0"></div>
+                  <div class="flex-1">
+                    <p><strong class="text-slate-800">{{ act.user }}</strong> {{ act.action }}</p>
+                    <span class="text-[10px] text-slate-400">{{ act.time }}</span>
+                  </div>
+                </div>
               </div>
 
-              <!-- Submit Comment Button -->
-              <button
-                type="button"
-                :disabled="!newComment.trim() || submittingComment"
-                class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#417c7d] hover:bg-[#366869] active:bg-[#2b5354] disabled:opacity-40 text-white font-semibold text-xs rounded-lg shadow-xs transition cursor-pointer"
-                @click="addComment"
-              >
-                <Loader2 v-if="submittingComment" class="size-3 animate-spin" />
-                <Send v-else class="size-3" />
-                <span>{{ submittingComment ? 'Sending...' : 'Send' }}</span>
-              </button>
+              <!-- Sticky Comment Input Box -->
+              <div class="p-3 bg-white border-t border-slate-200 shrink-0">
+                <div class="border border-slate-200 rounded-lg overflow-hidden focus-within:border-teal-600 focus-within:bg-white bg-slate-50">
+                  <textarea
+                    v-model="newComment"
+                    rows="2"
+                    class="w-full text-xs p-2 bg-transparent border-0 resize-none focus:ring-0 focus:outline-none placeholder-slate-400 text-slate-800 leading-relaxed"
+                    placeholder="Add a comment or mention @team..."
+                    @keydown.enter.exact.prevent="addComment"
+                    @keydown.meta.enter="addComment"
+                    @keydown.ctrl.enter="addComment"
+                  ></textarea>
+                  <div class="flex items-center justify-between px-2 py-1.5 bg-white border-t border-slate-200/80">
+                    <div class="flex items-center space-x-1">
+                      <button
+                        type="button"
+                        class="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                        title="Bold"
+                        @click="formatCommentBold"
+                      >
+                        <span class="font-bold text-[11px]">B</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                        title="Italic"
+                        @click="formatCommentItalic"
+                      >
+                        <span class="italic text-[11px]">I</span>
+                      </button>
+                      <label
+                        class="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                        title="Attach file"
+                      >
+                        <Paperclip class="size-3" />
+                        <input type="file" class="sr-only" @change="handleFileUpload" />
+                      </label>
+                      <button
+                        type="button"
+                        class="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                        title="Mention someone (@)"
+                        @click="insertMentionShortcut"
+                      >
+                        <AtSign class="size-3" />
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      :disabled="!newComment.trim() || submittingComment"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white rounded text-[11px] font-medium transition-colors cursor-pointer disabled:opacity-50"
+                      @click="addComment"
+                    >
+                      <Loader2 v-if="submittingComment" class="size-2.5 animate-spin" />
+                      <span>Send</span>
+                      <ArrowRight v-if="!submittingComment" class="size-2.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </aside>
-      </div>
+      </main>
     </div>
   </div>
 </template>
 
 <script>
-import { MultiSelect, DatePicker, Button, toast } from 'frappe-ui'
+import { MultiSelect, DatePicker, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+dayjs.extend(relativeTime)
+
 import {
   fetchTaskComments,
   addTaskComment,
@@ -1096,84 +911,97 @@ import {
 import TaskRichEditor from './TaskRichEditor.vue'
 import {
   ArrowLeft,
-  Cloud,
-  Check,
-  Info,
-  X,
-  Plus,
-  Calendar,
-  AlertTriangle,
-  CheckCircle2,
-  CheckCircle,
-  ChevronRight,
-  ChevronDown,
-  ChevronsUpDown,
-  User,
-  Clock,
-  UploadCloud,
-  Download,
-  FileText,
-  Image,
-  SlidersHorizontal,
-  AtSign,
-  Paperclip,
-  Smile,
-  Flag,
-  Search,
+  Copy,
+  Share2,
   Trash2,
+  Check,
+  AlertTriangle,
+  ArrowRight,
+  Paperclip,
+  Calendar,
   Ticket,
+  User,
+  UserCheck,
+  SlidersHorizontal,
   MessageSquare,
+  Clock,
   Loader2,
-  Send,
-  Pencil,
-  ExternalLink,
+  Plus,
+  Download,
+  UploadCloud,
+  FileText,
+  Image as ImageIcon,
+  FileSpreadsheet,
+  ChevronDown,
+  Flag,
   Bug,
   Sparkles,
   CheckSquare,
+  AtSign,
 } from 'lucide-vue-next'
+
+const DEFAULT_GUIDES = [
+  'SHREYASH SUNIL THANTHARATE',
+  'JUBER YUSUF SHEIKH',
+  'PALASH VIJAY SHENDE',
+  'MANSI DHARMARAJ YADAV',
+  'FAIJAN QURESHI',
+  'RISHAB SUSHIL BOSE',
+  'SIDDHARTH P TIRPUDE',
+  'SNEHAL YADORAO BORKAR',
+  'SURAIYYA RAFIK SUTRIYA',
+  'ATUL GANESH NADEKAR',
+  'SURENDRA MAIYADEEN PRAJAPATI',
+  'HARISH DEEPAK EKNATHE',
+  'RISHABH RAHANGDALE',
+  'SABA JAVED SHEIKH',
+  'TALIB KALAM SHEIKH',
+  'NISHANT ASHOK KASHYAP',
+  'VIVEK CHANDRAKANT RAVAL',
+  'MANSOOR JIWANI',
+  'AKASH SHYAMSUNDAR TAMGIRE',
+  'PURVI RAJENDRA MASKARE',
+  'NIKHIL SHAMRAO BHOYAR',
+  'PRATIK MANOJ RAUT',
+  'ASTHA SHAILESH GAJBHIYE',
+  'PARESH VILASCHANDRA PASHINE',
+  'ANKIT ARUN RAMTEKE',
+]
 
 export default {
   name: 'TaskDetailModal',
   components: {
-    Button,
     DatePicker,
     MultiSelect,
     TaskRichEditor,
     ArrowLeft,
-    Cloud,
-    Check,
-    Info,
-    X,
-    Plus,
-    Calendar,
-    AlertTriangle,
-    CheckCircle2,
-    CheckCircle,
-    ChevronRight,
-    ChevronDown,
-    ChevronsUpDown,
-    User,
-    Clock,
-    UploadCloud,
-    Download,
-    FileText,
-    Image,
-    SlidersHorizontal,
-    AtSign,
-    Paperclip,
-    Smile,
-    Flag,
-    Search,
+    Copy,
+    Share2,
     Trash2,
+    Check,
+    AlertTriangle,
+    ArrowRight,
+    Paperclip,
+    Calendar,
     Ticket,
+    User,
+    UserCheck,
+    SlidersHorizontal,
     MessageSquare,
+    Clock,
     Loader2,
-    Send,
-    Pencil,
-    ExternalLink,
+    Plus,
+    Download,
+    UploadCloud,
+    FileText,
+    ImageIcon,
+    FileSpreadsheet,
+    ChevronDown,
+    Flag,
     Bug,
     Sparkles,
     CheckSquare,
+    AtSign,
   },
   props: {
     modelValue: {
@@ -1229,13 +1057,19 @@ export default {
       errorMessage: '',
       loadingComments: false,
       submittingComment: false,
-      updatingComment: false,
-      editingCommentId: null,
-      editingCommentText: '',
-      newComment: '',
       activeRightTab: 'comments',
       localTeamMembers: [],
       taskTypes: ['Task', 'Bug', 'Customization Request'],
+      vendorOptions: [
+        'Netwin Vendor',
+        'SIL Vendor',
+        'Whitestone Vendor',
+        'Perfios Vendor',
+        'Infosys Vendor',
+        'Operation Team',
+        'Our Side',
+        'Rhythmflows',
+      ],
       form: {
         id: '',
         title: '',
@@ -1268,8 +1102,110 @@ export default {
       uploadingAttachment: false,
       comments: [],
       activityLog: [],
-      rowCls: 'w-full rounded px-2.5 py-1.5 text-left text-xs font-medium text-ink-gray-7 hover:bg-surface-gray-2 hover:text-ink-gray-9 transition cursor-pointer whitespace-nowrap',
+      newComment: '',
+      rowCls: 'w-full rounded px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer whitespace-nowrap',
     }
+  },
+  computed: {
+    effectiveTeam() {
+      if (this.form.team) return this.form.team
+      if (this.task && this.task.team) return this.task.team
+      const proj = (this.projects || []).find(
+        (p) => p.name === this.form.project || p.display_name === this.form.project
+      )
+      if (proj && proj.team) return proj.team
+      return ''
+    },
+    allAvailableTeamMembers() {
+      const combined = [...(this.teamMembers || []), ...(this.localTeamMembers || [])]
+      const seen = new Set()
+      const list = []
+      for (const m of combined) {
+        const key = `${m.team || ''}_${m.user || ''}_${m.employee || ''}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          list.push(m)
+        }
+      }
+      return list
+    },
+    assigneeOptions() {
+      const team = this.effectiveTeam
+      let members = this.allAvailableTeamMembers
+      if (team) {
+        members = members.filter(
+          (m) => m.team === team && (m.is_active === undefined || m.is_active === 1 || m.is_active === true)
+        )
+      }
+
+      if (members.length > 0) {
+        return members.map((m) => ({
+          value: m.user || m.employee,
+          label: m.employee_name || m.user || m.employee,
+        }))
+      }
+
+      if (!team && this.allAvailableTeamMembers.length > 0) {
+        return this.allAvailableTeamMembers.map((m) => ({
+          value: m.user || m.employee,
+          label: m.employee_name ? `${m.employee_name} (${m.team})` : (m.user || m.employee),
+        }))
+      }
+
+      return []
+    },
+    guideOptions() {
+      const list = []
+      if (Array.isArray(this.people) && this.people.length > 0) {
+        for (const p of this.people) {
+          const name = p.name || p.employee_name || p.full_name
+          if (name && !list.includes(name)) list.push(name)
+        }
+      }
+      if (Array.isArray(this.allAvailableTeamMembers) && this.allAvailableTeamMembers.length > 0) {
+        for (const m of this.allAvailableTeamMembers) {
+          const name = m.employee_name || m.user || m.employee
+          if (name && !list.includes(name)) list.push(name)
+        }
+      }
+      for (const name of DEFAULT_GUIDES) {
+        if (!list.includes(name)) list.push(name)
+      }
+      return list
+    },
+    isOverdue() {
+      if (this.form.status === 'Overdue') return true
+      if (!this.form.due_date) return false
+      const today = dayjs().format('YYYY-MM-DD')
+      return this.form.due_date < today && this.form.status !== 'Completed' && this.form.status !== 'Cancelled'
+    },
+    overdueDays() {
+      if (!this.form.due_date) return 0
+      const due = dayjs(this.form.due_date)
+      const now = dayjs()
+      const diff = now.diff(due, 'day')
+      return Math.max(1, diff)
+    },
+    formattedDueDate() {
+      if (!this.form.due_date) return ''
+      const d = dayjs(this.form.due_date)
+      return d.isValid() ? d.format('MMMM D, YYYY') : this.form.due_date
+    },
+    computedDuration() {
+      const start = this.form.start_date ? dayjs(this.form.start_date) : null
+      const end = this.form.completed_on ? dayjs(this.form.completed_on) : (this.form.due_date ? dayjs(this.form.due_date) : null)
+      if (start && end && start.isValid() && end.isValid()) {
+        const days = end.diff(start, 'day')
+        if (days >= 0) return `${days + 1} days`
+      }
+      return '37 days'
+    },
+    createdTimeAgo() {
+      if (this.task && (this.task.creation || this.task.created_on)) {
+        return dayjs(this.task.creation || this.task.created_on).fromNow()
+      }
+      return 'Created recently'
+    },
   },
   watch: {
     task: {
@@ -1328,7 +1264,6 @@ export default {
             this.attachments = []
           }
 
-          // Fetch fresh real comments from Frappe Comment doctype
           if (t.id && t.id !== 'new') {
             this.loadActualComments(t.id)
             this.loadActualAttachments(t.id)
@@ -1351,105 +1286,6 @@ export default {
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleKeyDown)
   },
-  computed: {
-    effectiveTeam() {
-      if (this.form.team) return this.form.team
-      if (this.task && this.task.team) return this.task.team
-      const proj = (this.projects || []).find(
-        (p) => p.name === this.form.project || p.display_name === this.form.project
-      )
-      if (proj && proj.team) return proj.team
-      return ''
-    },
-    allAvailableTeamMembers() {
-      const combined = [...(this.teamMembers || []), ...(this.localTeamMembers || [])]
-      const seen = new Set()
-      const list = []
-      for (const m of combined) {
-        const key = `${m.team || ''}_${m.user || ''}_${m.employee || ''}`
-        if (!seen.has(key)) {
-          seen.add(key)
-          list.push(m)
-        }
-      }
-      return list
-    },
-    assigneeOptions() {
-      const team = this.effectiveTeam
-      let members = this.allAvailableTeamMembers
-      if (team) {
-        members = members.filter(
-          (m) => m.team === team && (m.is_active === undefined || m.is_active === 1 || m.is_active === true)
-        )
-      }
-
-      if (members.length > 0) {
-        return members.map((m) => ({
-          value: m.user || m.employee,
-          label: m.employee_name || m.user || m.employee,
-        }))
-      }
-
-      // If no team is associated yet, show all accessible team members
-      if (!team && this.allAvailableTeamMembers.length > 0) {
-        return this.allAvailableTeamMembers.map((m) => ({
-          value: m.user || m.employee,
-          label: m.employee_name ? `${m.employee_name} (${m.team})` : (m.user || m.employee),
-        }))
-      }
-
-      return []
-    },
-    isOverdue() {
-      if (this.form.status === 'Overdue') return true
-      if (!this.form.due_date) return false
-      const today = new Date().toISOString().slice(0, 10)
-      return this.form.due_date < today && this.form.status !== 'Completed' && this.form.status !== 'Cancelled'
-    },
-    updatedTimeAgo() {
-      return 'Just now'
-    },
-    displayStartDate: {
-      get() {
-        return this.formatDateDisplay(this.form.start_date)
-      },
-      set(val) {
-        this.form.start_date = this.parseDateInput(val)
-      },
-    },
-    displayDueDate: {
-      get() {
-        return this.formatDateDisplay(this.form.due_date)
-      },
-      set(val) {
-        this.form.due_date = this.parseDateInput(val)
-      },
-    },
-    displayResolutionDate: {
-      get() {
-        return this.formatDateDisplay(this.form.expected_resolution_date)
-      },
-      set(val) {
-        this.form.expected_resolution_date = this.parseDateInput(val)
-      },
-    },
-    displayCompletedOn: {
-      get() {
-        return this.formatDateDisplay(this.form.completed_on)
-      },
-      set(val) {
-        this.form.completed_on = this.parseDateInput(val)
-      },
-    },
-    displayTicketDate: {
-      get() {
-        return this.formatDateDisplay(this.form.ticket_date)
-      },
-      set(val) {
-        this.form.ticket_date = this.parseDateInput(val)
-      },
-    },
-  },
   methods: {
     getAssigneeValue(assignee) {
       if (!assignee) return ''
@@ -1468,6 +1304,20 @@ export default {
       const p = (this.people || []).find((x) => x.email === val || x.name === val)
       return p ? (p.name || p.email) : val
     },
+    getAssigneeRole(assignee) {
+      const val = this.getAssigneeValue(assignee)
+      const member = (this.allAvailableTeamMembers || []).find(
+        (m) => m.user === val || m.employee === val || m.employee_name === val || m.name === val
+      )
+      if (member && (member.role || member.designation || member.department)) {
+        return member.role || member.designation || member.department
+      }
+      const p = (this.people || []).find((x) => x.email === val || x.name === val)
+      if (p && (p.designation || p.department)) {
+        return p.designation || p.department
+      }
+      return 'Assignee'
+    },
     onProjectChange() {
       const selected = (this.projects || []).find(
         (p) => p.name === this.form.project || p.display_name === this.form.project
@@ -1475,9 +1325,6 @@ export default {
       if (selected && selected.team) {
         this.form.team = selected.team
       }
-      this.loadTeamMembersForTeam(this.effectiveTeam)
-    },
-    onTeamChange() {
       this.loadTeamMembersForTeam(this.effectiveTeam)
     },
     async loadTeamMembersForTeam(team) {
@@ -1498,56 +1345,6 @@ export default {
       const targetVal = this.getAssigneeValue(assignee)
       this.form.assignees = this.form.assignees.filter((a) => this.getAssigneeValue(a) !== targetVal)
     },
-    async loadActualComments(taskId) {
-      if (!taskId) return
-      this.loadingComments = true
-      try {
-        const comments = await fetchTaskComments(taskId)
-        if (Array.isArray(comments) && comments.length > 0) {
-          this.comments = comments
-          this.$nextTick(() => {
-            this.scrollToBottom()
-          })
-        }
-      } catch (err) {
-        console.warn('Failed to load actual comments:', err)
-      } finally {
-        this.loadingComments = false
-      }
-    },
-    getDefaultDescription() {
-      return ''
-    },
-    formatDateDisplay(isoDate) {
-      if (!isoDate) return ''
-      const parts = String(isoDate).split('-')
-      if (parts.length === 3) {
-        const [y, m, d] = parts
-        return `${d}-${m}-${y}`
-      }
-      return isoDate
-    },
-    parseDisplayDate(displayDate) {
-      if (!displayDate) return ''
-      const parts = String(displayDate).trim().split(/[-/]/)
-      if (parts.length === 3) {
-        const [d, m, y] = parts
-        if (y && y.length === 4) {
-          return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-        }
-      }
-      return displayDate
-    },
-    parseDateInput(val) {
-      return this.parseDisplayDate(val)
-    },
-    applyQuickDate(setDate, amount, unit, close) {
-      const d = amount === 0 ? dayjs() : dayjs().add(amount, unit)
-      setDate(d)
-      if (typeof close === 'function') {
-        close()
-      }
-    },
     normalizeDate(val) {
       if (!val) return ''
       const str = String(val).trim()
@@ -1557,11 +1354,17 @@ export default {
       const d = dayjs(str)
       return d.isValid() ? d.format('YYYY-MM-DD') : ''
     },
-    onNativeDateChange(e) {
-      this.form.due_date = e.target.value
+    applyQuickDate(setDate, amount, unit, close) {
+      const d = amount === 0 ? dayjs() : dayjs().add(amount, unit)
+      setDate(d)
+      if (typeof close === 'function') {
+        close()
+      }
     },
-    onStartDateChange(e) {
-      this.form.start_date = e.target.value
+    extendDueDate(days = 7) {
+      const base = this.form.due_date ? dayjs(this.form.due_date) : dayjs()
+      this.form.due_date = base.add(days, 'day').format('YYYY-MM-DD')
+      toast.success(`Due date extended by ${days} days`)
     },
     getInitials(name) {
       if (!name) return 'U'
@@ -1573,14 +1376,155 @@ export default {
     },
     getAvatarColor(name) {
       const colors = [
-        'bg-[#417c7d]',
-        'bg-blue-600',
-        'bg-emerald-600',
-        'bg-indigo-600',
-        'bg-amber-600',
+        'bg-teal-700',
+        'bg-slate-900',
+        'bg-blue-700',
+        'bg-emerald-700',
+        'bg-indigo-700',
+        'bg-amber-700',
       ]
       const charCode = (name || '').charCodeAt(0) || 0
       return colors[charCode % colors.length]
+    },
+    copyTaskId() {
+      if (!this.form.id) return
+      navigator.clipboard.writeText(this.form.id)
+      toast.success(`Task ID "${this.form.id}" copied`)
+    },
+    copyShareLink() {
+      navigator.clipboard.writeText(window.location.href)
+      toast.success('Task link copied to clipboard')
+    },
+    copyText(text) {
+      if (!text) return
+      navigator.clipboard.writeText(text)
+      toast.success('Copied to clipboard')
+    },
+    getFileExtension(att) {
+      const name = att?.name || att?.file_name || ''
+      const parts = name.split('.')
+      if (parts.length > 1) {
+        return parts.pop().toUpperCase()
+      }
+      return 'FILE'
+    },
+    getFileTypePill(att) {
+      const ext = this.getFileExtension(att).toLowerCase()
+      if (['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'].includes(ext)) {
+        return {
+          bg: 'bg-sky-50 border border-sky-100 text-sky-600',
+          icon: 'ImageIcon',
+          iconColor: 'text-sky-600',
+        }
+      }
+      if (ext === 'pdf') {
+        return {
+          bg: 'bg-rose-50 border border-rose-100 text-rose-600',
+          icon: 'FileText',
+          iconColor: 'text-rose-600',
+        }
+      }
+      if (['xls', 'xlsx', 'csv'].includes(ext)) {
+        return {
+          bg: 'bg-emerald-50 border border-emerald-100 text-emerald-600',
+          icon: 'FileSpreadsheet',
+          iconColor: 'text-emerald-600',
+        }
+      }
+      return {
+        bg: 'bg-slate-100 border border-slate-200 text-slate-600',
+        icon: 'FileText',
+        iconColor: 'text-slate-600',
+      }
+    },
+    async loadActualAttachments(taskId) {
+      if (!taskId || taskId === 'new') return
+      try {
+        const atts = await fetchTaskAttachments(taskId)
+        if (Array.isArray(atts)) {
+          this.attachments = atts
+        }
+      } catch (err) {
+        console.warn('Failed to load attachments:', err)
+      }
+    },
+    async confirmDeleteAttachment(att, idx) {
+      const fileName = att?.name || att?.file_name || 'this attachment'
+      if (!confirm(`Are you sure you want to delete "${fileName}"?`)) return
+      const fileId = att?.id || att?.name
+      try {
+        if (fileId && !String(fileId).startsWith('temp-')) {
+          await deleteTaskAttachment(fileId)
+        }
+        this.attachments.splice(idx, 1)
+        toast.success(`Deleted "${fileName}"`)
+      } catch (err) {
+        toast.error(getErrorMessage(err, 'Failed to delete attachment'))
+      }
+    },
+    async handleFileUpload(e) {
+      const files = Array.from(e.target.files || [])
+      if (files.length === 0) return
+      const taskId = this.form.id || this.task?.id
+      this.uploadingAttachment = true
+      for (const file of files) {
+        if (taskId && taskId !== 'new') {
+          try {
+            const uploaded = await uploadTaskAttachment(taskId, file)
+            if (uploaded) {
+              const fname = uploaded.file_name || file.name
+              const fsize = uploaded.file_size || file.size
+              const sizeStr = fsize > 1024 * 1024
+                ? `${(fsize / (1024 * 1024)).toFixed(1)} MB`
+                : `${Math.round(fsize / 1024)} KB`
+              this.attachments.push({
+                id: uploaded.name,
+                name: fname,
+                url: uploaded.file_url,
+                file_url: uploaded.file_url,
+                size: sizeStr,
+                type: file.type || 'Document',
+              })
+              toast.success(`Attached "${file.name}"`)
+            }
+          } catch (err) {
+            toast.error(getErrorMessage(err, 'Failed to upload attachment'))
+          }
+        } else {
+          this.attachments.push({
+            id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            name: file.name,
+            size: `${Math.round(file.size / 1024)} KB`,
+            type: file.type || 'Document',
+            url: URL.createObjectURL(file),
+            rawFile: file,
+          })
+          toast.info(`Attached "${file.name}"`)
+        }
+      }
+      this.uploadingAttachment = false
+      if (e.target) e.target.value = ''
+    },
+    async loadActualComments(taskId) {
+      if (!taskId) return
+      this.loadingComments = true
+      try {
+        const comments = await fetchTaskComments(taskId)
+        if (Array.isArray(comments)) {
+          this.comments = comments
+          this.$nextTick(() => {
+            this.scrollToBottom()
+          })
+        }
+      } catch (err) {
+        console.warn('Failed to load comments:', err)
+      } finally {
+        this.loadingComments = false
+      }
+    },
+    scrollToBottom() {
+      const el = this.$refs.commentsContainer
+      if (el) el.scrollTop = el.scrollHeight
     },
     isCurrentUser(cmt) {
       if (!cmt) return false
@@ -1595,28 +1539,18 @@ export default {
       }
       return false
     },
-    scrollToBottom() {
-      const el = this.$refs.commentsContainer
-      if (el) {
-        el.scrollTop = el.scrollHeight
-      }
+    formatCommentBold() {
+      this.newComment += '**bold** '
     },
-    close() {
-      this.$emit('update:modelValue', false)
-      this.$emit('close')
+    formatCommentItalic() {
+      this.newComment += '*italic* '
     },
-    handleKeyDown(e) {
-      if (e.key === 'Escape') {
-        this.close()
-      } else if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault()
-        this.save()
-      }
+    insertMentionShortcut() {
+      this.newComment += ' @'
     },
     async addComment() {
       const text = this.newComment.trim()
       if (!text || this.submittingComment) return
-
       this.submittingComment = true
       try {
         let added = null
@@ -1649,39 +1583,6 @@ export default {
         this.submittingComment = false
       }
     },
-    startEditComment(cmt) {
-      this.editingCommentId = cmt.id
-      this.editingCommentText = cmt.text || ''
-    },
-    cancelEditComment() {
-      this.editingCommentId = null
-      this.editingCommentText = ''
-    },
-    async saveEditComment(cmt, index) {
-      const newText = (this.editingCommentText || '').trim()
-      if (!newText) {
-        toast.error('Comment text cannot be empty')
-        return
-      }
-      this.updatingComment = true
-      try {
-        if (cmt.id && !String(cmt.id).startsWith('temp-')) {
-          await updateTaskComment(cmt.id, newText)
-        }
-        if (this.comments[index]) {
-          this.comments[index].text = newText
-        }
-        this.editingCommentId = null
-        this.editingCommentText = ''
-        toast.success('Comment updated')
-      } catch (err) {
-        console.error('Error updating comment:', err)
-        const msg = getErrorMessage(err, 'Failed to update comment')
-        toast.error(msg)
-      } finally {
-        this.updatingComment = false
-      }
-    },
     async deleteComment(commentId, index) {
       if (!confirm('Are you sure you want to delete this comment?')) return
       try {
@@ -1696,152 +1597,20 @@ export default {
         })
         toast.success('Comment deleted')
       } catch (e) {
-        console.error('Error deleting comment:', e)
-        const msg = getErrorMessage(e, 'Failed to delete comment')
-        toast.error(msg)
+        toast.error(getErrorMessage(e, 'Failed to delete comment'))
       }
     },
-    insertMentionShortcut() {
-      this.newComment += ' @'
-    },
-    isImageFile(att) {
-      if (!att) return false
-      const name = att.name || att.file_name || ''
-      const type = att.type || ''
-      return (
-        type === 'Image' ||
-        type === 'PNG Image' ||
-        type.startsWith('image/') ||
-        /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(name)
-      )
-    },
-    getFileExtension(att) {
-      const name = att?.name || att?.file_name || ''
-      const parts = name.split('.')
-      if (parts.length > 1) {
-        return parts.pop().toUpperCase()
-      }
-      return 'FILE'
-    },
-    getFileTypeConfig(att) {
-      if (this.isImageFile(att)) {
-        return {
-          badge: 'IMG',
-          color: 'bg-teal-50 text-[#417c7d] border-teal-200',
-          iconColor: 'text-[#417c7d]',
-        }
-      }
-      const ext = this.getFileExtension(att).toLowerCase()
-      if (['pdf'].includes(ext)) {
-        return {
-          badge: 'PDF',
-          color: 'bg-rose-50 text-rose-700 border-rose-200',
-          iconColor: 'text-rose-600',
-        }
-      }
-      if (['xls', 'xlsx', 'csv'].includes(ext)) {
-        return {
-          badge: ext.toUpperCase(),
-          color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-          iconColor: 'text-emerald-600',
-        }
-      }
-      if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) {
-        return {
-          badge: ext.toUpperCase(),
-          color: 'bg-blue-50 text-blue-700 border-blue-200',
-          iconColor: 'text-blue-600',
-        }
-      }
-      if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
-        return {
-          badge: 'ZIP',
-          color: 'bg-amber-50 text-amber-700 border-amber-200',
-          iconColor: 'text-amber-600',
-        }
-      }
-      return {
-        badge: ext ? ext.slice(0, 4).toUpperCase() : 'FILE',
-        color: 'bg-gray-100 text-gray-700 border-gray-200',
-        iconColor: 'text-gray-500',
+    handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        this.close()
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        this.save()
       }
     },
-    async loadActualAttachments(taskId) {
-      if (!taskId || taskId === 'new') return
-      try {
-        const atts = await fetchTaskAttachments(taskId)
-        if (Array.isArray(atts)) {
-          this.attachments = atts
-        }
-      } catch (err) {
-        console.warn('Failed to load attachments for task:', taskId, err)
-      }
-    },
-    async confirmDeleteAttachment(att, idx) {
-      const fileName = att?.name || att?.file_name || 'this attachment'
-      if (!confirm(`Are you sure you want to delete "${fileName}"?`)) {
-        return
-      }
-
-      const fileId = att?.id || att?.name
-      try {
-        if (fileId && !String(fileId).startsWith('temp-')) {
-          await deleteTaskAttachment(fileId)
-        }
-        this.attachments.splice(idx, 1)
-        toast.success(`Deleted "${fileName}"`)
-      } catch (err) {
-        const msg = getErrorMessage(err, 'Failed to delete attachment')
-        toast.error(msg)
-      }
-    },
-    async handleFileUpload(e) {
-      const files = Array.from(e.target.files || [])
-      if (files.length === 0) return
-
-      const taskId = this.form.id || this.task?.id
-      this.uploadingAttachment = true
-      for (const file of files) {
-        if (taskId && taskId !== 'new') {
-          try {
-            const uploaded = await uploadTaskAttachment(taskId, file)
-            if (uploaded) {
-              const fname = uploaded.file_name || file.name
-              const fsize = uploaded.file_size || file.size
-              const sizeStr = fsize > 1024 * 1024
-                ? `${(fsize / (1024 * 1024)).toFixed(1)} MB`
-                : `${Math.round(fsize / 1024)} KB`
-              this.attachments.push({
-                id: uploaded.name,
-                name: fname,
-                url: uploaded.file_url,
-                file_url: uploaded.file_url,
-                size: sizeStr,
-                type: file.type || 'Document',
-              })
-              toast.success(`Attached "${file.name}"`)
-            }
-          } catch (err) {
-            console.error('Failed to upload file:', err)
-            const msg = getErrorMessage(err, 'Failed to upload attachment')
-            toast.error(msg)
-          }
-        } else {
-          this.attachments.push({
-            id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            name: file.name,
-            size: `${Math.round(file.size / 1024)} KB`,
-            type: file.type || 'Document',
-            url: URL.createObjectURL(file),
-            rawFile: file,
-          })
-          toast.info(`Attached "${file.name}"`)
-        }
-      }
-      this.uploadingAttachment = false
-      if (e.target) {
-        e.target.value = ''
-      }
+    close() {
+      this.$emit('update:modelValue', false)
+      this.$emit('close')
     },
     async save() {
       if (!this.form.title || !this.form.title.trim()) {
@@ -1911,22 +1680,6 @@ export default {
         toast.error(msg)
       }
     },
-    getStatusSelectClass(status) {
-      switch (status) {
-        case 'Completed':
-          return 'bg-emerald-50 text-emerald-700 border-emerald-300'
-        case 'Overdue':
-          return 'bg-rose-50 text-rose-700 border-rose-300'
-        case 'On Hold':
-          return 'bg-blue-50 text-blue-700 border-blue-300'
-        case 'In Progress':
-          return 'bg-indigo-50 text-indigo-700 border-indigo-300'
-        case 'Review':
-          return 'bg-purple-50 text-purple-700 border-purple-300'
-        default:
-          return 'bg-gray-100 text-gray-700 border-gray-300'
-      }
-    },
     getStatusDotClass(status) {
       switch (status) {
         case 'Completed':
@@ -1940,7 +1693,7 @@ export default {
         case 'Review':
           return 'bg-purple-500'
         default:
-          return 'bg-gray-400'
+          return 'bg-slate-400'
       }
     },
     getTaskTypeSelectClass(type) {
@@ -1966,3 +1719,20 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+</style>
