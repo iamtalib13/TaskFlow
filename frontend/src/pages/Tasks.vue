@@ -2260,8 +2260,8 @@ onUnmounted(() => {
 
           <!-- 2 Columns: Calendar + Activity Log -->
           <div class="flex-1 min-h-0 flex gap-3 overflow-hidden">
-            <!-- Left: Timesheet Calendar -->
-            <div class="flex-1 min-w-0 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 rounded-xl">
+            <!-- Left: Timesheet Calendar (50%) -->
+            <div class="w-1/2 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 dark:border-gray-700/50 rounded-xl">
               <TimesheetCalendar
                 :events="timesheetCalendarEvents"
                 :loading="timesheetCalendarLoading"
@@ -2269,10 +2269,30 @@ onUnmounted(() => {
                 @cellClick="handleTsCalendarClick"
                 class="flex-1 min-h-0"
               />
+              <!-- KPI Badges -->
+              <div class="shrink-0 border-t border-outline-gray-2 dark:border-gray-700 px-4 py-2.5 flex items-center gap-3 flex-wrap">
+                <div class="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800/50">
+                  <span class="text-[10px] font-semibold text-green-700 dark:text-green-300">Total Hours</span>
+                  <span class="text-sm font-bold text-green-800 dark:text-green-200">{{ totalTsMonthlyHours.toFixed(1) }}</span>
+                </div>
+                <div class="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800/50">
+                  <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-300">Working Days</span>
+                  <span class="text-sm font-bold text-blue-800 dark:text-blue-200">{{ tsWorkingDaysCount }}</span>
+                </div>
+                <div class="flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800/50">
+                  <span class="text-[10px] font-semibold text-purple-700 dark:text-purple-300">Avg/Day</span>
+                  <span class="text-sm font-bold text-purple-800 dark:text-purple-200">{{ tsAvgHoursPerDay }}h</span>
+                </div>
+                <div class="ml-auto flex items-center gap-3 text-[9px] text-ink-gray-5 dark:text-gray-400">
+                  <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-green-500 dark:bg-green-400" /> Logged</span>
+                  <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-red-400 dark:bg-red-500" /> Missed</span>
+                  <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-gray-400 dark:bg-gray-500" /> Holiday</span>
+                </div>
+              </div>
             </div>
 
-             <!-- Right: Activity Log -->
-            <div class="w-[340px] xl:w-[380px] shrink-0 min-w-0 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 dark:border-gray-700/50 rounded-xl">
+            <!-- Right: Activity Log (50%) -->
+            <div class="w-1/2 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 dark:border-gray-700/50 rounded-xl">
               <div class="shrink-0 px-4 py-3 border-b border-outline-gray-1 dark:border-gray-700/50 flex items-center justify-between">
                 <div>
                   <h4 class="text-xs font-bold text-ink-gray-8 dark:text-gray-200 uppercase tracking-wide">Activity Log</h4>

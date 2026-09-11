@@ -278,28 +278,6 @@ function getDayNumberClass(cell, dayOfWeek) {
           </div>
         </div>
       </div>
-
-      <!-- Monthly KPI badges -->
-      <div class="shrink-0 border-t border-outline-gray-2 dark:border-gray-700 px-4 py-2.5 flex items-center gap-3 flex-wrap">
-        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800/50">
-          <span class="text-[10px] font-semibold text-green-700 dark:text-green-300">Total Hours</span>
-          <span class="text-sm font-bold text-green-800 dark:text-green-200">{{ totalMonthlyHours.toFixed(1) }}</span>
-        </div>
-        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800/50">
-          <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-300">Working Days</span>
-          <span class="text-sm font-bold text-blue-800 dark:text-blue-200">{{ workingDaysCount }}</span>
-        </div>
-        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800/50">
-          <span class="text-[10px] font-semibold text-purple-700 dark:text-purple-300">Avg/Day</span>
-          <span class="text-sm font-bold text-purple-800 dark:text-purple-200">{{ avgHoursPerDay }}h</span>
-        </div>
-        <!-- Legend -->
-        <div class="ml-auto flex items-center gap-3 text-[9px] text-ink-gray-5 dark:text-gray-400">
-          <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-green-500 dark:bg-green-400" /> Logged</span>
-          <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-red-400 dark:bg-red-500" /> Missed</span>
-          <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-gray-400 dark:bg-gray-500" /> Holiday</span>
-        </div>
-      </div>
     </template>
   </div>
 </template>
