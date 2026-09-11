@@ -1162,7 +1162,7 @@ const tsAvgHoursPerDay = computed(() => {
 })
 
 async function loadTimesheetCalendar(user) {
-  if (!user) return
+  if (!user || typeof user !== 'string') return
 
   // Cancel any in-flight request
   if (timesheetLoadAbort) {
@@ -1171,7 +1171,6 @@ async function loadTimesheetCalendar(user) {
   timesheetLoadAbort = false
 
   const now = Date.now()
-  const cacheKey = `${user}_${now}`
 
   // Check cache
   if (timesheetCache.value && (now - timesheetCacheTime.value) < CACHE_TTL) {
@@ -1833,9 +1832,7 @@ onMounted(async () => {
     loadTeams()
   }
   loadEmployees()
-  if (activeSection.value === 'Timesheet') {
-    loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
-  }
+  loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
 })
 
 function handleGlobalKeydown(e) {
