@@ -1,29 +1,29 @@
 <template>
   <div
     v-if="modelValue"
-    class="fixed inset-0 z-50 overflow-y-auto bg-black/45 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 transition-opacity duration-200"
+    class="fixed inset-0 z-50 overflow-y-auto bg-black/55 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 transition-opacity duration-200"
     @click.self="close"
   >
     <div
-      class="bg-surface-base rounded-2xl shadow-2xl border border-outline-gray-1 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
+      class="bg-surface-base rounded-2xl shadow-2xl border border-outline-gray-1 dark:border-gray-800 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
       role="dialog"
       aria-modal="true"
     >
       <!-- Modal Header -->
-      <div class="px-6 py-4 border-b border-outline-gray-1 flex items-center justify-between bg-surface-base shrink-0">
+      <div class="px-6 py-4 border-b border-outline-gray-1 dark:border-gray-800 flex items-center justify-between bg-surface-base shrink-0">
         <div class="flex items-center gap-2.5">
-          <span class="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center text-sm font-bold shadow-xs">
+          <span class="w-8 h-8 rounded-lg bg-black dark:bg-white text-white dark:text-gray-950 flex items-center justify-center text-sm font-bold shadow-xs">
             +
           </span>
           <div>
-            <h3 class="text-sm font-bold text-ink-gray-9">Create New Task</h3>
-            <p class="text-xs text-ink-gray-5">Add a new task to your Taskflow workspace</p>
+            <h3 class="text-sm font-bold text-ink-gray-9 dark:text-white">Create New Task</h3>
+            <p class="text-xs text-ink-gray-5 dark:text-gray-400">Add a new task to your Taskflow workspace</p>
           </div>
         </div>
 
         <button
           type="button"
-          class="p-2 text-gray-400 hover:text-ink-gray-7 hover:bg-surface-gray-3 rounded-lg transition cursor-pointer"
+          class="p-2 text-gray-400 hover:text-ink-gray-7 dark:hover:text-white hover:bg-surface-gray-3 dark:hover:bg-gray-800 rounded-lg transition cursor-pointer"
           @click="close"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,7 +35,7 @@
       <!-- Error Banner -->
       <div
         v-if="errorMessage"
-        class="px-6 py-2.5 bg-rose-50 border-b border-rose-200 text-rose-700 text-xs flex items-center justify-between shrink-0"
+        class="px-6 py-2.5 bg-rose-50 dark:bg-rose-950/40 border-b border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between shrink-0"
       >
         <span class="font-medium flex items-center gap-1.5">
           <svg class="size-4 shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,7 +47,7 @@
         </span>
         <button
           type="button"
-          class="text-rose-500 hover:text-rose-700 font-bold ml-2 cursor-pointer text-sm"
+          class="text-rose-500 hover:text-rose-700 dark:hover:text-rose-200 font-bold ml-2 cursor-pointer text-sm"
           @click="errorMessage = ''"
         >
           &times;
@@ -57,7 +57,7 @@
       <!-- Modal Body -->
       <form class="p-6 space-y-4 text-xs overflow-y-auto flex-1" @submit.prevent="submit">
         <div>
-          <label class="block font-semibold text-ink-gray-7 mb-1">
+          <label class="block font-semibold text-ink-gray-7 dark:text-gray-200 mb-1">
             Task Title <span class="text-rose-500">*</span>
           </label>
           <input
@@ -65,61 +65,61 @@
             required
             type="text"
             placeholder="e.g. Implement Responsive Table View"
-            class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
+            class="w-full text-sm bg-surface-base border border-outline-gray-2 dark:border-gray-700 text-ink-gray-9 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
           />
         </div>
 
         <!-- Row 1: Project & Task Type & Status & Priority -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div>
-            <label class="block font-medium text-ink-gray-6 mb-1">Project</label>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Project</label>
             <select
               v-model="form.project"
-              class="w-full bg-surface-base border border-outline-gray-2 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               @change="onProjectChange"
             >
-              <option value="">Select Project</option>
-              <option v-for="p in projects" :key="p.name" :value="p.name">
+              <option value="" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">Select Project</option>
+              <option v-for="p in projects" :key="p.name" :value="p.name" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">
                 {{ p.display_name || p.name }}
               </option>
             </select>
           </div>
 
           <div>
-            <label class="block font-medium text-ink-gray-6 mb-1">Task Type</label>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Task Type</label>
             <div class="relative flex items-center">
               <select
                 v-model="form.task_type"
-                class="w-full bg-surface-base border border-outline-gray-2 hover:border-outline-gray-3 rounded-lg pl-7 pr-7 py-1.5 text-xs text-ink-gray-8 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
+                class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 hover:border-outline-gray-3 dark:hover:border-gray-600 rounded-lg pl-7 pr-7 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
               >
-                <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
+                <option v-for="t in taskTypes" :key="t" :value="t" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ t }}</option>
               </select>
               <component
                 :is="getTaskTypeIcon(form.task_type)"
                 class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
                 :class="getTaskTypeIconClass(form.task_type)"
               />
-              <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none text-gray-400" />
+              <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none text-gray-400 dark:text-gray-500" />
             </div>
           </div>
 
           <div>
-            <label class="block font-medium text-ink-gray-6 mb-1">Status</label>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Status</label>
             <select
               v-model="form.status"
-              class="w-full bg-surface-base border border-outline-gray-2 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
             >
-              <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+              <option v-for="s in statuses" :key="s" :value="s" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ s }}</option>
             </select>
           </div>
 
           <div>
-            <label class="block font-medium text-ink-gray-6 mb-1">Priority</label>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Priority</label>
             <select
               v-model="form.priority"
-              class="w-full bg-surface-base border border-outline-gray-2 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
             >
-              <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
+              <option v-for="p in priorities" :key="p" :value="p" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ p }}</option>
             </select>
           </div>
         </div>
@@ -128,8 +128,8 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div class="md:col-span-2">
             <div class="flex items-center justify-between mb-1">
-              <label class="block font-medium text-ink-gray-6">Assigned To (Team Members)</label>
-              <span v-if="assigneeOptions.length > 0" class="text-[10px] text-gray-400">
+              <label class="block font-medium text-ink-gray-6 dark:text-gray-300">Assigned To (Team Members)</label>
+              <span v-if="assigneeOptions.length > 0" class="text-[10px] text-gray-400 dark:text-gray-500">
                 {{ assigneeOptions.length }} team members
               </span>
             </div>
@@ -140,13 +140,13 @@
               size="sm"
               class="w-full"
             />
-            <p v-if="effectiveTeam && assigneeOptions.length === 0" class="text-[10px] text-amber-600 mt-1">
+            <p v-if="effectiveTeam && assigneeOptions.length === 0" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
               No team members found in {{ effectiveTeam }}.
             </p>
           </div>
 
           <div>
-            <label class="block font-medium text-ink-gray-6 mb-1">Start Date</label>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Start Date</label>
             <DatePicker
               v-model="form.start_date"
               format="DD-MM-YYYY"
@@ -156,7 +156,7 @@
               class="w-full"
             >
               <template #prefix>
-                <Calendar class="size-3.5 text-gray-400" />
+                <Calendar class="size-3.5 text-gray-400 dark:text-gray-500" />
               </template>
               <template #actions="{ setDate, close }">
                 <button
@@ -199,7 +199,7 @@
           </div>
 
           <div>
-            <label class="block font-medium text-ink-gray-6 mb-1">Due Date</label>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Due Date</label>
             <DatePicker
               v-model="form.due_date"
               format="DD-MM-YYYY"
@@ -209,7 +209,7 @@
               class="w-full"
             >
               <template #prefix>
-                <Calendar class="size-3.5 text-gray-400" />
+                <Calendar class="size-3.5 text-gray-400 dark:text-gray-500" />
               </template>
               <template #actions="{ setDate, close }">
                 <button
@@ -253,7 +253,7 @@
         </div>
 
         <div>
-          <label class="block font-medium text-ink-gray-6 mb-1">Description</label>
+          <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Description</label>
           <FrappeRichEditor
             v-model="form.description"
             :people="people"
@@ -263,7 +263,7 @@
         </div>
 
         <!-- Actions -->
-        <div class="pt-3 border-t border-outline-gray-1 flex items-center justify-end gap-2">
+        <div class="pt-3 border-t border-outline-gray-1 dark:border-gray-800 flex items-center justify-end gap-2">
           <Button
             type="button"
             :disabled="creating"
@@ -359,7 +359,7 @@ export default {
         due_date: '',
         description: '',
       },
-      rowCls: 'w-full rounded px-2.5 py-1.5 text-left text-xs font-medium text-ink-gray-7 hover:bg-surface-gray-2 hover:text-ink-gray-9 transition cursor-pointer whitespace-nowrap',
+      rowCls: 'w-full rounded px-2.5 py-1.5 text-left text-xs font-medium text-ink-gray-7 dark:text-gray-300 hover:bg-surface-gray-2 dark:hover:bg-gray-800 hover:text-ink-gray-9 dark:hover:text-white transition cursor-pointer whitespace-nowrap',
     }
   },
   watch: {

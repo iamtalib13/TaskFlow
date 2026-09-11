@@ -1,11 +1,11 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 backdrop-blur-sm" @click.self="close">
-    <div class="w-full max-w-5xl my-6 bg-surface-base rounded-xl border border-outline-gray-2 shadow-2xl overflow-hidden flex flex-col">
+  <div v-if="modelValue" class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/55 backdrop-blur-sm" @click.self="close">
+    <div class="w-full max-w-5xl my-6 bg-surface-base rounded-xl border border-outline-gray-2 dark:border-gray-800 shadow-2xl overflow-hidden flex flex-col">
       <!-- Header with buttons -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-outline-gray-2 bg-surface-gray-1 shrink-0">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-outline-gray-2 dark:border-gray-800 bg-surface-gray-1 dark:bg-gray-900 shrink-0">
         <div>
-          <h2 class="text-lg font-bold text-ink-gray-9">{{ editProject ? 'Edit Project' : 'Create Project' }}</h2>
-          <p class="text-xs text-ink-gray-5 mt-0.5">{{ editProject ? 'Update project details' : 'Fill in the details to start a new project' }}</p>
+          <h2 class="text-lg font-bold text-ink-gray-9 dark:text-white">{{ editProject ? 'Edit Project' : 'Create Project' }}</h2>
+          <p class="text-xs text-ink-gray-5 dark:text-gray-400 mt-0.5">{{ editProject ? 'Update project details' : 'Fill in the details to start a new project' }}</p>
         </div>
         <div class="flex items-center gap-2">
           <Button variant="subtle" type="button" @click="close">Cancel</Button>
@@ -18,7 +18,7 @@
       <!-- Form Body with 6-Column Grid Layout -->
       <form class="p-6 grid grid-cols-6 gap-4 max-h-[80vh] overflow-y-auto" @submit.prevent="submit">
         <!-- Div 1: Project Fields (Span 6 / Top) -->
-        <div class="div1 col-span-6 space-y-4 bg-surface-gray-1/50 p-4 rounded-xl border border-outline-gray-2">
+        <div class="div1 col-span-6 space-y-4 bg-surface-gray-1/50 dark:bg-gray-900/50 p-4 rounded-xl border border-outline-gray-2 dark:border-gray-800">
           <!-- Project Name -->
           <FormControl
             v-model="form.project_name"
