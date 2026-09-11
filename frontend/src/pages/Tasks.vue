@@ -92,6 +92,7 @@ import {
 import TimesheetCalendar from '@/components/TimesheetCalendar.vue'
 
 // --- State & Data ---
+const MAX_VISIBLE = 5
 const loading = ref(false)
 const tasks = ref([])
 const projects = ref([])
@@ -740,7 +741,6 @@ const projectTableColumns = [
 ]
 
 
-const MAX_VISIBLE = 5
 const selectedProjectMemberFilter = ref('')
 const memberFilterQuery = ref('')
 
