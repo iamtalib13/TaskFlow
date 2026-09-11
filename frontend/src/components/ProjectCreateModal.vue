@@ -193,34 +193,37 @@
                           />
                         </template>
                       </div>
-                      <!-- Dropdown -->
-                      <div
-                        v-if="memberOpenIdx === idx"
-                        class="absolute z-50 mt-1 left-0 w-full bg-surface-base border border-outline-gray-2 rounded-lg shadow-lg overflow-hidden"
-                      >
-                        <div class="max-h-48 overflow-y-auto">
-                          <div v-if="memberFiltered.length === 0" class="py-3 text-center text-[11px] text-ink-gray-4">
-                            No employees found
-                          </div>
-                          <button
-                            v-for="opt in memberFiltered"
-                            :key="opt.value"
-                            type="button"
-                            class="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-surface-gray-2 transition text-xs cursor-pointer"
-                            :class="row.employee === opt.value ? 'bg-surface-gray-2' : ''"
-                            @click="pickMember(idx, opt)"
-                          >
-                            <Avatar :image="opt.image" :label="opt.label" size="xs" />
-                            <div class="min-w-0 flex-1">
-                              <div class="truncate text-ink-gray-9 font-medium">{{ opt.label }}</div>
-                              <div class="truncate text-[11px] text-ink-gray-5">{{ opt.description }}</div>
+                      <!-- Dropdown via Teleport to avoid overflow clipping -->
+                      <Teleport to="body">
+                        <div
+                          v-if="memberOpenIdx === idx"
+                          class="fixed z-[9999] bg-surface-base border border-outline-gray-2 rounded-lg shadow-xl overflow-hidden"
+                          :style="memberDropdownStyle"
+                        >
+                          <div class="max-h-48 overflow-y-auto">
+                            <div v-if="memberFiltered.length === 0" class="py-3 text-center text-[11px] text-ink-gray-4">
+                              No employees found
                             </div>
-                          </button>
+                            <button
+                              v-for="opt in memberFiltered"
+                              :key="opt.value"
+                              type="button"
+                              class="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-surface-gray-2 transition text-xs cursor-pointer"
+                              :class="row.employee === opt.value ? 'bg-surface-gray-2' : ''"
+                              @click="pickMember(idx, opt)"
+                            >
+                              <Avatar :image="opt.image" :label="opt.label" size="xs" />
+                              <div class="min-w-0 flex-1">
+                                <div class="truncate text-ink-gray-9 font-medium">{{ opt.label }}</div>
+                                <div class="truncate text-[11px] text-ink-gray-5">{{ opt.description }}</div>
+                              </div>
+                            </button>
+                          </div>
+                          <div class="px-3 py-1 border-t border-outline-gray-1 text-[10px] text-ink-gray-4 text-center">
+                            {{ memberFiltered.length }} result{{ memberFiltered.length !== 1 ? 's' : '' }} — type to search more
+                          </div>
                         </div>
-                        <div class="px-3 py-1 border-t border-outline-gray-1 text-[10px] text-ink-gray-4 text-center">
-                          {{ memberFiltered.length }} result{{ memberFiltered.length !== 1 ? 's' : '' }} — type to search more
-                        </div>
-                      </div>
+                      </Teleport>
                     </div>
                   </td>
                   <td class="py-2 px-3">
@@ -366,10 +369,37 @@ function setInputRef(idx, el) {
   if (el) memberInputs.value[idx] = el
 }
 
+// Teleport dropdown position
+const memberDropdownPos = ref({ top: 0, left: 0, width: 200 })
+
+const memberDropdownStyle = computed(() => ({
+  top: `${memberDropdownPos.value.top}px`,
+  left: `${memberDropdownPos.value.left}px`,
+  width: `${memberDropdownPos.value.width}px`,
+}))
+
 function openMember(idx) {
   memberOpenIdx.value = idx
   memberQ.value = ''
-  nextTick(() => memberInputs.value[idx]?.focus())
+  nextTick(() => {
+    memberInputs.value[idx]?.focus()
+    // Trigger element ki position calculate karo
+    const triggerEl = memberRefs.value[idx]
+    if (triggerEl) {
+      const rect = triggerEl.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const dropdownHeight = 220 // approximate max height
+
+      memberDropdownPos.value = {
+        // Agar neeche jagah nahi to upar dikhaao
+        top: spaceBelow < dropdownHeight
+          ? rect.top - dropdownHeight + window.scrollY
+          : rect.bottom + 4 + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      }
+    }
+  })
 }
 
 function pickMember(idx, opt) {
@@ -409,8 +439,30 @@ function handleClickOutside(e) {
   }
 }
 
-onMounted(() => document.addEventListener('click', handleClickOutside, true))
-onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside, true))
+// Close modal on Escape key
+function handleKeydown(e) {
+  if (e.key === 'Escape') {
+    // Agar koi dropdown open hai to pehle use band karo
+    if (leadSearchOpen.value) {
+      leadSearchOpen.value = false
+      return
+    }
+    if (memberOpenIdx.value >= 0) {
+      memberOpenIdx.value = -1
+      return
+    }
+    close()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside, true)
+  document.addEventListener('keydown', handleKeydown)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside, true)
+  document.removeEventListener('keydown', handleKeydown)
+})
 
 function fillForm(project) {
   if (!project) return

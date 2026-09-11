@@ -63,6 +63,8 @@ import {
   UserCheck,
   Moon,
   Sun,
+  Search,
+  X as XIcon,
 } from 'lucide-vue-next'
 
 import CommonListView from '@/components/CommonListView.vue'
@@ -400,13 +402,16 @@ const selectedRowKeys = ref([])
 const tasksDisplayLimit = ref(20)
 const sortKey = ref('modified')
 const sortOrder = ref('desc')
+const taskSearch = ref('')
+const taskSearchInput = ref(null)
+const isSearchFocused = ref(false)
 
 function handleSortChange({ key, order }) {
   sortKey.value = key
   sortOrder.value = order
 }
 
-watch([statusTab, selectedProjects, showAssignedToMe], () => {
+watch([statusTab, selectedProjects, showAssignedToMe, taskSearch], () => {
   tasksDisplayLimit.value = 20
 })
 
@@ -636,7 +641,7 @@ const statusOptions = computed(() => {
   ]
 })
 
-// Filtered tasks based on status tab, project filter, and sort
+// Filtered tasks based on status tab, project filter, search query, and sort
 const visibleTasks = computed(() => {
   let list = [...tasks.value]
 
@@ -651,6 +656,22 @@ const visibleTasks = computed(() => {
 
   if (statusTab.value && statusTab.value !== 'All') {
     list = list.filter((t) => t.status === statusTab.value)
+  }
+
+  // Smart search — title, id, project, status, priority, assigned_to
+  const q = taskSearch.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter((t) => {
+      return (
+        (t.title || '').toLowerCase().includes(q) ||
+        (t.id || '').toLowerCase().includes(q) ||
+        (t.project || '').toLowerCase().includes(q) ||
+        (t.status || '').toLowerCase().includes(q) ||
+        (t.priority || '').toLowerCase().includes(q) ||
+        (t.assigned_to || '').toLowerCase().includes(q) ||
+        (t.team || '').toLowerCase().includes(q)
+      )
+    })
   }
 
   if (sortKey.value) {
@@ -1521,6 +1542,8 @@ onMounted(() => {
   }
 
   window.addEventListener('popstate', onPopState)
+  // Keyboard shortcut: press '/' to focus search (when not typing in an input)
+  window.addEventListener('keydown', handleGlobalKeydown)
   loadData()
   loadTeams()
   loadEmployees()
@@ -1529,8 +1552,21 @@ onMounted(() => {
   }
 })
 
+function handleGlobalKeydown(e) {
+  // '/' shortcut — focus search in Task section
+  if (
+    e.key === '/' &&
+    activeSection.value === 'Task' &&
+    !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)
+  ) {
+    e.preventDefault()
+    taskSearchInput.value?.focus()
+  }
+}
+
 onUnmounted(() => {
   window.removeEventListener('popstate', onPopState)
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 
@@ -1674,9 +1710,37 @@ onUnmounted(() => {
 
       <!-- Pinned Page Header -->
       <PageHeader class="border-b border-outline-gray-2 bg-surface-base">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
           <!-- Breadcrumbs for current section -->
           <Breadcrumbs :items="currentBreadcrumbs" />
+
+          <!-- Smart Search (only in Task section) -->
+          <div
+            v-if="activeSection === 'Task'"
+            class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-gray-2 transition-all duration-200"
+            :class="isSearchFocused || taskSearch ? 'w-56' : 'w-36'"
+          >
+            <Search class="size-3.5 text-ink-gray-4 shrink-0" />
+            <input
+              ref="taskSearchInput"
+              v-model="taskSearch"
+              type="text"
+              placeholder="Search tasks..."
+              class="flex-1 bg-transparent outline-none text-xs text-ink-gray-7 placeholder:text-ink-gray-4 min-w-0"
+              @focus="isSearchFocused = true"
+              @blur="isSearchFocused = false"
+              @keydown.escape="taskSearch = ''; taskSearchInput?.blur()"
+            />
+            <button
+              v-if="taskSearch"
+              type="button"
+              class="shrink-0 text-ink-gray-4 hover:text-ink-gray-7 transition-colors cursor-pointer"
+              @click="taskSearch = ''; taskSearchInput?.focus()"
+            >
+              <XIcon class="size-3" />
+            </button>
+            <kbd v-else class="shrink-0 text-[10px] font-mono text-ink-gray-3">/</kbd>
+          </div>
         </div>
 
         <div class="flex items-center gap-2">
