@@ -121,6 +121,18 @@ const getSectionFromURL = () => {
 }
 const activeSection = ref(getSectionFromURL())
 
+// Redirect Team to Task if not System Manager
+function validateSection() {
+  if (activeSection.value === 'Team' && !isSystemManager.value) {
+    activeSection.value = 'Task'
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.set('section', 'Task')
+      window.history.replaceState(null, '', url.toString())
+    } catch {}
+  }
+}
+
 const SIDEBAR_COLLAPSED_KEY = 'taskflow:sidebar_collapsed'
 const getStoredSidebarState = () => {
   return true
@@ -138,6 +150,7 @@ function toggleTheme() {
 }
 
 const isSidebarCollapsed = ref(getStoredSidebarState())
+const isSystemManager = ref(false)
 
 watch(isSidebarCollapsed, (val) => {
   try {
@@ -154,6 +167,7 @@ watch(activeSection, (val) => {
     url.searchParams.set('section', val)
     window.history.replaceState(null, '', url.toString())
   } catch {}
+  validateSection()
   if (val === 'Timesheet') {
     loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
   }
@@ -165,6 +179,7 @@ const onPopState = () => {
   if (VALID_SECTIONS.includes(section)) {
     activeSection.value = section
   }
+  validateSection()
   // Restore member from URL
   try {
     const params = new URLSearchParams(window.location.search)
@@ -280,7 +295,7 @@ const navItems = computed(() => {
     { id: 'Task', label: 'Task', icon: CheckSquare, badge: taskCount.length },
     { id: 'Timesheet', label: 'Timesheet', icon: Clock, badge: totalTsMonthlyHours.value ? `${totalTsMonthlyHours.value}h` : '' },
     { id: 'Project', label: 'Project', icon: FolderKanban, badge: projectsData.value.length },
-    { id: 'Team', label: 'Team', icon: Users, badge: teamData.value.length },
+    ...(isSystemManager.value ? [{ id: 'Team', label: 'Team', icon: Users, badge: teamData.value.length }] : []),
   ]
 })
 
@@ -1257,6 +1272,7 @@ async function loadData() {
     if (data.me) {
       currentUserEmail.value = data.me.email || ''
       currentUserName.value = data.me.name || ''
+      isSystemManager.value = data.me.is_system_manager || false
       if (!selectedTimesheetUser.value) {
         selectedTimesheetUser.value = data.me.email || ''
       }
@@ -1265,6 +1281,7 @@ async function loadData() {
       }
     }
     loadEmployees()
+    validateSection()
   } catch (e) {
     console.error('Failed to load tasks', e)
   } finally {
@@ -1274,6 +1291,7 @@ async function loadData() {
 
 // Load teams and team members from backend
 async function loadTeams() {
+  if (!isSystemManager.value) return
   teamLoading.value = true
   try {
     const [teamsData, membersData] = await Promise.all([
@@ -1743,7 +1761,7 @@ async function loadTeamMembersForTeam(teamName) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   const theme = localStorage.getItem('taskflow-theme')
   if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     isDark.value = true
@@ -1753,8 +1771,10 @@ onMounted(() => {
   window.addEventListener('popstate', onPopState)
   // Keyboard shortcut: press '/' to focus search (when not typing in an input)
   window.addEventListener('keydown', handleGlobalKeydown)
-  loadData()
-  loadTeams()
+  await loadData()
+  if (isSystemManager.value) {
+    loadTeams()
+  }
   loadEmployees()
   if (activeSection.value === 'Timesheet') {
     loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)

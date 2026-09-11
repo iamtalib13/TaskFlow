@@ -4,6 +4,7 @@ export const mockBootstrap = {
     name: 'Administrator',
     email: 'admin@example.com',
     image: '',
+    is_system_manager: true,
   },
   projects: [
     { name: 'drishti Core', display_name: 'drishti Core', color: 'bg-blue-50 text-blue-700 border-blue-200' },

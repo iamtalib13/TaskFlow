@@ -50,11 +50,18 @@
    "options": "Taskflow Team"
   },
   {
-   "fieldname": "team_lead",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Team Lead",
-   "options": "Employee"
+    "fieldname": "team_lead",
+    "fieldtype": "Link",
+    "in_standard_filter": 1,
+    "label": "Team Lead",
+    "options": "Employee",
+    "roles": [
+      {
+        "role": "System Manager",
+        "read": 1,
+        "write": 1
+      }
+    ]
   },
   {
    "default": "Team",

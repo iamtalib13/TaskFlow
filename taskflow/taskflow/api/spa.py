@@ -353,6 +353,7 @@ def get_spa_bootstrap() -> dict:
 			"name": user_info.get("full_name") or user_info.get("name"),
 			"image": user_info.get("user_image") or "",
 			"is_admin": _has_global_access(current_user),
+			"is_system_manager": "System Manager" in frappe.get_roles(current_user),
 		},
 		"projects": [
 			{
