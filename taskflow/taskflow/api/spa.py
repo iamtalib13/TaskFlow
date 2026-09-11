@@ -1,4 +1,5 @@
 import frappe
+import json
 from frappe import _
 
 
@@ -23,7 +24,7 @@ def get_spa_bootstrap() -> dict:
 	project_filters = {"is_archived": 0} if has_archived else {}
 	projects = frappe.get_all(
 		"Taskflow Project",
-		fields=["name", "project_name", "status", "team"],
+		fields=["name", "project_name", "status", "team", "project_lead", "completion_percent", "end_date", "parent_project"],
 		filters=project_filters,
 		order_by="project_name asc",
 	)
@@ -292,6 +293,59 @@ def get_spa_bootstrap() -> dict:
 
 
 @frappe.whitelist(methods=["POST"])
+@frappe.whitelist()
+def save_project(payload: str = None, **kwargs) -> dict:
+	_require_login()
+	if payload:
+		data = json.loads(payload)
+	else:
+		data = frappe._dict(kwargs)
+
+	existing_name = data.get("name")
+
+	if existing_name and frappe.db.exists("Taskflow Project", existing_name):
+		doc = frappe.get_doc("Taskflow Project", existing_name)
+		doc.check_permission("write")
+		if "project_name" in data:
+			doc.project_name = data["project_name"]
+		if "team" in data:
+			doc.team = data["team"]
+		if "status" in data:
+			doc.status = data["status"]
+		if "priority" in data:
+			doc.priority = data["priority"]
+		if "project_lead" in data:
+			doc.project_lead = data["project_lead"]
+		if "start_date" in data:
+			doc.start_date = data["start_date"]
+		if "end_date" in data:
+			doc.end_date = data["end_date"]
+		if "parent_project" in data:
+			doc.parent_project = data["parent_project"]
+		if "project_team_members" in data:
+			doc.project_team_members = []
+			for m in data["project_team_members"]:
+				doc.append("project_team_members", m)
+		doc.save(ignore_permissions=False)
+	else:
+		doc = frappe.new_doc("Taskflow Project")
+		doc.update(data)
+		doc.save(ignore_permissions=False)
+
+	return doc.as_dict()
+
+@frappe.whitelist(methods=["POST"])
+def delete_project(name: str = None, **kwargs) -> dict:
+	_require_login()
+	project_name = name or kwargs.get("name")
+	if not project_name:
+		frappe.throw(_("Project name is required"))
+	if not frappe.db.exists("Taskflow Project", project_name):
+		frappe.throw(_("Project not found"))
+	frappe.delete_doc("Taskflow Project", project_name, ignore_permissions=False)
+	return {"status": "ok", "deleted": project_name}
+
+@frappe.whitelist()
 def save_task(payload: str = None, **kwargs) -> dict:
 	_require_login()
 	data = frappe.parse_json(payload) if payload else kwargs

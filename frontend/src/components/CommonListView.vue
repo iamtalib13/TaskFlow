@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col flex-1 min-h-0 min-w-0 bg-white border border-gray-200 rounded-lg outline-none focus:outline-none focus:ring-0 ring-0 overflow-hidden">
+  <div class="flex flex-col flex-1 min-h-0 min-w-0 bg-surface-base border border-outline-gray-2 rounded-lg outline-none focus:outline-none focus:ring-0 ring-0 overflow-hidden">
     <!-- Optional Toolbar Slot (above the table) -->
-    <div v-if="$slots.toolbar" class="shrink-0 p-3 border-b border-gray-100 bg-white">
+    <div v-if="$slots.toolbar" class="shrink-0 p-3 border-b border-outline-gray-1 bg-surface-base">
       <slot name="toolbar" />
     </div>
 
@@ -14,14 +14,14 @@
     >
       <table class="w-full text-left border-collapse text-xs select-text outline-none focus:outline-none">
         <!-- Table Header (Sticky at top) -->
-        <thead class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200 text-gray-600 font-semibold tracking-wide uppercase text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+        <thead class="sticky top-0 z-30 bg-surface-gray-2/95 backdrop-blur-xs border-b border-outline-gray-2 text-ink-gray-6 font-semibold tracking-wide uppercase text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
           <tr>
             <!-- Select All Checkbox -->
             <th
               v-if="selectable"
               scope="col"
               :class="[
-                'w-9 px-2 py-2 text-center bg-gray-50 border-r border-gray-200/60',
+                'w-9 px-2 py-2 text-center bg-surface-gray-2 border-r border-outline-gray-2/60',
                 isCheckboxSticky ? 'sticky left-0 z-40' : '',
               ]"
             >
@@ -29,7 +29,7 @@
                 type="checkbox"
                 :checked="isAllSelected"
                 :indeterminate.prop="isPartiallySelected"
-                class="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer accent-black transition"
+                class="w-4 h-4 rounded border-outline-gray-3 text-black focus:ring-black cursor-pointer accent-black transition"
                 @change="toggleSelectAll"
               />
             </th>
@@ -47,13 +47,13 @@
               }"
               :class="[
                 'px-3 py-2 whitespace-nowrap transition-colors select-none',
-                col.sticky ? 'sticky z-40 bg-gray-50 border-r border-gray-200/70' : '',
-                col.sortable ? 'cursor-pointer hover:text-gray-900' : '',
+                col.sticky ? 'sticky z-40 bg-surface-gray-2 border-r border-outline-gray-2/70' : '',
+                col.sortable ? 'cursor-pointer hover:text-ink-gray-9' : '',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
               ]"
               @click="col.sortable && handleHeaderSort(col.key)"
             >
-              <div class="inline-flex items-center gap-1.5 font-semibold text-gray-600">
+              <div class="inline-flex items-center gap-1.5 font-semibold text-ink-gray-6">
                 <span>{{ col.label }}</span>
                 <span v-if="col.sortable" class="text-gray-400 text-[10px]">
                   <template v-if="sortKey === col.key">
@@ -67,13 +67,13 @@
         </thead>
 
         <!-- Table Body -->
-        <tbody class="divide-y divide-gray-100 bg-white">
+        <tbody class="divide-y divide-gray-100 bg-surface-base">
           <!-- Loading State -->
           <tr v-if="loading">
-            <td :colspan="columnSpan" class="py-16 text-center text-gray-500">
+            <td :colspan="columnSpan" class="py-16 text-center text-ink-gray-5">
               <div class="flex flex-col items-center justify-center gap-2">
                 <div class="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                <span class="text-xs text-gray-500 font-medium">Loading records...</span>
+                <span class="text-xs text-ink-gray-5 font-medium">Loading records...</span>
               </div>
             </td>
           </tr>
@@ -83,10 +83,10 @@
             <td :colspan="columnSpan" class="py-16 text-center text-gray-400">
               <div class="flex flex-col items-center justify-center gap-2">
                 <slot name="empty">
-                  <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-lg mb-1">
+                  <div class="w-10 h-10 rounded-full bg-surface-gray-3 flex items-center justify-center text-gray-400 text-lg mb-1">
                     📂
                   </div>
-                  <p class="text-sm font-medium text-gray-700">{{ emptyText || 'No items found' }}</p>
+                  <p class="text-sm font-medium text-ink-gray-7">{{ emptyText || 'No items found' }}</p>
                   <p class="text-xs text-gray-400">Try adjusting your filters or search query.</p>
                 </slot>
               </div>
@@ -101,10 +101,10 @@
             :class="[
               'group transition-colors duration-150 cursor-pointer',
               isRowSelected(row)
-                ? 'bg-blue-50/50 hover:bg-blue-50/80'
+                ? 'bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-50/80 dark:hover:bg-blue-900/30'
                 : isJustNowRow(row)
                   ? 'row-just-now is-just-now shadow-xs'
-                  : (getRowClass(row, idx) || 'hover:bg-[#f0f7f7]'),
+                  : (getRowClass(row, idx) || 'hover:bg-surface-gray-2'),
             ]"
             @click="onRowClick(row, $event)"
           >
@@ -112,20 +112,20 @@
             <td
               v-if="selectable"
               :class="[
-                'w-9 px-2 py-2 text-center border-r border-gray-100 transition-colors',
+                'w-9 px-2 py-2 text-center border-r border-outline-gray-1 transition-colors',
                 isCheckboxSticky ? 'sticky left-0 z-20' : '',
                 isRowSelected(row)
                   ? '!bg-blue-50/60'
                   : isJustNowRow(row)
-                    ? '!bg-emerald-50/90 group-hover:!bg-emerald-100/80'
-                    : (isCheckboxSticky ? 'bg-white group-hover:bg-[#f0f7f7]' : 'bg-transparent group-hover:bg-[#f0f7f7]'),
+                    ? '!bg-emerald-50/90 dark:!bg-emerald-900/20 group-hover:!bg-emerald-100/80 dark:group-hover:!bg-emerald-900/30'
+                    : (isCheckboxSticky ? 'bg-surface-base group-hover:bg-surface-gray-2' : 'bg-transparent group-hover:bg-surface-gray-2'),
               ]"
               @click.stop
             >
               <input
                 type="checkbox"
                 :checked="isRowSelected(row)"
-                class="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer accent-black transition"
+                class="w-4 h-4 rounded border-outline-gray-3 text-black focus:ring-black cursor-pointer accent-black transition"
                 @change="toggleRowSelection(row)"
               />
             </td>
@@ -141,14 +141,14 @@
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
-                'px-3 py-2 whitespace-nowrap text-gray-700 text-xs transition-colors',
-                col.sticky ? 'sticky z-20 border-r border-gray-100 font-medium' : '',
+                'px-3 py-2 whitespace-nowrap text-ink-gray-7 text-xs transition-colors',
+                col.sticky ? 'sticky z-20 border-r border-outline-gray-1 font-medium' : '',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
                 isRowSelected(row)
                   ? (col.sticky ? '!bg-blue-50/60' : '')
                   : isJustNowRow(row)
-                    ? (col.sticky ? '!bg-emerald-50/90 group-hover:!bg-emerald-100/80' : '')
-                    : (col.sticky ? 'bg-white group-hover:bg-[#f0f7f7]' : ''),
+                    ? (col.sticky ? '!bg-emerald-50/90 dark:!bg-emerald-900/20 group-hover:!bg-emerald-100/80 dark:group-hover:!bg-emerald-900/30' : '')
+                    : (col.sticky ? 'bg-surface-base group-hover:bg-surface-gray-2' : ''),
               ]"
             >
               <!-- Scoped Cell Slot -->
@@ -170,12 +170,12 @@
     <!-- Sticky Bottom Bar: Load More & Counter -->
     <div
       v-if="pagination"
-      class="shrink-0 sticky bottom-0 z-30 px-4 py-2.5 bg-white/95 backdrop-blur-md border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 select-none shadow-[0_-2px_10px_rgba(0,0,0,0.04)]"
+      class="shrink-0 sticky bottom-0 z-30 px-4 py-2.5 bg-surface-base/95 backdrop-blur-md border-t border-outline-gray-2 flex flex-wrap items-center justify-between gap-3 text-xs text-ink-gray-6 select-none shadow-[0_-2px_10px_rgba(0,0,0,0.04)]"
     >
       <!-- Left: Item Count & Progress Indicator -->
       <div class="flex items-center gap-3">
-        <span class="text-gray-600 font-medium">
-          Showing <span class="text-gray-900 font-bold">{{ loadedCount }}</span> of <span class="text-gray-900 font-bold">{{ totalCount }}</span> tasks
+        <span class="text-ink-gray-6 font-medium">
+          Showing <span class="text-ink-gray-9 font-bold">{{ loadedCount }}</span> of <span class="text-ink-gray-9 font-bold">{{ totalCount }}</span> {{ itemLabel }}
         </span>
 
         <!-- Sleek Mini Progress Bar -->
@@ -194,7 +194,7 @@
           v-if="hasMore"
           type="button"
           :disabled="loading"
-          class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gray-900 hover:bg-black text-white text-xs font-semibold shadow-xs hover:shadow transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 text-xs font-semibold shadow-xs hover:shadow transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           @click="$emit('load-more')"
         >
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -209,7 +209,7 @@
           v-if="hasMore && remainingCount > nextBatchCount"
           type="button"
           :disabled="loading"
-          class="px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-medium transition cursor-pointer"
+          class="px-2.5 py-1.5 rounded-lg border border-outline-gray-2 hover:bg-surface-gray-3 text-ink-gray-7 text-xs font-medium transition cursor-pointer"
           title="Load all remaining records"
           @click="$emit('load-all')"
         >
@@ -219,12 +219,12 @@
         <!-- All Loaded Badge -->
         <span
           v-if="!hasMore && totalCount > 0"
-          class="inline-flex items-center gap-1.5 text-xs text-gray-500 font-medium bg-gray-100/90 px-3 py-1 rounded-md"
+          class="inline-flex items-center gap-1.5 text-xs text-ink-gray-5 font-medium bg-surface-gray-3/90 px-3 py-1 rounded-md"
         >
           <svg class="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          All {{ totalCount }} tasks loaded
+          All {{ totalCount }} {{ itemLabel }} loaded
         </span>
       </div>
     </div>
@@ -282,6 +282,10 @@ export default {
     rowClass: {
       type: [Function, String],
       default: null,
+    },
+    itemLabel: {
+      type: String,
+      default: 'tasks',
     },
   },
   emits: [

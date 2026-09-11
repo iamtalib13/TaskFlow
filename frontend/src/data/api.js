@@ -333,6 +333,22 @@ export async function fetchBootstrap() {
 }
 
 // Save or create task using Frappe UI standard call
+export async function saveProject(projectData) {
+  return await callFrappe(
+    'taskflow.taskflow.api.spa.save_project',
+    { payload: JSON.stringify(projectData) },
+    'POST'
+  )
+}
+
+export async function deleteProject(name) {
+  return await callFrappe(
+    'taskflow.taskflow.api.spa.delete_project',
+    { name },
+    'POST'
+  )
+}
+
 export async function saveTask(taskData) {
   return await callFrappe(
     'taskflow.taskflow.api.spa.save_task',
@@ -717,3 +733,10 @@ export async function uploadTaskAttachment(taskId, file) {
 
 
 
+
+export async function fetchTaskflowSettings() {
+  return await callFrappe('frappe.client.get', {
+    doctype: 'Taskflow Settings',
+    name: 'Taskflow Settings'
+  })
+}

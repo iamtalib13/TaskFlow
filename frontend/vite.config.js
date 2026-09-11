@@ -3,9 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import frappeuiPlugin from 'frappe-ui/vite'
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  base: '/assets/taskflow/frontend/',
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/assets/taskflow/frontend/' : '/',
   plugins: [
     frappeuiPlugin({
       frappeProxy: false,
@@ -17,20 +16,23 @@ export default defineConfig({
     port: 8080,
     proxy: {
       '^/(app|api|assets|files|private)': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://sahayog.com:8000',
         changeOrigin: true,
         ws: true,
       },
     },
   },
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
+    alias: [
+      { find: '@', replacement: path.resolve(__dirname, 'src') },
+    ],
+  },
+  optimizeDeps: {
+    exclude: ['frappe-ui'],
   },
   build: {
     outDir: `../${path.basename(path.resolve('..'))}/public/frontend`,
     emptyOutDir: true,
     target: 'es2015',
   },
-})
+}))

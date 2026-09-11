@@ -139,8 +139,8 @@ function getCellBg(cell, dayOfWeek) {
   const status = getDayStatus(cell, dayOfWeek)
   if (status === 'logged') return 'bg-green-50'
   if (status === 'missed') return 'bg-red-50'
-  if (status === 'holiday') return 'bg-gray-100'
-  if (!cell.isCurrentMonth) return 'bg-gray-50/60'
+  if (status === 'holiday') return 'bg-surface-gray-3'
+  if (!cell.isCurrentMonth) return 'bg-surface-gray-2/60'
   return ''
 }
 
@@ -151,7 +151,7 @@ function getDayNumberClass(cell, dayOfWeek) {
   if (status === 'missed') return 'text-red-500'
   if (status === 'holiday') return 'text-gray-400'
   if (!cell.isCurrentMonth) return 'text-gray-300'
-  return 'text-gray-900'
+  return 'text-ink-gray-9'
 }
 </script>
 
@@ -159,14 +159,14 @@ function getDayNumberClass(cell, dayOfWeek) {
   <div class="flex flex-col h-full min-h-0">
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-2 shrink-0">
-      <h3 class="text-sm font-bold text-gray-900">{{ monthLabel }}</h3>
+      <h3 class="text-sm font-bold text-ink-gray-9">{{ monthLabel }}</h3>
       <div class="flex items-center gap-1">
         <Button variant="ghost" size="sm" label="Today" @click="goToToday" />
-        <button type="button" class="p-1 rounded hover:bg-gray-100 transition cursor-pointer" @click="prevMonth">
-          <ChevronLeft class="size-4 text-gray-500" />
+        <button type="button" class="p-1 rounded hover:bg-surface-gray-3 transition cursor-pointer" @click="prevMonth">
+          <ChevronLeft class="size-4 text-ink-gray-5" />
         </button>
-        <button type="button" class="p-1 rounded hover:bg-gray-100 transition cursor-pointer" @click="nextMonth">
-          <ChevronRight class="size-4 text-gray-500" />
+        <button type="button" class="p-1 rounded hover:bg-surface-gray-3 transition cursor-pointer" @click="nextMonth">
+          <ChevronRight class="size-4 text-ink-gray-5" />
         </button>
       </div>
     </div>
@@ -185,7 +185,7 @@ function getDayNumberClass(cell, dayOfWeek) {
             v-for="(day, i) in DAY_NAMES"
             :key="day"
             class="text-center text-[10px] font-semibold py-1.5"
-            :class="isSunday(i) ? 'text-gray-400' : 'text-gray-500'"
+            :class="isSunday(i) ? 'text-gray-400' : 'text-ink-gray-5'"
           >
             {{ day }}
           </span>
@@ -198,14 +198,14 @@ function getDayNumberClass(cell, dayOfWeek) {
         <div
           v-for="(week, wIdx) in weeks"
           :key="wIdx"
-          class="grid grid-cols-[1fr_48px] border-t border-gray-200"
+          class="grid grid-cols-[1fr_48px] border-t border-outline-gray-2"
         >
           <!-- Days row -->
           <div class="grid grid-cols-7">
             <div
               v-for="(cell, dIdx) in week"
               :key="cell.key"
-              class="relative min-h-[52px] border-r border-gray-200 last:border-r-0 px-1 py-1 transition-colors rounded-sm m-px"
+              class="relative min-h-[52px] border-r border-outline-gray-2 last:border-r-0 px-1 py-1 transition-colors rounded-sm m-px"
               :class="[
                 getCellBg(cell, dIdx),
                 cell.isCurrentMonth && isSunday(dIdx) ? 'cursor-not-allowed' : 'cursor-pointer',
@@ -268,7 +268,7 @@ function getDayNumberClass(cell, dayOfWeek) {
           </div>
 
           <!-- Weekly total -->
-          <div class="flex items-center justify-center border-l border-gray-200">
+          <div class="flex items-center justify-center border-l border-outline-gray-2">
             <span
               class="text-[11px] font-bold"
               :class="weeklyTotals[wIdx] > 0 ? 'text-green-600' : 'text-red-400'"
@@ -280,7 +280,7 @@ function getDayNumberClass(cell, dayOfWeek) {
       </div>
 
       <!-- Monthly KPI badges -->
-      <div class="shrink-0 border-t border-gray-200 px-4 py-2.5 flex items-center gap-3 flex-wrap">
+      <div class="shrink-0 border-t border-outline-gray-2 px-4 py-2.5 flex items-center gap-3 flex-wrap">
         <div class="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 rounded-lg border border-green-200">
           <span class="text-[10px] font-semibold text-green-700">Total Hours</span>
           <span class="text-sm font-bold text-green-800">{{ totalMonthlyHours.toFixed(1) }}</span>
@@ -294,7 +294,7 @@ function getDayNumberClass(cell, dayOfWeek) {
           <span class="text-sm font-bold text-purple-800">{{ avgHoursPerDay }}h</span>
         </div>
         <!-- Legend -->
-        <div class="ml-auto flex items-center gap-3 text-[9px] text-gray-500">
+        <div class="ml-auto flex items-center gap-3 text-[9px] text-ink-gray-5">
           <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-green-500" /> Logged</span>
           <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-red-400" /> Missed</span>
           <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-gray-300" /> Holiday</span>

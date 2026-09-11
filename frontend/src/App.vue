@@ -1,6 +1,6 @@
 <template>
   <FrappeUIProvider>
-    <div class="h-screen w-screen overflow-hidden bg-gray-50 antialiased font-sans text-gray-900">
+    <div class="h-screen w-screen overflow-hidden bg-surface-gray-2 antialiased font-sans text-ink-gray-9">
       <router-view />
     </div>
   </FrappeUIProvider>

@@ -5,25 +5,25 @@
     @click.self="close"
   >
     <div
-      class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
+      class="bg-surface-base rounded-2xl shadow-2xl border border-outline-gray-1 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
       role="dialog"
       aria-modal="true"
     >
       <!-- Modal Header -->
-      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+      <div class="px-6 py-4 border-b border-outline-gray-1 flex items-center justify-between bg-surface-base shrink-0">
         <div class="flex items-center gap-2.5">
           <span class="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center text-sm font-bold shadow-xs">
             +
           </span>
           <div>
-            <h3 class="text-sm font-bold text-gray-900">Create New Task</h3>
-            <p class="text-xs text-gray-500">Add a new task to your Taskflow workspace</p>
+            <h3 class="text-sm font-bold text-ink-gray-9">Create New Task</h3>
+            <p class="text-xs text-ink-gray-5">Add a new task to your Taskflow workspace</p>
           </div>
         </div>
 
         <button
           type="button"
-          class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition cursor-pointer"
+          class="p-2 text-gray-400 hover:text-ink-gray-7 hover:bg-surface-gray-3 rounded-lg transition cursor-pointer"
           @click="close"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,7 +57,7 @@
       <!-- Modal Body -->
       <form class="p-6 space-y-4 text-xs overflow-y-auto flex-1" @submit.prevent="submit">
         <div>
-          <label class="block font-semibold text-gray-700 mb-1">
+          <label class="block font-semibold text-ink-gray-7 mb-1">
             Task Title <span class="text-rose-500">*</span>
           </label>
           <input
@@ -65,17 +65,17 @@
             required
             type="text"
             placeholder="e.g. Implement Responsive Table View"
-            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
+            class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
           />
         </div>
 
         <!-- Row 1: Project & Task Type & Status & Priority -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div>
-            <label class="block font-medium text-gray-600 mb-1">Project</label>
+            <label class="block font-medium text-ink-gray-6 mb-1">Project</label>
             <select
               v-model="form.project"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              class="w-full bg-surface-base border border-outline-gray-2 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
               @change="onProjectChange"
             >
               <option value="">Select Project</option>
@@ -86,11 +86,11 @@
           </div>
 
           <div>
-            <label class="block font-medium text-gray-600 mb-1">Task Type</label>
+            <label class="block font-medium text-ink-gray-6 mb-1">Task Type</label>
             <div class="relative flex items-center">
               <select
                 v-model="form.task_type"
-                class="w-full bg-white border border-gray-200 hover:border-gray-300 rounded-lg pl-7 pr-7 py-1.5 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
+                class="w-full bg-surface-base border border-outline-gray-2 hover:border-outline-gray-3 rounded-lg pl-7 pr-7 py-1.5 text-xs text-ink-gray-8 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
               >
                 <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
               </select>
@@ -104,20 +104,20 @@
           </div>
 
           <div>
-            <label class="block font-medium text-gray-600 mb-1">Status</label>
+            <label class="block font-medium text-ink-gray-6 mb-1">Status</label>
             <select
               v-model="form.status"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              class="w-full bg-surface-base border border-outline-gray-2 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
             >
               <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
             </select>
           </div>
 
           <div>
-            <label class="block font-medium text-gray-600 mb-1">Priority</label>
+            <label class="block font-medium text-ink-gray-6 mb-1">Priority</label>
             <select
               v-model="form.priority"
-              class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+              class="w-full bg-surface-base border border-outline-gray-2 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
             >
               <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
             </select>
@@ -128,7 +128,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div class="md:col-span-2">
             <div class="flex items-center justify-between mb-1">
-              <label class="block font-medium text-gray-600">Assigned To (Team Members)</label>
+              <label class="block font-medium text-ink-gray-6">Assigned To (Team Members)</label>
               <span v-if="assigneeOptions.length > 0" class="text-[10px] text-gray-400">
                 {{ assigneeOptions.length }} team members
               </span>
@@ -146,7 +146,7 @@
           </div>
 
           <div>
-            <label class="block font-medium text-gray-600 mb-1">Start Date</label>
+            <label class="block font-medium text-ink-gray-6 mb-1">Start Date</label>
             <DatePicker
               v-model="form.start_date"
               format="DD-MM-YYYY"
@@ -199,7 +199,7 @@
           </div>
 
           <div>
-            <label class="block font-medium text-gray-600 mb-1">Due Date</label>
+            <label class="block font-medium text-ink-gray-6 mb-1">Due Date</label>
             <DatePicker
               v-model="form.due_date"
               format="DD-MM-YYYY"
@@ -253,8 +253,8 @@
         </div>
 
         <div>
-          <label class="block font-medium text-gray-600 mb-1">Description</label>
-          <TaskRichEditor
+          <label class="block font-medium text-ink-gray-6 mb-1">Description</label>
+          <FrappeRichEditor
             v-model="form.description"
             :people="people"
             min-height="min-h-48"
@@ -263,7 +263,7 @@
         </div>
 
         <!-- Actions -->
-        <div class="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+        <div class="pt-3 border-t border-outline-gray-1 flex items-center justify-end gap-2">
           <Button
             type="button"
             :disabled="creating"
@@ -289,7 +289,7 @@
 import { MultiSelect, DatePicker, Button, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
 import { saveTask, getErrorMessage, fetchTeamMembers } from '../data/api'
-import TaskRichEditor from './TaskRichEditor.vue'
+import FrappeRichEditor from './FrappeRichEditor.vue'
 import { Calendar, Bug, Sparkles, CheckSquare, ChevronDown } from 'lucide-vue-next'
 
 export default {
@@ -298,7 +298,7 @@ export default {
     Button,
     DatePicker,
     MultiSelect,
-    TaskRichEditor,
+    FrappeRichEditor,
     Calendar,
     Bug,
     Sparkles,

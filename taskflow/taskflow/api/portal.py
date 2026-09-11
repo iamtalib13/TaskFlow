@@ -702,6 +702,13 @@ def get_employees() -> dict:
         fields=["name", "employee_name", "designation", "department", "user_id"],
         order_by="employee_name asc"
     )
+
+    for emp in employees:
+        emp["user_image"] = ""
+        if emp.get("user_id"):
+            user_image = frappe.db.get_value("User", emp["user_id"], "user_image")
+            if user_image:
+                emp["user_image"] = user_image
     
     return {"employees": employees}
 

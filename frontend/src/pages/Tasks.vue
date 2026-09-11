@@ -1,7 +1,9 @@
 <script setup>
+
 import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue'
 import {
   Avatar,
+  Combobox,
   Badge,
   Breadcrumbs,
   Button,
@@ -59,11 +61,14 @@ import {
   MoreHorizontal,
   LayoutDashboard,
   UserCheck,
+  Moon,
+  Sun,
 } from 'lucide-vue-next'
 
 import CommonListView from '@/components/CommonListView.vue'
 import TaskDetailModal from '@/components/TaskDetailModal.vue'
 import TaskCreateModal from '@/components/TaskCreateModal.vue'
+import ProjectCreateModal from '@/components/ProjectCreateModal.vue'
 import {
   fetchBootstrap,
   saveTask,
@@ -74,6 +79,7 @@ import {
   createTeam,
   updateTeam,
   deleteTeam,
+  deleteProject,
   fetchEmployees,
   addTeamMember,
   fetchMemberTimesheets,
@@ -114,12 +120,20 @@ const activeSection = ref(getSectionFromURL())
 
 const SIDEBAR_COLLAPSED_KEY = 'taskflow:sidebar_collapsed'
 const getStoredSidebarState = () => {
-  try {
-    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
-  } catch {
-    return false
+  return true
+}
+const isDark = ref(false)
+function toggleTheme() {
+  isDark.value = !isDark.value
+  if (isDark.value) {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    localStorage.setItem('taskflow-theme', 'dark')
+  } else {
+    document.documentElement.removeAttribute('data-theme')
+    localStorage.setItem('taskflow-theme', 'light')
   }
 }
+
 const isSidebarCollapsed = ref(getStoredSidebarState())
 
 watch(isSidebarCollapsed, (val) => {
@@ -375,6 +389,7 @@ const tableColumns = [
   { key: 'title', label: 'TASK', width: '150px', minWidth: '120px', sortable: true, visible: true },
   { key: 'project', label: 'PROJECT', width: '140px', minWidth: '120px', sortable: true, visible: true },
   { key: 'status', label: 'STATUS', width: '120px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'team', label: 'TEAM', width: '150px', minWidth: '120px', sortable: true, visible: true },
   { key: 'priority', label: 'PRIORITY', width: '100px', minWidth: '90px', sortable: true, visible: true },
   { key: 'assigned_to', label: 'ASSIGNED TO', width: '160px', minWidth: '140px', sortable: true, visible: true },
   { key: 'due_date', label: 'DUE DATE', width: '110px', minWidth: '100px', sortable: true, visible: true },
@@ -515,7 +530,7 @@ const getStatusBadgeClass = (status) => {
     case 'On Hold':
       return 'bg-amber-50 text-amber-700 border-amber-200 ring-1 ring-amber-500/10'
     case 'Cancelled':
-      return 'bg-gray-100 text-gray-600 border-gray-200 ring-1 ring-gray-500/10'
+      return 'bg-surface-gray-3 text-ink-gray-6 border-outline-gray-2 ring-1 ring-gray-500/10'
     default:
       return 'bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-500/10'
   }
@@ -572,7 +587,7 @@ const getPriorityBadgeClass = (priority) => {
       return 'bg-amber-50 text-amber-700 border-amber-200 font-medium'
     case 'Low':
     default:
-      return 'bg-gray-100 text-gray-600 border-gray-200'
+      return 'bg-surface-gray-3 text-ink-gray-6 border-outline-gray-2'
   }
 }
 
@@ -672,43 +687,109 @@ function handleLoadAll() {
 }
 
 // --- 2. Project List View State & Columns ---
+const selectedProjectTeamFilter = ref('')
+const projectStatusTab = ref('All')
+const projectStatusOptions = ['All', 'Draft', 'Open', 'In Progress', 'Completed', 'Cancelled']
 const selectedProjectKeys = ref([])
-const projectColumns = [
-  { key: 'name', label: 'PROJECT', width: '220px', minWidth: '180px', sortable: true, visible: true },
-  { key: 'status', label: 'STATUS', width: '120px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'lead', label: 'PROJECT LEAD', width: '180px', minWidth: '150px', sortable: true, visible: true },
-  { key: 'open_tasks', label: 'OPEN TASKS', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
-  { key: 'completed_tasks', label: 'COMPLETED', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
-  { key: 'progress', label: 'PROGRESS', width: '150px', minWidth: '130px', sortable: true, visible: true },
-  { key: 'logged_hours', label: 'LOGGED HRS', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
-  { key: 'due_date', label: 'TARGET DATE', width: '130px', minWidth: '110px', sortable: true, visible: true },
+const projectTableColumns = [
+  { key: 'sr_no', label: 'SR NO', width: '60px', minWidth: '50px', sortable: false, visible: true },
+  { key: 'name', label: 'PROJECT', width: '180px', minWidth: '150px', sortable: true, visible: true },
+  { key: 'parent_project', label: 'PARENT PROJECT', width: '120px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'status', label: 'STATUS', width: '110px', minWidth: '90px', sortable: true, visible: true },
+  { key: 'team', label: 'TEAM', width: '120px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'lead', label: 'LEAD', width: '140px', minWidth: '120px', sortable: true, visible: true },
+  { key: 'progress', label: 'PROGRESS', width: '130px', minWidth: '110px', sortable: true, visible: true },
+  { key: 'due_date', label: 'DUE DATE', width: '100px', minWidth: '90px', sortable: true, visible: true },
+  { key: 'actions', label: '', width: '60px', minWidth: '50px', sortable: false, visible: true },
 ]
 
-const projectsData = computed(() => {
-  const list = projects.value.length > 0
-    ? projects.value.map((p) => p.name)
-    : ['drishti Core', 'ERPNext Impl', 'CRM Revamp', 'Core Platform 2.0', 'Mobile App']
 
-  return list.map((pName, idx) => {
+const filteredProjectsData = computed(() => {
+  let list = projectsData.value
+
+  if (selectedProjectTeamFilter.value) {
+    const filterVal = typeof selectedProjectTeamFilter.value === 'object' 
+      ? selectedProjectTeamFilter.value.value 
+      : selectedProjectTeamFilter.value
+    if (filterVal) {
+      list = list.filter(p => p.team === filterVal)
+    }
+  }
+
+  if (projectStatusTab.value && projectStatusTab.value !== 'All') {
+    list = list.filter(p => p.status === projectStatusTab.value)
+  }
+
+  return list
+})
+
+
+const projectSortField = ref('name')
+const projectSortDirection = ref('asc')
+const projectsDisplayLimit = ref(20)
+
+function handleProjectSortChange({ key, order }) {
+  projectSortField.value = key
+  projectSortDirection.value = order
+}
+
+watch([selectedProjectTeamFilter, projectStatusTab], () => {
+  projectsDisplayLimit.value = 20
+})
+
+const sortedProjects = computed(() => {
+  const factor = projectSortDirection.value === 'desc' ? -1 : 1
+  return [...filteredProjectsData.value].sort((a, b) => {
+    let valA = a[projectSortField.value] || ''
+    let valB = b[projectSortField.value] || ''
+    if (typeof valA === 'string') valA = valA.toLowerCase()
+    if (typeof valB === 'string') valB = valB.toLowerCase()
+    return factor * (valA > valB ? 1 : (valA < valB ? -1 : 0))
+  }).map((item, idx) => ({ ...item, sr_no: idx + 1 }))
+})
+
+const paginatedProjects = computed(() => {
+  return sortedProjects.value.slice(0, projectsDisplayLimit.value)
+})
+
+const projectPaginationInfo = computed(() => ({
+  loaded: paginatedProjects.value.length,
+  total: sortedProjects.value.length,
+  step: 20,
+}))
+
+function handleProjectLoadMore() {
+  projectsDisplayLimit.value += 20
+}
+
+function handleProjectLoadAll() {
+  projectsDisplayLimit.value = sortedProjects.value.length
+}
+
+const projectsData = computed(() => {
+  if (projects.value.length === 0) return []
+
+  return projects.value.map((proj, idx) => {
+    const pName = proj.name || proj.project_name
     const pTasks = tasks.value.filter((t) => t.project === pName)
     const completedTasks = pTasks.filter((t) => t.status === 'Completed').length
-    const totalHours = pTasks.reduce((acc, t) => acc + (Number(t.logged_hours) || 0), 0)
-    const estHours = pTasks.reduce((acc, t) => acc + (Number(t.estimated_hours) || 0), 0)
-    const lead = members[idx % members.length]?.name || 'Talib Sheikh'
-    const pct = pTasks.length > 0 ? Math.round((completedTasks / pTasks.length) * 100) : (idx === 1 ? 80 : 50)
-
+    
+    // Check if it's a new project with no tasks vs existing
+    const pct = pTasks.length > 0 ? Math.round((completedTasks / pTasks.length) * 100) : 0
+    
+    // Pull actual data from the database record if available, otherwise calculate
     return {
-      id: `PRJ-00${idx + 1}`,
+      id: proj.name,
       name: pName,
-      status: completedTasks === pTasks.length && pTasks.length > 0 ? 'Completed' : 'Active',
+      status: proj.status || (completedTasks === pTasks.length && pTasks.length > 0 ? 'Completed' : 'Draft'),
+      team: proj.team || 'Unassigned',
+      lead: proj.project_lead || proj.team || 'Unassigned',
       total_tasks: pTasks.length,
       open_tasks: pTasks.filter((t) => t.status !== 'Completed').length,
       completed_tasks: completedTasks,
-      logged_hours: totalHours || (idx + 2) * 14,
-      estimated_hours: estHours || (idx + 3) * 18,
-      lead,
-      progress: pct,
-      due_date: `2026-10-${String(10 + idx * 3).padStart(2, '0')}`,
+      progress: proj.completion_percent || pct,
+      due_date: proj.end_date || '',
+      parent_project: proj.parent_project || '',
     }
   })
 })
@@ -969,6 +1050,7 @@ async function loadData() {
         loadTimesheetCalendar(selectedTimesheetUser.value)
       }
     }
+    loadEmployees()
   } catch (e) {
     console.error('Failed to load tasks', e)
   } finally {
@@ -1125,7 +1207,33 @@ const teamOptions = computed(() => {
 
 // Create Team (simple popup)
 const createTeamOpen = ref(false)
+const createProjectModalOpen = ref(false)
+const editProjectModalOpen = ref(false)
+const projectToEdit = ref(null)
 const newTeamName = ref('')
+
+function openEditProject(project) {
+  projectToEdit.value = project
+  loadEmployees()
+  editProjectModalOpen.value = true
+}
+
+function handleProjectUpdated() {
+  editProjectModalOpen.value = false
+  projectToEdit.value = null
+  loadData()
+}
+
+async function deleteProjectConfirm(project) {
+  if (!confirm(`Delete project "${project.name}"? This cannot be undone.`)) return
+  try {
+    await deleteProject(project.name)
+    toast.success('Project deleted!')
+    loadData()
+  } catch (e) {
+    toast.error(e.message || 'Failed to delete project')
+  }
+}
 
 function openCreateTeam() {
   newTeamName.value = ''
@@ -1256,7 +1364,7 @@ function getMemberRoleBadgeClass(role) {
     case 'Team Lead': return 'bg-amber-50 text-amber-700 border-amber-200'
     case 'Project Manager': return 'bg-blue-50 text-blue-700 border-blue-200'
     case 'Coordinator': return 'bg-purple-50 text-purple-700 border-purple-200'
-    case 'Viewer': return 'bg-gray-100 text-gray-600 border-gray-200'
+    case 'Viewer': return 'bg-surface-gray-3 text-ink-gray-6 border-outline-gray-2'
     case 'Auditor': return 'bg-indigo-50 text-indigo-700 border-indigo-200'
     default: return 'bg-green-50 text-green-700 border-green-200'
   }
@@ -1406,9 +1514,16 @@ async function loadTeamMembersForTeam(teamName) {
 }
 
 onMounted(() => {
+  const theme = localStorage.getItem('taskflow-theme')
+  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    isDark.value = true
+    document.documentElement.setAttribute('data-theme', 'dark')
+  }
+
   window.addEventListener('popstate', onPopState)
   loadData()
   loadTeams()
+  loadEmployees()
   if (activeSection.value === 'Timesheet') {
     loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
   }
@@ -1436,10 +1551,7 @@ onUnmounted(() => {
             :class="isSidebarCollapsed ? 'justify-center px-1' : 'justify-between px-3'"
           >
             <div
-              class="flex items-center gap-2.5 overflow-hidden"
-              :class="{ 'justify-center w-full cursor-pointer': isSidebarCollapsed }"
-              :title="isSidebarCollapsed ? 'Click to expand sidebar' : ''"
-              @click="isSidebarCollapsed ? (isSidebarCollapsed = false) : null"
+              class="flex items-center gap-2.5 overflow-hidden justify-center w-full"
             >
               <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black text-white font-bold text-xs shadow-xs select-none">
                 TF
@@ -1449,17 +1561,6 @@ onUnmounted(() => {
                 <span class="text-[11px] text-ink-gray-5 leading-tight">Workspace</span>
               </div>
             </div>
-
-            <!-- Collapse Toggle Button (Shown when expanded) -->
-            <button
-              v-if="!isSidebarCollapsed"
-              type="button"
-              class="flex size-7 items-center justify-center rounded-md text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8 transition shrink-0 cursor-pointer"
-              title="Collapse sidebar"
-              @click="isSidebarCollapsed = true"
-            >
-              <PanelLeftClose class="size-4" />
-            </button>
           </div>
 
           <!-- Navigation Items: Only Task, Timesheet, Project, Team with Icons -->
@@ -1475,19 +1576,19 @@ onUnmounted(() => {
                   :class="[
                     'w-full flex flex-col items-center justify-center py-2 px-0.5 mb-1 rounded-lg cursor-pointer transition-all duration-150 select-none relative group',
                     activeSection === item.id
-                      ? 'bg-gray-100 text-gray-950 font-semibold shadow-xs border border-gray-200/80'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent'
+                      ? 'bg-surface-gray-3 text-gray-950 font-semibold shadow-xs border border-outline-gray-2/80'
+                      : 'text-ink-gray-6 hover:bg-surface-gray-2 hover:text-ink-gray-9 border border-transparent'
                   ]"
                   @click="activeSection = item.id"
                 >
                   <component
                     :is="item.icon"
                     class="size-4 shrink-0 transition-colors"
-                    :class="activeSection === item.id ? 'text-gray-950 stroke-[2.2]' : 'text-gray-500 group-hover:text-gray-800'"
+                    :class="activeSection === item.id ? 'text-gray-950 stroke-[2.2]' : 'text-ink-gray-5 group-hover:text-ink-gray-8'"
                   />
                   <span
                     class="text-[10px] leading-tight mt-1 text-center truncate max-w-full font-medium"
-                    :class="activeSection === item.id ? 'text-gray-950 font-semibold' : 'text-gray-500 group-hover:text-gray-700'"
+                    :class="activeSection === item.id ? 'text-gray-950 font-semibold' : 'text-ink-gray-5 group-hover:text-ink-gray-7'"
                   >
                     {{ item.label }}
                   </span>
@@ -1508,8 +1609,8 @@ onUnmounted(() => {
                   :class="[
                     '!h-9 cursor-pointer transition-all duration-150 mb-1 rounded-lg',
                     activeSection === item.id
-                      ? '!bg-gray-100 !text-gray-950 font-semibold shadow-xs border border-gray-200/80'
-                      : 'text-gray-600 hover:!bg-gray-50 hover:!text-gray-900 border border-transparent'
+                      ? '!bg-surface-gray-3 !text-gray-950 font-semibold shadow-xs border border-outline-gray-2/80'
+                      : 'text-ink-gray-6 hover:!bg-surface-gray-2 hover:!text-ink-gray-9 border border-transparent'
                   ]"
                   @click="activeSection = item.id"
                 >
@@ -1517,12 +1618,12 @@ onUnmounted(() => {
                     <component
                       :is="item.icon"
                       class="size-4 shrink-0 transition-colors"
-                      :class="activeSection === item.id ? 'text-gray-950 stroke-[2.2]' : 'text-gray-500'"
+                      :class="activeSection === item.id ? 'text-gray-950 stroke-[2.2]' : 'text-ink-gray-5'"
                     />
                   </template>
                   <span
                     class="flex-1 truncate text-sm"
-                    :class="activeSection === item.id ? 'font-semibold text-gray-950' : 'font-medium text-gray-600'"
+                    :class="activeSection === item.id ? 'font-semibold text-gray-950' : 'font-medium text-ink-gray-6'"
                   >
                     {{ item.label }}
                   </span>
@@ -1530,7 +1631,7 @@ onUnmounted(() => {
                     <span
                       v-if="item.badge !== undefined"
                       class="mr-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors"
-                      :class="activeSection === item.id ? 'bg-gray-200 text-gray-900 font-bold' : 'bg-gray-100 text-gray-500'"
+                      :class="activeSection === item.id ? 'bg-gray-200 text-ink-gray-9 font-bold' : 'bg-surface-gray-3 text-ink-gray-5'"
                     >
                       {{ item.badge }}
                     </span>
@@ -1574,37 +1675,23 @@ onUnmounted(() => {
       <!-- Pinned Page Header -->
       <PageHeader class="border-b border-outline-gray-2 bg-surface-base">
         <div class="flex items-center gap-3">
-          <!-- Sidebar Toggle Button in Header -->
-          <Button
-            variant="ghost"
-            :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-            @click="isSidebarCollapsed = !isSidebarCollapsed"
-          >
-            <template #icon>
-              <PanelLeftOpen v-if="isSidebarCollapsed" class="size-4 text-gray-600" />
-              <PanelLeftClose v-else class="size-4 text-gray-600" />
-            </template>
-          </Button>
-
           <!-- Breadcrumbs for current section -->
           <Breadcrumbs :items="currentBreadcrumbs" />
         </div>
 
         <div class="flex items-center gap-2">
-          <!-- Add Task Button (in Task view) -->
+          <!-- Theme Toggle -->
           <Button
-            v-if="activeSection === 'Task'"
-            variant="solid"
-            theme="gray"
-            label="Add task"
-            class="bg-gray-900 hover:bg-black text-white"
-            @click="createModalOpen = true"
+            variant="ghost"
+            title="Toggle Theme"
+            @click="toggleTheme"
           >
-            <template #prefix>
-              <Plus class="size-4 mr-0.5" />
+            <template #icon>
+              <Moon v-if="!isDark" class="size-4 text-ink-gray-7 hover:text-ink-gray-9 transition-colors" />
+              <Sun v-else class="size-4 text-ink-gray-7 hover:text-ink-gray-9 transition-colors" />
             </template>
           </Button>
-
+          
           <!-- Refresh Button -->
           <Button
             variant="ghost"
@@ -1614,9 +1701,22 @@ onUnmounted(() => {
           >
             <template #icon>
               <RefreshCw
-                class="size-4 text-gray-700 hover:text-gray-950 transition-colors"
+                class="size-4 text-ink-gray-7 hover:text-gray-950 transition-colors"
                 :class="{ 'animate-spin': loading }"
               />
+            </template>
+          </Button>
+
+          <!-- Add Task Button (in Task view) -->
+          <Button
+            v-if="activeSection === 'Task'"
+            variant="solid"
+            theme="gray"
+            label="Add task"
+            @click="createModalOpen = true"
+          >
+            <template #prefix>
+              <Plus class="size-4 mr-0.5" />
             </template>
           </Button>
         </div>
@@ -1627,11 +1727,11 @@ onUnmounted(() => {
         <!-- 1. TASK VIEW -->
         <template v-if="activeSection === 'Task'">
           <!-- Sub-Header Tabs & Task Count (Locked sticky filter header) -->
-          <div class="shrink-0 pb-2 mb-2 bg-white flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
+          <div class="shrink-0 pb-2 mb-2 bg-surface-base flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
             <div class="flex items-center gap-2">
               <div class="flex items-center gap-1.5">
                 <Switch v-model="showAssignedToMe" />
-                <span class="text-xs font-medium text-gray-700 select-none cursor-pointer" @click="showAssignedToMe = !showAssignedToMe">Assigned to Me</span>
+                <span class="text-xs font-medium text-ink-gray-7 select-none cursor-pointer" @click="showAssignedToMe = !showAssignedToMe">Assigned to Me</span>
               </div>
               <div class="w-px h-4 bg-gray-300"></div>
               <TabButtons
@@ -1688,7 +1788,7 @@ onUnmounted(() => {
               </template>
 
               <template #cell-project="{ row }">
-                <span class="text-xs font-medium text-gray-700 truncate block max-w-[140px]" :title="row.project">
+                <span class="text-xs font-medium text-ink-gray-7 truncate block max-w-[140px]" :title="row.project">
                   {{ row.project }}
                 </span>
               </template>
@@ -1729,7 +1829,7 @@ onUnmounted(() => {
                     </Tooltip>
                     <div
                       v-if="row.assignees.length > 3"
-                      class="relative flex items-center justify-center size-7 rounded-full bg-gray-100 text-[10px] font-bold text-gray-600"
+                      class="relative flex items-center justify-center size-7 rounded-full bg-surface-gray-3 text-[10px] font-bold text-ink-gray-6"
                     >
                       +{{ row.assignees.length - 3 }}
                     </div>
@@ -1784,7 +1884,7 @@ onUnmounted(() => {
               <div v-if="availableTimesheetMembers.length > 0" class="relative">
                 <select
                   v-model="selectedTimesheetUser"
-                  class="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition cursor-pointer"
+                  class="bg-surface-base border border-outline-gray-2 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition cursor-pointer"
                   @change="loadTimesheetCalendar(selectedTimesheetUser)"
                 >
                   <option :value="currentUserEmail">
@@ -1812,12 +1912,12 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex-1 min-h-0 flex overflow-hidden bg-white border border-gray-200 rounded-xl shadow-xs outline-none focus:outline-none ring-0">
+          <div class="flex-1 min-h-0 flex overflow-hidden bg-surface-base border border-outline-gray-2 rounded-xl shadow-xs outline-none focus:outline-none ring-0">
             <!-- Left: Profile / Stats Card (240px) -->
-            <div class="w-[240px] shrink-0 overflow-y-auto border-r border-gray-200 bg-gray-50/40 p-4 flex flex-col justify-between">
+            <div class="w-[240px] shrink-0 overflow-y-auto border-r border-outline-gray-2 bg-surface-gray-2/40 p-4 flex flex-col justify-between">
               <div>
                 <div class="flex flex-col items-center text-center mb-4">
-                  <div class="size-16 rounded-full bg-white ring-2 ring-gray-200 shadow-sm overflow-hidden mb-2.5">
+                  <div class="size-16 rounded-full bg-surface-base ring-2 ring-gray-200 shadow-sm overflow-hidden mb-2.5">
                     <Avatar
                       :label="selectedTsUserDisplayName || selectedTimesheetUser || 'User'"
                       size="2xl"
@@ -1825,46 +1925,46 @@ onUnmounted(() => {
                       class="size-16"
                     />
                   </div>
-                  <h3 class="text-sm font-bold text-gray-900 leading-tight">
+                  <h3 class="text-sm font-bold text-ink-gray-9 leading-tight">
                     {{ selectedTsUserDisplayName || selectedTimesheetUser || 'My Timesheet' }}
                   </h3>
-                  <p class="text-[11px] text-gray-500 mt-0.5 truncate max-w-[200px]">
+                  <p class="text-[11px] text-ink-gray-5 mt-0.5 truncate max-w-[200px]">
                     {{ selectedTimesheetUser || currentUserEmail }}
                   </p>
                 </div>
 
                 <!-- Monthly summary stats -->
                 <div class="grid grid-cols-2 gap-2 mb-4">
-                  <div class="text-center p-2 bg-white rounded-lg border border-gray-100 shadow-xs">
+                  <div class="text-center p-2 bg-surface-base rounded-lg border border-outline-gray-1 shadow-xs">
                     <p class="text-base font-bold text-emerald-600">{{ totalTsMonthlyHours }}h</p>
-                    <p class="text-[10px] text-gray-500 font-medium">Logged</p>
+                    <p class="text-[10px] text-ink-gray-5 font-medium">Logged</p>
                   </div>
-                  <div class="text-center p-2 bg-white rounded-lg border border-gray-100 shadow-xs">
-                    <p class="text-base font-bold text-gray-800">{{ tsWorkingDaysCount }}</p>
-                    <p class="text-[10px] text-gray-500 font-medium">Days</p>
+                  <div class="text-center p-2 bg-surface-base rounded-lg border border-outline-gray-1 shadow-xs">
+                    <p class="text-base font-bold text-ink-gray-8">{{ tsWorkingDaysCount }}</p>
+                    <p class="text-[10px] text-ink-gray-5 font-medium">Days</p>
                   </div>
-                  <div class="text-center p-2 bg-white rounded-lg border border-gray-100 shadow-xs col-span-2">
-                    <p class="text-xs font-semibold text-gray-700">{{ tsAvgHoursPerDay }} hrs / day</p>
+                  <div class="text-center p-2 bg-surface-base rounded-lg border border-outline-gray-1 shadow-xs col-span-2">
+                    <p class="text-xs font-semibold text-ink-gray-7">{{ tsAvgHoursPerDay }} hrs / day</p>
                     <p class="text-[9px] text-gray-400">Average on worked days</p>
                   </div>
                 </div>
               </div>
 
               <!-- Quick action in sidebar -->
-              <div class="pt-3 border-t border-gray-200">
+              <div class="pt-3 border-t border-outline-gray-2">
                 <Button
                   variant="outline"
                   class="w-full justify-center text-xs"
                   @click="openTimesheetForm(new Date().toISOString().slice(0, 10))"
                 >
-                  <template #prefix><Plus class="size-3 text-gray-500" /></template>
+                  <template #prefix><Plus class="size-3 text-ink-gray-5" /></template>
                   <span>Log Today's Work</span>
                 </Button>
               </div>
             </div>
 
             <!-- Center: Timesheet Calendar Component -->
-            <div class="flex-1 min-w-0 flex flex-col overflow-hidden bg-white border-r border-gray-200">
+            <div class="flex-1 min-w-0 flex flex-col overflow-hidden bg-surface-base border-r border-outline-gray-2">
               <TimesheetCalendar
                 :events="timesheetCalendarEvents"
                 :loading="timesheetCalendarLoading"
@@ -1875,10 +1975,10 @@ onUnmounted(() => {
             </div>
 
             <!-- Right: Activity Log -->
-            <div class="w-[340px] xl:w-[380px] shrink-0 min-w-0 flex flex-col overflow-hidden bg-white">
-              <div class="shrink-0 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div class="w-[340px] xl:w-[380px] shrink-0 min-w-0 flex flex-col overflow-hidden bg-surface-base">
+              <div class="shrink-0 px-4 py-3 border-b border-outline-gray-1 flex items-center justify-between">
                 <div>
-                  <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wide">Activity Log</h4>
+                  <h4 class="text-xs font-bold text-ink-gray-8 uppercase tracking-wide">Activity Log</h4>
                   <p v-if="selectedTsDayDate" class="text-[11px] text-[#417c7d] font-semibold mt-0.5">
                     {{ selectedTsDayDate }}
                   </p>
@@ -1897,10 +1997,10 @@ onUnmounted(() => {
 
               <!-- Placeholder when no day selected -->
               <div v-if="!selectedTsDayDate" class="flex-1 flex flex-col items-center justify-center text-center px-4">
-                <div class="size-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
+                <div class="size-10 rounded-xl bg-surface-gray-3 flex items-center justify-center mb-3">
                   <Clock class="size-5 text-gray-400" />
                 </div>
-                <p class="text-xs font-semibold text-gray-700 mb-1">Select a timesheet day</p>
+                <p class="text-xs font-semibold text-ink-gray-7 mb-1">Select a timesheet day</p>
                 <p class="text-[10px] text-gray-400 max-w-[200px]">
                   Click on any day in the calendar to view or log your work activities
                 </p>
@@ -1911,7 +2011,7 @@ onUnmounted(() => {
                 <div class="size-10 rounded-xl bg-rose-50 flex items-center justify-center mb-3">
                   <Clock class="size-5 text-rose-400" />
                 </div>
-                <p class="text-xs font-semibold text-gray-700 mb-1">No timesheet logged</p>
+                <p class="text-xs font-semibold text-ink-gray-7 mb-1">No timesheet logged</p>
                 <p class="text-[10px] text-gray-400 mb-4">No hours logged for {{ selectedTsDayDate }}</p>
                 <Button
                   variant="subtle"
@@ -1929,11 +2029,11 @@ onUnmounted(() => {
                 <div
                   v-for="(ts, tIdx) in selectedTsDayEntries"
                   :key="ts.name || tIdx"
-                  class="p-3 rounded-lg border border-gray-100 bg-gray-50/50 space-y-2"
+                  class="p-3 rounded-lg border border-outline-gray-1 bg-surface-gray-2/80 space-y-2"
                 >
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <span class="text-xs font-bold text-gray-800">{{ ts.name }}</span>
+                      <span class="text-xs font-bold text-ink-gray-8">{{ ts.name }}</span>
                       <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">
                         {{ ts.status }}
                       </Badge>
@@ -1961,7 +2061,7 @@ onUnmounted(() => {
                     <div
                       v-for="(item, iIdx) in ts.items"
                       :key="iIdx"
-                      class="flex items-center gap-2 text-[10px] bg-white border border-gray-100 rounded-md px-2.5 py-2 shadow-2xs"
+                      class="flex items-center gap-2 text-[10px] bg-surface-base border border-outline-gray-1 rounded-md px-2.5 py-2 shadow-2xs"
                     >
                       <span
                         class="inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold border shrink-0"
@@ -1974,11 +2074,11 @@ onUnmounted(() => {
                         {{ item.activity_type }}
                       </span>
                       <div class="min-w-0 flex-1">
-                        <span v-if="item.project" class="text-gray-800 font-medium truncate block">{{ item.project }}</span>
-                        <span v-if="item.task" class="text-gray-500 truncate block">{{ item.task }}</span>
+                        <span v-if="item.project" class="text-ink-gray-8 font-medium truncate block">{{ item.project }}</span>
+                        <span v-if="item.task" class="text-ink-gray-5 truncate block">{{ item.task }}</span>
                         <span v-if="item.description" class="text-gray-400 truncate block text-[9px]">{{ item.description }}</span>
                       </div>
-                      <span class="text-gray-800 font-bold shrink-0">{{ item.hrs }}h</span>
+                      <span class="text-ink-gray-8 font-bold shrink-0">{{ item.hrs }}h</span>
                       <span v-if="item.from_time || item.to_time" class="text-gray-400 font-mono text-[9px] shrink-0">
                         {{ item.from_time?.slice(11, 16) || item.from_time }} – {{ item.to_time?.slice(11, 16) || item.to_time }}
                       </span>
@@ -1999,11 +2099,11 @@ onUnmounted(() => {
             >
               <div v-if="timesheetFormOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/30" @click="timesheetFormOpen = false" />
-                <div class="relative bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                <div class="relative bg-surface-base rounded-xl shadow-2xl border border-outline-gray-2 w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
                   <!-- Header -->
-                  <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 shrink-0">
-                    <h3 class="text-sm font-bold text-gray-900">Log Timesheet</h3>
-                    <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer" @click="timesheetFormOpen = false">
+                  <div class="flex items-center justify-between px-5 py-3.5 border-b border-outline-gray-1 shrink-0">
+                    <h3 class="text-sm font-bold text-ink-gray-9">Log Timesheet</h3>
+                    <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg text-gray-400 hover:text-ink-gray-6 hover:bg-surface-gray-3 transition cursor-pointer" @click="timesheetFormOpen = false">
                       <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                     </button>
                   </div>
@@ -2013,12 +2113,12 @@ onUnmounted(() => {
                     <!-- Date + Status -->
                     <div class="grid grid-cols-2 gap-3">
                       <div>
-                        <label class="text-xs font-semibold text-gray-700 mb-1 block">Date</label>
-                        <input type="date" v-model="timesheetFormDate" class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" />
+                        <label class="text-xs font-semibold text-ink-gray-7 mb-1 block">Date</label>
+                        <input type="date" v-model="timesheetFormDate" class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" />
                       </div>
                       <div>
-                        <label class="text-xs font-semibold text-gray-700 mb-1 block">Status</label>
-                        <select v-model="timesheetFormStatus" class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                        <label class="text-xs font-semibold text-ink-gray-7 mb-1 block">Status</label>
+                        <select v-model="timesheetFormStatus" class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
                           <option value="Draft">Draft</option>
                           <option value="Submitted">Submitted</option>
                         </select>
@@ -2028,40 +2128,40 @@ onUnmounted(() => {
                     <!-- Items -->
                     <div>
                       <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-semibold text-gray-700">Time Entries</label>
+                        <label class="text-xs font-semibold text-ink-gray-7">Time Entries</label>
                         <button type="button" class="text-[10px] font-medium text-blue-600 hover:text-blue-700 cursor-pointer transition" @click="addTsFormItem">+ Add Row</button>
                       </div>
-                      <div v-for="(item, idx) in timesheetFormItems" :key="idx" class="bg-gray-50 rounded-lg p-3 mb-2 border border-gray-100">
+                      <div v-for="(item, idx) in timesheetFormItems" :key="idx" class="bg-surface-gray-2 rounded-lg p-3 mb-2 border border-outline-gray-1">
                         <div class="grid grid-cols-3 gap-2 mb-2">
                           <div>
-                            <label class="text-[10px] text-gray-500 mb-0.5 block">Activity</label>
-                            <select v-model="item.activity_type" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200">
+                            <label class="text-[10px] text-ink-gray-5 mb-0.5 block">Activity</label>
+                            <select v-model="item.activity_type" class="w-full text-xs border border-outline-gray-2 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200">
                               <option value="Task">Task</option>
                               <option value="Meeting">Meeting</option>
                               <option value="Research">Research</option>
                             </select>
                           </div>
                           <div>
-                            <label class="text-[10px] text-gray-500 mb-0.5 block">Project</label>
-                            <input v-model="item.project" type="text" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" placeholder="Project name" />
+                            <label class="text-[10px] text-ink-gray-5 mb-0.5 block">Project</label>
+                            <input v-model="item.project" type="text" class="w-full text-xs border border-outline-gray-2 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" placeholder="Project name" />
                           </div>
                           <div>
-                            <label class="text-[10px] text-gray-500 mb-0.5 block">Task ID</label>
-                            <input v-model="item.task" type="text" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" placeholder="TFT-XXXXX" />
+                            <label class="text-[10px] text-ink-gray-5 mb-0.5 block">Task ID</label>
+                            <input v-model="item.task" type="text" class="w-full text-xs border border-outline-gray-2 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" placeholder="TFT-XXXXX" />
                           </div>
                         </div>
                         <div class="grid grid-cols-2 gap-2 mb-2">
                           <div>
-                            <label class="text-[10px] text-gray-500 mb-0.5 block">From</label>
-                            <input v-model="item.from_time" type="datetime-local" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" />
+                            <label class="text-[10px] text-ink-gray-5 mb-0.5 block">From</label>
+                            <input v-model="item.from_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" />
                           </div>
                           <div>
-                            <label class="text-[10px] text-gray-500 mb-0.5 block">To</label>
-                            <input v-model="item.to_time" type="datetime-local" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" />
+                            <label class="text-[10px] text-ink-gray-5 mb-0.5 block">To</label>
+                            <input v-model="item.to_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" />
                           </div>
                         </div>
                         <div class="flex items-center justify-between">
-                          <input v-model="item.description" type="text" class="flex-1 text-[10px] border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-200 mr-2" placeholder="Description (optional)" />
+                          <input v-model="item.description" type="text" class="flex-1 text-[10px] border border-outline-gray-2 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-200 mr-2" placeholder="Description (optional)" />
                           <button v-if="timesheetFormItems.length > 1" type="button" class="text-red-400 hover:text-red-600 cursor-pointer transition text-[10px]" @click="removeTsFormItem(idx)">Remove</button>
                         </div>
                       </div>
@@ -2069,9 +2169,9 @@ onUnmounted(() => {
                   </div>
 
                   <!-- Footer -->
-                  <div class="shrink-0 px-5 py-3 border-t border-gray-100 flex items-center justify-end gap-2">
-                    <button type="button" class="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition cursor-pointer" @click="timesheetFormOpen = false">Cancel</button>
-                    <button type="button" class="px-4 py-2 text-xs font-medium text-white bg-gray-900 rounded-lg hover:bg-black transition cursor-pointer disabled:opacity-50" :disabled="timesheetFormSaving" @click="submitTimesheet">
+                  <div class="shrink-0 px-5 py-3 border-t border-outline-gray-1 flex items-center justify-end gap-2">
+                    <button type="button" class="px-4 py-2 text-xs font-medium text-ink-gray-7 bg-surface-gray-3 rounded-lg hover:bg-gray-200 transition cursor-pointer" @click="timesheetFormOpen = false">Cancel</button>
+                    <button type="button" class="px-4 py-2 text-xs font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-black dark:hover:bg-gray-100 transition cursor-pointer disabled:opacity-50" :disabled="timesheetFormSaving" @click="submitTimesheet">
                       {{ timesheetFormSaving ? 'Saving...' : 'Save Timesheet' }}
                     </button>
                   </div>
@@ -2081,61 +2181,91 @@ onUnmounted(() => {
           </teleport>
         </template>
 
-        <!-- 3. PROJECT VIEW (List view only as requested) -->
+        <!-- 3. PROJECT VIEW (List view with CommonListView + Pagination) -->
         <template v-else-if="activeSection === 'Project'">
-          <div class="shrink-0 mb-3 flex items-center justify-between">
-            <div>
-              <h2 class="text-lg font-bold text-ink-gray-9">Projects List</h2>
-              <p class="text-xs text-ink-gray-5">Active project spaces and tracking metrics</p>
+          <!-- Sub-Header Tabs & Project Count (Locked sticky filter header) -->
+          <div class="shrink-0 pb-2 mb-2 bg-surface-base flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
+            <div class="flex items-center gap-2">
+              <TabButtons
+                v-model="projectStatusTab"
+                :options="projectStatusOptions"
+              />
             </div>
-            <span class="text-xs text-ink-gray-5 font-medium">{{ projectsData.length }} projects</span>
+            <div class="flex items-center gap-3 text-xs font-medium text-ink-gray-6">
+              <Combobox
+                v-model="selectedProjectTeamFilter"
+                :options="[{label: 'All Teams', value: ''}, ...teams.map(t => ({label: t.name, value: t.name}))]"
+                placeholder="Filter by Team"
+                size="sm"
+                class="w-56"
+              />
+              <span class="whitespace-nowrap">{{ sortedProjects.length }} projects</span>
+              <Button variant="solid" theme="gray" label="Create Project" @click="loadEmployees(); createProjectModalOpen = true">
+                <template #prefix><Plus class="size-4 mr-1" /></template>
+              </Button>
+            </div>
           </div>
 
+          <!-- Projects List Table View: Fills remaining height -->
           <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
             <CommonListView
-              v-model:selectedRows="selectedProjectKeys"
-              :columns="projectColumns"
-              :rows="projectsData"
+              :columns="projectTableColumns"
+              :rows="paginatedProjects"
               :loading="loading"
+              :sort-key="projectSortField"
+              :sort-order="projectSortDirection"
+              :pagination="projectPaginationInfo"
+              :selectable="false"
+              :row-key="'id'"
+              :item-label="'projects'"
+              @sort-change="handleProjectSortChange"
+              @load-more="handleProjectLoadMore"
+              @load-all="handleProjectLoadAll"
+              @row-click="openEditProject"
             >
+              <template #cell-sr_no="{ row }">
+                <span class="text-xs font-medium text-ink-gray-6">{{ row.sr_no }}</span>
+              </template>
+
               <template #cell-name="{ row }">
                 <div class="flex items-center gap-2">
                   <Folder class="size-4 text-blue-600 shrink-0" />
-                  <span class="font-semibold text-ink-gray-9">{{ row.name }}</span>
+                  <div class="min-w-0">
+                    <div class="truncate font-semibold text-sm text-ink-gray-8">{{ row.name }}</div>
+                  </div>
                 </div>
               </template>
 
+              <template #cell-parent_project="{ row }">
+                <span class="text-xs text-ink-gray-7 truncate">{{ row.parent_project || '—' }}</span>
+              </template>
+
               <template #cell-status="{ row }">
-                <Badge
-                  :theme="row.status === 'Completed' ? 'green' : 'blue'"
-                  variant="subtle"
-                  size="sm"
-                >
+                <Badge :theme="row.status === 'Completed' ? 'green' : row.status === 'In Progress' ? 'blue' : row.status === 'Cancelled' ? 'red' : 'gray'" variant="subtle" size="sm">
                   {{ row.status }}
                 </Badge>
               </template>
 
+              <template #cell-team="{ row }">
+                <span class="text-xs font-medium text-ink-gray-7 truncate">{{ row.team }}</span>
+              </template>
+
               <template #cell-lead="{ row }">
                 <div class="flex items-center gap-2">
-                  <Avatar
-                    :image="getAssignee(row.lead).image"
-                    :label="row.lead"
-                    size="sm"
-                    shape="circle"
-                  />
-                  <span class="font-medium text-ink-gray-8">{{ row.lead }}</span>
+                  <Avatar :label="row.lead" size="sm" class="shrink-0" />
+                  <span class="font-medium text-xs text-ink-gray-7 truncate">{{ row.lead }}</span>
                 </div>
               </template>
 
               <template #cell-progress="{ row }">
-                <div class="flex items-center gap-2 w-full">
-                  <div class="flex-1 bg-surface-gray-2 rounded-full h-2 overflow-hidden">
+                <div class="flex items-center gap-2 w-full pr-4">
+                  <div class="flex-1 h-1.5 bg-surface-gray-3 rounded-full overflow-hidden">
                     <div
-                      class="h-full bg-blue-600 rounded-full transition-all duration-300"
-                      :style="{ width: `${row.progress}%` }"
+                      class="h-full bg-blue-500 rounded-full transition-all duration-500"
+                      :style="{ width: row.progress + '%' }"
                     />
                   </div>
-                  <span class="text-xs font-mono text-ink-gray-6 w-8 text-right">{{ row.progress }}%</span>
+                  <span class="text-[11px] font-medium text-ink-gray-6 w-8 text-right">{{ row.progress }}%</span>
                 </div>
               </template>
 
@@ -2144,6 +2274,27 @@ onUnmounted(() => {
                   {{ formatDueDate(row.due_date) }}
                 </span>
                 <span v-else class="text-ink-gray-4">—</span>
+              </template>
+
+              <template #cell-actions="{ row }">
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    class="p-1 rounded hover:bg-surface-gray-3 text-ink-gray-5 hover:text-ink-gray-8 transition cursor-pointer"
+                    title="Edit project"
+                    @click.stop="openEditProject(row)"
+                  >
+                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1 rounded hover:bg-red-50 text-ink-gray-5 hover:text-red-600 transition cursor-pointer"
+                    title="Delete project"
+                    @click.stop="deleteProjectConfirm(row)"
+                  >
+                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  </button>
+                </div>
               </template>
             </CommonListView>
           </div>
@@ -2167,7 +2318,7 @@ onUnmounted(() => {
                 variant="solid"
                 theme="gray"
                 label="Add Member"
-                class="bg-gray-900 hover:bg-black text-white"
+                
                 @click="openAddMember"
               >
                 <template #prefix><UserPlus class="size-4" /></template>
@@ -2183,12 +2334,12 @@ onUnmounted(() => {
               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer select-none"
               :class="allTeamsSelected
                 ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-200'
-                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'"
+                : 'bg-surface-base text-ink-gray-7 border-outline-gray-2 hover:bg-surface-gray-2 hover:border-outline-gray-3'"
               @click="selectAllTeams"
             >
-              <span class="size-1.5 rounded-full shrink-0" :class="allTeamsSelected ? 'bg-white' : 'bg-blue-500'" />
+              <span class="size-1.5 rounded-full shrink-0" :class="allTeamsSelected ? 'bg-surface-base' : 'bg-blue-500'" />
               All Teams
-              <span class="font-bold" :class="allTeamsSelected ? 'text-blue-100' : 'text-gray-500'">({{ teamData.length }})</span>
+              <span class="font-bold" :class="allTeamsSelected ? 'text-blue-100' : 'text-ink-gray-5'">({{ teamData.length }})</span>
             </button>
             <button
               v-for="team in teams"
@@ -2197,17 +2348,17 @@ onUnmounted(() => {
               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer select-none"
               :class="selectedTeam && selectedTeam.name === team.name
                 ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-200'
-                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'"
+                : 'bg-surface-base text-ink-gray-7 border-outline-gray-2 hover:bg-surface-gray-2 hover:border-outline-gray-3'"
               @click="selectTeam(team)"
             >
-              <span class="size-1.5 rounded-full shrink-0" :class="selectedTeam && selectedTeam.name === team.name ? 'bg-white' : (team.is_active ? 'bg-green-500' : 'bg-gray-400')" />
+              <span class="size-1.5 rounded-full shrink-0" :class="selectedTeam && selectedTeam.name === team.name ? 'bg-surface-base' : (team.is_active ? 'bg-green-500' : 'bg-gray-400')" />
               {{ team.team_name || team.name }}
-              <span class="font-bold" :class="selectedTeam && selectedTeam.name === team.name ? 'text-blue-100' : 'text-gray-500'">({{ team.member_count || 0 }})</span>
+              <span class="font-bold" :class="selectedTeam && selectedTeam.name === team.name ? 'text-blue-100' : 'text-ink-gray-5'">({{ team.member_count || 0 }})</span>
             </button>
             <button
               type="button"
               title="Create new team"
-              class="inline-flex items-center justify-center size-7 rounded-full border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all cursor-pointer"
+              class="inline-flex items-center justify-center size-7 rounded-full border border-dashed border-outline-gray-3 text-gray-400 hover:border-gray-400 hover:text-ink-gray-6 hover:bg-surface-gray-2 transition-all cursor-pointer"
               @click="openCreateTeam"
             >
               <Plus class="size-3.5" />
@@ -2220,10 +2371,10 @@ onUnmounted(() => {
               v-if="selectedTeam && !teamLoading && teamData.length === 0 && !selectedMember"
               class="flex-1 flex flex-col items-center justify-center text-center py-12"
             >
-              <div class="size-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+              <div class="size-14 rounded-2xl bg-surface-gray-3 flex items-center justify-center mb-4">
                 <Users class="size-7 text-gray-400" />
               </div>
-              <p class="text-sm font-semibold text-gray-700 mb-1">No team members yet</p>
+              <p class="text-sm font-semibold text-ink-gray-7 mb-1">No team members yet</p>
               <p class="text-xs text-gray-400 mb-4 max-w-xs">
                 This team has no members. Add someone to get started.
               </p>
@@ -2231,7 +2382,7 @@ onUnmounted(() => {
                 variant="solid"
                 theme="gray"
                 label="Add Member"
-                class="bg-gray-900 hover:bg-black text-white"
+                
                 @click="openAddMember"
               >
                 <template #prefix><UserPlus class="size-3.5" /></template>
@@ -2294,12 +2445,12 @@ onUnmounted(() => {
               class="flex-1 min-h-0 flex overflow-hidden"
             >
               <!-- Profile card (left, ~260px) -->
-              <div class="w-[260px] shrink-0 overflow-y-auto border-r border-gray-200 bg-white">
+              <div class="w-[260px] shrink-0 overflow-y-auto border-r border-outline-gray-2 bg-surface-base">
                 <div class="py-5 px-5">
                   <!-- Back button -->
                   <button
                     type="button"
-                    class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 mb-4 cursor-pointer transition"
+                    class="inline-flex items-center gap-1.5 text-xs font-medium text-ink-gray-5 hover:text-ink-gray-7 mb-4 cursor-pointer transition"
                     @click="backToList"
                   >
                     <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -2308,7 +2459,7 @@ onUnmounted(() => {
 
                   <!-- Avatar + Name -->
                   <div class="flex flex-col items-center text-center mb-5">
-                    <div class="size-20 rounded-full bg-gray-100 overflow-hidden shadow-md mb-3">
+                    <div class="size-20 rounded-full bg-surface-gray-3 overflow-hidden shadow-md mb-3">
                       <Avatar
                         :image="selectedMember.image"
                         :label="selectedMember.name"
@@ -2317,8 +2468,8 @@ onUnmounted(() => {
                         class="size-20"
                       />
                     </div>
-                    <h3 class="text-base font-bold text-gray-900 leading-tight">{{ selectedMember.name }}</h3>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ selectedMember.email }}</p>
+                    <h3 class="text-base font-bold text-ink-gray-9 leading-tight">{{ selectedMember.name }}</h3>
+                    <p class="text-xs text-ink-gray-5 mt-0.5">{{ selectedMember.email }}</p>
                     <span
                       class="inline-flex mt-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
                       :class="getMemberRoleBadgeClass(selectedMember.role)"
@@ -2329,43 +2480,43 @@ onUnmounted(() => {
 
                   <!-- Stats -->
                   <div class="grid grid-cols-2 gap-2.5 mb-5">
-                    <div class="text-center p-2.5 bg-gray-50 rounded-lg">
-                      <p class="text-lg font-bold text-gray-900">{{ selectedMember.active_tasks || 0 }}</p>
-                      <p class="text-[10px] text-gray-500">Active</p>
+                    <div class="text-center p-2.5 bg-surface-gray-2 rounded-lg">
+                      <p class="text-lg font-bold text-ink-gray-9">{{ selectedMember.active_tasks || 0 }}</p>
+                      <p class="text-[10px] text-ink-gray-5">Active</p>
                     </div>
-                    <div class="text-center p-2.5 bg-gray-50 rounded-lg">
-                      <p class="text-lg font-bold text-gray-900">{{ selectedMember.completed_tasks || 0 }}</p>
-                      <p class="text-[10px] text-gray-500">Done</p>
+                    <div class="text-center p-2.5 bg-surface-gray-2 rounded-lg">
+                      <p class="text-lg font-bold text-ink-gray-9">{{ selectedMember.completed_tasks || 0 }}</p>
+                      <p class="text-[10px] text-ink-gray-5">Done</p>
                     </div>
-                    <div class="text-center p-2.5 bg-gray-50 rounded-lg">
-                      <p class="text-lg font-bold text-gray-900">{{ selectedMember.total_tasks || 0 }}</p>
-                      <p class="text-[10px] text-gray-500">Total</p>
+                    <div class="text-center p-2.5 bg-surface-gray-2 rounded-lg">
+                      <p class="text-lg font-bold text-ink-gray-9">{{ selectedMember.total_tasks || 0 }}</p>
+                      <p class="text-[10px] text-ink-gray-5">Total</p>
                     </div>
-                    <div class="text-center p-2.5 rounded-lg" :class="(selectedMember.overdue_tasks || 0) > 0 ? 'bg-red-50' : 'bg-gray-50'">
-                      <p class="text-lg font-bold" :class="(selectedMember.overdue_tasks || 0) > 0 ? 'text-red-600' : 'text-gray-900'">{{ selectedMember.overdue_tasks || 0 }}</p>
-                      <p class="text-[10px] text-gray-500">Overdue</p>
+                    <div class="text-center p-2.5 rounded-lg" :class="(selectedMember.overdue_tasks || 0) > 0 ? 'bg-red-50' : 'bg-surface-gray-2'">
+                      <p class="text-lg font-bold" :class="(selectedMember.overdue_tasks || 0) > 0 ? 'text-red-600' : 'text-ink-gray-9'">{{ selectedMember.overdue_tasks || 0 }}</p>
+                      <p class="text-[10px] text-ink-gray-5">Overdue</p>
                     </div>
                   </div>
 
                   <!-- Details -->
-                  <div class="divide-y divide-gray-100 border-t border-gray-100">
+                  <div class="divide-y divide-gray-100 border-t border-outline-gray-1">
                     <div class="flex items-center justify-between py-2.5">
-                      <span class="text-xs text-gray-500">Status</span>
+                      <span class="text-xs text-ink-gray-5">Status</span>
                       <Badge :theme="selectedMember.status === 'Active' ? 'green' : 'gray'" variant="subtle" size="sm">
                         {{ selectedMember.status }}
                       </Badge>
                     </div>
                     <div class="flex items-center justify-between py-2.5">
-                      <span class="text-xs text-gray-500">Access</span>
-                      <span class="text-xs font-medium text-gray-700">{{ selectedMember.access_level || 'Operate' }}</span>
+                      <span class="text-xs text-ink-gray-5">Access</span>
+                      <span class="text-xs font-medium text-ink-gray-7">{{ selectedMember.access_level || 'Operate' }}</span>
                     </div>
                     <div class="flex items-center justify-between py-2.5">
-                      <span class="text-xs text-gray-500">Team</span>
-                      <span class="text-xs font-medium text-gray-700 truncate ml-2">{{ selectedTeam?.team_name || selectedTeam?.name || '—' }}</span>
+                      <span class="text-xs text-ink-gray-5">Team</span>
+                      <span class="text-xs font-medium text-ink-gray-7 truncate ml-2">{{ selectedTeam?.team_name || selectedTeam?.name || '—' }}</span>
                     </div>
                     <div class="flex items-center justify-between py-2.5">
-                      <span class="text-xs text-gray-500">Employee</span>
-                      <span class="text-xs font-mono text-gray-600">{{ selectedMember.employee || '—' }}</span>
+                      <span class="text-xs text-ink-gray-5">Employee</span>
+                      <span class="text-xs font-mono text-ink-gray-6">{{ selectedMember.employee || '—' }}</span>
                     </div>
                   </div>
                 </div>
@@ -2374,7 +2525,7 @@ onUnmounted(() => {
               <!-- Calendar + Activity list (50/50) -->
               <div class="flex-1 min-w-0 flex overflow-hidden">
                 <!-- Calendar (50%) -->
-                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-white border-r border-gray-200">
+                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-surface-base border-r border-outline-gray-2">
                   <TimesheetCalendar
                     :events="calendarEvents"
                     :loading="calendarLoading"
@@ -2384,11 +2535,11 @@ onUnmounted(() => {
                 </div>
 
                 <!-- Activity list (50%) -->
-                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-white">
+                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-surface-base">
                   <!-- Header -->
-                  <div class="shrink-0 px-4 py-2.5 border-b border-gray-100">
-                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wide">Activity Log</h4>
-                    <p v-if="selectedDayDate" class="text-[11px] text-gray-500 mt-0.5">{{ selectedDayDate }}</p>
+                  <div class="shrink-0 px-4 py-2.5 border-b border-outline-gray-1">
+                    <h4 class="text-xs font-bold text-ink-gray-7 uppercase tracking-wide">Activity Log</h4>
+                    <p v-if="selectedDayDate" class="text-[11px] text-ink-gray-5 mt-0.5">{{ selectedDayDate }}</p>
                   </div>
 
                   <!-- Placeholder when no day selected -->
@@ -2396,10 +2547,10 @@ onUnmounted(() => {
                     v-if="!selectedDayDate"
                     class="flex-1 flex flex-col items-center justify-center text-center px-4"
                   >
-                    <div class="size-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
+                    <div class="size-10 rounded-xl bg-surface-gray-3 flex items-center justify-center mb-3">
                       <Clock class="size-5 text-gray-400" />
                     </div>
-                    <p class="text-xs font-semibold text-gray-600 mb-1">Select a timesheet day</p>
+                    <p class="text-xs font-semibold text-ink-gray-6 mb-1">Select a timesheet day</p>
                     <p class="text-[10px] text-gray-400">Click on any day in the calendar to view work entries</p>
                   </div>
 
@@ -2413,7 +2564,7 @@ onUnmounted(() => {
                       <div class="size-10 rounded-xl bg-red-50 flex items-center justify-center mb-3">
                         <Clock class="size-5 text-red-400" />
                       </div>
-                      <p class="text-xs font-semibold text-gray-600 mb-1">No timesheet logged</p>
+                      <p class="text-xs font-semibold text-ink-gray-6 mb-1">No timesheet logged</p>
                       <p class="text-[10px] text-gray-400">No work entries found for this day</p>
                     </div>
 
@@ -2422,7 +2573,7 @@ onUnmounted(() => {
                       <div v-for="(ts, tIdx) in selectedDayEntries" :key="ts.name || tIdx" class="px-4 py-3 border-b border-gray-50 last:border-b-0">
                         <div class="flex items-center justify-between mb-2">
                           <div class="flex items-center gap-2">
-                            <span class="text-[11px] font-bold text-gray-800">{{ ts.name }}</span>
+                            <span class="text-[11px] font-bold text-ink-gray-8">{{ ts.name }}</span>
                             <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">{{ ts.status }}</Badge>
                           </div>
                           <span class="text-[11px] font-bold text-green-600">{{ ts.total_hours }}h</span>
@@ -2431,7 +2582,7 @@ onUnmounted(() => {
                           <div
                             v-for="(item, iIdx) in ts.items"
                             :key="iIdx"
-                            class="flex items-center gap-2 text-[10px] bg-gray-50 rounded-lg px-2.5 py-2"
+                            class="flex items-center gap-2 text-[10px] bg-surface-gray-2 rounded-lg px-2.5 py-2"
                           >
                             <span
                               class="inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold border shrink-0"
@@ -2444,10 +2595,10 @@ onUnmounted(() => {
                               {{ item.activity_type }}
                             </span>
                             <div class="min-w-0 flex-1">
-                              <span v-if="item.project" class="text-gray-700 font-medium truncate block">{{ item.project }}</span>
-                              <span v-if="item.task" class="text-gray-500 truncate block">/ {{ item.task }}</span>
+                              <span v-if="item.project" class="text-ink-gray-7 font-medium truncate block">{{ item.project }}</span>
+                              <span v-if="item.task" class="text-ink-gray-5 truncate block">/ {{ item.task }}</span>
                             </div>
-                            <span class="text-gray-700 font-bold shrink-0">{{ item.hrs }}h</span>
+                            <span class="text-ink-gray-7 font-bold shrink-0">{{ item.hrs }}h</span>
                             <span class="text-gray-400 shrink-0">
                               {{ item.from_time?.slice(11, 16) }} – {{ item.to_time?.slice(11, 16) }}
                             </span>
@@ -2749,19 +2900,19 @@ onUnmounted(() => {
     <!-- Create Team Modal (Simple) -->
     <div v-if="createTeamOpen" class="fixed inset-0 z-50 flex items-center justify-center">
       <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" @click="createTeamOpen = false" />
-      <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <h3 class="text-base font-bold text-gray-900">Create New Team</h3>
+      <div class="relative bg-surface-base rounded-xl shadow-2xl w-full max-w-sm mx-4">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-outline-gray-2">
+          <h3 class="text-base font-bold text-ink-gray-9">Create New Team</h3>
           <button
             type="button"
-            class="size-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer"
+            class="size-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-surface-gray-3 hover:text-ink-gray-6 transition cursor-pointer"
             @click="createTeamOpen = false"
           >
             <span class="text-lg leading-none">&times;</span>
           </button>
         </div>
         <div class="px-5 py-4">
-          <label class="block text-xs font-semibold text-gray-700 mb-1">Team Name *</label>
+          <label class="block text-xs font-semibold text-ink-gray-7 mb-1">Team Name *</label>
           <TextInput
             v-model="newTeamName"
             placeholder="e.g. Engineering Team"
@@ -2769,13 +2920,13 @@ onUnmounted(() => {
             @keydown.enter="submitCreateTeam"
           />
         </div>
-        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-outline-gray-1 bg-surface-gray-2 rounded-b-xl">
           <Button variant="subtle" label="Cancel" @click="createTeamOpen = false" />
           <Button
             variant="solid"
             theme="gray"
             label="Create"
-            class="bg-gray-900 hover:bg-black text-white"
+            
             :loading="teamLoading"
             :disabled="!newTeamName.trim()"
             @click="submitCreateTeam"
@@ -2789,21 +2940,21 @@ onUnmounted(() => {
     <!-- Add Member Modal -->
     <div v-if="addMemberOpen" class="fixed inset-0 z-50 flex items-center justify-center">
       <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" @click="addMemberOpen = false" />
-      <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4">
+      <div class="relative bg-surface-base rounded-xl shadow-2xl w-full max-w-lg mx-4">
         <!-- Header -->
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-outline-gray-2">
           <div class="flex items-center gap-2.5">
             <div class="size-8 rounded-lg bg-blue-50 flex items-center justify-center">
               <UserPlus class="size-4 text-blue-600" />
             </div>
             <div>
-              <h3 class="text-base font-bold text-gray-900">Add Team Member</h3>
-              <p class="text-xs text-gray-500">Assign an employee to a team with a role</p>
+              <h3 class="text-base font-bold text-ink-gray-9">Add Team Member</h3>
+              <p class="text-xs text-ink-gray-5">Assign an employee to a team with a role</p>
             </div>
           </div>
           <button
             type="button"
-            class="size-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer"
+            class="size-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-surface-gray-3 hover:text-ink-gray-6 transition cursor-pointer"
             @click="addMemberOpen = false"
           >
             <span class="text-lg leading-none">&times;</span>
@@ -2815,10 +2966,10 @@ onUnmounted(() => {
 
           <!-- Step 1: Team (always visible) -->
           <div>
-            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Step 1 — Select Team *</label>
+            <label class="block text-xs font-semibold text-ink-gray-7 mb-1.5">Step 1 — Select Team *</label>
             <select
               :value="memberForm.team"
-              class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 bg-surface-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               @change="onMemberTeamChange($event.target.value)"
             >
               <option value="" disabled>Choose a team...</option>
@@ -2831,12 +2982,12 @@ onUnmounted(() => {
 
           <!-- Step 2: Employee (only after team selected) -->
           <div v-if="memberForm.team" class="transition-all duration-200 relative">
-            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Step 2 — Select Employee *</label>
+            <label class="block text-xs font-semibold text-ink-gray-7 mb-1.5">Step 2 — Select Employee *</label>
 
             <!-- Selected employee display / trigger -->
             <div
               v-if="memberForm.employee && !empDropdownOpen"
-              class="flex items-center justify-between w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white hover:border-gray-300 transition cursor-pointer"
+              class="flex items-center justify-between w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 bg-surface-base hover:border-outline-gray-3 transition cursor-pointer"
               @click="empDropdownOpen = true; empSearch = ''"
             >
               <div class="flex items-center gap-2 min-w-0">
@@ -2858,7 +3009,7 @@ onUnmounted(() => {
                   autocorrect="off"
                   autocapitalize="off"
                   spellcheck="false"
-                  class="w-full text-sm border border-gray-200 rounded-lg pl-3 pr-8 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  class="w-full text-sm border border-outline-gray-2 rounded-lg pl-3 pr-8 py-2 bg-surface-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   @focus="empDropdownOpen = true"
                   @keydown.escape="empDropdownOpen = false"
                 />
@@ -2872,7 +3023,7 @@ onUnmounted(() => {
             <div v-if="empDropdownOpen" class="fixed inset-0 z-10" @click="empDropdownOpen = false" />
             <div
               v-if="empDropdownOpen"
-              class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+              class="absolute z-20 mt-1 w-full bg-surface-base border border-outline-gray-2 rounded-lg shadow-lg max-h-60 overflow-y-auto"
               @click.stop
             >
               <div v-if="filteredEmployees.length === 0" class="px-3 py-4 text-center text-sm text-gray-400">
@@ -2885,10 +3036,10 @@ onUnmounted(() => {
                 class="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition cursor-pointer"
                 :class="[
                   teamMemberEmployeeIds.has(emp.name)
-                    ? 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
+                    ? 'bg-surface-gray-2 text-gray-400 cursor-not-allowed opacity-60'
                     : memberForm.employee === emp.name
                       ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      : 'text-ink-gray-7 hover:bg-surface-gray-2'
                 ]"
                 :disabled="teamMemberEmployeeIds.has(emp.name)"
                 @click="!teamMemberEmployeeIds.has(emp.name) && selectEmployee(emp)"
@@ -2902,7 +3053,7 @@ onUnmounted(() => {
                 </div>
                 <span
                   v-if="teamMemberEmployeeIds.has(emp.name)"
-                  class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-200 text-gray-500"
+                  class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-200 text-ink-gray-5"
                 >
                   Already added
                 </span>
@@ -2913,7 +3064,7 @@ onUnmounted(() => {
           </div>
 
           <!-- Employee Preview Card -->
-          <div v-if="selectedEmployee" class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-200">
+          <div v-if="selectedEmployee" class="flex items-center gap-3 p-3 bg-surface-gray-2 rounded-lg border border-outline-gray-2 transition-all duration-200">
             <Avatar
               :label="selectedEmployee.employee_name || selectedEmployee.name"
               size="lg"
@@ -2921,8 +3072,8 @@ onUnmounted(() => {
               class="shrink-0"
             />
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-semibold text-gray-900 truncate">{{ selectedEmployee.employee_name || selectedEmployee.name }}</p>
-              <p v-if="selectedEmployee.designation" class="text-xs text-gray-500 truncate">{{ selectedEmployee.designation }}</p>
+              <p class="text-sm font-semibold text-ink-gray-9 truncate">{{ selectedEmployee.employee_name || selectedEmployee.name }}</p>
+              <p v-if="selectedEmployee.designation" class="text-xs text-ink-gray-5 truncate">{{ selectedEmployee.designation }}</p>
               <p v-if="selectedEmployee.department" class="text-xs text-gray-400 truncate">{{ selectedEmployee.department }}</p>
             </div>
             <span class="shrink-0 px-2 py-0.5 text-[10px] font-medium bg-green-50 text-green-700 border border-green-200 rounded-full">Active</span>
@@ -2931,19 +3082,19 @@ onUnmounted(() => {
           <!-- Step 3: Role & Access (only after employee selected) -->
           <div v-if="memberForm.employee" class="grid grid-cols-2 gap-4 transition-all duration-200">
             <div>
-              <label class="block text-xs font-semibold text-gray-700 mb-1.5">Step 3 — Role</label>
+              <label class="block text-xs font-semibold text-ink-gray-7 mb-1.5">Step 3 — Role</label>
               <select
                 v-model="memberForm.team_role"
-                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 bg-surface-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               >
                 <option v-for="r in teamRoleOptions" :key="r" :value="r">{{ r }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-700 mb-1.5">Access Level</label>
+              <label class="block text-xs font-semibold text-ink-gray-7 mb-1.5">Access Level</label>
               <select
                 v-model="memberForm.access_level"
-                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 bg-surface-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               >
                 <option v-for="l in accessLevelOptions" :key="l.value" :value="l.value">{{ l.label }}</option>
               </select>
@@ -2958,9 +3109,9 @@ onUnmounted(() => {
         </div>
 
         <!-- Footer -->
-        <div class="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+        <div class="flex items-center justify-between px-5 py-3.5 border-t border-outline-gray-1 bg-surface-gray-2 rounded-b-xl">
           <p v-if="memberForm.team" class="text-[11px] text-gray-400">
-            Adding to: <span class="font-medium text-gray-600">{{ teams.find((t) => t.name === memberForm.team)?.team_name || memberForm.team }}</span>
+            Adding to: <span class="font-medium text-ink-gray-6">{{ teams.find((t) => t.name === memberForm.team)?.team_name || memberForm.team }}</span>
           </p>
           <div v-else />
           <div class="flex items-center gap-2">
@@ -2969,7 +3120,7 @@ onUnmounted(() => {
               variant="solid"
               theme="gray"
               label="Add Member"
-              class="bg-gray-900 hover:bg-black text-white"
+              
               :loading="memberLoading"
               :disabled="!memberForm.employee || memberLoading"
               @click="submitAddMember"
@@ -2980,6 +3131,23 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+    
+    <ProjectCreateModal
+      v-model="createProjectModalOpen"
+      :teams="teams"
+      :employees="employees"
+      :projects="projects"
+      @create="loadData"
+    />
+    <ProjectCreateModal
+      v-model="editProjectModalOpen"
+      :teams="teams"
+      :employees="employees"
+      :projects="projects"
+      :editProject="projectToEdit"
+      @create="loadData"
+      @update="handleProjectUpdated"
+    />
   </div>
 </template>
 

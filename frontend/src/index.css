@@ -4,16 +4,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --surface-base: #ffffff;
-    --ink-gray-9: #111827;
-    --ink-gray-8: #1f2937;
-    --ink-gray-7: #374151;
-    --ink-gray-6: #4b5563;
-    --ink-gray-5: #6b7280;
-    --outline-gray-1: #f3f4f6;
-    --outline-gray-2: #e5e7eb;
-  }
+  
 
   body {
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -140,4 +131,25 @@ tr.is-just-now:hover td {
 tr.row-just-now td:first-child,
 tr.is-just-now td:first-child {
   border-left: 4px solid #10b981 !important;
+}
+
+/* Editor Mention Highlights */
+span[data-type="mention"], .mention {
+  color: #0284c7 !important;
+  background-color: #e0f2fe !important;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Editor Tag Highlights */
+span[data-type="tag"] {
+  color: #4f46e5 !important;
+  background-color: #e0e7ff !important;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
