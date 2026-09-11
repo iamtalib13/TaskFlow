@@ -171,9 +171,31 @@ function getDayNumberClass(cell, dayOfWeek) {
       </div>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="flex-1 flex items-center justify-center">
-      <span class="text-sm text-gray-400">Loading calendar...</span>
+    <!-- Loading: Skeleton Grid -->
+    <div v-if="loading" class="flex-1 flex flex-col overflow-hidden">
+      <div class="grid grid-cols-[1fr_48px] gap-0 shrink-0 border-b border-outline-gray-2">
+        <div class="grid grid-cols-7">
+          <span v-for="day in DAY_NAMES" :key="day" class="text-center text-[10px] font-semibold py-1.5 text-gray-400">
+            {{ day }}
+          </span>
+        </div>
+        <span class="text-center text-[9px] font-semibold text-gray-400 py-1.5">Wk</span>
+      </div>
+      <div class="flex-1 min-h-0 overflow-y-auto">
+        <div v-for="w in 5" :key="w" class="grid grid-cols-[1fr_48px] border-t border-outline-gray-2">
+          <div class="grid grid-cols-7">
+            <div v-for="d in 7" :key="d" class="relative min-h-[52px] border-r border-outline-gray-2 last:border-r-0 px-1 py-1">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-[10px] font-medium inline-flex items-center justify-center size-5 rounded-full bg-surface-gray-3 text-gray-400 animate-pulse"></span>
+                <span class="size-1.5 rounded-full shrink-0 bg-surface-gray-3 animate-pulse"></span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-center border-l border-outline-gray-2">
+            <span class="text-[11px] font-bold text-gray-300 animate-pulse">0h</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Calendar grid -->

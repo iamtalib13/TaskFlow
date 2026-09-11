@@ -1082,6 +1082,18 @@ const teamData = computed(() => {
 const selectedTimesheetUser = ref('')
 const timesheetCalendarEvents = ref([])
 const timesheetCalendarLoading = ref(false)
+const timesheetCache = ref(null)
+const timesheetCacheTime = ref(0)
+const CACHE_TTL = 30000 // 30 seconds
+let timesheetLoadAbort = null
+
+const tsSkeletonEvents = computed(() => {
+  const skeleton = []
+  for (let i = 1; i <= 30; i++) {
+    skeleton.push({ date: `2026-01-${String(i).padStart(2, '0')}`, total_hours: 0, _hours: 0, status: 'loading' })
+  }
+  return skeleton
+})
 const selectedTsDayDate = ref(new Date().toISOString().slice(0, 10))
 const selectedTsDayEntries = ref([])
 const timesheetFormOpen = ref(false)
@@ -1150,16 +1162,41 @@ const tsAvgHoursPerDay = computed(() => {
 })
 
 async function loadTimesheetCalendar(user) {
-  const targetUser = user || selectedTimesheetUser.value || currentUserEmail.value
-  if (!targetUser) return
+  if (!user) return
+
+  // Cancel any in-flight request
+  if (timesheetLoadAbort) {
+    timesheetLoadAbort = true
+  }
+  timesheetLoadAbort = false
+
+  const now = Date.now()
+  const cacheKey = `${user}_${now}`
+
+  // Check cache
+  if (timesheetCache.value && (now - timesheetCacheTime.value) < CACHE_TTL) {
+    const cached = timesheetCache.value[user]
+    if (cached) {
+      timesheetCalendarEvents.value = cached
+      timesheetCalendarLoading.value = false
+      selectedTsDayDate.value = new Date().toISOString().slice(0, 10)
+      selectedTsDayEntries.value = timesheetCalendarEvents.value
+        .filter((ev) => ev.fromDate === selectedTsDayDate.value)
+        .map((ev) => ev._ts)
+        .filter(Boolean)
+      return
+    }
+  }
+
   timesheetCalendarLoading.value = true
   try {
-    const now = new Date()
-    const year = now.getFullYear()
-    const fromDate = `${year}-01-01`
-    const toDate = `${year}-12-31`
-    const data = await fetchMemberTimesheets(targetUser, fromDate, toDate)
-    timesheetCalendarEvents.value = (data || []).map((ts) => ({
+    const currentYear = new Date().getFullYear()
+    const fromDate = `${currentYear}-01-01`
+    const toDate = `${currentYear}-12-31`
+    const data = await fetchMemberTimesheets(user, fromDate, toDate)
+    if (timesheetLoadAbort) return
+
+    const mapped = (data || []).map((ts) => ({
       id: ts.name,
       title: `${ts.total_hours}h logged`,
       fromDate: ts.date,
@@ -1171,6 +1208,13 @@ async function loadTimesheetCalendar(user) {
       _ts: ts,
       _hours: ts.total_hours || 0,
     }))
+    timesheetCalendarEvents.value = mapped
+
+    // Cache the result
+    if (!timesheetCache.value) timesheetCache.value = {}
+    timesheetCache.value[user] = mapped
+    timesheetCacheTime.value = now
+
     if (!selectedTsDayDate.value) {
       selectedTsDayDate.value = new Date().toISOString().slice(0, 10)
     }
@@ -1244,6 +1288,8 @@ async function submitTimesheet() {
     const items = timesheetFormItems.value.filter((item) => item.from_time && item.to_time)
     await saveTimesheet(timesheetFormDate.value, items, timesheetFormStatus.value)
     timesheetFormOpen.value = false
+    // Invalidate cache and reload
+    if (timesheetCache.value) delete timesheetCache.value[selectedTimesheetUser.value || currentUserEmail.value]
     await loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
   } catch (e) {
     console.error('Failed to save timesheet', e)
@@ -1256,6 +1302,8 @@ async function deleteTimesheetConfirm(ts) {
   if (!ts || !ts.name) return
   try {
     await deleteTimesheet(ts.name)
+    // Invalidate cache and reload
+    if (timesheetCache.value) delete timesheetCache.value[selectedTimesheetUser.value || currentUserEmail.value]
     await loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
   } catch (e) {
     console.error('Failed to delete timesheet', e)
