@@ -2196,11 +2196,11 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center gap-2.5">
               <div v-if="availableTimesheetMembers.length > 0" class="relative">
-                <select
-                  v-model="selectedTimesheetUser"
-                  class="bg-surface-base border border-outline-gray-2 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition cursor-pointer"
-                  @change="loadTimesheetCalendar(selectedTimesheetUser)"
-                >
+                 <select
+                   v-model="selectedTimesheetUser"
+                   class="bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-200 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition cursor-pointer"
+                   @change="loadTimesheetCalendar(selectedTimesheetUser)"
+                 >
                   <option :value="currentUserEmail">
                     {{ currentUserName ? `${currentUserName} (Me)` : 'My Timesheet' }}
                   </option>
@@ -2227,7 +2227,7 @@ onUnmounted(() => {
           <!-- User Profile Card at Top -->
           <div class="shrink-0 flex items-center gap-4 p-4 bg-surface-base border border-outline-gray-2 rounded-xl mb-3">
             <div class="flex flex-col items-center">
-              <div class="size-14 rounded-full bg-surface-base ring-2 ring-gray-200 shadow-sm overflow-hidden flex items-center justify-center">
+              <div class="size-14 rounded-full bg-surface-base ring-2 ring-gray-200 dark:ring-gray-700 shadow-sm overflow-hidden flex items-center justify-center">
                 <Avatar
                   :image="selectedTsUserImage"
                   :label="selectedTsUserDisplayName || selectedTimesheetUser || 'User'"
@@ -2271,12 +2271,12 @@ onUnmounted(() => {
               />
             </div>
 
-            <!-- Right: Activity Log -->
-            <div class="w-[340px] xl:w-[380px] shrink-0 min-w-0 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 rounded-xl">
-              <div class="shrink-0 px-4 py-3 border-b border-outline-gray-1 flex items-center justify-between">
+             <!-- Right: Activity Log -->
+            <div class="w-[340px] xl:w-[380px] shrink-0 min-w-0 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 dark:border-gray-700/50 rounded-xl">
+              <div class="shrink-0 px-4 py-3 border-b border-outline-gray-1 dark:border-gray-700/50 flex items-center justify-between">
                 <div>
-                  <h4 class="text-xs font-bold text-ink-gray-8 uppercase tracking-wide">Activity Log</h4>
-                  <p v-if="selectedTsDayDate" class="text-[11px] text-[#417c7d] font-semibold mt-0.5">
+                  <h4 class="text-xs font-bold text-ink-gray-8 dark:text-gray-200 uppercase tracking-wide">Activity Log</h4>
+                  <p v-if="selectedTsDayDate" class="text-[11px] text-[#417c7d] dark:text-[#6fb8b8] font-semibold mt-0.5">
                     {{ selectedTsDayDate }}
                   </p>
                 </div>
@@ -2284,7 +2284,7 @@ onUnmounted(() => {
                   v-if="selectedTsDayDate"
                   variant="ghost"
                   size="sm"
-                  class="text-[11px] text-[#417c7d] font-semibold"
+                  class="text-[11px] text-[#417c7d] hover:text-[#356667] dark:text-[#6fb8b8] dark:hover:text-[#4a9e9e] font-semibold"
                   @click="openTimesheetForm(selectedTsDayDate)"
                 >
                   <template #prefix><Plus class="size-3" /></template>
@@ -2293,21 +2293,21 @@ onUnmounted(() => {
               </div>
 
               <div v-if="!selectedTsDayDate" class="flex-1 flex flex-col items-center justify-center text-center px-4">
-                <div class="size-10 rounded-xl bg-surface-gray-3 flex items-center justify-center mb-3">
-                  <Clock class="size-5 text-gray-400" />
+                <div class="size-10 rounded-xl bg-surface-gray-3 dark:bg-gray-700/50 flex items-center justify-center mb-3">
+                  <Clock class="size-5 text-gray-400 dark:text-gray-500" />
                 </div>
-                <p class="text-xs font-semibold text-ink-gray-7 mb-1">Select a timesheet day</p>
-                <p class="text-[10px] text-gray-400 max-w-[200px]">
+                <p class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300 mb-1">Select a timesheet day</p>
+                <p class="text-[10px] text-gray-400 dark:text-gray-500 max-w-[200px]">
                   Click on any day in the calendar to view or log your work activities
                 </p>
               </div>
 
               <div v-else-if="selectedTsDayEntries.length === 0" class="flex-1 flex flex-col items-center justify-center text-center px-4 py-10">
-                <div class="size-10 rounded-xl bg-rose-50 flex items-center justify-center mb-3">
-                  <Clock class="size-5 text-rose-400" />
+                <div class="size-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mb-3">
+                  <Clock class="size-5 text-rose-400 dark:text-rose-300" />
                 </div>
-                <p class="text-xs font-semibold text-ink-gray-7 mb-1">No timesheet logged</p>
-                <p class="text-[10px] text-gray-400 mb-4">No hours logged for {{ selectedTsDayDate }}</p>
+                <p class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300 mb-1">No timesheet logged</p>
+                <p class="text-[10px] text-gray-400 dark:text-gray-500 mb-4">No hours logged for {{ selectedTsDayDate }}</p>
                 <Button
                   variant="subtle"
                   size="sm"
@@ -2323,27 +2323,27 @@ onUnmounted(() => {
                 <div
                   v-for="(ts, tIdx) in selectedTsDayEntries"
                   :key="ts.name || tIdx"
-                  class="p-3 rounded-lg border border-outline-gray-1 bg-surface-gray-2/80 space-y-2"
+                  class="p-3 rounded-lg border border-outline-gray-1 dark:border-gray-700/50 bg-surface-gray-2/80 dark:bg-gray-800/40 space-y-2"
                 >
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <span class="text-xs font-bold text-ink-gray-8">{{ ts.name }}</span>
+                      <span class="text-xs font-bold text-ink-gray-8 dark:text-gray-200">{{ ts.name }}</span>
                       <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">
                         {{ ts.status }}
                       </Badge>
                     </div>
                     <div class="flex items-center gap-2">
-                      <span class="text-xs font-bold text-emerald-600">{{ ts.total_hours }}h</span>
+                      <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400">{{ ts.total_hours }}h</span>
                       <button
                         type="button"
-                        class="text-[10px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                        class="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium cursor-pointer"
                         @click="openTimesheetForm(ts.date || selectedTsDayDate, ts)"
                       >
                         Edit
                       </button>
                       <button
                         type="button"
-                        class="text-[10px] text-rose-500 hover:text-rose-700 font-medium cursor-pointer"
+                        class="text-[10px] text-rose-500 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-medium cursor-pointer"
                         @click="deleteTimesheetConfirm(ts)"
                       >
                         Delete
@@ -2355,25 +2355,25 @@ onUnmounted(() => {
                     <div
                       v-for="(item, iIdx) in ts.items"
                       :key="iIdx"
-                      class="flex items-center gap-2 text-[10px] bg-surface-base border border-outline-gray-1 rounded-md px-2.5 py-2 shadow-2xs"
+                      class="flex items-center gap-2 text-[10px] bg-surface-base dark:bg-gray-800/30 border border-outline-gray-1 dark:border-gray-700/50 rounded-md px-2.5 py-2 shadow-2xs"
                     >
                       <span
                         class="inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold border shrink-0"
                         :class="{
-                          'bg-blue-50 text-blue-700 border-blue-200': item.activity_type === 'Task',
-                          'bg-amber-50 text-amber-700 border-amber-200': item.activity_type === 'Meeting',
-                          'bg-purple-50 text-purple-700 border-purple-200': item.activity_type === 'Research',
+                          'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50': item.activity_type === 'Task',
+                          'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50': item.activity_type === 'Meeting',
+                          'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/50': item.activity_type === 'Research',
                         }"
                       >
                         {{ item.activity_type }}
                       </span>
                       <div class="min-w-0 flex-1">
-                        <span v-if="item.project" class="text-ink-gray-8 font-medium truncate block">{{ item.project }}</span>
-                        <span v-if="item.task" class="text-ink-gray-5 truncate block">{{ item.task }}</span>
-                        <span v-if="item.description" class="text-gray-400 truncate block text-[9px]">{{ item.description }}</span>
+                        <span v-if="item.project" class="text-ink-gray-8 dark:text-gray-200 font-medium truncate block">{{ item.project }}</span>
+                        <span v-if="item.task" class="text-ink-gray-5 dark:text-gray-400 truncate block">{{ item.task }}</span>
+                        <span v-if="item.description" class="text-gray-400 dark:text-gray-500 truncate block text-[9px]">{{ item.description }}</span>
                       </div>
-                      <span class="text-ink-gray-8 font-bold shrink-0">{{ item.hrs }}h</span>
-                      <span v-if="item.from_time || item.to_time" class="text-gray-400 font-mono text-[9px] shrink-0">
+                      <span class="text-ink-gray-8 dark:text-gray-200 font-bold shrink-0">{{ item.hrs }}h</span>
+                      <span v-if="item.from_time || item.to_time" class="text-gray-400 dark:text-gray-500 font-mono text-[9px] shrink-0">
                         {{ item.from_time?.slice(11, 16) || item.from_time }} – {{ item.to_time?.slice(11, 16) || item.to_time }}
                       </span>
                     </div>
@@ -2397,75 +2397,75 @@ onUnmounted(() => {
                   <!-- Header -->
                   <div class="flex items-center justify-between px-5 py-3.5 border-b border-outline-gray-1 shrink-0">
                     <h3 class="text-sm font-bold text-ink-gray-9">Log Timesheet</h3>
-                    <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg text-gray-400 hover:text-ink-gray-6 hover:bg-surface-gray-3 transition cursor-pointer" @click="timesheetFormOpen = false">
-                      <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                    </button>
-                  </div>
+                   <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg text-gray-400 dark:text-gray-500 hover:text-ink-gray-6 dark:hover:text-gray-300 hover:bg-surface-gray-3 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="timesheetFormOpen = false">
+                       <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                     </button>
+                   </div>
 
-                  <!-- Body -->
-                  <div class="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-                    <!-- Date + Status -->
-                    <div class="grid grid-cols-2 gap-3">
-                      <div>
-                        <label class="text-xs font-semibold text-ink-gray-7 mb-1 block">Date</label>
-                        <input type="date" v-model="timesheetFormDate" class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" />
-                      </div>
-                      <div>
-                        <label class="text-xs font-semibold text-ink-gray-7 mb-1 block">Status</label>
-                        <select v-model="timesheetFormStatus" class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
-                          <option value="Draft">Draft</option>
-                          <option value="Submitted">Submitted</option>
-                        </select>
-                      </div>
-                    </div>
+                   <!-- Body -->
+                   <div class="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+                     <!-- Date + Status -->
+                     <div class="grid grid-cols-2 gap-3">
+                       <div>
+                         <label class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300 mb-1 block">Date</label>
+                         <input type="date" v-model="timesheetFormDate" class="w-full text-sm border border-outline-gray-2 dark:border-gray-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-500 transition" />
+                       </div>
+                       <div>
+                         <label class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300 mb-1 block">Status</label>
+                         <select v-model="timesheetFormStatus" class="w-full text-sm border border-outline-gray-2 dark:border-gray-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-500 transition">
+                           <option value="Draft">Draft</option>
+                           <option value="Submitted">Submitted</option>
+                         </select>
+                       </div>
+                     </div>
 
-                    <!-- Items -->
-                    <div>
-                      <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-semibold text-ink-gray-7">Time Entries</label>
-                        <button type="button" class="text-[10px] font-medium text-blue-600 hover:text-blue-700 cursor-pointer transition" @click="addTsFormItem">+ Add Row</button>
-                      </div>
-                      <div v-for="(item, idx) in timesheetFormItems" :key="idx" class="bg-surface-gray-2 rounded-lg p-3 mb-2 border border-outline-gray-1">
-                        <div class="grid grid-cols-3 gap-2 mb-2">
-                          <div>
-                            <label class="text-[10px] text-ink-gray-5 mb-0.5 block">Activity</label>
-                            <select v-model="item.activity_type" class="w-full text-xs border border-outline-gray-2 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200">
-                              <option value="Task">Task</option>
-                              <option value="Meeting">Meeting</option>
-                              <option value="Research">Research</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label class="text-[10px] text-ink-gray-5 mb-0.5 block">Project</label>
-                            <input v-model="item.project" type="text" class="w-full text-xs border border-outline-gray-2 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" placeholder="Project name" />
-                          </div>
-                          <div>
-                            <label class="text-[10px] text-ink-gray-5 mb-0.5 block">Task ID</label>
-                            <input v-model="item.task" type="text" class="w-full text-xs border border-outline-gray-2 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" placeholder="TFT-XXXXX" />
-                          </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                          <div>
-                            <label class="text-[10px] text-ink-gray-5 mb-0.5 block">From</label>
-                            <input v-model="item.from_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" />
-                          </div>
-                          <div>
-                            <label class="text-[10px] text-ink-gray-5 mb-0.5 block">To</label>
-                            <input v-model="item.to_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200" />
-                          </div>
-                        </div>
-                        <div class="flex items-center justify-between">
-                          <input v-model="item.description" type="text" class="flex-1 text-[10px] border border-outline-gray-2 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-200 mr-2" placeholder="Description (optional)" />
-                          <button v-if="timesheetFormItems.length > 1" type="button" class="text-red-400 hover:text-red-600 cursor-pointer transition text-[10px]" @click="removeTsFormItem(idx)">Remove</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                     <!-- Items -->
+                     <div>
+                       <div class="flex items-center justify-between mb-2">
+                         <label class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300">Time Entries</label>
+                         <button type="button" class="text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer transition" @click="addTsFormItem">+ Add Row</button>
+                       </div>
+                       <div v-for="(item, idx) in timesheetFormItems" :key="idx" class="bg-surface-gray-2 dark:bg-gray-800/40 rounded-lg p-3 mb-2 border border-outline-gray-1 dark:border-gray-700/50">
+                         <div class="grid grid-cols-3 gap-2 mb-2">
+                           <div>
+                             <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Activity</label>
+                             <select v-model="item.activity_type" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800">
+                               <option value="Task">Task</option>
+                               <option value="Meeting">Meeting</option>
+                               <option value="Research">Research</option>
+                             </select>
+                           </div>
+                           <div>
+                             <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Project</label>
+                             <input v-model="item.project" type="text" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" placeholder="Project name" />
+                           </div>
+                           <div>
+                             <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Task ID</label>
+                             <input v-model="item.task" type="text" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" placeholder="TFT-XXXXX" />
+                           </div>
+                         </div>
+                         <div class="grid grid-cols-2 gap-2 mb-2">
+                           <div>
+                             <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">From</label>
+                             <input v-model="item.from_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" />
+                           </div>
+                           <div>
+                             <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">To</label>
+                             <input v-model="item.to_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" />
+                           </div>
+                         </div>
+                         <div class="flex items-center justify-between">
+                           <input v-model="item.description" type="text" class="flex-1 text-[10px] border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800 mr-2" placeholder="Description (optional)" />
+                           <button v-if="timesheetFormItems.length > 1" type="button" class="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition text-[10px]" @click="removeTsFormItem(idx)">Remove</button>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
 
-                  <!-- Footer -->
-                  <div class="shrink-0 px-5 py-3 border-t border-outline-gray-1 flex items-center justify-end gap-2">
-                    <button type="button" class="px-4 py-2 text-xs font-medium text-ink-gray-7 bg-surface-gray-3 rounded-lg hover:bg-gray-200 transition cursor-pointer" @click="timesheetFormOpen = false">Cancel</button>
-                    <button type="button" class="px-4 py-2 text-xs font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-black dark:hover:bg-gray-100 transition cursor-pointer disabled:opacity-50" :disabled="timesheetFormSaving" @click="submitTimesheet">
+                   <!-- Footer -->
+                   <div class="shrink-0 px-5 py-3 border-t border-outline-gray-1 dark:border-gray-700 flex items-center justify-end gap-2">
+                     <button type="button" class="px-4 py-2 text-xs font-medium text-ink-gray-7 dark:text-gray-300 bg-surface-gray-3 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition cursor-pointer" @click="timesheetFormOpen = false">Cancel</button>
+                     <button type="button" class="px-4 py-2 text-xs font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-black dark:hover:bg-gray-100 transition cursor-pointer disabled:opacity-50" :disabled="timesheetFormSaving" @click="submitTimesheet">
                       {{ timesheetFormSaving ? 'Saving...' : 'Save Timesheet' }}
                     </button>
                   </div>

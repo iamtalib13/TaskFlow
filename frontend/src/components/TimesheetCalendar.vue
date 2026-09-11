@@ -137,21 +137,21 @@ function getDayStatus(cell, dayOfWeek) {
 
 function getCellBg(cell, dayOfWeek) {
   const status = getDayStatus(cell, dayOfWeek)
-  if (status === 'logged') return 'bg-green-50'
-  if (status === 'missed') return 'bg-red-50'
-  if (status === 'holiday') return 'bg-surface-gray-3'
-  if (!cell.isCurrentMonth) return 'bg-surface-gray-2/60'
+  if (status === 'logged') return 'bg-green-100 dark:bg-green-900/30'
+  if (status === 'missed') return 'bg-red-100 dark:bg-red-900/30'
+  if (status === 'holiday') return 'bg-surface-gray-3 dark:bg-gray-700/50'
+  if (!cell.isCurrentMonth) return 'bg-surface-gray-2/60 dark:bg-gray-800/40'
   return ''
 }
 
 function getDayNumberClass(cell, dayOfWeek) {
   const status = getDayStatus(cell, dayOfWeek)
   if (isToday(cell.key)) return 'bg-blue-600 text-white'
-  if (status === 'logged') return 'text-green-700 font-bold'
-  if (status === 'missed') return 'text-red-500'
-  if (status === 'holiday') return 'text-gray-400'
-  if (!cell.isCurrentMonth) return 'text-gray-300'
-  return 'text-ink-gray-9'
+  if (status === 'logged') return 'text-green-600 dark:text-green-400 font-bold'
+  if (status === 'missed') return 'text-red-500 dark:text-red-400'
+  if (status === 'holiday') return 'text-gray-400 dark:text-gray-500'
+  if (!cell.isCurrentMonth) return 'text-gray-300 dark:text-gray-600'
+  return 'text-ink-gray-9 dark:text-gray-100'
 }
 </script>
 
@@ -241,8 +241,8 @@ function getDayNumberClass(cell, dayOfWeek) {
                 <span
                   class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold leading-none"
                   :class="{
-                    'bg-green-100 text-green-700': hoursMap[cell.key] > 0,
-                    'bg-red-50 text-red-500': !hoursMap[cell.key],
+                    'bg-green-200 dark:bg-green-900/40 text-green-700 dark:text-green-300': hoursMap[cell.key] > 0,
+                    'bg-red-100 dark:bg-red-900/40 text-red-500 dark:text-red-400': !hoursMap[cell.key],
                   }"
                 >
                   {{ hoursMap[cell.key].toFixed(1) }}h
@@ -254,7 +254,7 @@ function getDayNumberClass(cell, dayOfWeek) {
                 v-else-if="cell.isCurrentMonth && !isSunday(dIdx) && !hoursMap[cell.key]"
                 class="text-center mt-1"
               >
-                <span class="text-[9px] font-medium text-red-400">0h</span>
+                <span class="text-[9px] font-medium text-red-400 dark:text-red-500">0h</span>
               </div>
 
               <!-- Holiday label -->
@@ -262,16 +262,16 @@ function getDayNumberClass(cell, dayOfWeek) {
                 v-else-if="cell.isCurrentMonth && isSunday(dIdx)"
                 class="text-center mt-1"
               >
-                <span class="text-[9px] font-medium text-gray-400">Off</span>
+                <span class="text-[9px] font-medium text-gray-400 dark:text-gray-500">Off</span>
               </div>
             </div>
           </div>
 
           <!-- Weekly total -->
-          <div class="flex items-center justify-center border-l border-outline-gray-2">
+          <div class="flex items-center justify-center border-l border-outline-gray-2 dark:border-gray-700/50">
             <span
               class="text-[11px] font-bold"
-              :class="weeklyTotals[wIdx] > 0 ? 'text-green-600' : 'text-red-400'"
+              :class="weeklyTotals[wIdx] > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-400 dark:text-red-500'"
             >
               {{ weeklyTotals[wIdx].toFixed(1) }}h
             </span>
@@ -280,24 +280,24 @@ function getDayNumberClass(cell, dayOfWeek) {
       </div>
 
       <!-- Monthly KPI badges -->
-      <div class="shrink-0 border-t border-outline-gray-2 px-4 py-2.5 flex items-center gap-3 flex-wrap">
-        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 rounded-lg border border-green-200">
-          <span class="text-[10px] font-semibold text-green-700">Total Hours</span>
-          <span class="text-sm font-bold text-green-800">{{ totalMonthlyHours.toFixed(1) }}</span>
+      <div class="shrink-0 border-t border-outline-gray-2 dark:border-gray-700 px-4 py-2.5 flex items-center gap-3 flex-wrap">
+        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800/50">
+          <span class="text-[10px] font-semibold text-green-700 dark:text-green-300">Total Hours</span>
+          <span class="text-sm font-bold text-green-800 dark:text-green-200">{{ totalMonthlyHours.toFixed(1) }}</span>
         </div>
-        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-lg border border-blue-200">
-          <span class="text-[10px] font-semibold text-blue-700">Working Days</span>
-          <span class="text-sm font-bold text-blue-800">{{ workingDaysCount }}</span>
+        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800/50">
+          <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-300">Working Days</span>
+          <span class="text-sm font-bold text-blue-800 dark:text-blue-200">{{ workingDaysCount }}</span>
         </div>
-        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded-lg border border-purple-200">
-          <span class="text-[10px] font-semibold text-purple-700">Avg/Day</span>
-          <span class="text-sm font-bold text-purple-800">{{ avgHoursPerDay }}h</span>
+        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800/50">
+          <span class="text-[10px] font-semibold text-purple-700 dark:text-purple-300">Avg/Day</span>
+          <span class="text-sm font-bold text-purple-800 dark:text-purple-200">{{ avgHoursPerDay }}h</span>
         </div>
         <!-- Legend -->
-        <div class="ml-auto flex items-center gap-3 text-[9px] text-ink-gray-5">
-          <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-green-500" /> Logged</span>
-          <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-red-400" /> Missed</span>
-          <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-gray-300" /> Holiday</span>
+        <div class="ml-auto flex items-center gap-3 text-[9px] text-ink-gray-5 dark:text-gray-400">
+          <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-green-500 dark:bg-green-400" /> Logged</span>
+          <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-red-400 dark:bg-red-500" /> Missed</span>
+          <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-gray-400 dark:bg-gray-500" /> Holiday</span>
         </div>
       </div>
     </template>
