@@ -59,61 +59,33 @@
 
           <!-- Project Lead + Start Date + End Date -->
           <div class="grid grid-cols-3 gap-4 items-start">
-            <!-- Project Lead Custom Search -->
-            <div class="space-y-1.5" ref="leadDropdownRef">
+            <!-- Project Lead (Frappe UI Combobox) -->
+            <div class="space-y-1.5">
               <label class="text-sm font-medium text-ink-gray-8">Project Lead</label>
-              <div class="relative">
-                <div
-                  class="flex items-center gap-2 w-full px-3 py-2 border rounded-lg bg-surface-base text-sm transition cursor-pointer"
-                  :class="leadSearchOpen ? 'border-blue-400 ring-2 ring-blue-100' : 'border-outline-gray-2 hover:border-outline-gray-3'"
-                  @click="openLeadSearch"
-                >
-                  <div v-if="leadSelected && !leadSearchOpen" class="flex items-center gap-2 flex-1 min-w-0">
-                    <Avatar :image="leadSelected.image" :label="leadSelected.label" size="sm" />
-                    <span class="truncate text-ink-gray-9 font-medium">{{ leadSelected.label }}</span>
-                    <button type="button" class="ml-auto shrink-0 text-ink-gray-4 hover:text-rose-500" @click.stop="clearLead">
-                      <X class="size-3.5" />
-                    </button>
+              <Combobox
+                v-model="form.project_lead"
+                :options="employeeOptions"
+                placeholder="Search employee..."
+                class="w-full"
+              >
+                <template #prefix="{ selectedOption }">
+                  <Avatar
+                    v-if="selectedOption"
+                    :image="selectedOption.image"
+                    :label="selectedOption.label"
+                    size="sm"
+                  />
+                </template>
+                <template #item-prefix="{ item }">
+                  <Avatar :image="item.image" :label="item.label" size="sm" />
+                </template>
+                <template #item-label="{ item }">
+                  <div class="min-w-0 flex justify-between items-center w-full">
+                    <div class="truncate font-medium text-ink-gray-9 text-xs">{{ item.label }}</div>
+                    <div class="truncate text-[11px] text-ink-gray-5 ml-2">{{ item.description }}</div>
                   </div>
-                  <div v-else class="flex items-center gap-2 flex-1 min-w-0">
-                    <Search class="size-4 text-ink-gray-4 shrink-0" />
-                    <input
-                      ref="leadSearchInput"
-                      v-model="leadSearchQuery"
-                      type="text"
-                      class="flex-1 bg-transparent outline-none text-sm text-ink-gray-9 placeholder:text-ink-gray-4"
-                      placeholder="Search employee..."
-                      @focus="leadSearchOpen = true"
-                    />
-                  </div>
-                </div>
-
-                <!-- Dropdown -->
-                <div
-                  v-if="leadSearchOpen"
-                  class="absolute z-50 mt-1 w-full bg-surface-base border border-outline-gray-2 rounded-lg shadow-lg overflow-hidden"
-                >
-                  <div class="max-h-56 overflow-y-auto">
-                    <div v-if="leadFilteredOptions.length === 0" class="py-3 text-center text-xs text-ink-gray-4">
-                      No employees found
-                    </div>
-                    <button
-                      v-for="opt in leadFilteredOptions"
-                      :key="opt.value"
-                      type="button"
-                      class="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-surface-gray-2 transition text-sm cursor-pointer"
-                      :class="form.project_lead === opt.value ? 'bg-surface-gray-2' : ''"
-                      @click="selectLead(opt)"
-                    >
-                      <Avatar :image="opt.image" :label="opt.label" size="sm" />
-                      <div class="min-w-0 flex-1">
-                        <div class="truncate text-ink-gray-9 font-medium">{{ opt.label }}</div>
-                        <div class="truncate text-xs text-ink-gray-5">{{ opt.description }}</div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
+                </template>
+              </Combobox>
             </div>
 
             <!-- Start Date -->
@@ -307,7 +279,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { FormControl, Avatar, Button, DatePicker, Tree, toast } from 'frappe-ui'
+import { FormControl, Avatar, Button, DatePicker, Tree, Combobox, toast } from 'frappe-ui'
 import { saveProject } from '../data/api'
 import { Plus, Trash2, Search, X, Folder, GitFork } from 'lucide-vue-next'
 
