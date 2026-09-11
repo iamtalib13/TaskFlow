@@ -2515,20 +2515,20 @@ onUnmounted(() => {
               @row-click="openEditProject"
             >
               <template #cell-sr_no="{ row }">
-                <span class="text-xs font-medium text-ink-gray-6">{{ row.sr_no }}</span>
+                <span class="text-xs font-medium text-ink-gray-6 dark:text-gray-400">{{ row.sr_no }}</span>
               </template>
 
               <template #cell-name="{ row }">
                 <div class="flex items-center gap-2">
-                  <Folder class="size-4 text-blue-600 shrink-0" />
+                  <Folder class="size-4 text-blue-500 shrink-0" />
                   <div class="min-w-0">
-                    <div class="truncate font-semibold text-sm text-ink-gray-8">{{ row.name }}</div>
+                    <div class="truncate font-semibold text-sm text-ink-gray-8 dark:text-gray-100">{{ row.name }}</div>
                   </div>
                 </div>
               </template>
 
               <template #cell-parent_project="{ row }">
-                <span class="text-xs text-ink-gray-7 truncate">{{ row.parent_project || '—' }}</span>
+                <span class="text-xs text-ink-gray-7 dark:text-gray-300 truncate">{{ row.parent_project || '—' }}</span>
               </template>
 
               <template #cell-status="{ row }">
@@ -2538,47 +2538,47 @@ onUnmounted(() => {
               </template>
 
               <template #cell-team="{ row }">
-                <span class="text-xs font-medium text-ink-gray-7 truncate">{{ row.team }}</span>
+                <span class="text-xs font-medium text-ink-gray-7 dark:text-gray-300 truncate">{{ row.team }}</span>
               </template>
 
               <template #cell-lead="{ row }">
                 <div v-if="row.lead && row.lead !== '—'" class="flex items-center gap-2 min-w-0">
                   <Avatar :image="row.lead_image" :label="row.lead" size="sm" class="shrink-0" />
-                  <span class="font-medium text-xs text-ink-gray-7 truncate">{{ row.lead }}</span>
+                  <span class="font-medium text-xs text-ink-gray-7 dark:text-gray-200 truncate">{{ row.lead }}</span>
                 </div>
-                <span v-else class="text-xs text-ink-gray-4">—</span>
+                <span v-else class="text-xs text-ink-gray-4 dark:text-gray-500">—</span>
               </template>
 
               <template #cell-progress="{ row }">
                 <div class="flex items-center gap-2 w-full pr-4">
-                  <div class="flex-1 h-1.5 bg-surface-gray-3 rounded-full overflow-hidden">
+                  <div class="flex-1 h-1.5 bg-surface-gray-3 dark:bg-gray-800 rounded-full overflow-hidden">
                     <div
                       class="h-full bg-blue-500 rounded-full transition-all duration-500"
                       :style="{ width: row.progress + '%' }"
                     />
                   </div>
-                  <span class="text-[11px] font-medium text-ink-gray-6 w-8 text-right">{{ row.progress }}%</span>
+                  <span class="text-[11px] font-medium text-ink-gray-6 dark:text-gray-300 w-8 text-right">{{ row.progress }}%</span>
                 </div>
               </template>
 
               <template #cell-start_date="{ row }">
-                <span v-if="row.start_date" class="font-mono text-xs text-ink-gray-6">
+                <span v-if="row.start_date" class="font-mono text-xs text-ink-gray-6 dark:text-gray-300">
                   {{ formatDueDate(row.start_date) }}
                 </span>
-                <span v-else class="text-ink-gray-4">—</span>
+                <span v-else class="text-ink-gray-4 dark:text-gray-500">—</span>
               </template>
 
               <template #cell-end_date="{ row }">
-                <span v-if="row.end_date" class="font-mono text-xs text-ink-gray-6">
+                <span v-if="row.end_date" class="font-mono text-xs text-ink-gray-6 dark:text-gray-300">
                   {{ formatDueDate(row.end_date) }}
                 </span>
-                <span v-else class="text-ink-gray-4">—</span>
+                <span v-else class="text-ink-gray-4 dark:text-gray-500">—</span>
               </template>
 
               <template #cell-modified="{ row }">
                 <span
                   class="text-xs"
-                  :class="isRowJustNow(row) ? 'text-emerald-600 font-semibold' : 'text-ink-gray-5'"
+                  :class="isRowJustNow(row) ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-ink-gray-5 dark:text-gray-400'"
                 >
                   {{ formatPrettyDate(row) }}
                 </span>
