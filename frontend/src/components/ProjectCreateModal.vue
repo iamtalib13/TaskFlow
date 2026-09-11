@@ -142,7 +142,9 @@
                   <td class="py-1.5 px-2.5">
                     <Combobox
                       v-model="row.employee"
-                      :options="employeeOptions"
+                      v-model:query="row.query"
+                      :options="getFilteredEmployeeOptions(row.query, row.employee)"
+                      :filterable="false"
                       placeholder="Search employee..."
                       size="sm"
                       class="w-full"
@@ -325,15 +327,24 @@ function matchTokens(text, query) {
   return tokens.every(token => textLower.includes(token))
 }
 
-const leadQuery = ref('')
-const filteredEmployeeOptions = computed(() => {
-  const q = leadQuery.value.trim()
+function getFilteredEmployeeOptions(query = '', selectedValue = '') {
+  const q = (query || '').trim()
   let list = employeeOptions.value
   if (q) {
     list = list.filter(e => matchTokens(`${e.label} ${e.description}`, q))
   }
-  return list.slice(0, MAX_VISIBLE)
-})
+  const sliced = list.slice(0, MAX_VISIBLE)
+  if (selectedValue && !sliced.some(e => e.value === selectedValue)) {
+    const selectedOpt = employeeOptions.value.find(e => e.value === selectedValue)
+    if (selectedOpt) {
+      return [selectedOpt, ...sliced]
+    }
+  }
+  return sliced
+}
+
+const leadQuery = ref('')
+const filteredEmployeeOptions = computed(() => getFilteredEmployeeOptions(leadQuery.value, form.value.project_lead))
 const projectOptions = computed(() => props.projects.map(p => ({ label: p.project_name || p.name, value: p.name })))
 
 function isChildSelected(projId) {
@@ -421,6 +432,7 @@ function fillForm(project) {
           team_role: m.team_role || 'Team Member',
           access_level: m.access_level || 'Operate',
           is_active: m.is_active !== undefined ? m.is_active : 1,
+          query: '',
         }))
       : [],
   }
@@ -429,6 +441,7 @@ function fillForm(project) {
 watch(() => props.modelValue, (val) => {
   if (val) {
     submitted.value = false
+    leadQuery.value = ''
     if (props.editProject) {
       fillForm(props.editProject)
     } else {
@@ -443,6 +456,7 @@ function addMember() {
     team_role: 'Team Member',
     access_level: 'Operate',
     is_active: 1,
+    query: '',
   })
 }
 
