@@ -3,10 +3,10 @@
 import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue'
 import {
   Avatar,
-  Combobox,
   Badge,
   Breadcrumbs,
   Button,
+  Combobox,
   DesktopShell,
   Dropdown,
   FormControl,
@@ -37,6 +37,7 @@ import {
   Tooltip,
   toast,
 } from 'frappe-ui'
+import { List, ListRow, ListCell, ListHeader, ListHeaderCell, ListGroup, ListRows } from 'frappe-ui/list'
 import {
   CheckSquare,
   Clock,
@@ -1095,7 +1096,33 @@ const tsSkeletonEvents = computed(() => {
   return skeleton
 })
 const selectedTsDayDate = ref(new Date().toISOString().slice(0, 10))
+
+const formattedTsDayDate = computed(() => {
+  if (!selectedTsDayDate.value) return ''
+  const d = new Date(selectedTsDayDate.value + 'T00:00:00')
+  const options = { day: 'numeric', month: 'long', year: 'numeric' }
+  return d.toLocaleDateString('en-GB', options)
+})
 const selectedTsDayEntries = ref([])
+
+const selectedTsDayFlatItems = computed(() => {
+  const items = []
+  for (const ts of selectedTsDayEntries.value || []) {
+    for (const item of ts.items || []) {
+      items.push({
+        ...item,
+        timesheet_name: ts.name,
+        timesheet_status: ts.status,
+        _parentTs: ts,
+      })
+    }
+  }
+  return items
+})
+
+const selectedTsDayTotalHours = computed(() => {
+  return (selectedTsDayEntries.value || []).reduce((sum, ts) => sum + (Number(ts.total_hours) || 0), 0)
+})
 const timesheetFormOpen = ref(false)
 const timesheetFormDate = ref('')
 const timesheetFormItems = ref([])
@@ -1126,6 +1153,65 @@ const availableTimesheetMembers = computed(() => {
   }
   return list
 })
+
+// Permitted projects for timesheet logging (assigned to user as per portal permissions)
+const availableTimesheetProjects = computed(() => {
+  return (projects.value || []).map((p) => ({
+    label: p.project_name || p.name,
+    value: p.name,
+    team: p.team || '',
+  }))
+})
+
+// Return permitted tasks for the selected project in a timesheet item
+function getAvailableTasksForItem(item) {
+  let list = tasks.value || []
+  if (item && item.project) {
+    list = list.filter((t) => t.project === item.project)
+  }
+  return list.map((t) => ({
+    label: t.task_title ? `${t.name} - ${t.task_title}` : t.name,
+    value: t.name,
+    project: t.project,
+    title: t.task_title || t.name,
+  }))
+}
+
+// When project is changed on a timesheet row, auto-clear task if not matching project
+function onTsItemProjectChange(item) {
+  if (item.task) {
+    const taskObj = (tasks.value || []).find((t) => t.name === item.task)
+    if (taskObj && item.project && taskObj.project !== item.project) {
+      item.task = ''
+    }
+  }
+}
+
+// When task is selected, auto-populate project if not set
+function onTsItemTaskChange(item) {
+  if (item.task && !item.project) {
+    const taskObj = (tasks.value || []).find((t) => t.name === item.task)
+    if (taskObj && taskObj.project) {
+      item.project = taskObj.project
+    }
+  }
+}
+
+// Helper to display task title and project name in Activity Log table
+function getTaskDisplayTitle(taskName) {
+  if (!taskName) return '—'
+  const taskObj = (tasks.value || []).find((t) => t.name === taskName)
+  if (taskObj && taskObj.task_title) {
+    return `${taskObj.name}: ${taskObj.task_title}`
+  }
+  return taskName
+}
+
+function getProjectDisplayName(projName) {
+  if (!projName) return '—'
+  const p = (projects.value || []).find((proj) => proj.name === projName)
+  return p?.project_name || projName
+}
 
 const selectedTsUserDisplayName = computed(() => {
   const user = (selectedTimesheetUser.value || currentUserEmail.value || '').toLowerCase()
@@ -1281,6 +1367,17 @@ function addTsFormItem() {
 
 function removeTsFormItem(idx) {
   timesheetFormItems.value.splice(idx, 1)
+}
+
+function getDuration(item) {
+  if (!item.from_time || !item.to_time) return '—'
+  try {
+    const from = new Date(item.from_time.replace(' ', 'T'))
+    const to = new Date(item.to_time.replace(' ', 'T'))
+    const diff = (to - from) / 1000 / 3600
+    if (isNaN(diff) || diff < 0) return '—'
+    return diff.toFixed(2) + 'h'
+  } catch { return '—' }
 }
 
 async function submitTimesheet() {
@@ -2271,180 +2368,272 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- User Profile Card at Top -->
-          <div class="shrink-0 flex items-center gap-4 p-4 bg-surface-base border border-outline-gray-2 rounded-xl mb-3">
-            <div class="flex flex-col items-center">
-              <div class="size-14 rounded-full bg-surface-base ring-2 ring-gray-200 dark:ring-gray-700 shadow-sm overflow-hidden flex items-center justify-center">
-                <Avatar
-                  :image="selectedTsUserImage"
-                  :label="selectedTsUserDisplayName || selectedTimesheetUser || 'User'"
-                  size="xl"
-                  shape="circle"
-                />
-              </div>
-            </div>
-            <div class="flex-1 min-w-0">
-              <h3 class="text-sm font-bold text-ink-gray-9 leading-tight">
-                {{ selectedTsUserDisplayName || selectedTimesheetUser || 'My Timesheet' }}
-              </h3>
-              <p class="text-[11px] text-ink-gray-5 truncate">{{ selectedTimesheetUser || currentUserEmail }}</p>
-            </div>
-            <div class="flex items-center gap-4">
-              <div class="text-center">
-                <p class="text-lg font-bold text-emerald-600">{{ totalTsMonthlyHours }}h</p>
-                <p class="text-[10px] text-ink-gray-5">Logged</p>
-              </div>
-              <div class="text-center">
-                <p class="text-lg font-bold text-ink-gray-8">{{ tsWorkingDaysCount }}</p>
-                <p class="text-[10px] text-ink-gray-5">Days</p>
-              </div>
-              <div class="text-center">
-                <p class="text-lg font-bold text-purple-600">{{ tsAvgHoursPerDay }}h</p>
-                <p class="text-[10px] text-ink-gray-5">Avg/Day</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- 2 Columns: Calendar + Activity Log -->
+          <!-- 2 Columns Layout: Left (30%) Profile + Calendar | Right (70%) Activity Log from top -->
           <div class="flex-1 min-h-0 flex gap-3 overflow-hidden">
-            <!-- Left: Timesheet Calendar (50%) -->
-            <div class="w-1/2 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 dark:border-gray-700/50 rounded-xl">
-              <TimesheetCalendar
-                :events="timesheetCalendarEvents"
-                :loading="timesheetCalendarLoading"
-                :selected-date="selectedTsDayDate"
-                @cellClick="handleTsCalendarClick"
-                class="flex-1 min-h-0"
-              />
-              <!-- KPI Badges -->
-              <div class="shrink-0 border-t border-outline-gray-2 dark:border-gray-700 px-4 py-2.5 flex items-center gap-3 flex-wrap">
-                <div class="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800/50">
-                  <span class="text-[10px] font-semibold text-green-700 dark:text-green-300">Total Hours</span>
-                  <span class="text-sm font-bold text-green-800 dark:text-green-200">{{ totalTsMonthlyHours.toFixed(1) }}</span>
+            <!-- Left Column (30%): Profile Card + Timesheet Calendar -->
+            <div class="w-[30%] flex flex-col gap-3 min-h-0 overflow-hidden">
+              <!-- User Profile Card -->
+              <div class="shrink-0 flex items-center gap-3 p-3 bg-surface-base border border-outline-gray-2 dark:border-gray-700/50 rounded-xl">
+                <div class="size-11 shrink-0 rounded-full bg-surface-base ring-2 ring-gray-200 dark:ring-gray-700 shadow-xs overflow-hidden flex items-center justify-center">
+                  <Avatar
+                    :image="selectedTsUserImage"
+                    :label="selectedTsUserDisplayName || selectedTimesheetUser || 'User'"
+                    size="lg"
+                    shape="circle"
+                  />
                 </div>
-                <div class="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800/50">
-                  <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-300">Working Days</span>
-                  <span class="text-sm font-bold text-blue-800 dark:text-blue-200">{{ tsWorkingDaysCount }}</span>
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-xs font-bold text-ink-gray-9 dark:text-gray-100 leading-tight truncate">
+                    {{ selectedTsUserDisplayName || selectedTimesheetUser || 'My Timesheet' }}
+                  </h3>
+                  <p class="text-[10px] text-ink-gray-5 dark:text-gray-400 truncate">{{ selectedTimesheetUser || currentUserEmail }}</p>
                 </div>
-                <div class="flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800/50">
-                  <span class="text-[10px] font-semibold text-purple-700 dark:text-purple-300">Avg/Day</span>
-                  <span class="text-sm font-bold text-purple-800 dark:text-purple-200">{{ tsAvgHoursPerDay }}h</span>
+                <div class="flex items-center gap-2.5 shrink-0 pl-2 border-l border-outline-gray-1 dark:border-gray-700">
+                  <div class="text-center">
+                    <p class="text-sm font-bold text-emerald-600 dark:text-emerald-400 leading-none">{{ totalTsMonthlyHours }}h</p>
+                    <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Logged</p>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-sm font-bold text-ink-gray-8 dark:text-gray-200 leading-none">{{ tsWorkingDaysCount }}</p>
+                    <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Days</p>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-sm font-bold text-purple-600 dark:text-purple-400 leading-none">{{ tsAvgHoursPerDay }}h</p>
+                    <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Avg/d</p>
+                  </div>
                 </div>
-                <div class="ml-auto flex items-center gap-3 text-[9px] text-ink-gray-5 dark:text-gray-400">
-                  <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-green-500 dark:bg-green-400" /> Logged</span>
-                  <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-red-400 dark:bg-red-500" /> Missed</span>
-                  <span class="flex items-center gap-1"><span class="size-1.5 rounded-full bg-gray-400 dark:bg-gray-500" /> Holiday</span>
+              </div>
+
+              <!-- Calendar Card -->
+              <div class="flex-1 min-h-0 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 dark:border-gray-700/50 rounded-xl">
+                <TimesheetCalendar
+                  :events="timesheetCalendarEvents"
+                  :loading="timesheetCalendarLoading"
+                  :selected-date="selectedTsDayDate"
+                  @cellClick="handleTsCalendarClick"
+                  class="flex-1 min-h-0"
+                />
+                <!-- Calendar Legend / KPI Badges -->
+                <div class="shrink-0 border-t border-outline-gray-2 dark:border-gray-700 px-3 py-2 flex items-center justify-between gap-2 text-[10px] text-ink-gray-5 dark:text-gray-400 bg-surface-gray-2/30 dark:bg-gray-800/30">
+                  <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-green-500 dark:bg-green-400" /> Logged</span>
+                  <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-red-400 dark:bg-red-500" /> Missed</span>
+                  <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-gray-400 dark:bg-gray-500" /> Holiday</span>
                 </div>
               </div>
             </div>
 
-            <!-- Right: Activity Log (50%) -->
-            <div class="w-1/2 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 dark:border-gray-700/50 rounded-xl">
+            <!-- Right Column (70%): Activity Log from Top -->
+            <div class="w-[70%] flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 dark:border-gray-700/50 rounded-xl">
+              <!-- Header -->
               <div class="shrink-0 px-4 py-3 border-b border-outline-gray-1 dark:border-gray-700/50 flex items-center justify-between">
                 <div>
-                  <h4 class="text-xs font-bold text-ink-gray-8 dark:text-gray-200 uppercase tracking-wide">Activity Log</h4>
-                  <p v-if="selectedTsDayDate" class="text-[11px] text-[#417c7d] dark:text-[#6fb8b8] font-semibold mt-0.5">
-                    {{ selectedTsDayDate }}
+                  <div class="flex items-center gap-2">
+                    <h4 class="text-sm font-bold text-ink-gray-9 dark:text-gray-100 uppercase tracking-wide">Activity Log</h4>
+                    <span
+                      v-if="selectedTsDayFlatItems.length"
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface-gray-3 dark:bg-gray-700 text-ink-gray-6 dark:text-gray-300"
+                    >
+                      {{ selectedTsDayFlatItems.length }} {{ selectedTsDayFlatItems.length === 1 ? 'activity' : 'activities' }}
+                    </span>
+                  </div>
+                  <p v-if="selectedTsDayDate" class="text-xs font-semibold text-[#417c7d] dark:text-[#6fb8b8] mt-0.5">
+                    {{ formattedTsDayDate }}
                   </p>
                 </div>
-                <Button
-                  v-if="selectedTsDayDate"
-                  variant="ghost"
-                  size="sm"
-                  class="text-[11px] text-[#417c7d] hover:text-[#356667] dark:text-[#6fb8b8] dark:hover:text-[#4a9e9e] font-semibold"
-                  @click="openTimesheetForm(selectedTsDayDate)"
-                >
-                  <template #prefix><Plus class="size-3" /></template>
-                  <span>Add Entry</span>
-                </Button>
+                <div class="flex items-center gap-2">
+                  <Button
+                    v-if="selectedTsDayDate"
+                    variant="solid"
+                    size="sm"
+                    class="bg-[#417c7d] hover:bg-[#356667] text-white text-xs font-semibold"
+                    @click="openTimesheetForm(selectedTsDayDate)"
+                  >
+                    <template #prefix><Plus class="size-3.5" /></template>
+                    <span>Add Entry</span>
+                  </Button>
+                </div>
               </div>
 
+              <!-- Placeholder when no day selected -->
               <div v-if="!selectedTsDayDate" class="flex-1 flex flex-col items-center justify-center text-center px-4">
-                <div class="size-10 rounded-xl bg-surface-gray-3 dark:bg-gray-700/50 flex items-center justify-center mb-3">
-                  <Clock class="size-5 text-gray-400 dark:text-gray-500" />
+                <div class="size-12 rounded-2xl bg-surface-gray-3 dark:bg-gray-800 flex items-center justify-center mb-3 text-ink-gray-4 dark:text-gray-500">
+                  <Clock class="size-6" />
                 </div>
-                <p class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300 mb-1">Select a timesheet day</p>
-                <p class="text-[10px] text-gray-400 dark:text-gray-500 max-w-[200px]">
+                <p class="text-sm font-semibold text-ink-gray-8 dark:text-gray-200 mb-1">Select a timesheet day</p>
+                <p class="text-xs text-ink-gray-5 dark:text-gray-400 max-w-[240px]">
                   Click on any day in the calendar to view or log your work activities
                 </p>
               </div>
 
+              <!-- Empty state when day selected but no entries -->
               <div v-else-if="selectedTsDayEntries.length === 0" class="flex-1 flex flex-col items-center justify-center text-center px-4 py-10">
-                <div class="size-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mb-3">
-                  <Clock class="size-5 text-rose-400 dark:text-rose-300" />
+                <div class="size-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 flex items-center justify-center mb-3 text-rose-500 dark:text-rose-400">
+                  <Clock class="size-6" />
                 </div>
-                <p class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300 mb-1">No timesheet logged</p>
-                <p class="text-[10px] text-gray-400 dark:text-gray-500 mb-4">No hours logged for {{ selectedTsDayDate }}</p>
+                <p class="text-sm font-semibold text-ink-gray-8 dark:text-gray-200 mb-1">No timesheet logged</p>
+                <p class="text-xs text-ink-gray-5 dark:text-gray-400 mb-4 max-w-[240px]">No work hours logged for {{ formattedTsDayDate || selectedTsDayDate }}</p>
                 <Button
                   variant="subtle"
                   size="sm"
                   class="text-xs"
                   @click="openTimesheetForm(selectedTsDayDate)"
                 >
-                  <template #prefix><Plus class="size-3" /></template>
+                  <template #prefix><Plus class="size-3.5" /></template>
                   <span>Log Hours for this Day</span>
                 </Button>
               </div>
 
-              <div v-else class="flex-1 overflow-y-auto p-3 space-y-3">
-                <div
-                  v-for="(ts, tIdx) in selectedTsDayEntries"
-                  :key="ts.name || tIdx"
-                  class="p-3 rounded-lg border border-outline-gray-1 dark:border-gray-700/50 bg-surface-gray-2/80 dark:bg-gray-800/40 space-y-2"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs font-bold text-ink-gray-8 dark:text-gray-200">{{ ts.name }}</span>
-                      <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">
-                        {{ ts.status }}
-                      </Badge>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400">{{ ts.total_hours }}h</span>
-                      <button
-                        type="button"
-                        class="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium cursor-pointer"
-                        @click="openTimesheetForm(ts.date || selectedTsDayDate, ts)"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        class="text-[10px] text-rose-500 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-medium cursor-pointer"
-                        @click="deleteTimesheetConfirm(ts)"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="space-y-1.5">
-                    <div
-                      v-for="(item, iIdx) in ts.items"
-                      :key="iIdx"
-                      class="flex items-center gap-2 text-[10px] bg-surface-base dark:bg-gray-800/30 border border-outline-gray-1 dark:border-gray-700/50 rounded-md px-2.5 py-2 shadow-2xs"
-                    >
-                      <span
-                        class="inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold border shrink-0"
-                        :class="{
-                          'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50': item.activity_type === 'Task',
-                          'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50': item.activity_type === 'Meeting',
-                          'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/50': item.activity_type === 'Research',
-                        }"
-                      >
-                        {{ item.activity_type }}
-                      </span>
-                      <div class="min-w-0 flex-1">
-                        <span v-if="item.project" class="text-ink-gray-8 dark:text-gray-200 font-medium truncate block">{{ item.project }}</span>
-                        <span v-if="item.task" class="text-ink-gray-5 dark:text-gray-400 truncate block">{{ item.task }}</span>
-                        <span v-if="item.description" class="text-gray-400 dark:text-gray-500 truncate block text-[9px]">{{ item.description }}</span>
+              <!-- Content with Frappe Native List + Footer -->
+              <div v-else class="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <!-- Timesheet Document Subheaders (if multiple timesheets for day) -->
+                <div class="shrink-0 px-3 py-2 bg-surface-gray-2/60 dark:bg-gray-800/30 border-b border-outline-gray-1 dark:border-gray-700/50 flex items-center justify-between flex-wrap gap-2">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <template v-for="(ts, tIdx) in selectedTsDayEntries" :key="ts.name || tIdx">
+                      <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-surface-base dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-md shadow-xs text-xs">
+                        <span class="font-bold text-ink-gray-9 dark:text-gray-100">{{ ts.name }}</span>
+                        <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">{{ ts.status }}</Badge>
+                        <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ ts.total_hours }}h</span>
+                        <div class="flex items-center gap-0.5 ml-1 pl-1 border-l border-outline-gray-2 dark:border-gray-700">
+                          <button
+                            type="button"
+                            class="p-0.5 text-ink-gray-5 hover:text-ink-gray-9 dark:hover:text-white rounded hover:bg-surface-gray-3 transition cursor-pointer"
+                            title="Edit Timesheet"
+                            @click="openTimesheetForm(ts.date || selectedTsDayDate, ts)"
+                          >
+                            <span class="text-[11px] font-medium text-[#417c7d] dark:text-[#6fb8b8]">Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            class="p-0.5 text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                            title="Delete Timesheet"
+                            @click="deleteTimesheetConfirm(ts)"
+                          >
+                            <span class="text-[11px] font-medium">Delete</span>
+                          </button>
+                        </div>
                       </div>
-                      <span class="text-ink-gray-8 dark:text-gray-200 font-bold shrink-0">{{ item.hrs }}h</span>
-                      <span v-if="item.from_time || item.to_time" class="text-gray-400 dark:text-gray-500 font-mono text-[9px] shrink-0">
-                        {{ item.from_time?.slice(11, 16) || item.from_time }} – {{ item.to_time?.slice(11, 16) || item.to_time }}
-                      </span>
+                    </template>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    class="text-xs text-[#417c7d] hover:text-[#356667] dark:text-[#6fb8b8]"
+                    @click="openTimesheetForm(selectedTsDayDate)"
+                  >
+                    <template #prefix><Plus class="size-3" /></template>
+                    <span>New Timesheet</span>
+                  </Button>
+                </div>
+
+                <!-- Scrollable List View -->
+                <div class="flex-1 min-h-0 overflow-y-auto">
+                  <List
+                    class="w-full list-row-px-3"
+                    :columns="{
+                      base: ['42px', '95px', 'minmax(0,1fr)', '70px'],
+                      md: ['46px', '100px', 'minmax(0,1.2fr)', 'minmax(0,1fr)', '100px', '70px'],
+                      lg: ['46px', '105px', 'minmax(0,1.2fr)', 'minmax(0,1.2fr)', 'minmax(0,1.5fr)', '105px', '70px'],
+                    }"
+                    :row-height="46"
+                  >
+                    <ListHeader>
+                      <ListHeaderCell class="text-ink-gray-5 justify-center text-center">#</ListHeaderCell>
+                      <ListHeaderCell>Activity</ListHeaderCell>
+                      <ListHeaderCell>Project</ListHeaderCell>
+                      <ListHeaderCell class="max-md:hidden">Task</ListHeaderCell>
+                      <ListHeaderCell class="max-lg:hidden">Remark</ListHeaderCell>
+                      <ListHeaderCell class="max-md:hidden text-center justify-center">Time Range</ListHeaderCell>
+                      <ListHeaderCell class="justify-end text-right">Duration</ListHeaderCell>
+                    </ListHeader>
+
+                    <ListRows :items="selectedTsDayFlatItems" v-slot="{ item, index, value }">
+                      <ListRow :value="value">
+                        <!-- Sr No -->
+                        <ListCell class="justify-center">
+                          <span class="text-xs font-mono text-ink-gray-5 dark:text-gray-400">
+                            {{ index + 1 }}
+                          </span>
+                        </ListCell>
+
+                        <!-- Activity Type -->
+                        <ListCell>
+                          <span
+                            class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border"
+                            :class="{
+                              'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50': item.activity_type === 'Task',
+                              'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50': item.activity_type === 'Meeting',
+                              'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/50': item.activity_type === 'Research',
+                              'bg-surface-gray-2 dark:bg-gray-800 text-ink-gray-7 dark:text-gray-300 border-outline-gray-2 dark:border-gray-700': !['Task', 'Meeting', 'Research'].includes(item.activity_type),
+                            }"
+                          >
+                            {{ item.activity_type || 'Activity' }}
+                          </span>
+                        </ListCell>
+
+                        <!-- Project -->
+                        <ListCell>
+                          <div class="truncate text-xs font-medium text-ink-gray-9 dark:text-gray-100" :title="item.project || ''">
+                            {{ getProjectDisplayName(item.project) }}
+                          </div>
+                        </ListCell>
+
+                        <!-- Task -->
+                        <ListCell class="max-md:hidden">
+                          <div class="truncate text-xs text-ink-gray-7 dark:text-gray-300" :title="getTaskDisplayTitle(item.task)">
+                            {{ getTaskDisplayTitle(item.task) }}
+                          </div>
+                        </ListCell>
+
+                        <!-- Remark / Description -->
+                        <ListCell class="max-lg:hidden">
+                          <div
+                            v-if="item.description"
+                            class="truncate text-xs text-ink-gray-6 dark:text-gray-400 max-w-full"
+                            :title="item.description?.replace(/<[^>]*>?/gm, '')"
+                            v-html="item.description"
+                          />
+                          <span v-else class="text-xs text-ink-gray-4 dark:text-gray-500">—</span>
+                        </ListCell>
+
+                        <!-- Time Range -->
+                        <ListCell class="max-md:hidden justify-center">
+                          <span class="text-[11px] font-mono text-ink-gray-6 dark:text-gray-400 bg-surface-gray-2 dark:bg-gray-800/60 px-1.5 py-0.5 rounded border border-outline-gray-1 dark:border-gray-700/50">
+                            {{ item.from_time?.slice(11, 16) || item.from_time || '—' }} - {{ item.to_time?.slice(11, 16) || item.to_time || '—' }}
+                          </span>
+                        </ListCell>
+
+                        <!-- Duration -->
+                        <ListCell class="justify-end">
+                          <span class="text-xs font-bold text-ink-gray-9 dark:text-gray-100">
+                            {{ item.hrs ? Number(item.hrs).toFixed(1) + 'h' : '—' }}
+                          </span>
+                        </ListCell>
+                      </ListRow>
+                    </ListRows>
+                  </List>
+                </div>
+
+                <!-- Footer with KPI total for the selected day -->
+                <div class="shrink-0 border-t border-outline-gray-2 dark:border-gray-700/60 bg-surface-gray-2/40 dark:bg-gray-800/40 px-4 py-2.5 flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 rounded-lg">
+                      <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">Day Total:</span>
+                      <span class="text-sm font-bold text-emerald-800 dark:text-emerald-200">{{ selectedTsDayTotalHours.toFixed(1) }} hrs</span>
+                    </div>
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-base dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg">
+                      <span class="text-xs font-medium text-ink-gray-6 dark:text-gray-400">Total Entries:</span>
+                      <span class="text-sm font-bold text-ink-gray-9 dark:text-gray-200">{{ selectedTsDayFlatItems.length }}</span>
                     </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    class="text-xs border-dashed"
+                    @click="openTimesheetForm(selectedTsDayDate)"
+                  >
+                    <template #prefix><Plus class="size-3.5" /></template>
+                    <span>Add Row</span>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -2486,47 +2675,71 @@ onUnmounted(() => {
                        </div>
                      </div>
 
-                     <!-- Items -->
-                     <div>
-                       <div class="flex items-center justify-between mb-2">
-                         <label class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300">Time Entries</label>
-                         <button type="button" class="text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer transition" @click="addTsFormItem">+ Add Row</button>
-                       </div>
-                       <div v-for="(item, idx) in timesheetFormItems" :key="idx" class="bg-surface-gray-2 dark:bg-gray-800/40 rounded-lg p-3 mb-2 border border-outline-gray-1 dark:border-gray-700/50">
-                         <div class="grid grid-cols-3 gap-2 mb-2">
-                           <div>
-                             <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Activity</label>
-                             <select v-model="item.activity_type" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800">
-                               <option value="Task">Task</option>
-                               <option value="Meeting">Meeting</option>
-                               <option value="Research">Research</option>
-                             </select>
-                           </div>
-                           <div>
-                             <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Project</label>
-                             <input v-model="item.project" type="text" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" placeholder="Project name" />
-                           </div>
-                           <div>
-                             <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Task ID</label>
-                             <input v-model="item.task" type="text" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" placeholder="TFT-XXXXX" />
-                           </div>
-                         </div>
-                         <div class="grid grid-cols-2 gap-2 mb-2">
-                           <div>
-                             <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">From</label>
-                             <input v-model="item.from_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" />
-                           </div>
-                           <div>
-                             <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">To</label>
-                             <input v-model="item.to_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" />
-                           </div>
-                         </div>
-                         <div class="flex items-center justify-between">
-                           <input v-model="item.description" type="text" class="flex-1 text-[10px] border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800 mr-2" placeholder="Description (optional)" />
-                           <button v-if="timesheetFormItems.length > 1" type="button" class="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition text-[10px]" @click="removeTsFormItem(idx)">Remove</button>
-                         </div>
-                       </div>
-                     </div>
+                      <!-- Items: Activity | Project | Task | Remark | From | To | Duration -->
+                      <div>
+                        <div class="flex items-center justify-between mb-2">
+                          <label class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300">Time Entries — Activity | Project | Task | Remark | From | To | Duration</label>
+                          <button type="button" class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer transition inline-flex items-center gap-1" @click="addTsFormItem"><Plus class="size-3" /> Add Row</button>
+                        </div>
+                        <div v-for="(item, idx) in timesheetFormItems" :key="idx" class="bg-surface-gray-2 dark:bg-gray-800/40 rounded-lg p-3 mb-3 border border-outline-gray-1 dark:border-gray-700/50">
+                          <!-- Row 1: Activity | Project | Task -->
+                          <div class="grid grid-cols-3 gap-2 mb-2">
+                            <div>
+                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Activity</label>
+                              <select v-model="item.activity_type" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800">
+                                <option value="Task">Task</option>
+                                <option value="Meeting">Meeting</option>
+                                <option value="Research">Research</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Project</label>
+                              <Combobox
+                                v-model="item.project"
+                                :options="availableTimesheetProjects"
+                                placeholder="Select Project"
+                                size="sm"
+                                class="w-full text-xs"
+                                @update:modelValue="onTsItemProjectChange(item)"
+                              />
+                            </div>
+                            <div>
+                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Task</label>
+                              <Combobox
+                                v-model="item.task"
+                                :options="getAvailableTasksForItem(item)"
+                                placeholder="Select Task"
+                                size="sm"
+                                class="w-full text-xs"
+                                @update:modelValue="onTsItemTaskChange(item)"
+                              />
+                            </div>
+                          </div>
+                          <!-- Row 2: Remark (full width, HTML) -->
+                          <div class="mb-2">
+                            <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Remark</label>
+                            <Textarea v-model="item.description" placeholder="Remark / description (supports HTML)" rows="2" class="w-full text-xs" />
+                          </div>
+                          <!-- Row 3: From | To | Duration -->
+                          <div class="grid grid-cols-3 gap-2">
+                            <div>
+                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">From</label>
+                              <input v-model="item.from_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" />
+                            </div>
+                            <div>
+                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">To</label>
+                              <input v-model="item.to_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" />
+                            </div>
+                            <div>
+                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Duration</label>
+                              <input :value="getDuration(item)" disabled type="text" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 bg-surface-gray-3 dark:bg-gray-700/50 text-ink-gray-6" placeholder="auto" />
+                            </div>
+                          </div>
+                          <div class="flex justify-end mt-2">
+                            <button v-if="timesheetFormItems.length > 1" type="button" class="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition text-xs" @click="removeTsFormItem(idx)">Remove</button>
+                          </div>
+                        </div>
+                      </div>
                    </div>
 
                    <!-- Footer -->
