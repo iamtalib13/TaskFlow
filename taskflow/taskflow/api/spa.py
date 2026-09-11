@@ -47,8 +47,8 @@ def get_spa_bootstrap() -> dict:
 	proj_members_map = {}
 	if proj_names:
 		pm_raw = frappe.get_all(
-			"Taskflow Project Team Member",
-			filters={"parent": ["in", proj_names], "parenttype": "Taskflow Project"},
+			"Taskflow Team Member",
+			filters={"parent": ["in", proj_names], "parenttype": "Taskflow Project", "parentfield": "project_team_members"},
 			fields=["parent", "employee", "team_role", "access_level", "is_active"],
 		)
 		for pm in pm_raw:

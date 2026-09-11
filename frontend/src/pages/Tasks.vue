@@ -740,6 +740,7 @@ const projectTableColumns = [
 ]
 
 
+const MAX_VISIBLE = 5
 const selectedProjectMemberFilter = ref('')
 const memberFilterQuery = ref('')
 
