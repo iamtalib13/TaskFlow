@@ -733,11 +733,11 @@ const projectTableColumns = [
   { key: 'sr_no', label: 'SR NO', width: '60px', minWidth: '50px', sortable: false, visible: true },
   { key: 'name', label: 'PROJECT', width: '180px', minWidth: '150px', sortable: true, visible: true },
   { key: 'parent_project', label: 'PARENT PROJECT', width: '120px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'status', label: 'STATUS', width: '110px', minWidth: '90px', sortable: true, visible: true },
   { key: 'team', label: 'TEAM', width: '120px', minWidth: '100px', sortable: true, visible: true },
   { key: 'lead', label: 'LEAD', width: '140px', minWidth: '120px', sortable: true, visible: true },
+  { key: 'start_date', label: 'START DATE', width: '110px', minWidth: '95px', sortable: true, visible: true },
+  { key: 'end_date', label: 'END DATE', width: '110px', minWidth: '95px', sortable: true, visible: true },
   { key: 'progress', label: 'PROGRESS', width: '130px', minWidth: '110px', sortable: true, visible: true },
-  { key: 'due_date', label: 'DUE DATE', width: '100px', minWidth: '90px', sortable: true, visible: true },
   { key: 'modified', label: 'MODIFIED', width: '120px', minWidth: '100px', sortable: true, visible: true },
 ]
 
@@ -848,7 +848,8 @@ const projectsData = computed(() => {
       open_tasks: pTasks.filter((t) => t.status !== 'Completed').length,
       completed_tasks: completedTasks,
       progress: proj.completion_percent || pct,
-      due_date: proj.end_date || '',
+      start_date: proj.start_date || '',
+      end_date: proj.end_date || proj.due_date || '',
       parent_project: proj.parent_project || '',
       modified: proj.modified || '',
       modified_pretty: proj.modified_pretty || '',
@@ -2386,9 +2387,16 @@ onUnmounted(() => {
                 </div>
               </template>
 
-              <template #cell-due_date="{ row }">
-                <span v-if="row.due_date" class="font-mono text-xs text-ink-gray-6">
-                  {{ formatDueDate(row.due_date) }}
+              <template #cell-start_date="{ row }">
+                <span v-if="row.start_date" class="font-mono text-xs text-ink-gray-6">
+                  {{ formatDueDate(row.start_date) }}
+                </span>
+                <span v-else class="text-ink-gray-4">—</span>
+              </template>
+
+              <template #cell-end_date="{ row }">
+                <span v-if="row.end_date" class="font-mono text-xs text-ink-gray-6">
+                  {{ formatDueDate(row.end_date) }}
                 </span>
                 <span v-else class="text-ink-gray-4">—</span>
               </template>

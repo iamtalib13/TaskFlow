@@ -24,7 +24,7 @@ def get_spa_bootstrap() -> dict:
 	project_filters = {"is_archived": 0} if has_archived else {}
 	projects = frappe.get_all(
 		"Taskflow Project",
-		fields=["name", "project_name", "status", "priority", "team", "project_lead", "completion_percent", "end_date", "parent_project", "modified", "creation"],
+		fields=["name", "project_name", "status", "priority", "team", "project_lead", "completion_percent", "start_date", "end_date", "parent_project", "modified", "creation"],
 		filters=project_filters,
 		order_by="modified desc",
 	)
