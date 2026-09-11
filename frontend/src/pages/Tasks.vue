@@ -666,19 +666,28 @@ const visibleTasks = computed(() => {
     list = list.filter((t) => t.status === statusTab.value)
   }
 
-  // Smart search — title, id, project, status, priority, assigned_to
+  // Smart search — title, id, project, status, priority, assigned_to, team
   const q = taskSearch.value.trim().toLowerCase()
   if (q) {
+    const tokens = q.split(/\s+/).filter(Boolean)
     list = list.filter((t) => {
-      return (
-        (t.title || '').toLowerCase().includes(q) ||
-        (t.id || '').toLowerCase().includes(q) ||
-        (t.project || '').toLowerCase().includes(q) ||
-        (t.status || '').toLowerCase().includes(q) ||
-        (t.priority || '').toLowerCase().includes(q) ||
-        (t.assigned_to || '').toLowerCase().includes(q) ||
-        (t.team || '').toLowerCase().includes(q)
-      )
+      const assigneesText = (t.assignees || []).map((a) => a.name || '').join(' ')
+      const fullText = [
+        t.title,
+        t.id,
+        t.project,
+        t.status,
+        t.priority,
+        t.assigned_to,
+        t.team,
+        t.owner,
+        assigneesText,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return tokens.every((token) => fullText.includes(token))
     })
   }
 

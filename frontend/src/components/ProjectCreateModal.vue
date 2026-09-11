@@ -347,15 +347,20 @@ const employeeOptions = computed(() => props.employees.map(e => ({
   image: e.user_image || '',
 })))
 
+function matchTokens(text, query) {
+  if (!query) return true
+  if (!text) return false
+  const textLower = String(text).toLowerCase()
+  const tokens = String(query).toLowerCase().trim().split(/\s+/).filter(Boolean)
+  return tokens.every(token => textLower.includes(token))
+}
+
 const leadQuery = ref('')
 const filteredEmployeeOptions = computed(() => {
-  const q = leadQuery.value.toLowerCase().trim()
+  const q = leadQuery.value.trim()
   let list = employeeOptions.value
   if (q) {
-    list = list.filter(e =>
-      e.label.toLowerCase().includes(q) ||
-      e.description.toLowerCase().includes(q)
-    )
+    list = list.filter(e => matchTokens(`${e.label} ${e.description}`, q))
   }
   return list.slice(0, MAX_VISIBLE)
 })
@@ -508,13 +513,10 @@ function getMemberOpt(idx) {
 }
 
 const memberFiltered = computed(() => {
-  const q = memberQ.value.toLowerCase().trim()
+  const q = memberQ.value.trim()
   let list = employeeOptions.value
   if (q) {
-    list = list.filter(e =>
-      e.label.toLowerCase().includes(q) ||
-      e.description.toLowerCase().includes(q)
-    )
+    list = list.filter(e => matchTokens(`${e.label} ${e.description}`, q))
   }
   return list.slice(0, MAX_VISIBLE)
 })
