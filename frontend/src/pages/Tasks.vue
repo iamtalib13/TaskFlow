@@ -515,7 +515,10 @@ function getTaskRowClass(row) {
   if (isRowJustNow(row)) {
     return 'row-just-now is-just-now'
   }
-  return 'hover:bg-[#f0f7f7] dark:hover:bg-gray-800/70'
+  if (row && (row.status === 'Completed' || row.status === 'completed')) {
+    return 'bg-emerald-50/70 dark:bg-emerald-950/30 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/40 transition-colors'
+  }
+  return 'hover:bg-[#f0f7f7] dark:hover:bg-gray-800/70 transition-colors'
 }
 
 // Light green highlight for projects modified 'Just now'
@@ -526,31 +529,31 @@ function getProjectRowClass(row) {
   return 'hover:bg-[#f0f7f7] dark:hover:bg-gray-800/70'
 }
 
-// Colorful status badge styling: Completed (Green), Overdue (Red), Open (Blue), etc.
+// Colorful status badge styling: Completed (Green), Overdue (Red), Open (Blue), In Progress (Yellow/Amber), etc.
 const getStatusBadgeClass = (status) => {
   switch (status) {
     case 'Completed':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-1 ring-emerald-500/10'
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-1 ring-emerald-500/10 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60'
     case 'Overdue':
-      return 'bg-rose-50 text-rose-700 border-rose-200 ring-1 ring-rose-500/10'
+      return 'bg-rose-50 text-rose-700 border-rose-200 ring-1 ring-rose-500/10 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60'
     case 'Open':
-      return 'bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-500/10'
+      return 'bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-500/10 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/60'
     case 'In Progress':
-      return 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-1 ring-indigo-500/10'
+      return 'bg-amber-50 text-amber-800 border-amber-200 ring-1 ring-amber-500/10 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60'
     case 'Review':
-      return 'bg-purple-50 text-purple-700 border-purple-200 ring-1 ring-purple-500/10'
+      return 'bg-purple-50 text-purple-700 border-purple-200 ring-1 ring-purple-500/10 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/60'
     case 'On Hold':
-      return 'bg-amber-50 text-amber-700 border-amber-200 ring-1 ring-amber-500/10'
+      return 'bg-orange-50 text-orange-700 border-orange-200 ring-1 ring-orange-500/10 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/60'
     case 'Cancelled':
-      return 'bg-surface-gray-3 text-ink-gray-6 border-outline-gray-2 ring-1 ring-gray-500/10'
+      return 'bg-gray-100 text-gray-700 border-gray-200 ring-1 ring-gray-500/10 dark:bg-gray-800/60 dark:text-gray-300 dark:border-gray-700'
     default:
-      return 'bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-500/10'
+      return 'bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-500/10 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/60'
   }
 }
 
 const statusThemeMap = {
   'Open': 'blue',
-  'In Progress': 'indigo',
+  'In Progress': 'amber',
   'Review': 'purple',
   'On Hold': 'amber',
   'Completed': 'green',
@@ -560,7 +563,7 @@ const statusThemeMap = {
 
 const statusDotClassMap = {
   'Open': 'bg-surface-blue-7',
-  'In Progress': 'bg-surface-indigo-7',
+  'In Progress': 'bg-surface-amber-7',
   'Review': 'bg-surface-purple-7',
   'On Hold': 'bg-surface-amber-7',
   'Completed': 'bg-surface-green-7',
@@ -571,35 +574,36 @@ const statusDotClassMap = {
 const getStatusDotClass = (status) => {
   switch (status) {
     case 'Completed':
-      return 'bg-emerald-500'
+      return 'bg-emerald-700 dark:bg-emerald-400'
     case 'Overdue':
-      return 'bg-rose-500 animate-pulse'
+      return 'bg-rose-600 dark:bg-rose-400 animate-pulse'
     case 'Open':
-      return 'bg-blue-500'
+      return 'bg-blue-600 dark:bg-blue-400'
     case 'In Progress':
-      return 'bg-indigo-500'
+      return 'bg-amber-600 dark:bg-amber-400'
     case 'Review':
-      return 'bg-purple-500'
+      return 'bg-purple-600 dark:bg-purple-400'
     case 'On Hold':
-      return 'bg-amber-500'
+      return 'bg-orange-600 dark:bg-orange-400'
     case 'Cancelled':
-      return 'bg-gray-400'
+      return 'bg-gray-500 dark:bg-gray-400'
     default:
-      return 'bg-blue-500'
+      return 'bg-blue-600 dark:bg-blue-400'
   }
 }
 
-const getPriorityBadgeClass = (priority) => {
+const getPriorityTextClass = (priority) => {
   switch (priority) {
     case 'Critical':
-      return 'bg-rose-50 text-rose-700 border-rose-200 font-semibold'
+      return 'text-red-600 dark:text-red-400 font-bold'
     case 'High':
-      return 'bg-orange-50 text-orange-700 border-orange-200 font-medium'
+      return 'text-orange-500 dark:text-orange-400 font-semibold'
     case 'Medium':
-      return 'bg-amber-50 text-amber-700 border-amber-200 font-medium'
+      return 'text-amber-500 dark:text-amber-400 font-medium'
     case 'Low':
+      return 'text-blue-500 dark:text-blue-400 font-medium'
     default:
-      return 'bg-surface-gray-3 text-ink-gray-6 border-outline-gray-2'
+      return 'text-gray-500 dark:text-gray-400 font-normal'
   }
 }
 
@@ -1328,14 +1332,23 @@ async function onCreateTask(formData) {
   const assigneeList = Array.isArray(formData.assignees) && formData.assignees.length > 0
     ? formData.assignees.map((a) => (typeof a === 'object' ? (a.value || a.user_id || a.user || a.email) : a)).filter(Boolean)
     : (formData.assigned_to ? [formData.assigned_to] : [])
+  const guidedByVal = typeof formData.guided_by === 'object' ? (formData.guided_by.value || '') : (formData.guided_by || '')
   const newTask = {
+    ...formData,
     title: formData.title,
     project: formData.project || '',
     team: formData.team || '',
     status: formData.status || 'Open',
     priority: formData.priority || 'Medium',
+    task_type: formData.task_type || 'Task',
     description: formData.description || '',
+    start_date: formData.start_date || '',
     due_date: formData.due_date || '',
+    pending_from: formData.pending_from || '',
+    guided_by: guidedByVal,
+    toll_id: formData.toll_id || '',
+    ticket_date: formData.ticket_date || '',
+    ticket_raised_by: formData.ticket_raised_by || '',
     estimated_hours: 8,
     assignees: assigneeList,
   }
@@ -1344,16 +1357,23 @@ async function onCreateTask(formData) {
     const result = await saveTask(newTask)
     if (result && result.id) {
       const savedTask = {
+        ...result,
         id: result.id,
         title: result.title || formData.title,
         project: result.project || formData.project || '',
         team: result.team || formData.team || '',
         status: result.status || 'Open',
         priority: result.priority || 'Medium',
-        task_type: result.task_type || 'Task',
+        task_type: result.task_type || formData.task_type || 'Task',
         assignees: result.assignees || assigneeList,
         reporter: fullName.value,
+        start_date: result.start_date || formData.start_date || '',
         due_date: result.due || formData.due_date || '',
+        pending_from: result.pending_from || formData.pending_from || '',
+        guided_by: result.guided_by || guidedByVal || '',
+        toll_id: result.toll_id || formData.toll_id || '',
+        ticket_date: result.ticket_date || formData.ticket_date || '',
+        ticket_raised_by: result.ticket_raised_by || formData.ticket_raised_by || '',
         description: result.description || formData.description || '',
         estimated_hours: result.estimated_hours || 8,
         logged_hours: 0,
@@ -2071,8 +2091,8 @@ onUnmounted(() => {
               <template #cell-priority="{ row }">
                 <span
                   v-if="row.priority"
-                  class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border select-none"
-                  :class="getPriorityBadgeClass(row.priority)"
+                  class="text-xs select-none"
+                  :class="getPriorityTextClass(row.priority)"
                 >
                   {{ row.priority }}
                 </span>

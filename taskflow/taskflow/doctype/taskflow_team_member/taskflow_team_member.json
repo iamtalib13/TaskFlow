@@ -8,9 +8,11 @@
  "field_order": [
   "employee",
   "user",
+  "read",
+  "write",
+  "is_active",
   "team_role",
-  "access_level",
-  "is_active"
+  "access_level"
  ],
  "fields": [
   {
@@ -30,21 +32,18 @@
    "options": "User"
   },
   {
-   "fieldname": "team_role",
-   "fieldtype": "Select",
+   "default": "1",
+   "fieldname": "read",
+   "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Team Role",
-   "options": "\nTeam Lead\nProject Manager\nTeam Member\nViewer\nAuditor\nCoordinator",
-   "reqd": 1
+   "label": "Read"
   },
   {
-   "default": "Operate",
-   "fieldname": "access_level",
-   "fieldtype": "Select",
+   "default": "1",
+   "fieldname": "write",
+   "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Access Level",
-   "options": "\nView\nOperate\nManage\nAdmin",
-   "reqd": 1
+   "label": "Write"
   },
   {
    "default": "1",
@@ -52,13 +51,26 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Is Active"
+  },
+  {
+   "fieldname": "team_role",
+   "fieldtype": "Select",
+   "label": "Team Role",
+   "options": "\nTeam Lead\nProject Manager\nTeam Member\nViewer\nAuditor\nCoordinator"
+  },
+  {
+   "default": "Operate",
+   "fieldname": "access_level",
+   "fieldtype": "Select",
+   "label": "Access Level",
+   "options": "\nView\nOperate\nManage\nAdmin"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-05-07 00:00:00.000000",
+ "modified": "2026-09-11 21:22:00.000000",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Team Member",
@@ -70,4 +82,3 @@
  "sort_order": "DESC",
  "states": []
 }
-

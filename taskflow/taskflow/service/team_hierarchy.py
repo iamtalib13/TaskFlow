@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-
 import frappe
-
 
 MANAGER_TEAM_ROLES = {"Team Lead", "Project Manager", "Coordinator"}
 MANAGER_ACCESS_LEVELS = {"Manage", "Admin"}
@@ -13,15 +11,29 @@ VIEW_ONLY_TEAM_ROLES = {"Viewer", "Auditor"}
 OPERATE_ACCESS_LEVELS = {"Operate", "Manage", "Admin"}
 
 
+def _has_global_access(user: str) -> bool:
+	if not user or user == "Guest":
+		return False
+	return bool({"System Manager", "Taskflow Admin"} & set(frappe.get_roles(user)))
+
+
 def get_user_team_memberships(user: str) -> list[dict]:
 	if not user or user == "Guest":
 		return []
 
-	return frappe.get_all(
+	user_emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
+	filters = {"parenttype": "Taskflow Team", "is_active": 1}
+	all_members = frappe.get_all(
 		"Taskflow Team Member",
-		filters={"user": user, "is_active": 1},
-		fields=["parent as team", "team_role", "access_level"],
+		filters=filters,
+		fields=["parent as team", "user", "employee", "read", "write", "team_role", "access_level"],
 	)
+
+	res = []
+	for m in all_members:
+		if m.user == user or (user_emp and m.employee == user_emp):
+			res.append(m)
+	return res
 
 
 def get_descendant_teams(team_names: list[str]) -> set[str]:
@@ -62,23 +74,22 @@ def get_accessible_teams(user: str) -> set[str]:
 		)
 
 	memberships = get_user_team_memberships(user)
-	direct_teams = {row.team for row in memberships}
-	managed_teams = {
+	direct_teams = {
 		row.team
 		for row in memberships
-		if row.team_role in MANAGER_TEAM_ROLES or row.access_level in MANAGER_ACCESS_LEVELS
+		if getattr(row, "read", 1) in (1, True, "1", None) or getattr(row, "write", 1) in (1, True, "1", None)
 	}
 
-	accessible = set(direct_teams)
-	accessible.update(get_descendant_teams(list(managed_teams)))
+	user_emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
+	if user_emp:
+		lead_teams = frappe.get_all(
+			"Taskflow Team",
+			filters={"team_lead": user_emp, "is_active": 1},
+			pluck="name",
+		)
+		direct_teams.update(lead_teams)
 
-	global_teams = frappe.get_all(
-		"Taskflow Team",
-		filters={"visibility_scope": "Global", "is_active": 1},
-		pluck="name",
-	)
-	accessible.update(global_teams)
-	return accessible
+	return direct_teams
 
 
 def get_direct_teams(user: str) -> set[str]:
@@ -89,28 +100,28 @@ def get_team_membership_map(user: str) -> dict[str, dict]:
 	return {row.team: row for row in get_user_team_memberships(user)}
 
 
-def get_managed_teams(user: str) -> set[str]:
-	if not user or user == "Guest":
-		return set()
+def can_write_team(user: str, team: str | None) -> bool:
+	if not user or user == "Guest" or not team:
+		return False
 
-	if _has_global_access(user) or MANAGER_SYSTEM_ROLES & set(frappe.get_roles(user)):
-		return set(
-			frappe.get_all(
-				"Taskflow Team",
-				filters={"is_active": 1},
-				pluck="name",
-			)
-		)
+	if _has_global_access(user):
+		return True
 
-	return {
-		row.team
-		for row in get_user_team_memberships(user)
-		if row.team_role in MANAGER_TEAM_ROLES or row.access_level in MANAGER_ACCESS_LEVELS
-	}
+	user_emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
+	if user_emp and frappe.db.get_value("Taskflow Team", team, "team_lead") == user_emp:
+		return True
+
+	memberships = get_user_team_memberships(user)
+	for m in memberships:
+		if m.team == team:
+			if getattr(m, "write", 1) in (1, True, "1"):
+				return True
+
+	return False
 
 
 def is_team_member(user: str, team: str | None) -> bool:
-	return bool(team and team in get_direct_teams(user))
+	return bool(team and team in get_accessible_teams(user))
 
 
 def can_view_team(user: str, team: str | None) -> bool:
@@ -121,33 +132,11 @@ def can_view_team(user: str, team: str | None) -> bool:
 
 
 def can_operate_team(user: str, team: str | None) -> bool:
-	if not user or user == "Guest" or not team:
-		return False
-
-	if can_manage_team(user, team):
-		return True
-
-	membership = get_team_membership_map(user).get(team)
-	if not membership:
-		return False
-
-	if membership.team_role in VIEW_ONLY_TEAM_ROLES:
-		return False
-
-	return membership.access_level in OPERATE_ACCESS_LEVELS
+	return can_write_team(user, team)
 
 
 def can_manage_team(user: str, team: str | None = None) -> bool:
-	if not user or user == "Guest":
-		return False
-
-	if _has_global_access(user) or MANAGER_SYSTEM_ROLES & set(frappe.get_roles(user)):
-		return True
-
-	if not team:
-		return bool(get_managed_teams(user))
-
-	return team in get_descendant_teams(list(get_managed_teams(user)))
+	return can_write_team(user, team)
 
 
 def build_name_filter_condition(doctype: str, fieldname: str, names: set[str]) -> str:
@@ -156,7 +145,3 @@ def build_name_filter_condition(doctype: str, fieldname: str, names: set[str]) -
 
 	escaped = ", ".join(frappe.db.escape(name) for name in sorted(names))
 	return f"`tab{doctype}`.`{fieldname}` in ({escaped})"
-
-
-def _has_global_access(user: str) -> bool:
-	return bool({"System Manager", "Taskflow Admin"} & set(frappe.get_roles(user)))

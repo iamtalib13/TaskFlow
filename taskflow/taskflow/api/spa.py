@@ -3,6 +3,19 @@ import json
 from frappe import _
 
 
+from taskflow.taskflow.service.team_hierarchy import (
+	get_accessible_teams,
+	can_write_team,
+	_has_global_access,
+)
+from taskflow.taskflow.service.project_access import (
+	get_user_accessible_projects,
+	get_user_accessible_tasks,
+	can_write_project,
+	can_write_task,
+)
+
+
 def _require_login():
 	if frappe.session.user == "Guest":
 		frappe.throw(_("Authentication required"), frappe.AuthenticationError)
@@ -19,15 +32,23 @@ def get_spa_bootstrap() -> dict:
 		as_dict=True,
 	) or {"name": current_user, "full_name": current_user, "user_image": ""}
 
-	# All active projects
+	# All active projects accessible to user
 	has_archived = frappe.db.has_column("Taskflow Project", "is_archived")
 	project_filters = {"is_archived": 0} if has_archived else {}
+	
+	accessible_project_names = get_user_accessible_projects(current_user)
+	if not _has_global_access(current_user):
+		if accessible_project_names:
+			project_filters["name"] = ["in", list(accessible_project_names)]
+		else:
+			project_filters["name"] = ""
+
 	projects = frappe.get_all(
 		"Taskflow Project",
 		fields=["name", "project_name", "status", "priority", "team", "project_lead", "completion_percent", "start_date", "end_date", "parent_project", "modified", "creation"],
 		filters=project_filters,
 		order_by="modified desc",
-	)
+	) if (_has_global_access(current_user) or accessible_project_names) else []
 
 	lead_ids = list({p["project_lead"] for p in projects if p.get("project_lead")})
 	lead_map = {}
@@ -49,7 +70,7 @@ def get_spa_bootstrap() -> dict:
 		pm_raw = frappe.get_all(
 			"Taskflow Team Member",
 			filters={"parent": ["in", proj_names], "parenttype": "Taskflow Project", "parentfield": "project_team_members"},
-			fields=["parent", "employee", "team_role", "access_level", "is_active"],
+			fields=["parent", "employee", "user", "read", "write", "team_role", "access_level", "is_active"],
 		)
 		for pm in pm_raw:
 			proj_members_map.setdefault(pm["parent"], []).append(pm)
@@ -64,7 +85,15 @@ def get_spa_bootstrap() -> dict:
 	)
 	user_map = {u["name"]: u for u in users}
 
-	# Fetch tasks
+	# Fetch tasks accessible to user
+	accessible_task_names = get_user_accessible_tasks(current_user)
+	task_filters = {}
+	if not _has_global_access(current_user):
+		if accessible_task_names:
+			task_filters["name"] = ["in", list(accessible_task_names)]
+		else:
+			task_filters["name"] = ""
+
 	tasks_raw = frappe.get_all(
 		"Taskflow Task",
 		fields=[
@@ -94,9 +123,10 @@ def get_spa_bootstrap() -> dict:
 			"ticket_raised_by",
 			"ticket_description",
 		],
+		filters=task_filters,
 		order_by="modified desc",
 		limit=500,
-	)
+	) if (_has_global_access(current_user) or accessible_task_names) else []
 
 	# Fetch all child assignments from table_gqbl in one batch query
 	task_names = [t["name"] for t in tasks_raw]
@@ -237,28 +267,46 @@ def get_spa_bootstrap() -> dict:
 			"ticket_id": t.get("ticket_id") or "",
 			"ticket_raised_by": t.get("ticket_raised_by") or "",
 			"ticket_description": t.get("ticket_description") or "",
+			"can_write": can_write_task(current_user, t["name"]),
 		})
 
 	# Accessible teams and team members
-	from taskflow.taskflow.service.team_hierarchy import get_accessible_teams
 	accessible_teams = list(get_accessible_teams(current_user))
-	teams_filter = {"name": ["in", accessible_teams]} if accessible_teams else {}
-	teams_data = frappe.get_all(
+	teams_filter = {}
+	if not _has_global_access(current_user):
+		if accessible_teams:
+			teams_filter["name"] = ["in", accessible_teams]
+		else:
+			teams_filter["name"] = ""
+
+	teams_data_raw = frappe.get_all(
 		"Taskflow Team",
 		filters=teams_filter,
 		fields=["name", "team_name", "team_lead", "is_active"],
 		order_by="team_name asc",
-	)
+	) if (_has_global_access(current_user) or accessible_teams) else []
+
+	teams_data = [
+		{
+			"name": tm["name"],
+			"team_name": tm["team_name"],
+			"team_lead": tm.get("team_lead"),
+			"is_active": tm.get("is_active"),
+			"can_write": can_write_team(current_user, tm["name"]),
+		}
+		for tm in teams_data_raw
+	]
 
 	team_members_filter = {"is_active": 1}
-	if accessible_teams:
+	if not _has_global_access(current_user) and accessible_teams:
 		team_members_filter["parent"] = ["in", accessible_teams]
 
 	team_members_raw = frappe.get_all(
 		"Taskflow Team Member",
 		filters=team_members_filter,
-		fields=["name", "parent as team", "employee", "user", "team_role", "access_level", "is_active"],
-	)
+		fields=["name", "parent as team", "employee", "user", "read", "write", "team_role", "access_level", "is_active"],
+	) if (_has_global_access(current_user) or accessible_teams) else []
+
 	emp_ids = [m["employee"] for m in team_members_raw if m.get("employee")]
 	emp_map = {}
 	if emp_ids:
@@ -281,16 +329,30 @@ def get_spa_bootstrap() -> dict:
 			"user_image": e_info.get("image") or "",
 			"designation": e_info.get("designation") or "",
 			"department": e_info.get("department") or "",
+			"read": getattr(m, "read", 1),
+			"write": getattr(m, "write", 1),
 			"team_role": m.get("team_role") or "Team Member",
 			"access_level": m.get("access_level") or "Operate",
 			"is_active": m.get("is_active", 1),
 		})
+
+	# Taskflow Settings
+	pending_from_options = []
+	try:
+		if frappe.db.exists("DocType", "Taskflow Settings"):
+			settings_doc = frappe.db.get_singles_dict("Taskflow Settings")
+			pf_raw = settings_doc.get("pending_from") or ""
+			if pf_raw:
+				pending_from_options = [s.strip() for s in pf_raw.split("\n") if s.strip()]
+	except Exception:
+		pass
 
 	return {
 		"me": {
 			"email": user_info.get("name"),
 			"name": user_info.get("full_name") or user_info.get("name"),
 			"image": user_info.get("user_image") or "",
+			"is_admin": _has_global_access(current_user),
 		},
 		"projects": [
 			{
@@ -311,6 +373,7 @@ def get_spa_bootstrap() -> dict:
 				"modified": str(p.get("modified")) if p.get("modified") else "",
 				"modified_pretty": frappe.utils.pretty_date(p["modified"]) if p.get("modified") else "",
 				"icon": "lucide-folder",
+				"can_write": can_write_project(current_user, p["name"]),
 			}
 			for p in projects
 		],
@@ -326,6 +389,7 @@ def get_spa_bootstrap() -> dict:
 		"team_members": team_members,
 		"statuses": ["Open", "In Progress", "Review", "On Hold", "Completed", "Cancelled", "Overdue"],
 		"priorities": ["Critical", "High", "Medium", "Low"],
+		"pending_from_options": pending_from_options,
 		"tasks": tasks,
 	}
 
@@ -342,6 +406,7 @@ def _parse_date(val):
 @frappe.whitelist()
 def save_project(payload: str = None, **kwargs) -> dict:
 	_require_login()
+	current_user = frappe.session.user
 	if payload:
 		data = json.loads(payload)
 	else:
@@ -350,8 +415,9 @@ def save_project(payload: str = None, **kwargs) -> dict:
 	existing_name = data.get("name")
 
 	if existing_name and frappe.db.exists("Taskflow Project", existing_name):
+		if not can_write_project(current_user, existing_name):
+			frappe.throw(_("Not permitted to update project {0}").format(existing_name), frappe.PermissionError)
 		doc = frappe.get_doc("Taskflow Project", existing_name)
-		doc.check_permission("write")
 		if "project_name" in data:
 			doc.project_name = data["project_name"]
 		if "team" in data:
@@ -372,15 +438,18 @@ def save_project(payload: str = None, **kwargs) -> dict:
 			doc.project_team_members = []
 			for m in data["project_team_members"]:
 				doc.append("project_team_members", m)
-		doc.save(ignore_permissions=False)
+		doc.save(ignore_permissions=True)
 	else:
+		candidate_team = data.get("team")
+		if candidate_team and not can_write_team(current_user, candidate_team) and not _has_global_access(current_user):
+			frappe.throw(_("Not permitted to create project under team {0}").format(candidate_team), frappe.PermissionError)
 		doc = frappe.new_doc("Taskflow Project")
 		if "start_date" in data:
 			data["start_date"] = _parse_date(data["start_date"])
 		if "end_date" in data:
 			data["end_date"] = _parse_date(data["end_date"])
 		doc.update(data)
-		doc.save(ignore_permissions=False)
+		doc.save(ignore_permissions=True)
 
 	if "child_projects" in data and doc.name:
 		selected_children = set(data.get("child_projects") or [])
@@ -405,12 +474,36 @@ def delete_project(name: str = None, **kwargs) -> dict:
 		frappe.throw(_("Project name is required"))
 	if not frappe.db.exists("Taskflow Project", project_name):
 		frappe.throw(_("Project not found"))
-	frappe.delete_doc("Taskflow Project", project_name, ignore_permissions=False)
+	if not can_write_project(frappe.session.user, project_name):
+		frappe.throw(_("Not permitted to delete project {0}").format(project_name), frappe.PermissionError)
+	frappe.delete_doc("Taskflow Project", project_name, ignore_permissions=True)
 	return {"status": "ok", "deleted": project_name}
+
+def _normalize_date(val):
+	if not val:
+		return None
+	val_str = str(val).strip()
+	if not val_str:
+		return None
+	try:
+		from frappe.utils import getdate
+		return getdate(val_str)
+	except Exception:
+		try:
+			parts = val_str.replace("/", "-").split("-")
+			if len(parts) == 3:
+				if len(parts[0]) == 2 and len(parts[2]) == 4:
+					return f"{parts[2]}-{parts[1]}-{parts[0]}"
+				elif len(parts[0]) == 4:
+					return f"{parts[0]}-{parts[1]}-{parts[2]}"
+		except Exception:
+			pass
+		return None
 
 @frappe.whitelist()
 def save_task(payload: str = None, **kwargs) -> dict:
 	_require_login()
+	current_user = frappe.session.user
 	data = frappe.parse_json(payload) if payload else kwargs
 	if not data:
 		frappe.throw(_("No data provided"))
@@ -419,6 +512,22 @@ def save_task(payload: str = None, **kwargs) -> dict:
 	is_new = not task_id or task_id == "new"
 
 	if is_new:
+		target_project = data.get("project")
+		target_team = data.get("team")
+		if target_project and frappe.db.exists("Taskflow Project", target_project):
+			if not can_write_project(current_user, target_project):
+				frappe.throw(_("Not permitted to create task in project {0}").format(target_project), frappe.PermissionError)
+		elif target_team and frappe.db.exists("Taskflow Team", target_team):
+			if not can_write_team(current_user, target_team):
+				frappe.throw(_("Not permitted to create task in team {0}").format(target_team), frappe.PermissionError)
+		elif not _has_global_access(current_user):
+			user_projects = get_user_accessible_projects(current_user)
+			user_teams = get_accessible_teams(current_user)
+			writable_projects = [p for p in user_projects if can_write_project(current_user, p)]
+			writable_teams = [t for t in user_teams if can_write_team(current_user, t)]
+			if not writable_projects and not writable_teams:
+				frappe.throw(_("You do not have write access to any Project or Team to create a task"), frappe.PermissionError)
+
 		doc = frappe.new_doc("Taskflow Task")
 		title = data.get("title") or data.get("task_title")
 		if not title:
@@ -428,11 +537,12 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		doc.status = data.get("status") or "Open"
 		doc.priority = data.get("priority") or "Medium"
 		doc.task_type = data.get("task_type") or (data.get("labels")[0] if data.get("labels") else "Task")
-		doc.due_date = data.get("due") or data.get("due_date") or None
+		doc.due_date = _normalize_date(data.get("due") or data.get("due_date"))
 		doc.description = data.get("description") or ""
 	else:
+		if not can_write_task(current_user, task_id):
+			frappe.throw(_("Not permitted to edit task {0}").format(task_id), frappe.PermissionError)
 		doc = frappe.get_doc("Taskflow Task", task_id)
-		doc.check_permission("write")
 
 		if "title" in data or "task_title" in data:
 			doc.task_title = data.get("title") or data.get("task_title")
@@ -447,7 +557,7 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		elif "labels" in data and data.get("labels"):
 			doc.task_type = data.get("labels")[0]
 		if "due" in data or "due_date" in data:
-			doc.due_date = data.get("due") or data.get("due_date") or None
+			doc.due_date = _normalize_date(data.get("due") or data.get("due_date"))
 		if "description" in data:
 			doc.description = data.get("description")
 
@@ -462,8 +572,7 @@ def save_task(payload: str = None, **kwargs) -> dict:
 			candidate_team = proj_team
 
 	if not candidate_team:
-		from taskflow.taskflow.service.team_hierarchy import get_accessible_teams
-		user_teams = [t for t in get_accessible_teams(frappe.session.user) if frappe.db.exists("Taskflow Team", t)]
+		user_teams = [t for t in get_accessible_teams(current_user) if frappe.db.exists("Taskflow Team", t)]
 		if user_teams:
 			candidate_team = user_teams[0]
 		else:
@@ -487,11 +596,33 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		"ticket_raised_by",
 		"ticket_description",
 	]
+	date_fields = {"start_date", "due_date", "ticket_date", "expected_resolution_date", "completed_on"}
 	for f in direct_fields:
 		if f in data:
 			val = data[f]
 			if f == "estimated_hours":
 				val = float(val or 0)
+			elif f in date_fields:
+				val = _normalize_date(val)
+			elif f == "guided_by" and val:
+				user_id = None
+				if isinstance(val, dict):
+					val = val.get("value") or val.get("name") or val.get("user")
+				val_str = str(val).strip()
+				if val_str:
+					if frappe.db.exists("User", val_str):
+						user_id = val_str
+					elif frappe.db.exists("Employee", val_str):
+						user_id = frappe.db.get_value("Employee", val_str, "user_id")
+					else:
+						emp_user = frappe.db.get_value("Employee", {"employee_name": val_str}, "user_id")
+						if emp_user and frappe.db.exists("User", emp_user):
+							user_id = emp_user
+						else:
+							u_name = frappe.db.get_value("User", {"full_name": val_str}, "name")
+							if u_name:
+								user_id = u_name
+				val = user_id
 			elif not val:
 				val = None
 			doc.set(f, val)
@@ -595,13 +726,9 @@ def delete_task(task_id: str) -> dict:
 	_require_login()
 	if not task_id:
 		frappe.throw(_("Task ID is required"))
-	doc = frappe.get_doc("Taskflow Task", task_id)
 	user = frappe.session.user
-	is_admin = user == "Administrator" or bool({"System Manager", "Taskflow Admin"} & set(frappe.get_roles(user)))
-	if not is_admin:
-		from taskflow.taskflow.service.team_hierarchy import can_manage_team
-		if doc.owner != user and not can_manage_team(user, doc.team):
-			frappe.throw(_("Not permitted to delete this task"), frappe.PermissionError)
+	if not can_write_task(user, task_id):
+		frappe.throw(_("Not permitted to delete this task"), frappe.PermissionError)
 
 	frappe.delete_doc("Taskflow Task", task_id, ignore_permissions=True)
 	return {"success": True, "id": task_id}

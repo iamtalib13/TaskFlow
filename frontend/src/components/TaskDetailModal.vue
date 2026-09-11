@@ -1000,13 +1000,13 @@ export default {
       // Unique members mapped for Combobox format {label, value}
       const unique = new Map()
       for (const m of this.allAvailableTeamMembers) {
-         if (m && m.user) {
-            const id = m.user
-            const label = m.employee_name || m.user
-            if (!unique.has(id)) {
-              unique.set(id, { label: label, value: id })
-            }
-         }
+        const id = m.user || m.employee
+        if (id) {
+          const label = m.employee_name || m.user || m.employee
+          if (!unique.has(id)) {
+            unique.set(id, { label: label, value: id })
+          }
+        }
       }
       return Array.from(unique.values())
     },

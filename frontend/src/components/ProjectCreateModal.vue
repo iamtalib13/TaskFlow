@@ -130,16 +130,17 @@
             <table class="w-full text-left text-xs">
               <thead class="bg-surface-gray-2 border-b border-outline-gray-2 sticky top-0 z-10">
                 <tr>
-                  <th class="py-1.5 px-2.5 font-semibold text-ink-gray-6">#</th>
-                  <th class="py-1.5 px-2.5 font-semibold text-ink-gray-6">Employee</th>
-                  <th class="py-1.5 px-2.5 font-semibold text-ink-gray-6">Role</th>
-                  <th class="py-1.5 px-2.5 font-semibold text-ink-gray-6 w-8"></th>
+                  <th class="py-1.5 px-2 font-semibold text-ink-gray-6">#</th>
+                  <th class="py-1.5 px-2 font-semibold text-ink-gray-6">Employee</th>
+                  <th class="py-1.5 px-2 font-semibold text-ink-gray-6 text-center w-14">Read</th>
+                  <th class="py-1.5 px-2 font-semibold text-ink-gray-6 text-center w-14">Write</th>
+                  <th class="py-1.5 px-2 font-semibold text-ink-gray-6 w-8"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-outline-gray-1">
                 <tr v-for="(row, idx) in form.project_team_members" :key="idx" class="hover:bg-surface-gray-1 transition">
-                  <td class="py-1.5 px-2.5 text-ink-gray-5">{{ idx + 1 }}</td>
-                  <td class="py-1.5 px-2.5">
+                  <td class="py-1.5 px-2 text-ink-gray-5 text-center">{{ idx + 1 }}</td>
+                  <td class="py-1.5 px-2">
                     <Combobox
                       v-model="row.employee"
                       v-model:query="row.query"
@@ -168,16 +169,25 @@
                       </template>
                     </Combobox>
                   </td>
-                  <td class="py-1.5 px-2.5">
-                    <FormControl
-                      v-model="row.team_role"
-                      type="select"
-                      size="sm"
-                      placeholder="Role"
-                      :options="roleOptions"
+                  <td class="py-1.5 px-2 text-center">
+                    <input
+                      type="checkbox"
+                      v-model="row.read"
+                      :true-value="1"
+                      :false-value="0"
+                      class="rounded text-[#417c7d] focus:ring-[#417c7d] cursor-pointer size-4"
                     />
                   </td>
-                  <td class="py-1.5 px-2.5 text-right">
+                  <td class="py-1.5 px-2 text-center">
+                    <input
+                      type="checkbox"
+                      v-model="row.write"
+                      :true-value="1"
+                      :false-value="0"
+                      class="rounded text-[#417c7d] focus:ring-[#417c7d] cursor-pointer size-4"
+                    />
+                  </td>
+                  <td class="py-1.5 px-2 text-right">
                     <button type="button" class="text-ink-gray-4 hover:text-rose-500 transition p-1 cursor-pointer" @click="form.project_team_members.splice(idx, 1)">
                       <Trash2 class="size-3.5" />
                     </button>
@@ -475,6 +485,8 @@ function fillForm(project) {
     project_team_members: project.project_team_members
       ? project.project_team_members.map(m => ({
           employee: m.employee || '',
+          read: m.read !== undefined ? (m.read ? 1 : 0) : 1,
+          write: m.write !== undefined ? (m.write ? 1 : 0) : 1,
           team_role: m.team_role || 'Team Member',
           access_level: m.access_level || 'Operate',
           is_active: m.is_active !== undefined ? m.is_active : 1,
@@ -501,6 +513,8 @@ watch(() => props.modelValue, (val) => {
 function addMember() {
   form.value.project_team_members.push({
     employee: '',
+    read: 1,
+    write: 1,
     team_role: 'Team Member',
     access_level: 'Operate',
     is_active: 1,

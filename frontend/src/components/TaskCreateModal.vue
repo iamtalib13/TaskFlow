@@ -5,344 +5,357 @@
     @click.self="close"
   >
     <div
-      class="bg-surface-base rounded-2xl shadow-2xl border border-outline-gray-1 dark:border-gray-800 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
+      class="bg-surface-base rounded-2xl shadow-2xl border border-outline-gray-1 dark:border-gray-800 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
       role="dialog"
       aria-modal="true"
     >
-      <!-- Modal Header -->
-      <div class="px-6 py-4 border-b border-outline-gray-1 dark:border-gray-800 flex items-center justify-between bg-surface-base shrink-0">
-        <div class="flex items-center gap-2.5">
-          <span class="w-8 h-8 rounded-lg bg-black dark:bg-white text-white dark:text-gray-950 flex items-center justify-center text-sm font-bold shadow-xs">
-            +
+      <form class="flex flex-col flex-1 overflow-hidden" @submit.prevent="submit">
+        <!-- Modal Header with Action Buttons -->
+        <div class="px-6 py-3.5 border-b border-outline-gray-1 dark:border-gray-800 flex items-center justify-between bg-surface-base shrink-0">
+          <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-lg bg-black dark:bg-white text-white dark:text-gray-950 flex items-center justify-center text-sm font-bold shadow-xs">
+              +
+            </span>
+            <div>
+              <h3 class="text-sm font-bold text-ink-gray-9 dark:text-white">Create New Task</h3>
+              <p class="text-xs text-ink-gray-5 dark:text-gray-400">Add a new task to your Taskflow workspace</p>
+            </div>
+          </div>
+
+          <!-- Header Buttons -->
+          <div class="flex items-center gap-2">
+            <Button
+              type="button"
+              :disabled="creating"
+              size="sm"
+              @click="close"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              type="submit"
+              size="sm"
+              :loading="creating"
+              :disabled="!form.title.trim() || creating"
+            >
+              Create Task
+            </Button>
+            <button
+              type="button"
+              class="p-1.5 text-gray-400 hover:text-ink-gray-7 dark:hover:text-white hover:bg-surface-gray-3 dark:hover:bg-gray-800 rounded-lg transition cursor-pointer ml-1"
+              @click="close"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Error Banner -->
+        <div
+          v-if="errorMessage"
+          class="px-6 py-2.5 bg-rose-50 dark:bg-rose-950/40 border-b border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between shrink-0"
+        >
+          <span class="font-medium flex items-center gap-1.5">
+            <svg class="size-4 shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke-width="2"/>
+              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"/>
+              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"/>
+            </svg>
+            {{ errorMessage }}
           </span>
-          <div>
-            <h3 class="text-sm font-bold text-ink-gray-9 dark:text-white">Create New Task</h3>
-            <p class="text-xs text-ink-gray-5 dark:text-gray-400">Add a new task to your Taskflow workspace</p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          class="p-2 text-gray-400 hover:text-ink-gray-7 dark:hover:text-white hover:bg-surface-gray-3 dark:hover:bg-gray-800 rounded-lg transition cursor-pointer"
-          @click="close"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <!-- Error Banner -->
-      <div
-        v-if="errorMessage"
-        class="px-6 py-2.5 bg-rose-50 dark:bg-rose-950/40 border-b border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between shrink-0"
-      >
-        <span class="font-medium flex items-center gap-1.5">
-          <svg class="size-4 shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" stroke-width="2"/>
-            <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"/>
-            <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"/>
-          </svg>
-          {{ errorMessage }}
-        </span>
-        <button
-          type="button"
-          class="text-rose-500 hover:text-rose-700 dark:hover:text-rose-200 font-bold ml-2 cursor-pointer text-sm"
-          @click="errorMessage = ''"
-        >
-          &times;
-        </button>
-      </div>
-
-      <!-- Modal Body -->
-      <form class="p-6 space-y-4 text-xs overflow-y-auto flex-1" @submit.prevent="submit">
-        <div>
-          <label class="block font-semibold text-ink-gray-7 dark:text-gray-200 mb-1">
-            Task Title <span class="text-rose-500">*</span>
-          </label>
-          <input
-            v-model="form.title"
-            required
-            type="text"
-            placeholder="e.g. Implement Responsive Table View"
-            class="w-full text-sm bg-surface-base border border-outline-gray-2 dark:border-gray-700 text-ink-gray-9 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
-          />
-        </div>
-
-        <!-- Row 1: Project & Task Type & Status & Priority -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Project</label>
-            <select
-              v-model="form.project"
-              class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-              @change="onProjectChange"
-            >
-              <option value="" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">Select Project</option>
-              <option v-for="p in projects" :key="p.name" :value="p.name" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">
-                {{ p.display_name || p.name }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Task Type</label>
-            <div class="relative flex items-center">
-              <select
-                v-model="form.task_type"
-                class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 hover:border-outline-gray-3 dark:hover:border-gray-600 rounded-lg pl-7 pr-7 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
-              >
-                <option v-for="t in taskTypes" :key="t" :value="t" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ t }}</option>
-              </select>
-              <component
-                :is="getTaskTypeIcon(form.task_type)"
-                class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
-                :class="getTaskTypeIconClass(form.task_type)"
-              />
-              <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none text-gray-400 dark:text-gray-500" />
-            </div>
-          </div>
-
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Status</label>
-            <select
-              v-model="form.status"
-              class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-            >
-              <option v-for="s in statuses" :key="s" :value="s" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ s }}</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Priority</label>
-            <select
-              v-model="form.priority"
-              class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-            >
-              <option v-for="p in priorities" :key="p" :value="p" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ p }}</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Row 2: Assigned To (MultiSelect) & Start Date & Due Date side-by-side -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-          <div class="md:col-span-2">
-            <div class="flex items-center justify-between mb-1">
-              <label class="block font-medium text-ink-gray-6 dark:text-gray-300">Assigned To (Team Members)</label>
-              <span v-if="assigneeOptions.length > 0" class="text-[10px] text-gray-400 dark:text-gray-500">
-                {{ assigneeOptions.length }} team members
-              </span>
-            </div>
-            <MultiSelect
-              v-model="form.assignees"
-              :options="assigneeOptions"
-              :placeholder="effectiveTeam ? `Select ${effectiveTeam} member...` : 'Select Team Members...'"
-              size="sm"
-              class="w-full"
-            />
-            <p v-if="effectiveTeam && assigneeOptions.length === 0" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
-              No team members found in {{ effectiveTeam }}.
-            </p>
-          </div>
-
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Start Date</label>
-            <DatePicker
-              v-model="form.start_date"
-              format="DD-MM-YYYY"
-              placeholder="DD-MM-YYYY"
-              size="sm"
-              variant="outline"
-              class="w-full"
-            >
-              <template #prefix>
-                <Calendar class="size-3.5 text-gray-400 dark:text-gray-500" />
-              </template>
-              <template #actions="{ setDate, close }">
-                <button
-                  type="button"
-                  :class="rowCls"
-                  @click="applyQuickDate(setDate, 0, 'day', close)"
-                >
-                  Today
-                </button>
-                <button
-                  type="button"
-                  :class="rowCls"
-                  @click="applyQuickDate(setDate, 1, 'day', close)"
-                >
-                  Tomorrow
-                </button>
-                <button
-                  type="button"
-                  :class="rowCls"
-                  @click="applyQuickDate(setDate, 7, 'day', close)"
-                >
-                  One Week
-                </button>
-                <button
-                  type="button"
-                  :class="rowCls"
-                  @click="applyQuickDate(setDate, 15, 'day', close)"
-                >
-                  15 Days
-                </button>
-                <button
-                  type="button"
-                  :class="rowCls"
-                  @click="applyQuickDate(setDate, 1, 'month', close)"
-                >
-                  1 Month
-                </button>
-              </template>
-            </DatePicker>
-          </div>
-
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Due Date</label>
-            <DatePicker
-              v-model="form.due_date"
-              format="DD-MM-YYYY"
-              placeholder="DD-MM-YYYY"
-              size="sm"
-              variant="outline"
-              class="w-full"
-            >
-              <template #prefix>
-                <Calendar class="size-3.5 text-gray-400 dark:text-gray-500" />
-              </template>
-              <template #actions="{ setDate, close }">
-                <button
-                  type="button"
-                  :class="rowCls"
-                  @click="applyQuickDate(setDate, 0, 'day', close)"
-                >
-                  Today
-                </button>
-                <button
-                  type="button"
-                  :class="rowCls"
-                  @click="applyQuickDate(setDate, 1, 'day', close)"
-                >
-                  Tomorrow
-                </button>
-                <button
-                  type="button"
-                  :class="rowCls"
-                  @click="applyQuickDate(setDate, 7, 'day', close)"
-                >
-                  One Week
-                </button>
-                <button
-                  type="button"
-                  :class="rowCls"
-                  @click="applyQuickDate(setDate, 15, 'day', close)"
-                >
-                  15 Days
-                </button>
-                <button
-                  type="button"
-                  :class="rowCls"
-                  @click="applyQuickDate(setDate, 1, 'month', close)"
-                >
-                  1 Month
-                </button>
-              </template>
-            </DatePicker>
-          </div>
-        </div>
-
-        <!-- Row 3: Pending From & Guided By -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Pending From</label>
-            <select
-              v-model="form.pending_from"
-              class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-            >
-              <option value="" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">Pending from...</option>
-              <option v-for="v in pendingFromOptions" :key="v" :value="v" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ v }}</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Guided By</label>
-            <Combobox
-              v-model="form.guided_by"
-              :options="guidedByOptions"
-              placeholder="Select or search guide..."
-              size="sm"
-              class="w-full"
-            />
-          </div>
-        </div>
-
-        <!-- Row 4: Toll ID & Ticket Date & Ticket Raised By -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Toll ID</label>
-            <input
-              v-model="form.toll_id"
-              type="text"
-              placeholder="e.g. TL-1024"
-              class="w-full text-xs bg-surface-base border border-outline-gray-2 dark:border-gray-700 text-ink-gray-8 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
-            />
-          </div>
-
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Ticket Date</label>
-            <DatePicker
-              v-model="form.ticket_date"
-              format="DD-MM-YYYY"
-              placeholder="DD-MM-YYYY"
-              size="sm"
-              variant="outline"
-              class="w-full"
-            >
-              <template #prefix>
-                <Calendar class="size-3.5 text-gray-400 dark:text-gray-500" />
-              </template>
-            </DatePicker>
-          </div>
-
-          <div>
-            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Ticket Raised By</label>
-            <input
-              v-model="form.ticket_raised_by"
-              type="text"
-              placeholder="e.g. Name / Email"
-              class="w-full text-xs bg-surface-base border border-outline-gray-2 dark:border-gray-700 text-ink-gray-8 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Description</label>
-          <FrappeRichEditor
-            v-model="form.description"
-            :people="people"
-            min-height="min-h-48"
-            placeholder="Write details, acceptance criteria, or type / for blocks..."
-          />
-        </div>
-
-        <!-- Actions -->
-        <div class="pt-3 border-t border-outline-gray-1 dark:border-gray-800 flex items-center justify-end gap-2">
-          <Button
+          <button
             type="button"
-            :disabled="creating"
-            @click="close"
+            class="text-rose-500 hover:text-rose-700 dark:hover:text-rose-200 font-bold ml-2 cursor-pointer text-sm"
+            @click="errorMessage = ''"
           >
-            Cancel
-          </Button>
-          <Button
-            variant="solid"
-            type="submit"
-            :loading="creating"
-            :disabled="!form.title.trim() || creating"
-          >
-            Create Task
-          </Button>
+            &times;
+          </button>
+        </div>
+
+        <!-- Modal Body (Two-Column Layout) -->
+        <div class="p-6 flex-1 overflow-hidden text-xs">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <!-- Left Column (col-span-7): Task Title & Description (Scrolls independently) -->
+            <div class="lg:col-span-7 flex flex-col space-y-4 max-h-[72vh] overflow-y-auto pr-2">
+              <div>
+                <label class="block font-semibold text-ink-gray-7 dark:text-gray-200 mb-1">
+                  Task Title <span class="text-rose-500">*</span>
+                </label>
+                <input
+                  v-model="form.title"
+                  required
+                  type="text"
+                  placeholder="e.g. Implement Responsive Table View"
+                  class="w-full text-sm bg-surface-base border border-outline-gray-2 dark:border-gray-700 text-ink-gray-9 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition font-medium"
+                />
+              </div>
+
+              <div class="flex-1 flex flex-col">
+                <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Description</label>
+                <FrappeRichEditor
+                  v-model="form.description"
+                  :people="people"
+                  min-height="min-h-[300px]"
+                  placeholder="Write details, acceptance criteria, or type / for blocks..."
+                  class="flex-1"
+                />
+              </div>
+            </div>
+
+            <!-- Right Column (col-span-5): Meta Fields (Independent Panel) -->
+            <div class="lg:col-span-5 flex flex-col space-y-3.5 bg-surface-gray-1/50 dark:bg-gray-900/40 p-4 rounded-xl border border-outline-gray-1 dark:border-gray-800 max-h-[72vh] overflow-y-auto">
+              <!-- Project (Searchable Combobox) -->
+              <div>
+                <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Project</label>
+                <Combobox
+                  v-model="form.project"
+                  :options="projectOptions"
+                  placeholder="Search and select project..."
+                  size="sm"
+                  class="w-full"
+                  @change="onProjectChange"
+                />
+              </div>
+
+              <!-- Task Type & Status -->
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Task Type</label>
+                  <div class="relative flex items-center">
+                    <select
+                      v-model="form.task_type"
+                      class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 hover:border-outline-gray-3 dark:hover:border-gray-600 rounded-lg pl-7 pr-7 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
+                    >
+                      <option v-for="t in taskTypes" :key="t" :value="t" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ t }}</option>
+                    </select>
+                    <component
+                      :is="getTaskTypeIcon(form.task_type)"
+                      class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
+                      :class="getTaskTypeIconClass(form.task_type)"
+                    />
+                    <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none text-gray-400 dark:text-gray-500" />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Status</label>
+                  <select
+                    v-model="form.status"
+                    class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  >
+                    <option v-for="s in statuses" :key="s" :value="s" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ s }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Priority -->
+              <div>
+                <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Priority</label>
+                <select
+                  v-model="form.priority"
+                  class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                >
+                  <option v-for="p in priorities" :key="p" :value="p" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ p }}</option>
+                </select>
+              </div>
+
+              <!-- Assigned To -->
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300">Assigned To (Team Members)</label>
+                  <span v-if="assigneeOptions.length > 0" class="text-[10px] text-gray-400 dark:text-gray-500">
+                    {{ assigneeOptions.length }} team members
+                  </span>
+                </div>
+                <MultiSelect
+                  v-model="form.assignees"
+                  :options="assigneeOptions"
+                  :placeholder="effectiveTeam ? `Select ${effectiveTeam} member...` : 'Select Team Members...'"
+                  size="sm"
+                  class="w-full"
+                />
+                <p v-if="effectiveTeam && assigneeOptions.length === 0" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
+                  No team members found in {{ effectiveTeam }}.
+                </p>
+              </div>
+
+              <!-- Start Date & Due Date -->
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Start Date</label>
+                  <DatePicker
+                    v-model="form.start_date"
+                    format="DD-MM-YYYY"
+                    placeholder="DD-MM-YYYY"
+                    size="sm"
+                    variant="outline"
+                    class="w-full"
+                  >
+                    <template #prefix>
+                      <Calendar class="size-3.5 text-gray-400 dark:text-gray-500" />
+                    </template>
+                    <template #actions="{ setDate, close }">
+                      <button
+                        type="button"
+                        :class="rowCls"
+                        @click="applyQuickDate(setDate, 0, 'day', close)"
+                      >
+                        Today
+                      </button>
+                      <button
+                        type="button"
+                        :class="rowCls"
+                        @click="applyQuickDate(setDate, 1, 'day', close)"
+                      >
+                        Tomorrow
+                      </button>
+                      <button
+                        type="button"
+                        :class="rowCls"
+                        @click="applyQuickDate(setDate, 7, 'day', close)"
+                      >
+                        One Week
+                      </button>
+                      <button
+                        type="button"
+                        :class="rowCls"
+                        @click="applyQuickDate(setDate, 15, 'day', close)"
+                      >
+                        15 Days
+                      </button>
+                      <button
+                        type="button"
+                        :class="rowCls"
+                        @click="applyQuickDate(setDate, 1, 'month', close)"
+                      >
+                        1 Month
+                      </button>
+                    </template>
+                  </DatePicker>
+                </div>
+
+                <div>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Due Date</label>
+                  <DatePicker
+                    v-model="form.due_date"
+                    format="DD-MM-YYYY"
+                    placeholder="DD-MM-YYYY"
+                    size="sm"
+                    variant="outline"
+                    class="w-full"
+                  >
+                    <template #prefix>
+                      <Calendar class="size-3.5 text-gray-400 dark:text-gray-500" />
+                    </template>
+                    <template #actions="{ setDate, close }">
+                      <button
+                        type="button"
+                        :class="rowCls"
+                        @click="applyQuickDate(setDate, 0, 'day', close)"
+                      >
+                        Today
+                      </button>
+                      <button
+                        type="button"
+                        :class="rowCls"
+                        @click="applyQuickDate(setDate, 1, 'day', close)"
+                      >
+                        Tomorrow
+                      </button>
+                      <button
+                        type="button"
+                        :class="rowCls"
+                        @click="applyQuickDate(setDate, 7, 'day', close)"
+                      >
+                        One Week
+                      </button>
+                      <button
+                        type="button"
+                        :class="rowCls"
+                        @click="applyQuickDate(setDate, 15, 'day', close)"
+                      >
+                        15 Days
+                      </button>
+                      <button
+                        type="button"
+                        :class="rowCls"
+                        @click="applyQuickDate(setDate, 1, 'month', close)"
+                      >
+                        1 Month
+                      </button>
+                    </template>
+                  </DatePicker>
+                </div>
+              </div>
+
+              <!-- Pending From & Guided By -->
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Pending From</label>
+                  <select
+                    v-model="form.pending_from"
+                    class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                  >
+                    <option value="" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">Pending from...</option>
+                    <option v-for="v in pendingFromOptions" :key="v" :value="v" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ v }}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Guided By</label>
+                  <Combobox
+                    v-model="form.guided_by"
+                    :options="guidedByOptions"
+                    placeholder="Search guide..."
+                    size="sm"
+                    class="w-full"
+                  />
+                </div>
+              </div>
+
+              <!-- Toll ID, Ticket Date & Ticket Raised By -->
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Toll ID</label>
+                  <input
+                    v-model="form.toll_id"
+                    type="text"
+                    placeholder="e.g. TL-1024"
+                    class="w-full text-xs bg-surface-base border border-outline-gray-2 dark:border-gray-700 text-ink-gray-8 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
+                  />
+                </div>
+
+                <div>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Ticket Date</label>
+                  <DatePicker
+                    v-model="form.ticket_date"
+                    format="DD-MM-YYYY"
+                    placeholder="DD-MM-YYYY"
+                    size="sm"
+                    variant="outline"
+                    class="w-full"
+                  >
+                    <template #prefix>
+                      <Calendar class="size-3.5 text-gray-400 dark:text-gray-500" />
+                    </template>
+                  </DatePicker>
+                </div>
+
+                <div>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Ticket Raised By</label>
+                  <input
+                    v-model="form.ticket_raised_by"
+                    type="text"
+                    placeholder="Name/Email"
+                    class="w-full text-xs bg-surface-base border border-outline-gray-2 dark:border-gray-700 text-ink-gray-8 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </form>
     </div>
@@ -352,7 +365,7 @@
 <script>
 import { MultiSelect, DatePicker, Combobox, Button, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
-import { saveTask, getErrorMessage, fetchTeamMembers } from '../data/api'
+import { saveTask, getErrorMessage, fetchTeamMembers, fetchTaskflowSettings } from '../data/api'
 import FrappeRichEditor from './FrappeRichEditor.vue'
 import { Calendar, Bug, Sparkles, CheckSquare, ChevronDown } from 'lucide-vue-next'
 
@@ -436,6 +449,7 @@ export default {
   watch: {
     modelValue(val) {
       if (val) {
+        this.loadTaskflowSettings()
         this.errorMessage = ''
         const defaultProject = this.projects[0]?.name || ''
         const defaultTeam = this.projects[0]?.team || this.teams[0]?.name || ''
@@ -462,8 +476,20 @@ export default {
         }
       }
     },
+    'form.project'() {
+      this.onProjectChange()
+    },
+  },
+  mounted() {
+    this.loadTaskflowSettings()
   },
   computed: {
+    projectOptions() {
+      return (this.projects || []).map((p) => ({
+        label: p.display_name || p.project_name || p.name,
+        value: p.name,
+      }))
+    },
     guidedByOptions() {
       const unique = new Map()
       for (const m of this.allAvailableTeamMembers) {
@@ -475,17 +501,12 @@ export default {
           }
         }
       }
-      for (const p of this.people || []) {
-        const id = p.email || p.name
-        if (id && !unique.has(id)) {
-          unique.set(id, { label: p.name || p.email, value: id })
-        }
-      }
       return Array.from(unique.values())
     },
     effectiveTeam() {
       if (this.form.team) return this.form.team
-      const selected = (this.projects || []).find((p) => p.name === this.form.project)
+      const projVal = typeof this.form.project === 'object' ? (this.form.project.value || '') : (this.form.project || '')
+      const selected = (this.projects || []).find((p) => p.name === projVal)
       if (selected && selected.team) return selected.team
       return ''
     },
@@ -527,36 +548,24 @@ export default {
 
       return []
     },
-    displayDueDate: {
-      get() {
-        if (!this.form.due_date) return ''
-        const parts = String(this.form.due_date).split('-')
-        if (parts.length === 3) {
-          const [y, m, d] = parts
-          if (y.length === 4) return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`
-        }
-        return this.form.due_date
-      },
-      set(val) {
-        if (!val) {
-          this.form.due_date = ''
-          return
-        }
-        const parts = String(val).trim().split(/[-/]/)
-        if (parts.length === 3) {
-          const [d, m, y] = parts
-          if (y && y.length === 4) {
-            this.form.due_date = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-            return
-          }
-        }
-        this.form.due_date = val
-      },
-    },
   },
   methods: {
+    async loadTaskflowSettings() {
+      try {
+        const settings = await fetchTaskflowSettings()
+        if (settings && settings.pending_from) {
+          const opts = settings.pending_from.split('\n').map(s => s.trim()).filter(Boolean)
+          if (opts.length > 0) {
+            this.pendingFromOptions = opts
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load Taskflow Settings in TaskCreateModal', e)
+      }
+    },
     onProjectChange() {
-      const selected = this.projects.find((p) => p.name === this.form.project)
+      const projVal = typeof this.form.project === 'object' ? (this.form.project.value || '') : (this.form.project || '')
+      const selected = (this.projects || []).find((p) => p.name === projVal)
       if (selected && selected.team) {
         this.form.team = selected.team
       }
@@ -586,9 +595,6 @@ export default {
         close()
       }
     },
-    onNativeDateChange(e) {
-      this.form.due_date = e.target.value
-    },
     close() {
       this.$emit('update:modelValue', false)
       this.$emit('close')
@@ -601,10 +607,12 @@ export default {
       }
       this.creating = true
       this.errorMessage = ''
+      const projVal = typeof this.form.project === 'object' ? (this.form.project.value || '') : (this.form.project || '')
       const assigneeIds = (this.form.assignees || []).map((a) => (typeof a === 'object' ? (a.value || a.user_id || a.user || a.email) : a)).filter(Boolean)
       const guidedByVal = typeof this.form.guided_by === 'object' ? (this.form.guided_by.value || '') : (this.form.guided_by || '')
       const payload = {
         ...this.form,
+        project: projVal,
         guided_by: guidedByVal,
         team: this.effectiveTeam || this.form.team || undefined,
         assignees: assigneeIds,
