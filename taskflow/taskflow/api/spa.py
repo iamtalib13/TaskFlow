@@ -369,6 +369,16 @@ def save_project(payload: str = None, **kwargs) -> dict:
 		doc.update(data)
 		doc.save(ignore_permissions=False)
 
+	if "child_projects" in data and doc.name:
+		selected_children = set(data.get("child_projects") or [])
+		curr_children = frappe.get_all("Taskflow Project", filters={"parent_project": doc.name}, pluck="name")
+		for child_name in curr_children:
+			if child_name not in selected_children:
+				frappe.db.set_value("Taskflow Project", child_name, "parent_project", None)
+		for child_name in selected_children:
+			if child_name and child_name != doc.name and frappe.db.exists("Taskflow Project", child_name):
+				frappe.db.set_value("Taskflow Project", child_name, "parent_project", doc.name)
+
 	res = doc.as_dict()
 	res["modified"] = str(doc.modified) if getattr(doc, "modified", None) else ""
 	res["modified_pretty"] = frappe.utils.pretty_date(doc.modified) if getattr(doc, "modified", None) else "Just now"

@@ -247,44 +247,53 @@
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-gray-7">
               <GitFork class="size-3.5 text-blue-600" />
-              <span>Project Hierarchy & Tree</span>
+              <span>Linked Child Projects</span>
             </div>
             <button
-              v-if="form.parent_project"
+              v-if="form.child_projects.length > 0"
               type="button"
               class="text-[11px] text-rose-600 hover:underline font-medium cursor-pointer"
-              @click="form.parent_project = ''"
+              @click="form.child_projects = []"
             >
-              Clear Parent
+              Clear Children
             </button>
           </div>
 
-          <!-- Current Selected Parent Status Card -->
+          <!-- Current Selected Children Status Card -->
           <div class="p-2 rounded-lg border border-outline-gray-2 bg-surface-base text-xs flex items-center justify-between shadow-xs">
-            <span class="text-ink-gray-5 font-medium">Selected Parent:</span>
-            <span class="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 truncate max-w-[170px]">
-              {{ selectedParentLabel }}
+            <span class="text-ink-gray-5 font-medium">Sub-Projects Linked:</span>
+            <span class="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+              {{ form.child_projects.length }} project{{ form.child_projects.length !== 1 ? 's' : '' }}
             </span>
           </div>
 
           <!-- Tree Component Container -->
           <div class="flex-1 rounded-lg border border-outline-gray-2 bg-surface-base p-2 overflow-y-auto max-h-[190px]">
-            <Tree :nodes="projectTreeNodes" node-key="value">
+            <div v-if="projectTreeNodes.length === 0" class="py-6 text-center text-xs text-ink-gray-4">
+              No existing projects available
+            </div>
+            <Tree v-else :nodes="projectTreeNodes" node-key="value">
               <template #item="{ node }">
                 <div
                   class="flex items-center justify-between px-2 py-1 rounded-md text-xs cursor-pointer transition-all duration-150 group"
-                  :class="form.parent_project === node.value ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200' : 'hover:bg-surface-gray-2 text-ink-gray-8'"
-                  @click="form.parent_project = node.value"
+                  :class="isChildSelected(node.value) ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200' : 'hover:bg-surface-gray-2 text-ink-gray-8'"
+                  @click="toggleChildProject(node.value)"
                 >
                   <div class="flex items-center gap-1.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      :checked="isChildSelected(node.value)"
+                      class="rounded border-outline-gray-3 text-blue-600 focus:ring-blue-500 size-3.5 cursor-pointer shrink-0"
+                      @click.stop="toggleChildProject(node.value)"
+                    />
                     <Folder class="size-3.5 text-blue-500 shrink-0" />
                     <span class="truncate">{{ node.label }}</span>
                   </div>
                   <span
-                    v-if="form.parent_project === node.value"
+                    v-if="isChildSelected(node.value)"
                     class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-medium shrink-0 ml-1"
                   >
-                    Parent
+                    Child
                   </span>
                 </div>
               </template>
@@ -324,6 +333,7 @@ const defaultForm = () => ({
   start_date: '',
   end_date: '',
   parent_project: '',
+  child_projects: [],
   project_team_members: [],
 })
 
@@ -364,11 +374,20 @@ const employeeOptions = computed(() => props.employees.map(e => ({
 })))
 const projectOptions = computed(() => props.projects.map(p => ({ label: p.project_name || p.name, value: p.name })))
 
-const selectedParentLabel = computed(() => {
-  if (!form.value.parent_project) return 'None (Top Level)'
-  const p = props.projects.find(proj => (proj.name || proj.project_name) === form.value.parent_project)
-  return p ? (p.project_name || p.name) : form.value.parent_project
-})
+function isChildSelected(projId) {
+  if (!projId) return false
+  return form.value.child_projects.includes(projId)
+}
+
+function toggleChildProject(projId) {
+  if (!projId) return
+  const idx = form.value.child_projects.indexOf(projId)
+  if (idx > -1) {
+    form.value.child_projects.splice(idx, 1)
+  } else {
+    form.value.child_projects.push(projId)
+  }
+}
 
 const projectTreeNodes = computed(() => {
   const currentId = props.editProject ? (props.editProject.name || props.editProject.id) : null
@@ -378,14 +397,7 @@ const projectTreeNodes = computed(() => {
   })
 
   const map = {}
-  const roots = [
-    {
-      name: '',
-      label: 'None (Top Level Project)',
-      value: '',
-      children: [],
-    }
-  ]
+  const roots = []
 
   filtered.forEach(p => {
     const id = p.name || p.project_name
@@ -560,6 +572,11 @@ onBeforeUnmount(() => {
 
 function fillForm(project) {
   if (!project) return
+  const pName = project.name || project.project_name || project.id
+  const existingChildren = (props.projects || [])
+    .filter(p => p.parent_project === pName)
+    .map(p => p.name || p.project_name)
+
   form.value = {
     project_name: project.name || project.project_name || '',
     team: project.team || '',
@@ -568,6 +585,7 @@ function fillForm(project) {
     start_date: project.start_date || '',
     end_date: project.due_date || project.end_date || '',
     parent_project: project.parent_project || '',
+    child_projects: existingChildren,
     project_team_members: project.project_team_members
       ? project.project_team_members.map(m => ({
           employee: m.employee || '',
@@ -622,6 +640,7 @@ async function submit() {
       start_date: form.value.start_date || undefined,
       end_date: form.value.end_date || undefined,
       parent_project: form.value.parent_project || undefined,
+      child_projects: form.value.child_projects,
       project_team_members: form.value.project_team_members.filter(r => r.employee),
     }
 
