@@ -64,7 +64,9 @@
               <label class="text-sm font-medium text-ink-gray-8">Project Lead</label>
               <Combobox
                 v-model="form.project_lead"
-                :options="employeeOptions"
+                v-model:query="leadQuery"
+                :options="filteredEmployeeOptions"
+                :filterable="false"
                 placeholder="Search employee..."
                 class="w-full"
               >
@@ -344,6 +346,19 @@ const employeeOptions = computed(() => props.employees.map(e => ({
   description: e.name,
   image: e.user_image || '',
 })))
+
+const leadQuery = ref('')
+const filteredEmployeeOptions = computed(() => {
+  const q = leadQuery.value.toLowerCase().trim()
+  let list = employeeOptions.value
+  if (q) {
+    list = list.filter(e =>
+      e.label.toLowerCase().includes(q) ||
+      e.description.toLowerCase().includes(q)
+    )
+  }
+  return list.slice(0, MAX_VISIBLE)
+})
 const projectOptions = computed(() => props.projects.map(p => ({ label: p.project_name || p.name, value: p.name })))
 
 function isChildSelected(projId) {
