@@ -772,6 +772,14 @@ const uniqueMemberOptions = computed(() => {
   return Array.from(map.values())
 })
 
+function matchTokens(text, query) {
+  if (!query) return true
+  if (!text) return false
+  const textLower = String(text).toLowerCase()
+  const tokens = String(query).toLowerCase().trim().split(/\s+/).filter(Boolean)
+  return tokens.every(token => textLower.includes(token))
+}
+
 const filteredMemberFilterOptions = computed(() => {
   const q = memberFilterQuery.value.trim()
   let list = uniqueMemberOptions.value
