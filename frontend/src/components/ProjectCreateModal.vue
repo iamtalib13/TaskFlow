@@ -213,34 +213,52 @@
             </span>
           </div>
 
-          <!-- Tree Component Container -->
+          <!-- Add Child Project Combobox Searcher -->
+          <div class="space-y-1">
+            <Combobox
+              :modelValue="selectedAddChild"
+              v-model:query="childProjectQuery"
+              :options="availableChildProjectOptions"
+              :filterable="false"
+              placeholder="+ Add child project..."
+              size="sm"
+              class="w-full"
+              @update:modelValue="addChildProject"
+            >
+              <template #item-prefix>
+                <Folder class="size-3.5 text-blue-500 shrink-0" />
+              </template>
+              <template #item-label="{ item }">
+                <div class="min-w-0 flex justify-between items-center w-full">
+                  <div class="truncate font-medium text-ink-gray-9 text-xs">{{ item.label }}</div>
+                  <div v-if="item.description" class="truncate text-[10px] text-ink-gray-5 ml-2">{{ item.description }}</div>
+                </div>
+              </template>
+            </Combobox>
+          </div>
+
+          <!-- Linked Tree Container -->
           <div class="flex-1 rounded-lg border border-outline-gray-2 bg-surface-base p-2 overflow-y-auto max-h-[190px]">
             <div v-if="projectTreeNodes.length === 0" class="py-6 text-center text-xs text-ink-gray-4">
-              No existing projects available
+              No child projects linked yet.<br/>Use the search above to add child projects.
             </div>
             <Tree v-else :nodes="projectTreeNodes" node-key="value">
               <template #item="{ node }">
                 <div
-                  class="flex items-center justify-between px-2 py-1 rounded-md text-xs cursor-pointer transition-all duration-150 group"
-                  :class="isChildSelected(node.value) ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200' : 'hover:bg-surface-gray-2 text-ink-gray-8'"
-                  @click="toggleChildProject(node.value)"
+                  class="flex items-center justify-between px-2 py-1 rounded-md text-xs bg-blue-50/70 text-blue-900 border border-blue-200/80 my-0.5"
                 >
                   <div class="flex items-center gap-1.5 min-w-0">
-                    <input
-                      type="checkbox"
-                      :checked="isChildSelected(node.value)"
-                      class="rounded border-outline-gray-3 text-blue-600 focus:ring-blue-500 size-3.5 cursor-pointer shrink-0"
-                      @click.stop="toggleChildProject(node.value)"
-                    />
-                    <Folder class="size-3.5 text-blue-500 shrink-0" />
-                    <span class="truncate">{{ node.label }}</span>
+                    <Folder class="size-3.5 text-blue-600 shrink-0" />
+                    <span class="truncate font-medium">{{ node.label }}</span>
                   </div>
-                  <span
-                    v-if="isChildSelected(node.value)"
-                    class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-medium shrink-0 ml-1"
+                  <button
+                    type="button"
+                    class="text-ink-gray-4 hover:text-rose-600 transition p-0.5 rounded cursor-pointer"
+                    title="Remove child project"
+                    @click.stop="removeChildProject(node.value)"
                   >
-                    Child
-                  </span>
+                    <X class="size-3.5" />
+                  </button>
                 </div>
               </template>
             </Tree>
@@ -255,7 +273,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { FormControl, Avatar, Button, DatePicker, Tree, Combobox, toast } from 'frappe-ui'
 import { saveProject } from '../data/api'
-import { Plus, Trash2, Folder, GitFork } from 'lucide-vue-next'
+import { Plus, Trash2, Folder, GitFork, X } from 'lucide-vue-next'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -347,49 +365,79 @@ const leadQuery = ref('')
 const filteredEmployeeOptions = computed(() => getFilteredEmployeeOptions(leadQuery.value, form.value.project_lead))
 const projectOptions = computed(() => props.projects.map(p => ({ label: p.project_name || p.name, value: p.name })))
 
-function isChildSelected(projId) {
-  if (!projId) return false
-  return form.value.child_projects.includes(projId)
+// --- Child Projects Search & Tree ---
+const childProjectQuery = ref('')
+const selectedAddChild = ref(null)
+
+const availableChildProjectOptions = computed(() => {
+  const currentId = props.editProject ? (props.editProject.name || props.editProject.id) : null
+  const q = childProjectQuery.value.trim()
+
+  let list = (props.projects || []).filter(p => {
+    const id = p.name || p.project_name
+    return id !== currentId && !form.value.child_projects.includes(id)
+  }).map(p => ({
+    label: p.project_name || p.name,
+    value: p.name || p.project_name,
+    description: p.team ? `Team: ${p.team}` : '',
+  }))
+
+  if (q) {
+    list = list.filter(p => matchTokens(`${p.label} ${p.description}`, q))
+  }
+
+  return list.slice(0, MAX_VISIBLE)
+})
+
+function addChildProject(val) {
+  if (!val) return
+  const projId = typeof val === 'object' ? val.value : val
+  if (projId && !form.value.child_projects.includes(projId)) {
+    form.value.child_projects.push(projId)
+  }
+  selectedAddChild.value = null
+  childProjectQuery.value = ''
 }
 
-function toggleChildProject(projId) {
+function removeChildProject(projId) {
   if (!projId) return
   const idx = form.value.child_projects.indexOf(projId)
   if (idx > -1) {
     form.value.child_projects.splice(idx, 1)
-  } else {
-    form.value.child_projects.push(projId)
   }
 }
 
 const projectTreeNodes = computed(() => {
-  const currentId = props.editProject ? (props.editProject.name || props.editProject.id) : null
-  const filtered = props.projects.filter(p => {
-    const id = p.name || p.project_name
-    return id !== currentId
-  })
+  if (!form.value.child_projects || form.value.child_projects.length === 0) return []
+
+  const linkedIds = new Set(form.value.child_projects)
+  const allProjects = props.projects || []
 
   const map = {}
   const roots = []
 
-  filtered.forEach(p => {
+  allProjects.forEach(p => {
     const id = p.name || p.project_name
-    map[id] = {
-      name: id,
-      label: p.project_name || p.name,
-      value: id,
-      expanded: true,
-      children: [],
+    if (linkedIds.has(id)) {
+      map[id] = {
+        name: id,
+        label: p.project_name || p.name,
+        value: id,
+        expanded: true,
+        children: [],
+      }
     }
   })
 
-  filtered.forEach(p => {
+  allProjects.forEach(p => {
     const id = p.name || p.project_name
-    const parentId = p.parent_project
-    if (parentId && map[parentId]) {
-      map[parentId].children.push(map[id])
-    } else {
-      roots.push(map[id])
+    if (map[id]) {
+      const parentId = p.parent_project
+      if (parentId && map[parentId]) {
+        map[parentId].children.push(map[id])
+      } else {
+        roots.push(map[id])
+      }
     }
   })
 
@@ -442,6 +490,8 @@ watch(() => props.modelValue, (val) => {
   if (val) {
     submitted.value = false
     leadQuery.value = ''
+    childProjectQuery.value = ''
+    selectedAddChild.value = null
     if (props.editProject) {
       fillForm(props.editProject)
     } else {
