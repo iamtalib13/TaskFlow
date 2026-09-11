@@ -1864,24 +1864,31 @@ def get_member_timesheets(user: str, from_date: str = "", to_date: str = "") -> 
         order_by="timesheet_date asc",
     )
 
-    result = []
-    for ts in timesheets:
-        items = frappe.get_all(
+    timesheet_names = [t["name"] for t in timesheets]
+
+    items_map = {}
+    if timesheet_names:
+        all_items = frappe.get_all(
             "Taskflow Timesheet Item",
-            filters={"parent": ts.name},
+            filters={"parent": ["in", timesheet_names]},
             fields=[
-                "activity_type", "project", "task", "from_time",
+                "name", "parent", "activity_type", "project", "task", "from_time",
                 "to_time", "hrs", "completeds", "description",
             ],
             order_by="from_time asc",
         )
+        for item in all_items:
+            items_map.setdefault(item["parent"], []).append(item)
+
+    result = []
+    for ts in timesheets:
         result.append({
             "name": ts.name,
             "user": ts.user,
             "date": str(ts.timesheet_date),
             "total_hours": ts.total_working_hours or 0,
             "status": ts.status,
-            "items": items,
+            "items": items_map.get(ts.name, []),
         })
 
     return result
