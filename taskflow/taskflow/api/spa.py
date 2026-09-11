@@ -26,7 +26,7 @@ def get_spa_bootstrap() -> dict:
 		"Taskflow Project",
 		fields=["name", "project_name", "status", "priority", "team", "project_lead", "completion_percent", "end_date", "parent_project", "modified", "creation"],
 		filters=project_filters,
-		order_by="project_name asc",
+		order_by="modified desc",
 	)
 
 	lead_ids = list({p["project_lead"] for p in projects if p.get("project_lead")})

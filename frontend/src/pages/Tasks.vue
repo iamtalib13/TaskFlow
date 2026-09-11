@@ -762,8 +762,8 @@ const filteredProjectsData = computed(() => {
 })
 
 
-const projectSortField = ref('name')
-const projectSortDirection = ref('asc')
+const projectSortField = ref('modified')
+const projectSortDirection = ref('desc')
 const projectsDisplayLimit = ref(20)
 
 function handleProjectSortChange({ key, order }) {
