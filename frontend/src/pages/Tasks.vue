@@ -1772,18 +1772,18 @@ onUnmounted(() => {
         >
           <!-- Sidebar Header: Brand & Collapse Toggle -->
           <div
-            class="flex h-14 items-center border-b border-outline-gray-1 transition-all"
+            class="flex h-14 items-center border-b border-outline-gray-1 dark:border-neutral-800 transition-all"
             :class="isSidebarCollapsed ? 'justify-center px-1' : 'justify-between px-3'"
           >
             <div
               class="flex items-center gap-2.5 overflow-hidden justify-center w-full"
             >
-              <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black text-white font-bold text-xs shadow-xs select-none">
+              <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black dark:bg-white text-white dark:text-gray-950 font-bold text-xs shadow-xs select-none">
                 TF
               </div>
               <div v-if="!isSidebarCollapsed" class="flex flex-col truncate transition-opacity">
-                <span class="text-sm font-bold tracking-tight text-ink-gray-9 leading-tight">Taskflow</span>
-                <span class="text-[11px] text-ink-gray-5 leading-tight">Workspace</span>
+                <span class="text-sm font-bold tracking-tight text-ink-gray-9 dark:text-white leading-tight">Taskflow</span>
+                <span class="text-[11px] text-ink-gray-5 dark:text-neutral-400 leading-tight">Workspace</span>
               </div>
             </div>
           </div>
@@ -1801,25 +1801,25 @@ onUnmounted(() => {
                   :class="[
                     'w-full flex flex-col items-center justify-center py-2 px-0.5 mb-1 rounded-lg cursor-pointer transition-all duration-150 select-none relative group',
                     activeSection === item.id
-                      ? 'bg-surface-gray-3 text-gray-950 font-semibold shadow-xs border border-outline-gray-2/80'
-                      : 'text-ink-gray-6 hover:bg-surface-gray-2 hover:text-ink-gray-9 border border-transparent'
+                      ? 'bg-surface-gray-3 dark:bg-neutral-800 text-gray-950 dark:text-white font-semibold shadow-xs border border-outline-gray-2/80 dark:border-neutral-700'
+                      : 'text-ink-gray-6 dark:text-neutral-400 hover:bg-surface-gray-2 dark:hover:bg-neutral-800/60 hover:text-ink-gray-9 dark:hover:text-white border border-transparent'
                   ]"
                   @click="activeSection = item.id"
                 >
                   <component
                     :is="item.icon"
                     class="size-4 shrink-0 transition-colors"
-                    :class="activeSection === item.id ? 'text-gray-950 stroke-[2.2]' : 'text-ink-gray-5 group-hover:text-ink-gray-8'"
+                    :class="activeSection === item.id ? 'text-gray-950 dark:text-white stroke-[2.2]' : 'text-ink-gray-5 dark:text-neutral-400 group-hover:text-ink-gray-8 dark:group-hover:text-white'"
                   />
                   <span
                     class="text-[10px] leading-tight mt-1 text-center truncate max-w-full font-medium"
-                    :class="activeSection === item.id ? 'text-gray-950 font-semibold' : 'text-ink-gray-5 group-hover:text-ink-gray-7'"
+                    :class="activeSection === item.id ? 'text-gray-950 dark:text-white font-semibold' : 'text-ink-gray-5 dark:text-neutral-400 group-hover:text-ink-gray-7 dark:group-hover:text-neutral-200'"
                   >
                     {{ item.label }}
                   </span>
                   <span
                     v-if="item.badge"
-                    class="absolute top-1 right-1.5 size-1.5 rounded-full bg-blue-600"
+                    class="absolute top-1 right-1.5 size-1.5 rounded-full bg-blue-600 dark:bg-blue-500"
                   />
                 </button>
               </template>
@@ -1834,8 +1834,8 @@ onUnmounted(() => {
                   :class="[
                     '!h-9 cursor-pointer transition-all duration-150 mb-1 rounded-lg',
                     activeSection === item.id
-                      ? '!bg-surface-gray-3 !text-gray-950 font-semibold shadow-xs border border-outline-gray-2/80'
-                      : 'text-ink-gray-6 hover:!bg-surface-gray-2 hover:!text-ink-gray-9 border border-transparent'
+                      ? '!bg-surface-gray-3 dark:!bg-neutral-800 !text-gray-950 dark:!text-white font-semibold shadow-xs border border-outline-gray-2/80 dark:border-neutral-700'
+                      : 'text-ink-gray-6 dark:text-neutral-300 hover:!bg-surface-gray-2 dark:hover:!bg-neutral-800/60 hover:!text-ink-gray-9 dark:hover:!text-white border border-transparent'
                   ]"
                   @click="activeSection = item.id"
                 >
@@ -1843,12 +1843,12 @@ onUnmounted(() => {
                     <component
                       :is="item.icon"
                       class="size-4 shrink-0 transition-colors"
-                      :class="activeSection === item.id ? 'text-gray-950 stroke-[2.2]' : 'text-ink-gray-5'"
+                      :class="activeSection === item.id ? 'text-gray-950 dark:text-white stroke-[2.2]' : 'text-ink-gray-5 dark:text-neutral-400'"
                     />
                   </template>
                   <span
                     class="flex-1 truncate text-sm"
-                    :class="activeSection === item.id ? 'font-semibold text-gray-950' : 'font-medium text-ink-gray-6'"
+                    :class="activeSection === item.id ? 'font-semibold text-gray-950 dark:text-white' : 'font-medium text-ink-gray-6 dark:text-neutral-300'"
                   >
                     {{ item.label }}
                   </span>
@@ -1856,7 +1856,7 @@ onUnmounted(() => {
                     <span
                       v-if="item.badge !== undefined"
                       class="mr-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors"
-                      :class="activeSection === item.id ? 'bg-gray-200 text-ink-gray-9 font-bold' : 'bg-surface-gray-3 text-ink-gray-5'"
+                      :class="activeSection === item.id ? 'bg-gray-200 dark:bg-neutral-700 text-ink-gray-9 dark:text-white font-bold' : 'bg-surface-gray-3 dark:bg-neutral-800 text-ink-gray-5 dark:text-neutral-400'"
                     >
                       {{ item.badge }}
                     </span>
@@ -1867,12 +1867,12 @@ onUnmounted(() => {
           </ScrollArea>
 
           <!-- Sidebar Footer (User Account & Settings) -->
-          <div class="p-2 border-t border-outline-gray-1 bg-surface-base">
+          <div class="p-2 border-t border-outline-gray-1 dark:border-neutral-800 bg-surface-base">
             <Dropdown :options="userMenu">
               <template #trigger="{ open }">
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2.5 rounded-lg p-1.5 hover:bg-surface-gray-1 transition text-left cursor-pointer"
+                  class="flex w-full items-center gap-2.5 rounded-lg p-1.5 hover:bg-surface-gray-1 dark:hover:bg-neutral-800 transition text-left cursor-pointer"
                   :class="{ 'justify-center': isSidebarCollapsed }"
                 >
                   <Avatar
@@ -1883,12 +1883,12 @@ onUnmounted(() => {
                     class="shrink-0"
                   />
                   <div v-if="!isSidebarCollapsed" class="flex-1 min-w-0">
-                    <p class="text-xs font-semibold text-ink-gray-9 truncate">{{ fullName }}</p>
-                    <p class="text-[11px] text-ink-gray-5 truncate">Administrator</p>
+                    <p class="text-xs font-semibold text-ink-gray-9 dark:text-white truncate">{{ fullName }}</p>
+                    <p class="text-[11px] text-ink-gray-5 dark:text-neutral-400 truncate">Administrator</p>
                   </div>
                   <ChevronUp
                     v-if="!isSidebarCollapsed"
-                    class="size-3.5 text-ink-gray-4 shrink-0"
+                    class="size-3.5 text-ink-gray-4 dark:text-neutral-400 shrink-0"
                   />
                 </button>
               </template>
