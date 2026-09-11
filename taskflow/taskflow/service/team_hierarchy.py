@@ -23,17 +23,16 @@ def get_user_team_memberships(user: str) -> list[dict]:
 
 	user_emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
 	filters = {"parenttype": "Taskflow Team", "is_active": 1}
-	all_members = frappe.get_all(
+	if user_emp:
+		filters["$or"] = [{"user": user}, {"employee": user_emp}]
+	else:
+		filters["user"] = user
+
+	return frappe.get_all(
 		"Taskflow Team Member",
 		filters=filters,
 		fields=["parent as team", "user", "employee", "read", "write", "team_role", "access_level"],
 	)
-
-	res = []
-	for m in all_members:
-		if m.user == user or (user_emp and m.employee == user_emp):
-			res.append(m)
-	return res
 
 
 def get_descendant_teams(team_names: list[str]) -> set[str]:
