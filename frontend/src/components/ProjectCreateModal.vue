@@ -1,8 +1,8 @@
 <template>
   <div v-if="modelValue" class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 backdrop-blur-sm" @click.self="close">
-    <div class="w-full max-w-2xl my-8 bg-surface-base rounded-xl border border-outline-gray-2 shadow-2xl overflow-hidden">
+    <div class="w-full max-w-5xl my-6 bg-surface-base rounded-xl border border-outline-gray-2 shadow-2xl overflow-hidden flex flex-col">
       <!-- Header with buttons -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-outline-gray-2 bg-surface-gray-1">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-outline-gray-2 bg-surface-gray-1 shrink-0">
         <div>
           <h2 class="text-lg font-bold text-ink-gray-9">{{ editProject ? 'Edit Project' : 'Create Project' }}</h2>
           <p class="text-xs text-ink-gray-5 mt-0.5">{{ editProject ? 'Update project details' : 'Fill in the details to start a new project' }}</p>
@@ -15,162 +15,161 @@
         </div>
       </div>
 
-      <!-- Form Body -->
-      <form class="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto" @submit.prevent="submit">
-        <!-- Project Name -->
-        <FormControl
-          v-model="form.project_name"
-          type="text"
-          label="Project Name"
-          placeholder="E.g., CRM Revamp"
-          :error="errors.project_name"
-          required
-        />
-
-        <!-- Team + Priority -->
-        <div class="grid grid-cols-2 gap-4">
+      <!-- Form Body with 6-Column Grid Layout -->
+      <form class="p-6 grid grid-cols-6 gap-4 max-h-[80vh] overflow-y-auto" @submit.prevent="submit">
+        <!-- Div 1: Project Fields (Span 6 / Top) -->
+        <div class="div1 col-span-6 space-y-4 bg-surface-gray-1/50 p-4 rounded-xl border border-outline-gray-2">
+          <!-- Project Name -->
           <FormControl
-            v-model="form.team"
-            type="select"
-            label="Team"
-            placeholder="Select team"
-            :options="teamOptions"
-            :error="errors.team"
+            v-model="form.project_name"
+            type="text"
+            label="Project Name"
+            placeholder="E.g., CRM Revamp"
+            :error="errors.project_name"
             required
           />
-          <FormControl
-            v-model="form.priority"
-            type="select"
-            label="Priority"
-            placeholder="Select priority"
-            :options="priorityOptions"
-            :error="errors.priority"
-          />
-        </div>
 
-        <!-- Project Lead - Custom Search Select -->
-        <div class="space-y-1.5" ref="leadDropdownRef">
-          <label class="text-sm font-medium text-ink-gray-8">Project Lead</label>
-          <div class="relative">
-            <!-- Selected display / Search input -->
-            <div
-              class="flex items-center gap-2 w-full px-3 py-2 border rounded-lg bg-surface-base text-sm transition cursor-pointer"
-              :class="leadSearchOpen ? 'border-blue-400 ring-2 ring-blue-100' : 'border-outline-gray-2 hover:border-outline-gray-3'"
-              @click="openLeadSearch"
-            >
-              <div v-if="leadSelected && !leadSearchOpen" class="flex items-center gap-2 flex-1 min-w-0">
-                <Avatar :image="leadSelected.image" :label="leadSelected.label" size="sm" />
-                <span class="truncate text-ink-gray-9 font-medium">{{ leadSelected.label }}</span>
-                <span class="text-xs text-ink-gray-5 truncate">{{ leadSelected.description }}</span>
-                <button type="button" class="ml-auto shrink-0 text-ink-gray-4 hover:text-rose-500" @click.stop="clearLead">
-                  <X class="size-3.5" />
-                </button>
-              </div>
-              <div v-else class="flex items-center gap-2 flex-1 min-w-0">
-                <Search class="size-4 text-ink-gray-4 shrink-0" />
-                <input
-                  ref="leadSearchInput"
-                  v-model="leadSearchQuery"
-                  type="text"
-                  class="flex-1 bg-transparent outline-none text-sm text-ink-gray-9 placeholder:text-ink-gray-4"
-                  placeholder="Search employee..."
-                  @focus="leadSearchOpen = true"
-                />
-              </div>
-            </div>
+          <!-- Team + Priority + Parent Project -->
+          <div class="grid grid-cols-3 gap-4">
+            <FormControl
+              v-model="form.team"
+              type="select"
+              label="Team"
+              placeholder="Select team"
+              :options="teamOptions"
+              :error="errors.team"
+              required
+            />
+            <FormControl
+              v-model="form.priority"
+              type="select"
+              label="Priority"
+              placeholder="Select priority"
+              :options="priorityOptions"
+              :error="errors.priority"
+            />
+            <FormControl
+              v-model="form.parent_project"
+              type="select"
+              label="Parent Project"
+              placeholder="None"
+              :options="[{ label: 'None', value: '' }, ...projectOptions]"
+            />
+          </div>
 
-            <!-- Dropdown -->
-            <div
-              v-if="leadSearchOpen"
-              class="absolute z-50 mt-1 w-full bg-surface-base border border-outline-gray-2 rounded-lg shadow-lg overflow-hidden"
-            >
-              <div class="max-h-60 overflow-y-auto">
-                <div v-if="leadFilteredOptions.length === 0" class="py-4 text-center text-xs text-ink-gray-4">
-                  No employees found
-                </div>
-                <button
-                  v-for="opt in leadFilteredOptions"
-                  :key="opt.value"
-                  type="button"
-                  class="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-surface-gray-2 transition text-sm cursor-pointer"
-                  :class="form.project_lead === opt.value ? 'bg-surface-gray-2' : ''"
-                  @click="selectLead(opt)"
+          <!-- Project Lead + Start Date + End Date -->
+          <div class="grid grid-cols-3 gap-4 items-start">
+            <!-- Project Lead Custom Search -->
+            <div class="space-y-1.5" ref="leadDropdownRef">
+              <label class="text-sm font-medium text-ink-gray-8">Project Lead</label>
+              <div class="relative">
+                <div
+                  class="flex items-center gap-2 w-full px-3 py-2 border rounded-lg bg-surface-base text-sm transition cursor-pointer"
+                  :class="leadSearchOpen ? 'border-blue-400 ring-2 ring-blue-100' : 'border-outline-gray-2 hover:border-outline-gray-3'"
+                  @click="openLeadSearch"
                 >
-                  <Avatar :image="opt.image" :label="opt.label" size="sm" />
-                  <div class="min-w-0 flex-1">
-                    <div class="truncate text-ink-gray-9 font-medium">{{ opt.label }}</div>
-                    <div class="truncate text-xs text-ink-gray-5">{{ opt.description }}</div>
+                  <div v-if="leadSelected && !leadSearchOpen" class="flex items-center gap-2 flex-1 min-w-0">
+                    <Avatar :image="leadSelected.image" :label="leadSelected.label" size="sm" />
+                    <span class="truncate text-ink-gray-9 font-medium">{{ leadSelected.label }}</span>
+                    <button type="button" class="ml-auto shrink-0 text-ink-gray-4 hover:text-rose-500" @click.stop="clearLead">
+                      <X class="size-3.5" />
+                    </button>
                   </div>
-                </button>
+                  <div v-else class="flex items-center gap-2 flex-1 min-w-0">
+                    <Search class="size-4 text-ink-gray-4 shrink-0" />
+                    <input
+                      ref="leadSearchInput"
+                      v-model="leadSearchQuery"
+                      type="text"
+                      class="flex-1 bg-transparent outline-none text-sm text-ink-gray-9 placeholder:text-ink-gray-4"
+                      placeholder="Search employee..."
+                      @focus="leadSearchOpen = true"
+                    />
+                  </div>
+                </div>
+
+                <!-- Dropdown -->
+                <div
+                  v-if="leadSearchOpen"
+                  class="absolute z-50 mt-1 w-full bg-surface-base border border-outline-gray-2 rounded-lg shadow-lg overflow-hidden"
+                >
+                  <div class="max-h-56 overflow-y-auto">
+                    <div v-if="leadFilteredOptions.length === 0" class="py-3 text-center text-xs text-ink-gray-4">
+                      No employees found
+                    </div>
+                    <button
+                      v-for="opt in leadFilteredOptions"
+                      :key="opt.value"
+                      type="button"
+                      class="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-surface-gray-2 transition text-sm cursor-pointer"
+                      :class="form.project_lead === opt.value ? 'bg-surface-gray-2' : ''"
+                      @click="selectLead(opt)"
+                    >
+                      <Avatar :image="opt.image" :label="opt.label" size="sm" />
+                      <div class="min-w-0 flex-1">
+                        <div class="truncate text-ink-gray-9 font-medium">{{ opt.label }}</div>
+                        <div class="truncate text-xs text-ink-gray-5">{{ opt.description }}</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div class="px-3 py-1.5 border-t border-outline-gray-1 text-[11px] text-ink-gray-4 text-center">
-                {{ leadFilteredOptions.length }} result{{ leadFilteredOptions.length !== 1 ? 's' : '' }} — type to search more
-              </div>
+            </div>
+
+            <!-- Start Date -->
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-ink-gray-8">Start Date</label>
+              <DatePicker
+                v-model="form.start_date"
+                format="DD-MM-YYYY"
+                placeholder="DD-MM-YYYY"
+              />
+            </div>
+
+            <!-- End Date -->
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-ink-gray-8">End Date</label>
+              <DatePicker
+                v-model="form.end_date"
+                format="DD-MM-YYYY"
+                placeholder="DD-MM-YYYY"
+              />
             </div>
           </div>
         </div>
 
-        <!-- Start + End Date -->
-        <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-ink-gray-8">Start Date</label>
-            <DatePicker
-              v-model="form.start_date"
-              format="dd-MM-yyyy"
-              placeholder="Pick start date"
-            />
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-ink-gray-8">End Date</label>
-            <DatePicker
-              v-model="form.end_date"
-              format="dd-MM-yyyy"
-              placeholder="Pick end date"
-            />
-          </div>
-        </div>
-
-        <!-- Parent Project -->
-        <FormControl
-          v-model="form.parent_project"
-          type="select"
-          label="Parent Project"
-          placeholder="None"
-          :options="[{ label: 'None', value: '' }, ...projectOptions]"
-        />
-
-        <!-- Team Members Section -->
-        <div class="space-y-2">
+        <!-- Div 2: Team Members (Span 3 / Bottom Left) -->
+        <div class="div2 col-span-3 space-y-3 bg-surface-base p-4 rounded-xl border border-outline-gray-2 flex flex-col min-h-[260px]">
           <div class="flex items-center justify-between">
-            <label class="text-sm font-semibold text-ink-gray-8">Project Team Members</label>
+            <label class="text-xs font-bold uppercase tracking-wider text-ink-gray-7">Project Team Members</label>
             <Button size="sm" variant="subtle" @click.prevent="addMember">
               <template #prefix><Plus class="size-3.5" /></template>
               Add Member
             </Button>
           </div>
 
-          <div v-if="form.project_team_members.length === 0" class="border border-dashed border-outline-gray-2 rounded-lg py-6 text-center text-ink-gray-4 text-xs">
+          <div v-if="form.project_team_members.length === 0" class="flex-1 border border-dashed border-outline-gray-2 rounded-lg p-6 flex flex-col items-center justify-center text-center text-ink-gray-4 text-xs">
             No team members added yet.
           </div>
 
-          <div v-else class="border border-outline-gray-2 rounded-lg overflow-hidden">
+          <div v-else class="flex-1 border border-outline-gray-2 rounded-lg overflow-y-auto max-h-[220px]">
             <table class="w-full text-left text-xs">
-              <thead class="bg-surface-gray-2 border-b border-outline-gray-2">
+              <thead class="bg-surface-gray-2 border-b border-outline-gray-2 sticky top-0 z-10">
                 <tr>
-                  <th class="py-2 px-3 font-semibold text-ink-gray-6">#</th>
-                  <th class="py-2 px-3 font-semibold text-ink-gray-6">Employee</th>
-                  <th class="py-2 px-3 font-semibold text-ink-gray-6">Role</th>
-                  <th class="py-2 px-3 font-semibold text-ink-gray-6 w-10"></th>
+                  <th class="py-1.5 px-2.5 font-semibold text-ink-gray-6">#</th>
+                  <th class="py-1.5 px-2.5 font-semibold text-ink-gray-6">Employee</th>
+                  <th class="py-1.5 px-2.5 font-semibold text-ink-gray-6">Role</th>
+                  <th class="py-1.5 px-2.5 font-semibold text-ink-gray-6 w-8"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-outline-gray-1">
                 <tr v-for="(row, idx) in form.project_team_members" :key="idx" class="hover:bg-surface-gray-1 transition">
-                  <td class="py-2 px-3 text-ink-gray-5">{{ idx + 1 }}</td>
-                  <td class="py-2 px-3">
+                  <td class="py-1.5 px-2.5 text-ink-gray-5">{{ idx + 1 }}</td>
+                  <td class="py-1.5 px-2.5">
                     <div class="relative" :ref="el => setMemberRef(idx, el)">
                       <!-- Selected / Input -->
                       <div
-                        class="flex items-center gap-2 w-full px-3 py-1.5 border rounded-lg bg-surface-base text-xs transition cursor-pointer"
+                        class="flex items-center gap-1.5 w-full px-2 py-1 border rounded-md bg-surface-base text-xs transition cursor-pointer"
                         :class="memberOpenIdx === idx ? 'border-blue-400 ring-2 ring-blue-100' : 'border-outline-gray-2 hover:border-outline-gray-3'"
                         @click="openMember(idx)"
                       >
@@ -182,13 +181,13 @@
                           </button>
                         </template>
                         <template v-else>
-                          <Search class="size-3.5 text-ink-gray-4 shrink-0" />
+                          <Search class="size-3 text-ink-gray-4 shrink-0" />
                           <input
                             :ref="el => setInputRef(idx, el)"
                             v-model="memberQ"
                             type="text"
-                            class="flex-1 bg-transparent outline-none text-xs text-ink-gray-9 placeholder:text-ink-gray-4"
-                            placeholder="Search employee..."
+                            class="flex-1 bg-transparent outline-none text-xs text-ink-gray-9 placeholder:text-ink-gray-4 min-w-0"
+                            placeholder="Search..."
                             @focus="memberOpenIdx = idx"
                           />
                         </template>
@@ -200,41 +199,39 @@
                           class="fixed z-[9999] bg-surface-base border border-outline-gray-2 rounded-lg shadow-xl overflow-hidden"
                           :style="memberDropdownStyle"
                         >
-                          <div class="max-h-48 overflow-y-auto">
-                            <div v-if="memberFiltered.length === 0" class="py-3 text-center text-[11px] text-ink-gray-4">
+                          <div class="max-h-44 overflow-y-auto">
+                            <div v-if="memberFiltered.length === 0" class="py-2.5 text-center text-[11px] text-ink-gray-4">
                               No employees found
                             </div>
                             <button
                               v-for="opt in memberFiltered"
                               :key="opt.value"
                               type="button"
-                              class="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-surface-gray-2 transition text-xs cursor-pointer"
+                              class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-surface-gray-2 transition text-xs cursor-pointer"
                               :class="row.employee === opt.value ? 'bg-surface-gray-2' : ''"
                               @click="pickMember(idx, opt)"
                             >
                               <Avatar :image="opt.image" :label="opt.label" size="xs" />
                               <div class="min-w-0 flex-1">
                                 <div class="truncate text-ink-gray-9 font-medium">{{ opt.label }}</div>
-                                <div class="truncate text-[11px] text-ink-gray-5">{{ opt.description }}</div>
+                                <div class="truncate text-[10px] text-ink-gray-5">{{ opt.description }}</div>
                               </div>
                             </button>
-                          </div>
-                          <div class="px-3 py-1 border-t border-outline-gray-1 text-[10px] text-ink-gray-4 text-center">
-                            {{ memberFiltered.length }} result{{ memberFiltered.length !== 1 ? 's' : '' }} — type to search more
                           </div>
                         </div>
                       </Teleport>
                     </div>
                   </td>
-                  <td class="py-2 px-3">
+                  <td class="py-1.5 px-2.5">
                     <FormControl
                       v-model="row.team_role"
                       type="select"
-                      placeholder="Select role"
+                      size="sm"
+                      placeholder="Role"
                       :options="roleOptions"
                     />
                   </td>
-                  <td class="py-2 px-3 text-right">
+                  <td class="py-1.5 px-2.5 text-right">
                     <button type="button" class="text-ink-gray-4 hover:text-rose-500 transition p-1 cursor-pointer" @click="form.project_team_members.splice(idx, 1)">
                       <Trash2 class="size-3.5" />
                     </button>
@@ -244,6 +241,56 @@
             </table>
           </div>
         </div>
+
+        <!-- Div 3: Child Projects / Tree Structure (Span 3 / Bottom Right) -->
+        <div class="div3 col-span-3 space-y-3 bg-surface-gray-1 p-4 rounded-xl border border-outline-gray-2 flex flex-col min-h-[260px]">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-gray-7">
+              <GitFork class="size-3.5 text-blue-600" />
+              <span>Project Hierarchy & Tree</span>
+            </div>
+            <button
+              v-if="form.parent_project"
+              type="button"
+              class="text-[11px] text-rose-600 hover:underline font-medium cursor-pointer"
+              @click="form.parent_project = ''"
+            >
+              Clear Parent
+            </button>
+          </div>
+
+          <!-- Current Selected Parent Status Card -->
+          <div class="p-2 rounded-lg border border-outline-gray-2 bg-surface-base text-xs flex items-center justify-between shadow-xs">
+            <span class="text-ink-gray-5 font-medium">Selected Parent:</span>
+            <span class="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 truncate max-w-[170px]">
+              {{ selectedParentLabel }}
+            </span>
+          </div>
+
+          <!-- Tree Component Container -->
+          <div class="flex-1 rounded-lg border border-outline-gray-2 bg-surface-base p-2 overflow-y-auto max-h-[190px]">
+            <Tree :nodes="projectTreeNodes" node-key="value">
+              <template #item="{ node }">
+                <div
+                  class="flex items-center justify-between px-2 py-1 rounded-md text-xs cursor-pointer transition-all duration-150 group"
+                  :class="form.parent_project === node.value ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200' : 'hover:bg-surface-gray-2 text-ink-gray-8'"
+                  @click="form.parent_project = node.value"
+                >
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <Folder class="size-3.5 text-blue-500 shrink-0" />
+                    <span class="truncate">{{ node.label }}</span>
+                  </div>
+                  <span
+                    v-if="form.parent_project === node.value"
+                    class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-medium shrink-0 ml-1"
+                  >
+                    Parent
+                  </span>
+                </div>
+              </template>
+            </Tree>
+          </div>
+        </div>
       </form>
     </div>
   </div>
@@ -251,9 +298,9 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { FormControl, Avatar, Button, DatePicker, toast } from 'frappe-ui'
+import { FormControl, Avatar, Button, DatePicker, Tree, toast } from 'frappe-ui'
 import { saveProject } from '../data/api'
-import { Plus, Trash2, Search, X } from 'lucide-vue-next'
+import { Plus, Trash2, Search, X, Folder, GitFork } from 'lucide-vue-next'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -310,12 +357,59 @@ const roleOptions = [
 
 const teamOptions = computed(() => props.teams.map(t => ({ label: t.name || t, value: t.name || t })))
 const employeeOptions = computed(() => props.employees.map(e => ({
-  label: `${e.name} - ${e.employee_name || e.name}`,
+  label: e.employee_name || e.name,
   value: e.name,
-  description: e.employee_name || '',
+  description: e.name,
   image: e.user_image || '',
 })))
 const projectOptions = computed(() => props.projects.map(p => ({ label: p.project_name || p.name, value: p.name })))
+
+const selectedParentLabel = computed(() => {
+  if (!form.value.parent_project) return 'None (Top Level)'
+  const p = props.projects.find(proj => (proj.name || proj.project_name) === form.value.parent_project)
+  return p ? (p.project_name || p.name) : form.value.parent_project
+})
+
+const projectTreeNodes = computed(() => {
+  const currentId = props.editProject ? (props.editProject.name || props.editProject.id) : null
+  const filtered = props.projects.filter(p => {
+    const id = p.name || p.project_name
+    return id !== currentId
+  })
+
+  const map = {}
+  const roots = [
+    {
+      name: '',
+      label: 'None (Top Level Project)',
+      value: '',
+      children: [],
+    }
+  ]
+
+  filtered.forEach(p => {
+    const id = p.name || p.project_name
+    map[id] = {
+      name: id,
+      label: p.project_name || p.name,
+      value: id,
+      expanded: true,
+      children: [],
+    }
+  })
+
+  filtered.forEach(p => {
+    const id = p.name || p.project_name
+    const parentId = p.parent_project
+    if (parentId && map[parentId]) {
+      map[parentId].children.push(map[id])
+    } else {
+      roots.push(map[id])
+    }
+  })
+
+  return roots
+})
 
 // --- Project Lead Search ---
 const leadSearchOpen = ref(false)

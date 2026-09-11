@@ -24,10 +24,24 @@ def get_spa_bootstrap() -> dict:
 	project_filters = {"is_archived": 0} if has_archived else {}
 	projects = frappe.get_all(
 		"Taskflow Project",
-		fields=["name", "project_name", "status", "team", "project_lead", "completion_percent", "end_date", "parent_project"],
+		fields=["name", "project_name", "status", "priority", "team", "project_lead", "completion_percent", "end_date", "parent_project", "modified", "creation"],
 		filters=project_filters,
 		order_by="project_name asc",
 	)
+
+	lead_ids = list({p["project_lead"] for p in projects if p.get("project_lead")})
+	lead_map = {}
+	if lead_ids:
+		emp_leads = frappe.get_all(
+			"Employee",
+			filters={"name": ["in", lead_ids]},
+			fields=["name", "employee_name", "user_id", "image"],
+		)
+		for e in emp_leads:
+			info = {"name": e["employee_name"] or e["name"], "image": e.get("image") or ""}
+			lead_map[e["name"]] = info
+			if e.get("user_id"):
+				lead_map[e["user_id"]] = info
 
 	# Active system users for assignment
 	users = frappe.get_all(
@@ -271,7 +285,18 @@ def get_spa_bootstrap() -> dict:
 			{
 				"name": p["name"],
 				"display_name": p.get("project_name") or p["name"],
+				"project_name": p.get("project_name") or p["name"],
+				"status": p.get("status") or "Draft",
+				"priority": p.get("priority") or "Medium",
 				"team": p.get("team") or "",
+				"project_lead": p.get("project_lead") or "",
+				"project_lead_name": lead_map.get(p.get("project_lead"), {}).get("name") or p.get("project_lead") or "",
+				"project_lead_image": lead_map.get(p.get("project_lead"), {}).get("image") or "",
+				"completion_percent": p.get("completion_percent") or 0,
+				"end_date": str(p.get("end_date")) if p.get("end_date") else "",
+				"parent_project": p.get("parent_project") or "",
+				"modified": str(p.get("modified")) if p.get("modified") else "",
+				"modified_pretty": frappe.utils.pretty_date(p["modified"]) if p.get("modified") else "",
 				"icon": "lucide-folder",
 			}
 			for p in projects
@@ -291,6 +316,14 @@ def get_spa_bootstrap() -> dict:
 		"tasks": tasks,
 	}
 
+
+def _parse_date(val):
+	if not val:
+		return None
+	try:
+		return frappe.utils.getdate(val)
+	except Exception:
+		return None
 
 @frappe.whitelist(methods=["POST"])
 @frappe.whitelist()
@@ -317,9 +350,9 @@ def save_project(payload: str = None, **kwargs) -> dict:
 		if "project_lead" in data:
 			doc.project_lead = data["project_lead"]
 		if "start_date" in data:
-			doc.start_date = data["start_date"]
+			doc.start_date = _parse_date(data["start_date"])
 		if "end_date" in data:
-			doc.end_date = data["end_date"]
+			doc.end_date = _parse_date(data["end_date"])
 		if "parent_project" in data:
 			doc.parent_project = data["parent_project"]
 		if "project_team_members" in data:
@@ -329,10 +362,17 @@ def save_project(payload: str = None, **kwargs) -> dict:
 		doc.save(ignore_permissions=False)
 	else:
 		doc = frappe.new_doc("Taskflow Project")
+		if "start_date" in data:
+			data["start_date"] = _parse_date(data["start_date"])
+		if "end_date" in data:
+			data["end_date"] = _parse_date(data["end_date"])
 		doc.update(data)
 		doc.save(ignore_permissions=False)
 
-	return doc.as_dict()
+	res = doc.as_dict()
+	res["modified"] = str(doc.modified) if getattr(doc, "modified", None) else ""
+	res["modified_pretty"] = frappe.utils.pretty_date(doc.modified) if getattr(doc, "modified", None) else "Just now"
+	return res
 
 @frappe.whitelist(methods=["POST"])
 def delete_project(name: str = None, **kwargs) -> dict:

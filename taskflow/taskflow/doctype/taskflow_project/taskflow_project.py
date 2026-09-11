@@ -18,8 +18,11 @@ class TaskflowProject(Document):
 			self.project_lead_user = None
 
 	def _validate_dates(self):
-		if self.start_date and self.end_date and self.start_date > self.end_date:
-			frappe.throw("End Date cannot be before Start Date.")
+		if self.start_date and self.end_date:
+			start = frappe.utils.getdate(self.start_date)
+			end = frappe.utils.getdate(self.end_date)
+			if start and end and start > end:
+				frappe.throw(_("End Date cannot be before Start Date."))
 
 	def _validate_parent_project(self):
 		if not self.parent_project:

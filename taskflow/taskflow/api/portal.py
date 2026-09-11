@@ -65,6 +65,8 @@ _PROJECT_FIELDS = [
     "completion_percent",
     "project_lead",
     "project_lead_user",
+    "creation",
+    "modified",
 ]
 
 _ALLOWED_PROJECT_FIELDS = [
@@ -352,6 +354,8 @@ def _serialize_project(
         "project_lead": project.project_lead,
         "project_lead_user": project.project_lead_user,
         "description": project.description,
+        "modified": str(project.modified) if getattr(project, "modified", None) else "",
+        "modified_pretty": frappe.utils.pretty_date(project.modified) if getattr(project, "modified", None) else "",
         "_attachment": getattr(project, "_attachment", None),
         "project_team_members": [
             {

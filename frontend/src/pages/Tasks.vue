@@ -519,6 +519,14 @@ function getTaskRowClass(row) {
   return 'hover:bg-[#f0f7f7]'
 }
 
+// Light green highlight for projects modified 'Just now'
+function getProjectRowClass(row) {
+  if (isRowJustNow(row)) {
+    return 'row-just-now is-just-now'
+  }
+  return 'hover:bg-[#f0f7f7]'
+}
+
 // Colorful status badge styling: Completed (Green), Overdue (Red), Open (Blue), etc.
 const getStatusBadgeClass = (status) => {
   switch (status) {
@@ -721,7 +729,7 @@ const projectTableColumns = [
   { key: 'lead', label: 'LEAD', width: '140px', minWidth: '120px', sortable: true, visible: true },
   { key: 'progress', label: 'PROGRESS', width: '130px', minWidth: '110px', sortable: true, visible: true },
   { key: 'due_date', label: 'DUE DATE', width: '100px', minWidth: '90px', sortable: true, visible: true },
-  { key: 'actions', label: '', width: '60px', minWidth: '50px', sortable: false, visible: true },
+  { key: 'modified', label: 'MODIFIED', width: '120px', minWidth: '100px', sortable: true, visible: true },
 ]
 
 
@@ -798,19 +806,43 @@ const projectsData = computed(() => {
     // Check if it's a new project with no tasks vs existing
     const pct = pTasks.length > 0 ? Math.round((completedTasks / pTasks.length) * 100) : 0
     
-    // Pull actual data from the database record if available, otherwise calculate
+    // Resolve project lead employee name
+    let leadName = proj.project_lead_name || ''
+    let leadImage = proj.project_lead_image || ''
+    const rawLead = proj.project_lead || ''
+    if (rawLead) {
+      const emp = (employees.value || []).find(e => e.name === rawLead || e.user_id === rawLead)
+      if (emp) {
+        leadName = emp.employee_name || emp.name
+        leadImage = emp.user_image || emp.image || ''
+      } else {
+        const person = (people.value || []).find(p => p.email === rawLead || p.name === rawLead)
+        if (person) {
+          leadName = person.name || person.email
+          leadImage = person.image || ''
+        } else if (!leadName) {
+          leadName = rawLead
+        }
+      }
+    } else {
+      leadName = '—'
+    }
+
     return {
       id: proj.name,
       name: pName,
       status: proj.status || (completedTasks === pTasks.length && pTasks.length > 0 ? 'Completed' : 'Draft'),
       team: proj.team || 'Unassigned',
-      lead: proj.project_lead || proj.team || 'Unassigned',
+      lead: leadName,
+      lead_image: leadImage,
       total_tasks: pTasks.length,
       open_tasks: pTasks.filter((t) => t.status !== 'Completed').length,
       completed_tasks: completedTasks,
       progress: proj.completion_percent || pct,
       due_date: proj.end_date || '',
       parent_project: proj.parent_project || '',
+      modified: proj.modified || '',
+      modified_pretty: proj.modified_pretty || '',
     }
   })
 })
@@ -1783,6 +1815,19 @@ onUnmounted(() => {
               <Plus class="size-4 mr-0.5" />
             </template>
           </Button>
+
+          <!-- Create Project Button (in Project view) -->
+          <Button
+            v-if="activeSection === 'Project'"
+            variant="solid"
+            theme="gray"
+            label="Create Project"
+            @click="loadEmployees(); createProjectModalOpen = true"
+          >
+            <template #prefix>
+              <Plus class="size-4 mr-0.5" />
+            </template>
+          </Button>
         </div>
       </PageHeader>
 
@@ -2264,9 +2309,6 @@ onUnmounted(() => {
                 class="w-56"
               />
               <span class="whitespace-nowrap">{{ sortedProjects.length }} projects</span>
-              <Button variant="solid" theme="gray" label="Create Project" @click="loadEmployees(); createProjectModalOpen = true">
-                <template #prefix><Plus class="size-4 mr-1" /></template>
-              </Button>
             </div>
           </div>
 
@@ -2282,6 +2324,7 @@ onUnmounted(() => {
               :selectable="false"
               :row-key="'id'"
               :item-label="'projects'"
+              :row-class="getProjectRowClass"
               @sort-change="handleProjectSortChange"
               @load-more="handleProjectLoadMore"
               @load-all="handleProjectLoadAll"
@@ -2315,10 +2358,11 @@ onUnmounted(() => {
               </template>
 
               <template #cell-lead="{ row }">
-                <div class="flex items-center gap-2">
-                  <Avatar :label="row.lead" size="sm" class="shrink-0" />
+                <div v-if="row.lead && row.lead !== '—'" class="flex items-center gap-2 min-w-0">
+                  <Avatar :image="row.lead_image" :label="row.lead" size="sm" class="shrink-0" />
                   <span class="font-medium text-xs text-ink-gray-7 truncate">{{ row.lead }}</span>
                 </div>
+                <span v-else class="text-xs text-ink-gray-4">—</span>
               </template>
 
               <template #cell-progress="{ row }">
@@ -2340,25 +2384,13 @@ onUnmounted(() => {
                 <span v-else class="text-ink-gray-4">—</span>
               </template>
 
-              <template #cell-actions="{ row }">
-                <div class="flex items-center gap-1">
-                  <button
-                    type="button"
-                    class="p-1 rounded hover:bg-surface-gray-3 text-ink-gray-5 hover:text-ink-gray-8 transition cursor-pointer"
-                    title="Edit project"
-                    @click.stop="openEditProject(row)"
-                  >
-                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="p-1 rounded hover:bg-red-50 text-ink-gray-5 hover:text-red-600 transition cursor-pointer"
-                    title="Delete project"
-                    @click.stop="deleteProjectConfirm(row)"
-                  >
-                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                  </button>
-                </div>
+              <template #cell-modified="{ row }">
+                <span
+                  class="text-xs"
+                  :class="isRowJustNow(row) ? 'text-emerald-600 font-semibold' : 'text-ink-gray-5'"
+                >
+                  {{ formatPrettyDate(row) }}
+                </span>
               </template>
             </CommonListView>
           </div>
