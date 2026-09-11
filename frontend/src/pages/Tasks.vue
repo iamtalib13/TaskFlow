@@ -456,7 +456,7 @@ function isTaskOverdue(row) {
 function formatPrettyDate(row) {
   if (row?.modified_pretty) {
     const p = String(row.modified_pretty).trim()
-    if (p.toLowerCase() === 'just now' || p.toLowerCase().includes('second') || p.toLowerCase() === 'right now') return 'Just now'
+    if (p.toLowerCase() === 'just now' || p.toLowerCase() === 'right now') return 'Just now'
     return p
   }
   if (!row?.modified) return '—'
@@ -468,11 +468,11 @@ function formatPrettyDate(row) {
     if (isNaN(d.getTime())) return row.modified
 
     const now = new Date()
-    const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000)
+    const diffSec = (now.getTime() - d.getTime()) / 1000
 
-    if (diffSec < 0 || diffSec < 300) return 'Just now'
+    if (diffSec >= -10 && diffSec < 60) return 'Just now'
     const diffMin = Math.floor(diffSec / 60)
-    if (diffMin < 60) return `${diffMin}m ago`
+    if (diffMin < 60) return `${Math.max(1, diffMin)}m ago`
     const diffHours = Math.floor(diffMin / 60)
     if (diffHours < 24) return `${diffHours}h ago`
     const diffDays = Math.floor(diffHours / 24)
@@ -495,16 +495,14 @@ function isRowJustNow(row) {
   if (!row) return false
   const p = (row.modified_pretty || '').toString().trim().toLowerCase()
   if (p === 'just now' || p === 'right now') return true
-  const computedStr = formatPrettyDate(row).toString().trim().toLowerCase()
-  if (computedStr === 'just now' || computedStr === 'right now') return true
   if (row.modified) {
     try {
       const raw = String(row.modified).trim()
       const isoString = raw.includes('T') ? raw : raw.replace(' ', 'T')
       const d = new Date(isoString)
       if (!isNaN(d.getTime())) {
-        const diffSec = Math.floor((Date.now() - d.getTime()) / 1000)
-        if (diffSec >= 0 && diffSec <= 45) return true
+        const diffSec = (Date.now() - d.getTime()) / 1000
+        if (diffSec >= -10 && diffSec <= 45) return true
       }
     } catch {}
   }
