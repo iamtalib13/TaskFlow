@@ -252,6 +252,70 @@
           </div>
         </div>
 
+        <!-- Row 3: Pending From & Guided By -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Pending From</label>
+            <select
+              v-model="form.pending_from"
+              class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+            >
+              <option value="" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">Pending from...</option>
+              <option v-for="v in pendingFromOptions" :key="v" :value="v" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ v }}</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Guided By</label>
+            <Combobox
+              v-model="form.guided_by"
+              :options="guidedByOptions"
+              placeholder="Select or search guide..."
+              size="sm"
+              class="w-full"
+            />
+          </div>
+        </div>
+
+        <!-- Row 4: Toll ID & Ticket Date & Ticket Raised By -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Toll ID</label>
+            <input
+              v-model="form.toll_id"
+              type="text"
+              placeholder="e.g. TL-1024"
+              class="w-full text-xs bg-surface-base border border-outline-gray-2 dark:border-gray-700 text-ink-gray-8 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
+            />
+          </div>
+
+          <div>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Ticket Date</label>
+            <DatePicker
+              v-model="form.ticket_date"
+              format="DD-MM-YYYY"
+              placeholder="DD-MM-YYYY"
+              size="sm"
+              variant="outline"
+              class="w-full"
+            >
+              <template #prefix>
+                <Calendar class="size-3.5 text-gray-400 dark:text-gray-500" />
+              </template>
+            </DatePicker>
+          </div>
+
+          <div>
+            <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Ticket Raised By</label>
+            <input
+              v-model="form.ticket_raised_by"
+              type="text"
+              placeholder="e.g. Name / Email"
+              class="w-full text-xs bg-surface-base border border-outline-gray-2 dark:border-gray-700 text-ink-gray-8 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] transition"
+            />
+          </div>
+        </div>
+
         <div>
           <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Description</label>
           <FrappeRichEditor
@@ -286,7 +350,7 @@
 </template>
 
 <script>
-import { MultiSelect, DatePicker, Button, toast } from 'frappe-ui'
+import { MultiSelect, DatePicker, Combobox, Button, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
 import { saveTask, getErrorMessage, fetchTeamMembers } from '../data/api'
 import FrappeRichEditor from './FrappeRichEditor.vue'
@@ -297,6 +361,7 @@ export default {
   components: {
     Button,
     DatePicker,
+    Combobox,
     MultiSelect,
     FrappeRichEditor,
     Calendar,
@@ -346,6 +411,7 @@ export default {
       errorMessage: '',
       localTeamMembers: [],
       taskTypes: ['Task', 'Bug', 'Customization Request'],
+      pendingFromOptions: ['User', 'Team', 'Client', 'Management', 'External Partner', 'Vendor'],
       form: {
         title: '',
         project: '',
@@ -357,6 +423,11 @@ export default {
         priority: 'Medium',
         start_date: '',
         due_date: '',
+        pending_from: '',
+        guided_by: '',
+        toll_id: '',
+        ticket_date: '',
+        ticket_raised_by: '',
         description: '',
       },
       rowCls: 'w-full rounded px-2.5 py-1.5 text-left text-xs font-medium text-ink-gray-7 dark:text-gray-300 hover:bg-surface-gray-2 dark:hover:bg-gray-800 hover:text-ink-gray-9 dark:hover:text-white transition cursor-pointer whitespace-nowrap',
@@ -379,6 +450,11 @@ export default {
           priority: 'Medium',
           start_date: '',
           due_date: '',
+          pending_from: '',
+          guided_by: '',
+          toll_id: '',
+          ticket_date: '',
+          ticket_raised_by: '',
           description: '',
         }
         if (defaultTeam) {
@@ -388,6 +464,25 @@ export default {
     },
   },
   computed: {
+    guidedByOptions() {
+      const unique = new Map()
+      for (const m of this.allAvailableTeamMembers) {
+        const id = m.user || m.employee
+        if (id) {
+          const label = m.employee_name || m.user || m.employee
+          if (!unique.has(id)) {
+            unique.set(id, { label: label, value: id })
+          }
+        }
+      }
+      for (const p of this.people || []) {
+        const id = p.email || p.name
+        if (id && !unique.has(id)) {
+          unique.set(id, { label: p.name || p.email, value: id })
+        }
+      }
+      return Array.from(unique.values())
+    },
     effectiveTeam() {
       if (this.form.team) return this.form.team
       const selected = (this.projects || []).find((p) => p.name === this.form.project)
@@ -507,8 +602,10 @@ export default {
       this.creating = true
       this.errorMessage = ''
       const assigneeIds = (this.form.assignees || []).map((a) => (typeof a === 'object' ? (a.value || a.user_id || a.user || a.email) : a)).filter(Boolean)
+      const guidedByVal = typeof this.form.guided_by === 'object' ? (this.form.guided_by.value || '') : (this.form.guided_by || '')
       const payload = {
         ...this.form,
+        guided_by: guidedByVal,
         team: this.effectiveTeam || this.form.team || undefined,
         assignees: assigneeIds,
         assigned_to: assigneeIds[0] || '',
