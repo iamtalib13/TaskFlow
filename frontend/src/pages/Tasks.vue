@@ -494,9 +494,9 @@ function formatPrettyDate(row) {
 function isRowJustNow(row) {
   if (!row) return false
   const p = (row.modified_pretty || '').toString().trim().toLowerCase()
-  if (p === 'just now' || p === 'right now' || p.includes('just now') || p.includes('second')) return true
-  const computed = formatPrettyDate(row).toString().trim().toLowerCase()
-  if (computed === 'just now' || computed === 'right now' || computed.includes('just now') || computed.includes('second')) return true
+  if (p === 'just now' || p === 'right now') return true
+  const computedStr = formatPrettyDate(row).toString().trim().toLowerCase()
+  if (computedStr === 'just now' || computedStr === 'right now') return true
   if (row.modified) {
     try {
       const raw = String(row.modified).trim()
@@ -504,7 +504,7 @@ function isRowJustNow(row) {
       const d = new Date(isoString)
       if (!isNaN(d.getTime())) {
         const diffSec = Math.floor((Date.now() - d.getTime()) / 1000)
-        if (diffSec >= 0 && diffSec < 300) return true
+        if (diffSec >= 0 && diffSec <= 45) return true
       }
     } catch {}
   }

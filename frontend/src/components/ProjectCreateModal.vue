@@ -242,24 +242,22 @@
             <div v-if="projectTreeNodes.length === 0" class="py-6 text-center text-xs text-ink-gray-4">
               No child projects linked yet.<br/>Use the search above to add child projects.
             </div>
-            <Tree v-else :nodes="projectTreeNodes" node-key="value">
-              <template #item="{ node }">
-                <div
-                  class="flex items-center justify-between px-2 py-1 rounded-md text-xs bg-blue-50/70 text-blue-900 border border-blue-200/80 my-0.5"
+            <Tree v-else :nodes="projectTreeNodes" node-key="value" guides="connectors">
+              <template #item-prefix>
+                <Folder class="size-3.5 text-blue-500 shrink-0" />
+              </template>
+              <template #item-label="{ node }">
+                <span class="text-xs font-medium text-ink-gray-9 truncate">{{ node.label }}</span>
+              </template>
+              <template #item-suffix="{ node }">
+                <button
+                  type="button"
+                  class="text-ink-gray-4 hover:text-rose-600 transition p-0.5 rounded cursor-pointer"
+                  title="Remove child project"
+                  @click.stop="removeChildProject(node.value)"
                 >
-                  <div class="flex items-center gap-1.5 min-w-0">
-                    <Folder class="size-3.5 text-blue-600 shrink-0" />
-                    <span class="truncate font-medium">{{ node.label }}</span>
-                  </div>
-                  <button
-                    type="button"
-                    class="text-ink-gray-4 hover:text-rose-600 transition p-0.5 rounded cursor-pointer"
-                    title="Remove child project"
-                    @click.stop="removeChildProject(node.value)"
-                  >
-                    <X class="size-3.5" />
-                  </button>
-                </div>
+                  <X class="size-3.5" />
+                </button>
               </template>
             </Tree>
           </div>
