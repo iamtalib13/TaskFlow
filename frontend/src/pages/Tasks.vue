@@ -740,6 +740,48 @@ const projectTableColumns = [
 ]
 
 
+const selectedProjectMemberFilter = ref('')
+const memberFilterQuery = ref('')
+
+const uniqueMemberOptions = computed(() => {
+  const map = new Map()
+
+  ;(employees.value || []).forEach(e => {
+    const id = e.name
+    if (id && !map.has(id)) {
+      map.set(id, {
+        label: e.employee_name || e.name,
+        value: id,
+        description: e.name,
+        image: e.user_image || e.image || '',
+      })
+    }
+  })
+
+  ;(people.value || []).forEach(p => {
+    const id = p.email || p.name
+    if (id && !map.has(id)) {
+      map.set(id, {
+        label: p.name || p.email,
+        value: id,
+        description: id,
+        image: p.image || '',
+      })
+    }
+  })
+
+  return Array.from(map.values())
+})
+
+const filteredMemberFilterOptions = computed(() => {
+  const q = memberFilterQuery.value.trim()
+  let list = uniqueMemberOptions.value
+  if (q) {
+    list = list.filter(m => matchTokens(`${m.label} ${m.description}`, q))
+  }
+  return [{ label: 'All Team Members', value: '', image: '', description: '' }, ...list.slice(0, MAX_VISIBLE)]
+})
+
 const filteredProjectsData = computed(() => {
   let list = projectsData.value
 
@@ -749,6 +791,30 @@ const filteredProjectsData = computed(() => {
       : selectedProjectTeamFilter.value
     if (filterVal) {
       list = list.filter(p => p.team === filterVal)
+    }
+  }
+
+  if (selectedProjectMemberFilter.value) {
+    const filterEmp = typeof selectedProjectMemberFilter.value === 'object'
+      ? selectedProjectMemberFilter.value.value
+      : selectedProjectMemberFilter.value
+
+    if (filterEmp) {
+      list = list.filter(p => {
+        if (p.raw_lead === filterEmp || p.project_lead === filterEmp || p.lead === filterEmp) return true
+        if (p.project_team_members && Array.isArray(p.project_team_members)) {
+          if (p.project_team_members.some(m => m.employee === filterEmp || m.user === filterEmp)) return true
+        }
+        const pTasks = (tasks.value || []).filter(t => t.project === p.name || t.project === p.id)
+        if (pTasks.some(t => {
+          if (t.owner === filterEmp || t.guided_by === filterEmp || t.responsible_person === filterEmp) return true
+          if (t.assignees && Array.isArray(t.assignees)) {
+            return t.assignees.some(a => a.user_id === filterEmp || a.name === filterEmp || a.employee_name === filterEmp)
+          }
+          return false
+        })) return true
+        return false
+      })
     }
   }
 
@@ -769,7 +835,7 @@ function handleProjectSortChange({ key, order }) {
   projectSortDirection.value = order
 }
 
-watch([selectedProjectTeamFilter, projectStatusTab], () => {
+watch([selectedProjectTeamFilter, selectedProjectMemberFilter, projectStatusTab], () => {
   projectsDisplayLimit.value = 20
 })
 
@@ -842,6 +908,9 @@ const projectsData = computed(() => {
       team: proj.team || 'Unassigned',
       lead: leadName,
       lead_image: leadImage,
+      raw_lead: rawLead,
+      project_lead: proj.project_lead || '',
+      project_team_members: proj.project_team_members || [],
       total_tasks: pTasks.length,
       open_tasks: pTasks.filter((t) => t.status !== 'Completed').length,
       completed_tasks: completedTasks,
@@ -2310,11 +2379,38 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center gap-3 text-xs font-medium text-ink-gray-6">
               <Combobox
+                v-model="selectedProjectMemberFilter"
+                v-model:query="memberFilterQuery"
+                :options="filteredMemberFilterOptions"
+                :filterable="false"
+                placeholder="Filter by Team Member"
+                size="sm"
+                class="w-56"
+              >
+                <template #prefix="{ selectedOption }">
+                  <Avatar
+                    v-if="selectedOption && selectedOption.value"
+                    :image="selectedOption.image"
+                    :label="selectedOption.label"
+                    size="xs"
+                  />
+                </template>
+                <template #item-prefix="{ item }">
+                  <Avatar v-if="item.value" :image="item.image" :label="item.label" size="xs" />
+                </template>
+                <template #item-label="{ item }">
+                  <div class="min-w-0 flex justify-between items-center w-full">
+                    <div class="truncate font-medium text-ink-gray-9 text-xs">{{ item.label }}</div>
+                    <div v-if="item.description" class="truncate text-[10px] text-ink-gray-5 ml-2">{{ item.description }}</div>
+                  </div>
+                </template>
+              </Combobox>
+              <Combobox
                 v-model="selectedProjectTeamFilter"
                 :options="[{label: 'All Teams', value: ''}, ...teams.map(t => ({label: t.name, value: t.name}))]"
                 placeholder="Filter by Team"
                 size="sm"
-                class="w-56"
+                class="w-48"
               />
               <span class="whitespace-nowrap">{{ sortedProjects.length }} projects</span>
             </div>

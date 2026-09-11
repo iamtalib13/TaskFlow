@@ -43,6 +43,17 @@ def get_spa_bootstrap() -> dict:
 			if e.get("user_id"):
 				lead_map[e["user_id"]] = info
 
+	proj_names = [p["name"] for p in projects]
+	proj_members_map = {}
+	if proj_names:
+		pm_raw = frappe.get_all(
+			"Taskflow Project Team Member",
+			filters={"parent": ["in", proj_names], "parenttype": "Taskflow Project"},
+			fields=["parent", "employee", "team_role", "access_level", "is_active"],
+		)
+		for pm in pm_raw:
+			proj_members_map.setdefault(pm["parent"], []).append(pm)
+
 	# Active system users for assignment
 	users = frappe.get_all(
 		"User",
@@ -293,8 +304,10 @@ def get_spa_bootstrap() -> dict:
 				"project_lead_name": lead_map.get(p.get("project_lead"), {}).get("name") or p.get("project_lead") or "",
 				"project_lead_image": lead_map.get(p.get("project_lead"), {}).get("image") or "",
 				"completion_percent": p.get("completion_percent") or 0,
+				"start_date": str(p.get("start_date")) if p.get("start_date") else "",
 				"end_date": str(p.get("end_date")) if p.get("end_date") else "",
 				"parent_project": p.get("parent_project") or "",
+				"project_team_members": proj_members_map.get(p["name"], []),
 				"modified": str(p.get("modified")) if p.get("modified") else "",
 				"modified_pretty": frappe.utils.pretty_date(p["modified"]) if p.get("modified") else "",
 				"icon": "lucide-folder",
