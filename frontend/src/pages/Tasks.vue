@@ -728,15 +728,15 @@ const projectStatusTab = ref('All')
 const projectStatusOptions = ['All', 'Draft', 'Open', 'In Progress', 'Completed', 'Cancelled']
 const selectedProjectKeys = ref([])
 const projectTableColumns = [
-  { key: 'sr_no', label: 'SR NO', width: '60px', minWidth: '50px', sortable: false, visible: true },
-  { key: 'name', label: 'PROJECT', width: '180px', minWidth: '150px', sortable: true, visible: true },
-  { key: 'parent_project', label: 'PARENT PROJECT', width: '120px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'team', label: 'TEAM', width: '120px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'lead', label: 'LEAD', width: '140px', minWidth: '120px', sortable: true, visible: true },
-  { key: 'start_date', label: 'START DATE', width: '110px', minWidth: '95px', sortable: true, visible: true },
-  { key: 'end_date', label: 'END DATE', width: '110px', minWidth: '95px', sortable: true, visible: true },
-  { key: 'progress', label: 'PROGRESS', width: '130px', minWidth: '110px', sortable: true, visible: true },
-  { key: 'modified', label: 'MODIFIED', width: '120px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'sr_no', label: 'SR', width: '42px', minWidth: '36px', align: 'center', sortable: false, visible: true },
+  { key: 'name', label: 'PROJECT', width: '180px', minWidth: '130px', sortable: true, visible: true },
+  { key: 'parent_project', label: 'PARENT PROJECT', width: '130px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'team', label: 'TEAM', width: '110px', minWidth: '90px', sortable: true, visible: true },
+  { key: 'lead', label: 'LEAD', width: '130px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'start_date', label: 'START DATE', width: '95px', minWidth: '85px', sortable: true, visible: true },
+  { key: 'end_date', label: 'END DATE', width: '95px', minWidth: '85px', sortable: true, visible: true },
+  { key: 'progress', label: 'PROGRESS', width: '110px', minWidth: '95px', sortable: true, visible: true },
+  { key: 'modified', label: 'MODIFIED', width: '110px', minWidth: '95px', sortable: true, visible: true },
 ]
 
 

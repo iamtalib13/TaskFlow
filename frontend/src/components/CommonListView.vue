@@ -12,7 +12,7 @@
       class="relative flex-1 min-h-0 overflow-auto outline-none focus:outline-none focus:ring-0 ring-0"
       @scroll="handleScroll"
     >
-      <table class="w-full text-left border-collapse text-xs select-text outline-none focus:outline-none">
+      <table class="w-full text-left border-collapse text-xs select-text outline-none focus:outline-none table-fixed">
         <!-- Table Header (Sticky at top) -->
         <thead class="sticky top-0 z-30 bg-surface-gray-2/95 backdrop-blur-xs border-b border-outline-gray-2 text-ink-gray-6 font-semibold tracking-wide uppercase text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
           <tr>
@@ -141,7 +141,7 @@
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
-                'px-3 py-2 whitespace-nowrap text-ink-gray-7 text-xs transition-colors',
+                'px-3 py-2 whitespace-nowrap text-ink-gray-7 text-xs transition-colors truncate',
                 col.sticky ? 'sticky z-20 border-r border-outline-gray-1 font-medium' : '',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
                 isRowSelected(row)
