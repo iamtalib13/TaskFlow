@@ -1127,6 +1127,15 @@ const selectedTsUserDisplayName = computed(() => {
   return found?.employee_name || found?.name || found?.user || found?.email || selectedTimesheetUser.value
 })
 
+const selectedTsUserImage = computed(() => {
+  const user = (selectedTimesheetUser.value || currentUserEmail.value || '').toLowerCase()
+  if (!user) return ''
+  const found = [...(teamMembers.value || []), ...(people.value || [])].find((m) => {
+    return (m.user || m.email || '').toLowerCase() === user
+  })
+  return found?.user_image || ''
+})
+
 const totalTsMonthlyHours = computed(() => {
   return timesheetCalendarEvents.value.reduce((sum, ev) => sum + (Number(ev._hours) || 0), 0)
 })
@@ -2173,7 +2182,7 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <!-- 2. TIMESHEET VIEW (Direct Component: Calendar + Activity Log) -->
+        <!-- 2. TIMESHEET VIEW (Profile top + 2 columns) -->
         <template v-else-if="activeSection === 'Timesheet'">
           <div class="shrink-0 mb-3 flex items-center justify-between">
             <div>
@@ -2186,7 +2195,6 @@ onUnmounted(() => {
               </p>
             </div>
             <div class="flex items-center gap-2.5">
-              <!-- Member Selector (if multiple members available) -->
               <div v-if="availableTimesheetMembers.length > 0" class="relative">
                 <select
                   v-model="selectedTimesheetUser"
@@ -2205,8 +2213,6 @@ onUnmounted(() => {
                   </option>
                 </select>
               </div>
-
-              <!-- Quick Log Hours Button -->
               <Button
                 variant="solid"
                 class="!bg-[#417c7d] hover:!bg-[#356667] !text-white"
@@ -2218,59 +2224,44 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex-1 min-h-0 flex overflow-hidden bg-surface-base border border-outline-gray-2 rounded-xl shadow-xs outline-none focus:outline-none ring-0">
-            <!-- Left: Profile / Stats Card (240px) -->
-            <div class="w-[240px] shrink-0 overflow-y-auto border-r border-outline-gray-2 bg-surface-gray-2/40 p-4 flex flex-col justify-between">
-              <div>
-                <div class="flex flex-col items-center text-center mb-4">
-                  <div class="size-16 rounded-full bg-surface-base ring-2 ring-gray-200 shadow-sm overflow-hidden mb-2.5">
-                    <Avatar
-                      :label="selectedTsUserDisplayName || selectedTimesheetUser || 'User'"
-                      size="2xl"
-                      shape="circle"
-                      class="size-16"
-                    />
-                  </div>
-                  <h3 class="text-sm font-bold text-ink-gray-9 leading-tight">
-                    {{ selectedTsUserDisplayName || selectedTimesheetUser || 'My Timesheet' }}
-                  </h3>
-                  <p class="text-[11px] text-ink-gray-5 mt-0.5 truncate max-w-[200px]">
-                    {{ selectedTimesheetUser || currentUserEmail }}
-                  </p>
-                </div>
-
-                <!-- Monthly summary stats -->
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                  <div class="text-center p-2 bg-surface-base rounded-lg border border-outline-gray-1 shadow-xs">
-                    <p class="text-base font-bold text-emerald-600">{{ totalTsMonthlyHours }}h</p>
-                    <p class="text-[10px] text-ink-gray-5 font-medium">Logged</p>
-                  </div>
-                  <div class="text-center p-2 bg-surface-base rounded-lg border border-outline-gray-1 shadow-xs">
-                    <p class="text-base font-bold text-ink-gray-8">{{ tsWorkingDaysCount }}</p>
-                    <p class="text-[10px] text-ink-gray-5 font-medium">Days</p>
-                  </div>
-                  <div class="text-center p-2 bg-surface-base rounded-lg border border-outline-gray-1 shadow-xs col-span-2">
-                    <p class="text-xs font-semibold text-ink-gray-7">{{ tsAvgHoursPerDay }} hrs / day</p>
-                    <p class="text-[9px] text-gray-400">Average on worked days</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Quick action in sidebar -->
-              <div class="pt-3 border-t border-outline-gray-2">
-                <Button
-                  variant="outline"
-                  class="w-full justify-center text-xs"
-                  @click="openTimesheetForm(new Date().toISOString().slice(0, 10))"
-                >
-                  <template #prefix><Plus class="size-3 text-ink-gray-5" /></template>
-                  <span>Log Today's Work</span>
-                </Button>
+          <!-- User Profile Card at Top -->
+          <div class="shrink-0 flex items-center gap-4 p-4 bg-surface-base border border-outline-gray-2 rounded-xl mb-3">
+            <div class="flex flex-col items-center">
+              <div class="size-14 rounded-full bg-surface-base ring-2 ring-gray-200 shadow-sm overflow-hidden flex items-center justify-center">
+                <Avatar
+                  :image="selectedTsUserImage"
+                  :label="selectedTsUserDisplayName || selectedTimesheetUser || 'User'"
+                  size="xl"
+                  shape="circle"
+                />
               </div>
             </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="text-sm font-bold text-ink-gray-9 leading-tight">
+                {{ selectedTsUserDisplayName || selectedTimesheetUser || 'My Timesheet' }}
+              </h3>
+              <p class="text-[11px] text-ink-gray-5 truncate">{{ selectedTimesheetUser || currentUserEmail }}</p>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="text-center">
+                <p class="text-lg font-bold text-emerald-600">{{ totalTsMonthlyHours }}h</p>
+                <p class="text-[10px] text-ink-gray-5">Logged</p>
+              </div>
+              <div class="text-center">
+                <p class="text-lg font-bold text-ink-gray-8">{{ tsWorkingDaysCount }}</p>
+                <p class="text-[10px] text-ink-gray-5">Days</p>
+              </div>
+              <div class="text-center">
+                <p class="text-lg font-bold text-purple-600">{{ tsAvgHoursPerDay }}h</p>
+                <p class="text-[10px] text-ink-gray-5">Avg/Day</p>
+              </div>
+            </div>
+          </div>
 
-            <!-- Center: Timesheet Calendar Component -->
-            <div class="flex-1 min-w-0 flex flex-col overflow-hidden bg-surface-base border-r border-outline-gray-2">
+          <!-- 2 Columns: Calendar + Activity Log -->
+          <div class="flex-1 min-h-0 flex gap-3 overflow-hidden">
+            <!-- Left: Timesheet Calendar -->
+            <div class="flex-1 min-w-0 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 rounded-xl">
               <TimesheetCalendar
                 :events="timesheetCalendarEvents"
                 :loading="timesheetCalendarLoading"
@@ -2281,7 +2272,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Right: Activity Log -->
-            <div class="w-[340px] xl:w-[380px] shrink-0 min-w-0 flex flex-col overflow-hidden bg-surface-base">
+            <div class="w-[340px] xl:w-[380px] shrink-0 min-w-0 flex flex-col overflow-hidden bg-surface-base border border-outline-gray-2 rounded-xl">
               <div class="shrink-0 px-4 py-3 border-b border-outline-gray-1 flex items-center justify-between">
                 <div>
                   <h4 class="text-xs font-bold text-ink-gray-8 uppercase tracking-wide">Activity Log</h4>
@@ -2301,7 +2292,6 @@ onUnmounted(() => {
                 </Button>
               </div>
 
-              <!-- Placeholder when no day selected -->
               <div v-if="!selectedTsDayDate" class="flex-1 flex flex-col items-center justify-center text-center px-4">
                 <div class="size-10 rounded-xl bg-surface-gray-3 flex items-center justify-center mb-3">
                   <Clock class="size-5 text-gray-400" />
@@ -2312,7 +2302,6 @@ onUnmounted(() => {
                 </p>
               </div>
 
-              <!-- No entries for selected day -->
               <div v-else-if="selectedTsDayEntries.length === 0" class="flex-1 flex flex-col items-center justify-center text-center px-4 py-10">
                 <div class="size-10 rounded-xl bg-rose-50 flex items-center justify-center mb-3">
                   <Clock class="size-5 text-rose-400" />
@@ -2330,7 +2319,6 @@ onUnmounted(() => {
                 </Button>
               </div>
 
-              <!-- Day Entries list -->
               <div v-else class="flex-1 overflow-y-auto p-3 space-y-3">
                 <div
                   v-for="(ts, tIdx) in selectedTsDayEntries"
