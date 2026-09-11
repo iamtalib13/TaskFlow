@@ -1187,6 +1187,8 @@ async function loadTimesheetCalendar(user) {
     }
   }
 
+  // Don't set loading twice if already fetching
+  if (timesheetCalendarLoading.value) return
   timesheetCalendarLoading.value = true
   try {
     const currentYear = new Date().getFullYear()
