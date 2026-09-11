@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { Button } from 'frappe-ui'
+import { Button, Skeleton } from 'frappe-ui'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -181,18 +181,16 @@ function getDayNumberClass(cell, dayOfWeek) {
         </div>
         <span class="text-center text-[9px] font-semibold text-gray-400 py-1.5">Wk</span>
       </div>
-      <div class="flex-1 min-h-0 overflow-y-auto">
-        <div v-for="w in 5" :key="w" class="grid grid-cols-[1fr_48px] border-t border-outline-gray-2">
-          <div class="grid grid-cols-7">
-            <div v-for="d in 7" :key="d" class="relative min-h-[52px] border-r border-outline-gray-2 last:border-r-0 px-1 py-1">
-              <div class="flex items-center justify-between mb-0.5">
-                <span class="text-[10px] font-medium inline-flex items-center justify-center size-5 rounded-full bg-surface-gray-3 text-gray-400 animate-pulse"></span>
-                <span class="size-1.5 rounded-full shrink-0 bg-surface-gray-3 animate-pulse"></span>
-              </div>
+      <div class="flex-1 min-h-0 overflow-y-auto space-y-2 p-2">
+        <div v-for="w in 5" :key="w" class="grid grid-cols-[1fr_48px] gap-0">
+          <div class="grid grid-cols-7 gap-1">
+            <div v-for="d in 7" :key="d" class="min-h-[52px]">
+              <Skeleton class="h-4 w-full rounded" />
+              <Skeleton class="h-3 w-3/4 mt-1 rounded" />
             </div>
           </div>
           <div class="flex items-center justify-center border-l border-outline-gray-2">
-            <span class="text-[11px] font-bold text-gray-300 animate-pulse">0h</span>
+            <Skeleton class="h-4 w-8 rounded" />
           </div>
         </div>
       </div>
