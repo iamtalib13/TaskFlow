@@ -726,7 +726,6 @@ function handleLoadAll() {
 // --- 2. Project List View State & Columns ---
 const selectedProjectTeamFilter = ref('')
 const projectStatusTab = ref('All')
-const projectStatusOptions = ['All', 'Draft', 'Open', 'In Progress', 'Completed', 'Cancelled']
 const selectedProjectKeys = ref([])
 const projectTableColumns = [
   { key: 'sr_no', label: 'SR', width: '42px', minWidth: '36px', align: 'center', sortable: false, visible: true },
@@ -739,7 +738,6 @@ const projectTableColumns = [
   { key: 'progress', label: 'PROGRESS', width: '110px', minWidth: '95px', sortable: true, visible: true },
   { key: 'modified', label: 'MODIFIED', width: '110px', minWidth: '95px', sortable: true, visible: true },
 ]
-
 
 const selectedProjectMemberFilter = ref('')
 const memberFilterQuery = ref('')
@@ -783,6 +781,145 @@ const filteredMemberFilterOptions = computed(() => {
   return [{ label: 'All Team Members', value: '', image: '', description: '' }, ...list.slice(0, MAX_VISIBLE)]
 })
 
+// O(1) Pre-indexed Projects Data
+const projectsData = computed(() => {
+  if (!projects.value || projects.value.length === 0) return []
+
+  // Pre-index tasks by project name for O(1) task lookup
+  const tasksByProject = new Map()
+  for (const t of tasks.value || []) {
+    if (!t.project) continue
+    if (!tasksByProject.has(t.project)) {
+      tasksByProject.set(t.project, [])
+    }
+    tasksByProject.get(t.project).push(t)
+  }
+
+  // Pre-index employees and people for O(1) lead lookup
+  const empMap = new Map()
+  for (const e of employees.value || []) {
+    if (e.name) empMap.set(e.name, e)
+    if (e.user_id) empMap.set(e.user_id, e)
+  }
+
+  const peopleMap = new Map()
+  for (const p of people.value || []) {
+    if (p.email) peopleMap.set(p.email, p)
+    if (p.name) peopleMap.set(p.name, p)
+  }
+
+  return projects.value.map((proj) => {
+    const pName = proj.name || proj.project_name
+    const pTasks = tasksByProject.get(pName) || []
+    const completedTasks = pTasks.filter((t) => t.status === 'Completed').length
+    const pct = pTasks.length > 0 ? Math.round((completedTasks / pTasks.length) * 100) : 0
+
+    // Resolve project lead employee name & image
+    let leadName = proj.project_lead_name || ''
+    let leadImage = proj.project_lead_image || ''
+    const rawLead = proj.project_lead || ''
+    if (rawLead) {
+      const emp = empMap.get(rawLead)
+      if (emp) {
+        leadName = emp.employee_name || emp.name
+        leadImage = emp.user_image || emp.image || ''
+      } else {
+        const person = peopleMap.get(rawLead)
+        if (person) {
+          leadName = person.name || person.email
+          leadImage = person.image || ''
+        } else if (!leadName) {
+          leadName = rawLead
+        }
+      }
+    } else {
+      leadName = '—'
+    }
+
+    // Build Set of associated member IDs for fast O(1) team member filtering
+    const memberIds = new Set()
+    if (rawLead) memberIds.add(rawLead)
+    if (proj.project_lead) memberIds.add(proj.project_lead)
+    if (proj.project_team_members && Array.isArray(proj.project_team_members)) {
+      proj.project_team_members.forEach(m => {
+        if (m.employee) memberIds.add(m.employee)
+        if (m.user) memberIds.add(m.user)
+      })
+    }
+    pTasks.forEach(t => {
+      if (t.owner) memberIds.add(t.owner)
+      if (t.guided_by) memberIds.add(t.guided_by)
+      if (t.responsible_person) memberIds.add(t.responsible_person)
+      if (t.assignees && Array.isArray(t.assignees)) {
+        t.assignees.forEach(a => {
+          if (a.user_id) memberIds.add(a.user_id)
+          if (a.name) memberIds.add(a.name)
+          if (a.employee_name) memberIds.add(a.employee_name)
+        })
+      }
+    })
+
+    return {
+      id: proj.name,
+      name: pName,
+      status: proj.status || (completedTasks === pTasks.length && pTasks.length > 0 ? 'Completed' : 'Draft'),
+      team: proj.team || 'Unassigned',
+      lead: leadName,
+      lead_image: leadImage,
+      raw_lead: rawLead,
+      project_lead: proj.project_lead || '',
+      project_team_members: proj.project_team_members || [],
+      member_ids: memberIds,
+      total_tasks: pTasks.length,
+      open_tasks: pTasks.filter((t) => t.status !== 'Completed').length,
+      completed_tasks: completedTasks,
+      progress: proj.completion_percent || pct,
+      start_date: proj.start_date || '',
+      end_date: proj.end_date || proj.due_date || '',
+      parent_project: proj.parent_project || '',
+      modified: proj.modified || '',
+      modified_pretty: proj.modified_pretty || '',
+    }
+  })
+})
+
+// Dynamic Project status tab options with badge counts
+const projectStatusOptions = computed(() => {
+  const counts = { All: 0, Draft: 0, Open: 0, 'In Progress': 0, Completed: 0, Cancelled: 0 }
+  let baseList = projectsData.value
+
+  const filterTeam = typeof selectedProjectTeamFilter.value === 'object'
+    ? selectedProjectTeamFilter.value.value
+    : selectedProjectTeamFilter.value
+  if (filterTeam) {
+    baseList = baseList.filter(p => p.team === filterTeam)
+  }
+
+  const filterEmp = typeof selectedProjectMemberFilter.value === 'object'
+    ? selectedProjectMemberFilter.value.value
+    : selectedProjectMemberFilter.value
+  if (filterEmp) {
+    baseList = baseList.filter(p => p.member_ids && p.member_ids.has(filterEmp))
+  }
+
+  counts.All = baseList.length
+  baseList.forEach(p => {
+    const s = p.status || 'Draft'
+    if (counts[s] !== undefined) {
+      counts[s]++
+    }
+  })
+
+  return [
+    { label: `All (${counts.All})`, value: 'All' },
+    { label: `Draft (${counts.Draft})`, value: 'Draft' },
+    { label: `Open (${counts.Open})`, value: 'Open' },
+    { label: `In Progress (${counts['In Progress']})`, value: 'In Progress' },
+    { label: `Completed (${counts.Completed})`, value: 'Completed' },
+    { label: `Cancelled (${counts.Cancelled})`, value: 'Cancelled' },
+  ]
+})
+
 const filteredProjectsData = computed(() => {
   let list = projectsData.value
 
@@ -801,21 +938,7 @@ const filteredProjectsData = computed(() => {
       : selectedProjectMemberFilter.value
 
     if (filterEmp) {
-      list = list.filter(p => {
-        if (p.raw_lead === filterEmp || p.project_lead === filterEmp || p.lead === filterEmp) return true
-        if (p.project_team_members && Array.isArray(p.project_team_members)) {
-          if (p.project_team_members.some(m => m.employee === filterEmp || m.user === filterEmp)) return true
-        }
-        const pTasks = (tasks.value || []).filter(t => t.project === p.name || t.project === p.id)
-        if (pTasks.some(t => {
-          if (t.owner === filterEmp || t.guided_by === filterEmp || t.responsible_person === filterEmp) return true
-          if (t.assignees && Array.isArray(t.assignees)) {
-            return t.assignees.some(a => a.user_id === filterEmp || a.name === filterEmp || a.employee_name === filterEmp)
-          }
-          return false
-        })) return true
-        return false
-      })
+      list = list.filter(p => p.member_ids && p.member_ids.has(filterEmp))
     }
   }
 
@@ -825,7 +948,6 @@ const filteredProjectsData = computed(() => {
 
   return list
 })
-
 
 const projectSortField = ref('modified')
 const projectSortDirection = ref('desc')
@@ -868,62 +990,6 @@ function handleProjectLoadMore() {
 function handleProjectLoadAll() {
   projectsDisplayLimit.value = sortedProjects.value.length
 }
-
-const projectsData = computed(() => {
-  if (projects.value.length === 0) return []
-
-  return projects.value.map((proj, idx) => {
-    const pName = proj.name || proj.project_name
-    const pTasks = tasks.value.filter((t) => t.project === pName)
-    const completedTasks = pTasks.filter((t) => t.status === 'Completed').length
-    
-    // Check if it's a new project with no tasks vs existing
-    const pct = pTasks.length > 0 ? Math.round((completedTasks / pTasks.length) * 100) : 0
-    
-    // Resolve project lead employee name
-    let leadName = proj.project_lead_name || ''
-    let leadImage = proj.project_lead_image || ''
-    const rawLead = proj.project_lead || ''
-    if (rawLead) {
-      const emp = (employees.value || []).find(e => e.name === rawLead || e.user_id === rawLead)
-      if (emp) {
-        leadName = emp.employee_name || emp.name
-        leadImage = emp.user_image || emp.image || ''
-      } else {
-        const person = (people.value || []).find(p => p.email === rawLead || p.name === rawLead)
-        if (person) {
-          leadName = person.name || person.email
-          leadImage = person.image || ''
-        } else if (!leadName) {
-          leadName = rawLead
-        }
-      }
-    } else {
-      leadName = '—'
-    }
-
-    return {
-      id: proj.name,
-      name: pName,
-      status: proj.status || (completedTasks === pTasks.length && pTasks.length > 0 ? 'Completed' : 'Draft'),
-      team: proj.team || 'Unassigned',
-      lead: leadName,
-      lead_image: leadImage,
-      raw_lead: rawLead,
-      project_lead: proj.project_lead || '',
-      project_team_members: proj.project_team_members || [],
-      total_tasks: pTasks.length,
-      open_tasks: pTasks.filter((t) => t.status !== 'Completed').length,
-      completed_tasks: completedTasks,
-      progress: proj.completion_percent || pct,
-      start_date: proj.start_date || '',
-      end_date: proj.end_date || proj.due_date || '',
-      parent_project: proj.parent_project || '',
-      modified: proj.modified || '',
-      modified_pretty: proj.modified_pretty || '',
-    }
-  })
-})
 
 // --- 3. Team List View State & Columns ---
 const selectedTeamKeys = ref([])
