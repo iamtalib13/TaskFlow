@@ -744,27 +744,32 @@ const memberFilterQuery = ref('')
 
 const uniqueMemberOptions = computed(() => {
   const map = new Map()
+  let list = teamMembers.value || []
 
-  ;(employees.value || []).forEach(e => {
-    const id = e.name
+  const filterTeam = typeof selectedProjectTeamFilter.value === 'object'
+    ? selectedProjectTeamFilter.value.value
+    : selectedProjectTeamFilter.value
+
+  if (filterTeam) {
+    list = list.filter(m => m.team === filterTeam || m.parent === filterTeam)
+  }
+
+  list.forEach(m => {
+    const id = m.employee || m.user || m.name
     if (id && !map.has(id)) {
       map.set(id, {
-        label: e.employee_name || e.name,
+        label: m.employee_name || m.user || m.employee || id,
         value: id,
-        description: e.name,
-        image: e.user_image || e.image || '',
+        description: m.user || m.employee || '',
+        image: m.user_image || '',
       })
     }
-  })
-
-  ;(people.value || []).forEach(p => {
-    const id = p.email || p.name
-    if (id && !map.has(id)) {
-      map.set(id, {
-        label: p.name || p.email,
-        value: id,
-        description: id,
-        image: p.image || '',
+    if (m.user && !map.has(m.user)) {
+      map.set(m.user, {
+        label: m.employee_name || m.user,
+        value: m.user,
+        description: m.user,
+        image: m.user_image || '',
       })
     }
   })
