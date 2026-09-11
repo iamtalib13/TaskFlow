@@ -515,7 +515,7 @@ function getTaskRowClass(row) {
   if (isRowJustNow(row)) {
     return 'row-just-now is-just-now'
   }
-  return 'hover:bg-[#f0f7f7]'
+  return 'hover:bg-[#f0f7f7] dark:hover:bg-gray-800/70'
 }
 
 // Light green highlight for projects modified 'Just now'
@@ -523,7 +523,7 @@ function getProjectRowClass(row) {
   if (isRowJustNow(row)) {
     return 'row-just-now is-just-now'
   }
-  return 'hover:bg-[#f0f7f7]'
+  return 'hover:bg-[#f0f7f7] dark:hover:bg-gray-800/70'
 }
 
 // Colorful status badge styling: Completed (Green), Overdue (Red), Open (Blue), etc.

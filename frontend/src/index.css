@@ -113,9 +113,20 @@ tr.is-just-now {
   background-color: #ecfdf5 !important;
 }
 
+.dark .row-just-now,
+.dark tr.row-just-now,
+.dark tr.is-just-now {
+  background-color: rgba(6, 78, 59, 0.35) !important;
+}
+
 tr.row-just-now:hover,
 tr.is-just-now:hover {
   background-color: #d1fae5 !important;
+}
+
+.dark tr.row-just-now:hover,
+.dark tr.is-just-now:hover {
+  background-color: rgba(6, 78, 59, 0.55) !important;
 }
 
 tr.row-just-now td,
@@ -123,9 +134,19 @@ tr.is-just-now td {
   background-color: #ecfdf5 !important;
 }
 
+.dark tr.row-just-now td,
+.dark tr.is-just-now td {
+  background-color: rgba(6, 78, 59, 0.35) !important;
+}
+
 tr.row-just-now:hover td,
 tr.is-just-now:hover td {
   background-color: #d1fae5 !important;
+}
+
+.dark tr.row-just-now:hover td,
+.dark tr.is-just-now:hover td {
+  background-color: rgba(6, 78, 59, 0.55) !important;
 }
 
 tr.row-just-now td:first-child,
