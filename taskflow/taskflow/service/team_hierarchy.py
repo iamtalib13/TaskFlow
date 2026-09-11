@@ -22,17 +22,22 @@ def get_user_team_memberships(user: str) -> list[dict]:
 		return []
 
 	user_emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
-	filters = {"parenttype": "Taskflow Team", "is_active": 1}
-	if user_emp:
-		filters["$or"] = [{"user": user}, {"employee": user_emp}]
-	else:
-		filters["user"] = user
-
-	return frappe.get_all(
+	res = frappe.get_all(
 		"Taskflow Team Member",
-		filters=filters,
+		filters={"parenttype": "Taskflow Team", "is_active": 1, "user": user},
 		fields=["parent as team", "user", "employee", "read", "write", "team_role", "access_level"],
 	)
+	if user_emp:
+		emp_res = frappe.get_all(
+			"Taskflow Team Member",
+			filters={"parenttype": "Taskflow Team", "is_active": 1, "employee": user_emp},
+			fields=["parent as team", "user", "employee", "read", "write", "team_role", "access_level"],
+		)
+		seen = {m.name for m in res}
+		for m in emp_res:
+			if m.name not in seen:
+				res.append(m)
+	return res
 
 
 def get_descendant_teams(team_names: list[str]) -> set[str]:
