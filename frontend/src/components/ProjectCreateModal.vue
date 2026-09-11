@@ -140,61 +140,31 @@
                 <tr v-for="(row, idx) in form.project_team_members" :key="idx" class="hover:bg-surface-gray-1 transition">
                   <td class="py-1.5 px-2.5 text-ink-gray-5">{{ idx + 1 }}</td>
                   <td class="py-1.5 px-2.5">
-                    <div class="relative" :ref="el => setMemberRef(idx, el)">
-                      <!-- Selected / Input -->
-                      <div
-                        class="flex items-center gap-1.5 w-full px-2 py-1 border rounded-md bg-surface-base text-xs transition cursor-pointer"
-                        :class="memberOpenIdx === idx ? 'border-blue-400 ring-2 ring-blue-100' : 'border-outline-gray-2 hover:border-outline-gray-3'"
-                        @click="openMember(idx)"
-                      >
-                        <template v-if="getMemberOpt(idx) && memberOpenIdx !== idx">
-                          <Avatar :image="getMemberOpt(idx).image" :label="getMemberOpt(idx).label" size="xs" />
-                          <span class="truncate text-ink-gray-9 font-medium">{{ getMemberOpt(idx).label }}</span>
-                          <button type="button" class="ml-auto shrink-0 text-ink-gray-4 hover:text-rose-500" @click.stop="row.employee = ''">
-                            <X class="size-3" />
-                          </button>
-                        </template>
-                        <template v-else>
-                          <Search class="size-3 text-ink-gray-4 shrink-0" />
-                          <input
-                            :ref="el => setInputRef(idx, el)"
-                            v-model="memberQ"
-                            type="text"
-                            class="flex-1 bg-transparent outline-none text-xs text-ink-gray-9 placeholder:text-ink-gray-4 min-w-0"
-                            placeholder="Search..."
-                            @focus="memberOpenIdx = idx"
-                          />
-                        </template>
-                      </div>
-                      <!-- Dropdown via Teleport to avoid overflow clipping -->
-                      <Teleport to="body">
-                        <div
-                          v-if="memberOpenIdx === idx"
-                          class="fixed z-[9999] bg-surface-base border border-outline-gray-2 rounded-lg shadow-xl overflow-hidden"
-                          :style="memberDropdownStyle"
-                        >
-                          <div class="max-h-44 overflow-y-auto">
-                            <div v-if="memberFiltered.length === 0" class="py-2.5 text-center text-[11px] text-ink-gray-4">
-                              No employees found
-                            </div>
-                            <button
-                              v-for="opt in memberFiltered"
-                              :key="opt.value"
-                              type="button"
-                              class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-surface-gray-2 transition text-xs cursor-pointer"
-                              :class="row.employee === opt.value ? 'bg-surface-gray-2' : ''"
-                              @click="pickMember(idx, opt)"
-                            >
-                              <Avatar :image="opt.image" :label="opt.label" size="xs" />
-                              <div class="min-w-0 flex-1">
-                                <div class="truncate text-ink-gray-9 font-medium">{{ opt.label }}</div>
-                                <div class="truncate text-[10px] text-ink-gray-5">{{ opt.description }}</div>
-                              </div>
-                            </button>
-                          </div>
+                    <Combobox
+                      v-model="row.employee"
+                      :options="employeeOptions"
+                      placeholder="Search employee..."
+                      size="sm"
+                      class="w-full"
+                    >
+                      <template #prefix="{ selectedOption }">
+                        <Avatar
+                          v-if="selectedOption"
+                          :image="selectedOption.image"
+                          :label="selectedOption.label"
+                          size="xs"
+                        />
+                      </template>
+                      <template #item-prefix="{ item }">
+                        <Avatar :image="item.image" :label="item.label" size="xs" />
+                      </template>
+                      <template #item-label="{ item }">
+                        <div class="min-w-0 flex justify-between items-center w-full">
+                          <div class="truncate font-medium text-ink-gray-9 text-xs">{{ item.label }}</div>
+                          <div class="truncate text-[10px] text-ink-gray-5 ml-2">{{ item.description }}</div>
                         </div>
-                      </Teleport>
-                    </div>
+                      </template>
+                    </Combobox>
                   </td>
                   <td class="py-1.5 px-2.5">
                     <FormControl
@@ -280,10 +250,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { FormControl, Avatar, Button, DatePicker, Tree, Combobox, toast } from 'frappe-ui'
 import { saveProject } from '../data/api'
-import { Plus, Trash2, Search, X, Folder, GitFork } from 'lucide-vue-next'
+import { Plus, Trash2, Folder, GitFork } from 'lucide-vue-next'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -415,147 +385,17 @@ const projectTreeNodes = computed(() => {
   return roots
 })
 
-// --- Project Lead Search ---
-const leadSearchOpen = ref(false)
-const leadSearchQuery = ref('')
-const leadSearchInput = ref(null)
-const leadDropdownRef = ref(null)
-
-const leadSelected = computed(() => {
-  if (!form.value.project_lead) return null
-  return employeeOptions.value.find(e => e.value === form.value.project_lead) || null
-})
-
-const leadFilteredOptions = computed(() => {
-  const q = leadSearchQuery.value.toLowerCase().trim()
-  let list = employeeOptions.value
-  if (q) {
-    list = list.filter(e =>
-      e.label.toLowerCase().includes(q) ||
-      e.description.toLowerCase().includes(q)
-    )
-  }
-  return list.slice(0, MAX_VISIBLE)
-})
-
-function openLeadSearch() {
-  leadSearchOpen.value = true
-  leadSearchQuery.value = ''
-  nextTick(() => leadSearchInput.value?.focus())
-}
-
-function selectLead(opt) {
-  form.value.project_lead = opt.value
-  leadSearchOpen.value = false
-  leadSearchQuery.value = ''
-}
-
-function clearLead() {
-  form.value.project_lead = ''
-}
-
-// --- Team Members Search ---
-const memberOpenIdx = ref(-1)
-const memberQ = ref('')
-const memberRefs = ref({})
-const memberInputs = ref({})
-
-function setMemberRef(idx, el) {
-  if (el) memberRefs.value[idx] = el
-}
-function setInputRef(idx, el) {
-  if (el) memberInputs.value[idx] = el
-}
-
-// Teleport dropdown position
-const memberDropdownPos = ref({ top: 0, left: 0, width: 200 })
-
-const memberDropdownStyle = computed(() => ({
-  top: `${memberDropdownPos.value.top}px`,
-  left: `${memberDropdownPos.value.left}px`,
-  width: `${memberDropdownPos.value.width}px`,
-}))
-
-function openMember(idx) {
-  memberOpenIdx.value = idx
-  memberQ.value = ''
-  nextTick(() => {
-    memberInputs.value[idx]?.focus()
-    // Trigger element ki position calculate karo
-    const triggerEl = memberRefs.value[idx]
-    if (triggerEl) {
-      const rect = triggerEl.getBoundingClientRect()
-      const spaceBelow = window.innerHeight - rect.bottom
-      const dropdownHeight = 220 // approximate max height
-
-      memberDropdownPos.value = {
-        // Agar neeche jagah nahi to upar dikhaao
-        top: spaceBelow < dropdownHeight
-          ? rect.top - dropdownHeight + window.scrollY
-          : rect.bottom + 4 + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-      }
-    }
-  })
-}
-
-function pickMember(idx, opt) {
-  form.value.project_team_members[idx].employee = opt.value
-  memberOpenIdx.value = -1
-  memberQ.value = ''
-}
-
-function getMemberOpt(idx) {
-  const emp = form.value.project_team_members[idx]?.employee
-  if (!emp) return null
-  return employeeOptions.value.find(e => e.value === emp) || null
-}
-
-const memberFiltered = computed(() => {
-  const q = memberQ.value.trim()
-  let list = employeeOptions.value
-  if (q) {
-    list = list.filter(e => matchTokens(`${e.label} ${e.description}`, q))
-  }
-  return list.slice(0, MAX_VISIBLE)
-})
-
-// Close dropdowns on outside click
-function handleClickOutside(e) {
-  if (leadDropdownRef.value && !leadDropdownRef.value.contains(e.target)) {
-    leadSearchOpen.value = false
-  }
-  if (memberOpenIdx.value >= 0) {
-    const ref = memberRefs.value[memberOpenIdx.value]
-    if (ref && !ref.contains(e.target)) {
-      memberOpenIdx.value = -1
-    }
-  }
-}
-
 // Close modal on Escape key
 function handleKeydown(e) {
   if (e.key === 'Escape') {
-    // Agar koi dropdown open hai to pehle use band karo
-    if (leadSearchOpen.value) {
-      leadSearchOpen.value = false
-      return
-    }
-    if (memberOpenIdx.value >= 0) {
-      memberOpenIdx.value = -1
-      return
-    }
     close()
   }
 }
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside, true)
   document.addEventListener('keydown', handleKeydown)
 })
 onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside, true)
   document.removeEventListener('keydown', handleKeydown)
 })
 
@@ -589,9 +429,6 @@ function fillForm(project) {
 watch(() => props.modelValue, (val) => {
   if (val) {
     submitted.value = false
-    leadSearchOpen.value = false
-    memberOpenIdx.value = -1
-    memberQ.value = ''
     if (props.editProject) {
       fillForm(props.editProject)
     } else {
