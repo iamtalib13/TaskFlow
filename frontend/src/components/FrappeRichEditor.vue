@@ -35,6 +35,14 @@ const props = defineProps({
   placeholder: {
     type: String,
     default: 'Write something…'
+  },
+  editorClass: {
+    type: String,
+    default: ''
+  },
+  minHeight: {
+    type: String,
+    default: 'min-h-48'
   }
 })
 
@@ -120,13 +128,13 @@ const uploadFunction = async (file) => ({
       :placeholder="placeholder"
     >
       <template #default>
-        <div class="overflow-hidden rounded-md border border-outline-gray-2 bg-surface-base">
+        <div class="overflow-hidden rounded-md border border-outline-gray-2 dark:border-gray-700 bg-surface-base flex flex-col flex-1" :class="editorClass">
           <EditorBubbleMenu :items="bubbleToolbar" />
           <EditorFloatingMenu :items="toolbar" />
-          <div class="border-b border-outline-gray-2 bg-surface-gray-2/80 px-2 py-1.5">
+          <div class="border-b border-outline-gray-2 dark:border-gray-700 bg-surface-gray-2/80 dark:bg-gray-800 px-2 py-1.5 shrink-0">
             <EditorFixedMenu :items="toolbar" class="flex-wrap" />
           </div>
-          <EditorContent class="min-h-48 px-5 py-4 text-ink-gray-8 focus:outline-none" />
+          <EditorContent :class="[minHeight, 'px-5 py-4 text-ink-gray-8 dark:text-gray-100 focus:outline-none flex-1 overflow-y-auto']" />
         </div>
       </template>
     </Editor>

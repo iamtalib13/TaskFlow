@@ -12,10 +12,10 @@ class TaskflowTimesheet(Document):
 			self.user = frappe.session.user
 
 	def validate(self):
-		self.calculate_total_hours()
 		for item in self.get("table_pfiw", []):
 			if item.from_time and item.to_time and not item.hrs:
 				item.calculate_hours()
+		self.calculate_total_hours()
 
 	def calculate_total_hours(self):
 		total = 0

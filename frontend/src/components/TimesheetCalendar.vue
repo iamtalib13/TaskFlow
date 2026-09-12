@@ -157,40 +157,64 @@ function getDayNumberClass(cell, dayOfWeek) {
 
 <template>
   <div class="flex flex-col h-full min-h-0">
-    <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-2 shrink-0">
-      <h3 class="text-sm font-bold text-ink-gray-9">{{ monthLabel }}</h3>
-      <div class="flex items-center gap-1">
-        <Button variant="ghost" size="sm" label="Today" @click="goToToday" />
-        <button type="button" class="p-1 rounded hover:bg-surface-gray-3 transition cursor-pointer" @click="prevMonth">
-          <ChevronLeft class="size-4 text-ink-gray-5" />
-        </button>
-        <button type="button" class="p-1 rounded hover:bg-surface-gray-3 transition cursor-pointer" @click="nextMonth">
-          <ChevronRight class="size-4 text-ink-gray-5" />
-        </button>
-      </div>
+    <!-- Header: Centered < Month Year > -->
+    <div class="flex items-center justify-center gap-3 px-4 py-2.5 shrink-0 border-b border-outline-gray-1 dark:border-gray-800">
+      <button
+        type="button"
+        class="size-6 flex items-center justify-center rounded-md hover:bg-surface-gray-3 dark:hover:bg-gray-800 text-ink-gray-6 dark:text-gray-400 hover:text-ink-gray-9 dark:hover:text-white transition cursor-pointer"
+        title="Previous Month"
+        @click="prevMonth"
+      >
+        <ChevronLeft class="size-4" />
+      </button>
+      <h3 class="text-xs font-bold text-ink-gray-9 dark:text-white select-none min-w-[120px] text-center">
+        {{ monthLabel }}
+      </h3>
+      <button
+        type="button"
+        class="size-6 flex items-center justify-center rounded-md hover:bg-surface-gray-3 dark:hover:bg-gray-800 text-ink-gray-6 dark:text-gray-400 hover:text-ink-gray-9 dark:hover:text-white transition cursor-pointer"
+        title="Next Month"
+        @click="nextMonth"
+      >
+        <ChevronRight class="size-4" />
+      </button>
     </div>
 
-    <!-- Loading: Skeleton Grid -->
-    <div v-if="loading" class="flex-1 flex flex-col overflow-hidden">
-      <div class="grid grid-cols-[1fr_48px] gap-0 shrink-0 border-b border-outline-gray-2">
+    <!-- Loading: Skeleton Calendar Grid matching exact month layout -->
+    <div v-if="loading" class="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <!-- Skeleton Day headers -->
+      <div class="grid grid-cols-[1fr_48px] gap-0 shrink-0">
         <div class="grid grid-cols-7">
-          <span v-for="day in DAY_NAMES" :key="day" class="text-center text-[10px] font-semibold py-1.5 text-gray-400">
+          <span
+            v-for="(day, i) in DAY_NAMES"
+            :key="day"
+            class="text-center text-[10px] font-semibold py-1.5"
+            :class="isSunday(i) ? 'text-gray-400' : 'text-ink-gray-5'"
+          >
             {{ day }}
           </span>
         </div>
         <span class="text-center text-[9px] font-semibold text-gray-400 py-1.5">Wk</span>
       </div>
-      <div class="flex-1 min-h-0 overflow-y-auto space-y-2 p-2">
-        <div v-for="w in 5" :key="w" class="grid grid-cols-[1fr_48px] gap-0">
-          <div class="grid grid-cols-7 gap-1">
-            <div v-for="d in 7" :key="d" class="min-h-[52px]">
-              <Skeleton class="h-4 w-full rounded" />
-              <Skeleton class="h-3 w-3/4 mt-1 rounded" />
+
+      <!-- Skeleton Weeks (5 rows of 7 cells + week col) -->
+      <div class="flex-1 min-h-0 overflow-y-auto p-1">
+        <div v-for="w in 5" :key="'w-skel-' + w" class="grid grid-cols-[1fr_48px] border-t border-outline-gray-2 dark:border-gray-800">
+          <div class="grid grid-cols-7">
+            <div
+              v-for="d in 7"
+              :key="'d-skel-' + w + '-' + d"
+              class="min-h-[52px] border-r border-outline-gray-2 dark:border-gray-800 last:border-r-0 p-1.5 flex flex-col justify-between"
+            >
+              <div class="flex items-center justify-between">
+                <Skeleton class="size-4 rounded-full" />
+                <Skeleton class="size-1.5 rounded-full" />
+              </div>
+              <Skeleton class="h-3.5 w-7 rounded mx-auto mt-1" />
             </div>
           </div>
-          <div class="flex items-center justify-center border-l border-outline-gray-2">
-            <Skeleton class="h-4 w-8 rounded" />
+          <div class="flex items-center justify-center border-l border-outline-gray-2 dark:border-gray-800">
+            <Skeleton class="h-3 w-5 rounded" />
           </div>
         </div>
       </div>

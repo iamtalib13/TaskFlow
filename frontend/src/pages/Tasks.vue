@@ -35,6 +35,8 @@ import {
   Textarea,
   TextInput,
   Tooltip,
+  LoadingIndicator,
+  Skeleton,
   toast,
 } from 'frappe-ui'
 import { List, ListRow, ListCell, ListHeader, ListHeaderCell, ListGroup, ListRows } from 'frappe-ui/list'
@@ -91,6 +93,7 @@ import {
   deleteTimesheet,
 } from '@/data/api.js'
 import TimesheetCalendar from '@/components/TimesheetCalendar.vue'
+import TimesheetEntryModal from '@/components/TimesheetEntryModal.vue'
 
 // --- State & Data ---
 const MAX_VISIBLE = 5
@@ -143,9 +146,11 @@ function toggleTheme() {
   isDark.value = !isDark.value
   if (isDark.value) {
     document.documentElement.setAttribute('data-theme', 'dark')
+    document.documentElement.classList.add('dark')
     localStorage.setItem('taskflow-theme', 'dark')
   } else {
     document.documentElement.removeAttribute('data-theme')
+    document.documentElement.classList.remove('dark')
     localStorage.setItem('taskflow-theme', 'light')
   }
 }
@@ -530,9 +535,6 @@ function isRowJustNow(row) {
 function getTaskRowClass(row) {
   if (isRowJustNow(row)) {
     return 'row-just-now is-just-now'
-  }
-  if (row && (row.status === 'Completed' || row.status === 'completed')) {
-    return 'bg-emerald-50/70 dark:bg-emerald-950/30 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/40 transition-colors'
   }
   return 'hover:bg-[#f0f7f7] dark:hover:bg-gray-800/70 transition-colors'
 }
@@ -1082,7 +1084,8 @@ const teamData = computed(() => {
 // --- 4. Timesheet Direct Component State & Methods ---
 const selectedTimesheetUser = ref('')
 const timesheetCalendarEvents = ref([])
-const timesheetCalendarLoading = ref(false)
+const timesheetCalendarLoading = ref(true)
+const timesheetInitialLoaded = ref(false)
 const timesheetCache = ref(null)
 const timesheetCacheTime = ref(0)
 const CACHE_TTL = 30000 // 30 seconds
@@ -1123,11 +1126,28 @@ const selectedTsDayFlatItems = computed(() => {
 const selectedTsDayTotalHours = computed(() => {
   return (selectedTsDayEntries.value || []).reduce((sum, ts) => sum + (Number(ts.total_hours) || 0), 0)
 })
+
+function formatTime12h(timeStr) {
+  if (!timeStr) return '—'
+  const timePart = timeStr.includes('T')
+    ? timeStr.split('T')[1]?.slice(0, 5)
+    : timeStr.includes(' ')
+      ? timeStr.split(' ')[1]?.slice(0, 5)
+      : timeStr.slice(0, 5)
+  if (!timePart || !timePart.includes(':')) return timeStr
+  const [hStr, mStr] = timePart.split(':')
+  const h = parseInt(hStr, 10)
+  if (isNaN(h)) return timePart
+  const period = h >= 12 ? 'PM' : 'AM'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${String(h12).padStart(2, '0')}:${mStr} ${period}`
+}
 const timesheetFormOpen = ref(false)
 const timesheetFormDate = ref('')
 const timesheetFormItems = ref([])
 const timesheetFormStatus = ref('Draft')
 const timesheetFormSaving = ref(false)
+const selectedTsEditingEntry = ref(null)
 const currentUserName = ref('')
 
 const availableTimesheetMembers = computed(() => {
@@ -1197,14 +1217,29 @@ function onTsItemTaskChange(item) {
   }
 }
 
-// Helper to display task title and project name in Activity Log table
-function getTaskDisplayTitle(taskName) {
-  if (!taskName) return '—'
-  const taskObj = (tasks.value || []).find((t) => t.name === taskName)
-  if (taskObj && taskObj.task_title) {
-    return `${taskObj.name}: ${taskObj.task_title}`
+// Helper to display task title and status in Activity Log table
+function getTaskDisplayTitle(taskNameOrItem) {
+  if (!taskNameOrItem) return '—'
+  // If item object passed with pre-populated task_title
+  if (typeof taskNameOrItem === 'object') {
+    if (taskNameOrItem.task_title) return taskNameOrItem.task_title
+    taskNameOrItem = taskNameOrItem.task
   }
-  return taskName
+  if (!taskNameOrItem) return '—'
+  const taskObj = (tasks.value || []).find((t) => t.name === taskNameOrItem)
+  if (taskObj && taskObj.task_title) {
+    return taskObj.task_title
+  }
+  return taskNameOrItem
+}
+
+function getTaskStatus(item) {
+  if (!item) return ''
+  if (item.task_status) return item.task_status
+  const taskName = typeof item === 'object' ? item.task : item
+  if (!taskName) return ''
+  const taskObj = (tasks.value || []).find((t) => t.name === taskName)
+  return taskObj?.status || ''
 }
 
 function getProjectDisplayName(projName) {
@@ -1264,6 +1299,7 @@ async function loadTimesheetCalendar(user) {
     if (cached) {
       timesheetCalendarEvents.value = cached
       timesheetCalendarLoading.value = false
+      timesheetInitialLoaded.value = true
       selectedTsDayDate.value = new Date().toISOString().slice(0, 10)
       selectedTsDayEntries.value = timesheetCalendarEvents.value
         .filter((ev) => ev.fromDate === selectedTsDayDate.value)
@@ -1274,7 +1310,7 @@ async function loadTimesheetCalendar(user) {
   }
 
   // Don't set loading twice if already fetching
-  if (timesheetCalendarLoading.value) return
+  if (timesheetCalendarLoading.value && timesheetInitialLoaded.value) return
   timesheetCalendarLoading.value = true
   try {
     const currentYear = new Date().getFullYear()
@@ -1314,6 +1350,7 @@ async function loadTimesheetCalendar(user) {
     timesheetCalendarEvents.value = []
   } finally {
     timesheetCalendarLoading.value = false
+    timesheetInitialLoaded.value = true
   }
 }
 
@@ -1328,69 +1365,114 @@ function handleTsCalendarClick(dateStr) {
 
 function openTimesheetForm(date, existingTs = null) {
   timesheetFormDate.value = date || selectedTsDayDate.value || new Date().toISOString().slice(0, 10)
-  if (existingTs && existingTs.items && existingTs.items.length > 0) {
-    timesheetFormStatus.value = existingTs.status || 'Draft'
-    timesheetFormItems.value = existingTs.items.map((it) => ({
-      activity_type: it.activity_type || 'Task',
-      project: it.project || '',
-      task: it.task || '',
-      from_time: it.from_time ? (it.from_time.includes(' ') ? it.from_time.replace(' ', 'T').slice(0, 16) : it.from_time) : (timesheetFormDate.value ? `${timesheetFormDate.value}T09:00` : ''),
-      to_time: it.to_time ? (it.to_time.includes(' ') ? it.to_time.replace(' ', 'T').slice(0, 16) : it.to_time) : (timesheetFormDate.value ? `${timesheetFormDate.value}T10:00` : ''),
-      description: it.description || '',
-    }))
-  } else {
-    timesheetFormStatus.value = 'Draft'
-    const curDate = timesheetFormDate.value || new Date().toISOString().slice(0, 10)
-    timesheetFormItems.value = [{
-      activity_type: 'Task',
-      project: '',
-      task: '',
-      from_time: `${curDate}T09:00`,
-      to_time: `${curDate}T10:00`,
-      description: '',
-    }]
-  }
+  selectedTsEditingEntry.value = null
   timesheetFormOpen.value = true
 }
 
-function addTsFormItem() {
-  const curDate = timesheetFormDate.value || new Date().toISOString().slice(0, 10)
-  timesheetFormItems.value.push({
-    activity_type: 'Task',
-    project: '',
-    task: '',
-    from_time: `${curDate}T10:00`,
-    to_time: `${curDate}T11:00`,
-    description: '',
-  })
+function openTimesheetEntry(entry) {
+  timesheetFormDate.value = entry.from_time?.slice(0, 10) || selectedTsDayDate.value || new Date().toISOString().slice(0, 10)
+  selectedTsEditingEntry.value = entry
+  timesheetFormOpen.value = true
 }
 
-function removeTsFormItem(idx) {
-  timesheetFormItems.value.splice(idx, 1)
-}
-
-function getDuration(item) {
-  if (!item.from_time || !item.to_time) return '—'
-  try {
-    const from = new Date(item.from_time.replace(' ', 'T'))
-    const to = new Date(item.to_time.replace(' ', 'T'))
-    const diff = (to - from) / 1000 / 3600
-    if (isNaN(diff) || diff < 0) return '—'
-    return diff.toFixed(2) + 'h'
-  } catch { return '—' }
-}
-
-async function submitTimesheet() {
+async function handleSaveTimesheetEntry(entryPayload) {
   timesheetFormSaving.value = true
   try {
-    const items = timesheetFormItems.value.filter((item) => item.from_time && item.to_time)
-    await saveTimesheet(timesheetFormDate.value, items, timesheetFormStatus.value)
+    const entryDate = entryPayload.date || timesheetFormDate.value || selectedTsDayDate.value || new Date().toISOString().slice(0, 10)
+    
+    // Find parent timesheet for this date or entry
+    let parentDoc = entryPayload._parentTs
+    if (!parentDoc && selectedTsDayEntries.value && selectedTsDayEntries.value.length > 0) {
+      parentDoc = selectedTsDayEntries.value[0]
+    }
+
+    let items = []
+    if (parentDoc && parentDoc.items) {
+      items = parentDoc.items.map((it) => ({
+        name: it.name,
+        activity_type: it.activity_type,
+        project: it.project || '',
+        task: it.task || '',
+        from_time: it.from_time,
+        to_time: it.to_time,
+        description: it.description || '',
+      }))
+    }
+
+    const newChild = {
+      activity_type: entryPayload.activity_type || 'Task',
+      project: entryPayload.activity_type === 'Task' ? (entryPayload.project || '') : '',
+      task: entryPayload.activity_type === 'Task' ? (entryPayload.task || '') : '',
+      from_time: entryPayload.from_time ? (entryPayload.from_time.includes('T') ? entryPayload.from_time.replace('T', ' ') : entryPayload.from_time) : '',
+      to_time: entryPayload.to_time ? (entryPayload.to_time.includes('T') ? entryPayload.to_time.replace('T', ' ') : entryPayload.to_time) : '',
+      description: entryPayload.description || '',
+    }
+
+    if (entryPayload.name) {
+      const matchIdx = items.findIndex((it) => it.name === entryPayload.name)
+      if (matchIdx !== -1) {
+        items[matchIdx] = { ...items[matchIdx], ...newChild }
+      } else {
+        items.push(newChild)
+      }
+    } else {
+      items.push(newChild)
+    }
+
+    await saveTimesheet(entryDate, items, entryPayload.status || parentDoc?.status || 'Draft')
     timesheetFormOpen.value = false
+    selectedTsEditingEntry.value = null
+
     // Invalidate cache and reload
     if (timesheetCache.value) delete timesheetCache.value[selectedTimesheetUser.value || currentUserEmail.value]
     await loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
+    toast.success('Activity saved successfully!')
   } catch (e) {
-    console.error('Failed to save timesheet', e)
+    console.error('Failed to save timesheet entry', e)
+    toast.error('Failed to save activity entry')
+  } finally {
+    timesheetFormSaving.value = false
+  }
+}
+
+async function handleDeleteTimesheetEntry(entry) {
+  if (!entry) return
+  if (!confirm('Are you sure you want to delete this activity entry?')) return
+
+  timesheetFormSaving.value = true
+  try {
+    const parentDoc = entry._parentTs || selectedTsDayEntries.value?.[0]
+    if (!parentDoc) return
+
+    const remainingItems = (parentDoc.items || [])
+      .filter((it) => it.name !== entry.name)
+      .map((it) => ({
+        name: it.name,
+        activity_type: it.activity_type,
+        project: it.project || '',
+        task: it.task || '',
+        from_time: it.from_time,
+        to_time: it.to_time,
+        description: it.description || '',
+      }))
+
+    if (remainingItems.length === 0) {
+      // Delete the entire timesheet document if all rows removed
+      await deleteTimesheet(parentDoc.name)
+    } else {
+      await saveTimesheet(parentDoc.date || selectedTsDayDate.value, remainingItems, parentDoc.status || 'Draft')
+    }
+
+    timesheetFormOpen.value = false
+    selectedTsEditingEntry.value = null
+
+    // Invalidate cache and reload
+    if (timesheetCache.value) delete timesheetCache.value[selectedTimesheetUser.value || currentUserEmail.value]
+    await loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
+    toast.success('Activity deleted successfully!')
+  } catch (e) {
+    console.error('Failed to delete activity entry', e)
+    toast.error('Failed to delete activity entry')
   } finally {
     timesheetFormSaving.value = false
   }
@@ -1398,13 +1480,16 @@ async function submitTimesheet() {
 
 async function deleteTimesheetConfirm(ts) {
   if (!ts || !ts.name) return
+  if (!confirm(`Are you sure you want to delete timesheet ${ts.name}?`)) return
   try {
     await deleteTimesheet(ts.name)
     // Invalidate cache and reload
     if (timesheetCache.value) delete timesheetCache.value[selectedTimesheetUser.value || currentUserEmail.value]
     await loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
+    toast.success('Timesheet deleted successfully!')
   } catch (e) {
     console.error('Failed to delete timesheet', e)
+    toast.error('Failed to delete timesheet')
   }
 }
 
@@ -1921,6 +2006,9 @@ onMounted(async () => {
   if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     isDark.value = true
     document.documentElement.setAttribute('data-theme', 'dark')
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
   }
 
   window.addEventListener('popstate', onPopState)
@@ -2138,6 +2226,12 @@ onUnmounted(() => {
             </template>
           </Button>
           
+          <!-- Page Loading Indicator -->
+          <div v-if="loading" class="flex items-center gap-2 px-2 py-1 rounded bg-surface-gray-2 dark:bg-gray-800 text-ink-gray-5 dark:text-gray-400 text-xs font-medium">
+            <LoadingIndicator :scale="75" />
+            <span class="hidden sm:inline text-[11px]">Updating...</span>
+          </div>
+
           <!-- Refresh Button -->
           <Button
             variant="ghost"
@@ -2227,7 +2321,7 @@ onUnmounted(() => {
             >
               <template #cell-id="{ row }">
                 <span
-                  class="font-mono font-semibold text-ink-gray-8 hover:text-[#417c7d] hover:underline cursor-pointer"
+                  class="font-mono font-semibold text-ink-gray-8 dark:text-gray-200 hover:text-[#417c7d] hover:underline cursor-pointer"
                   @click.stop="openDetail(row)"
                 >
                   {{ row.id }}
@@ -2236,10 +2330,10 @@ onUnmounted(() => {
 
               <template #cell-title="{ row }">
                 <div class="flex items-center gap-1.5 min-w-0 max-w-[150px]">
-                  <span class="text-xs font-medium text-ink-gray-9 truncate" :title="row.title">{{ row.title }}</span>
+                  <span class="text-xs font-medium text-ink-gray-9 dark:text-gray-100 truncate" :title="row.title">{{ row.title }}</span>
                   <span
                     v-if="row.badge"
-                    class="shrink-0 px-1 py-0.5 text-[9px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded"
+                    class="shrink-0 px-1 py-0.5 text-[9px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded"
                   >
                     {{ row.badge }}
                   </span>
@@ -2247,7 +2341,7 @@ onUnmounted(() => {
               </template>
 
               <template #cell-project="{ row }">
-                <span class="text-xs font-medium text-ink-gray-7 truncate block max-w-[140px]" :title="row.project">
+                <span class="text-xs font-medium text-ink-gray-7 dark:text-gray-300 truncate block max-w-[140px]" :title="row.project">
                   {{ row.project }}
                 </span>
               </template>
@@ -2269,7 +2363,7 @@ onUnmounted(() => {
                 >
                   {{ row.priority }}
                 </span>
-                <span v-else class="text-ink-gray-4">—</span>
+                <span v-else class="text-ink-gray-4 dark:text-gray-500">—</span>
               </template>
 
               <template #cell-assigned_to="{ row }">
@@ -2288,31 +2382,31 @@ onUnmounted(() => {
                     </Tooltip>
                     <div
                       v-if="row.assignees.length > 3"
-                      class="relative flex items-center justify-center size-7 rounded-full bg-surface-gray-3 text-[10px] font-bold text-ink-gray-6"
+                      class="relative flex items-center justify-center size-7 rounded-full bg-surface-gray-3 dark:bg-gray-800 text-[10px] font-bold text-ink-gray-6 dark:text-gray-300"
                     >
                       +{{ row.assignees.length - 3 }}
                     </div>
                   </div>
                 </div>
-                <span v-else class="text-ink-gray-4 italic text-sm">Unassigned</span>
+                <span v-else class="text-ink-gray-4 dark:text-gray-500 italic text-sm">Unassigned</span>
               </template>
 
               <template #cell-due_date="{ row }">
                 <span
                   v-if="row.due_date"
                   class="font-mono text-xs"
-                  :class="isTaskOverdue(row) ? 'text-rose-600 font-bold' : 'text-ink-gray-6'"
+                  :class="isTaskOverdue(row) ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-ink-gray-6 dark:text-gray-400'"
                   :title="isTaskOverdue(row) ? 'Task is overdue' : ''"
                 >
                   {{ formatDueDate(row.due_date) }}
                 </span>
-                <span v-else class="text-ink-gray-4">—</span>
+                <span v-else class="text-ink-gray-4 dark:text-gray-500">—</span>
               </template>
 
               <template #cell-modified="{ row }">
                 <span
                   class="text-xs font-medium whitespace-nowrap inline-flex items-center gap-1.5"
-                  :class="isRowJustNow(row) ? 'text-emerald-700 font-bold' : 'text-ink-gray-6'"
+                  :class="isRowJustNow(row) ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-ink-gray-6 dark:text-gray-400'"
                   :title="row.modified ? `Modified: ${row.modified}` : ''"
                 >
                   <span
@@ -2375,7 +2469,9 @@ onUnmounted(() => {
               <!-- User Profile Card -->
               <div class="shrink-0 flex items-center gap-3 p-3 bg-surface-base border border-outline-gray-2 dark:border-gray-700/50 rounded-xl">
                 <div class="size-11 shrink-0 rounded-full bg-surface-base ring-2 ring-gray-200 dark:ring-gray-700 shadow-xs overflow-hidden flex items-center justify-center">
+                  <Skeleton v-if="timesheetCalendarLoading" class="size-11 rounded-full" />
                   <Avatar
+                    v-else
                     :image="selectedTsUserImage"
                     :label="selectedTsUserDisplayName || selectedTimesheetUser || 'User'"
                     size="lg"
@@ -2383,24 +2479,42 @@ onUnmounted(() => {
                   />
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h3 class="text-xs font-bold text-ink-gray-9 dark:text-gray-100 leading-tight truncate">
-                    {{ selectedTsUserDisplayName || selectedTimesheetUser || 'My Timesheet' }}
-                  </h3>
-                  <p class="text-[10px] text-ink-gray-5 dark:text-gray-400 truncate">{{ selectedTimesheetUser || currentUserEmail }}</p>
+                  <template v-if="timesheetCalendarLoading">
+                    <Skeleton class="h-3.5 w-24 rounded mb-1.5" />
+                    <Skeleton class="h-2.5 w-32 rounded" />
+                  </template>
+                  <template v-else>
+                    <h3 class="text-xs font-bold text-ink-gray-9 dark:text-gray-100 leading-tight truncate">
+                      {{ selectedTsUserDisplayName || selectedTimesheetUser || 'My Timesheet' }}
+                    </h3>
+                    <p class="text-[10px] text-ink-gray-5 dark:text-gray-400 truncate">{{ selectedTimesheetUser || currentUserEmail }}</p>
+                  </template>
                 </div>
                 <div class="flex items-center gap-2.5 shrink-0 pl-2 border-l border-outline-gray-1 dark:border-gray-700">
-                  <div class="text-center">
-                    <p class="text-sm font-bold text-emerald-600 dark:text-emerald-400 leading-none">{{ totalTsMonthlyHours }}h</p>
-                    <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Logged</p>
-                  </div>
-                  <div class="text-center">
-                    <p class="text-sm font-bold text-ink-gray-8 dark:text-gray-200 leading-none">{{ tsWorkingDaysCount }}</p>
-                    <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Days</p>
-                  </div>
-                  <div class="text-center">
-                    <p class="text-sm font-bold text-purple-600 dark:text-purple-400 leading-none">{{ tsAvgHoursPerDay }}h</p>
-                    <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Avg/d</p>
-                  </div>
+                  <template v-if="timesheetCalendarLoading">
+                    <div class="space-y-1 text-center">
+                      <Skeleton class="h-4 w-8 rounded mx-auto" />
+                      <Skeleton class="h-2 w-6 rounded mx-auto" />
+                    </div>
+                    <div class="space-y-1 text-center">
+                      <Skeleton class="h-4 w-6 rounded mx-auto" />
+                      <Skeleton class="h-2 w-6 rounded mx-auto" />
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="text-center">
+                      <p class="text-sm font-bold text-emerald-600 dark:text-emerald-400 leading-none">{{ totalTsMonthlyHours }}h</p>
+                      <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Logged</p>
+                    </div>
+                    <div class="text-center">
+                      <p class="text-sm font-bold text-ink-gray-8 dark:text-gray-200 leading-none">{{ tsWorkingDaysCount }}</p>
+                      <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Days</p>
+                    </div>
+                    <div class="text-center">
+                      <p class="text-sm font-bold text-purple-600 dark:text-purple-400 leading-none">{{ tsAvgHoursPerDay }}h</p>
+                      <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Avg/d</p>
+                    </div>
+                  </template>
                 </div>
               </div>
 
@@ -2454,8 +2568,29 @@ onUnmounted(() => {
                 </div>
               </div>
 
+              <!-- Loading State with Skeleton -->
+              <div v-if="timesheetCalendarLoading" class="flex-1 p-6 space-y-4 overflow-y-auto">
+                <div class="space-y-4">
+                  <Skeleton class="h-40 w-full rounded-2xl" />
+                  <Skeleton class="h-5 w-3/5 rounded-lg" />
+                  <Skeleton class="h-4 w-full rounded-md" />
+                  <Skeleton class="h-4 w-4/5 rounded-md" />
+                </div>
+                <!-- Additional skeleton rows mimicking table rows -->
+                <div class="pt-4 space-y-3 border-t border-outline-gray-1 dark:border-gray-800">
+                  <div v-for="i in 3" :key="'ts-skel-' + i" class="flex items-center gap-3">
+                    <Skeleton class="size-8 rounded-full shrink-0" />
+                    <div class="flex-1 space-y-1.5">
+                      <Skeleton class="h-3.5 w-48 rounded" />
+                      <Skeleton class="h-2.5 w-28 rounded" />
+                    </div>
+                    <Skeleton class="h-4 w-16 rounded shrink-0" />
+                  </div>
+                </div>
+              </div>
+
               <!-- Placeholder when no day selected -->
-              <div v-if="!selectedTsDayDate" class="flex-1 flex flex-col items-center justify-center text-center px-4">
+              <div v-else-if="!selectedTsDayDate" class="flex-1 flex flex-col items-center justify-center text-center px-4">
                 <div class="size-12 rounded-2xl bg-surface-gray-3 dark:bg-gray-800 flex items-center justify-center mb-3 text-ink-gray-4 dark:text-gray-500">
                   <Clock class="size-6" />
                 </div>
@@ -2466,19 +2601,19 @@ onUnmounted(() => {
               </div>
 
               <!-- Empty state when day selected but no entries -->
-              <div v-else-if="selectedTsDayEntries.length === 0" class="flex-1 flex flex-col items-center justify-center text-center px-4 py-10">
-                <div class="size-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 flex items-center justify-center mb-3 text-rose-500 dark:text-rose-400">
-                  <Clock class="size-6" />
+              <div v-else-if="selectedTsDayEntries.length === 0" class="flex-1 flex flex-col items-center justify-center text-center px-6 py-12">
+                <div class="size-14 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 flex items-center justify-center mb-4 text-rose-500 dark:text-rose-400 shadow-xs">
+                  <Clock class="size-7 stroke-[1.75]" />
                 </div>
-                <p class="text-sm font-semibold text-ink-gray-8 dark:text-gray-200 mb-1">No timesheet logged</p>
-                <p class="text-xs text-ink-gray-5 dark:text-gray-400 mb-4 max-w-[240px]">No work hours logged for {{ formattedTsDayDate || selectedTsDayDate }}</p>
+                <h3 class="text-lg font-bold tracking-tight text-ink-gray-9 dark:text-gray-100 mb-1.5">No timesheet logged</h3>
+                <p class="text-sm font-medium text-ink-gray-5 dark:text-gray-400 mb-5 max-w-sm">No work hours logged for {{ formattedTsDayDate || selectedTsDayDate }}</p>
                 <Button
                   variant="subtle"
-                  size="sm"
-                  class="text-xs"
+                  size="md"
+                  class="text-sm font-medium shadow-xs"
                   @click="openTimesheetForm(selectedTsDayDate)"
                 >
-                  <template #prefix><Plus class="size-3.5" /></template>
+                  <template #prefix><Plus class="size-4" /></template>
                   <span>Log Hours for this Day</span>
                 </Button>
               </div>
@@ -2530,9 +2665,9 @@ onUnmounted(() => {
                   <List
                     class="w-full list-row-px-3"
                     :columns="{
-                      base: ['42px', '95px', 'minmax(0,1fr)', '70px'],
-                      md: ['46px', '100px', 'minmax(0,1.2fr)', 'minmax(0,1fr)', '100px', '70px'],
-                      lg: ['46px', '105px', 'minmax(0,1.2fr)', 'minmax(0,1.2fr)', 'minmax(0,1.5fr)', '105px', '70px'],
+                      base: ['36px', '85px', 'minmax(0,1fr)', '55px', '75px'],
+                      md: ['38px', '90px', 'minmax(0,1fr)', 'minmax(0,1.5fr)', '140px', '55px', '80px'],
+                      lg: ['40px', '95px', 'minmax(0,1.1fr)', 'minmax(0,1.6fr)', 'minmax(0,1.1fr)', '150px', '55px', '85px'],
                     }"
                     :row-height="46"
                   >
@@ -2544,10 +2679,15 @@ onUnmounted(() => {
                       <ListHeaderCell class="max-lg:hidden">Remark</ListHeaderCell>
                       <ListHeaderCell class="max-md:hidden text-center justify-center">Time Range</ListHeaderCell>
                       <ListHeaderCell class="justify-end text-right">Duration</ListHeaderCell>
+                      <ListHeaderCell class="justify-end text-right">Modified</ListHeaderCell>
                     </ListHeader>
 
                     <ListRows :items="selectedTsDayFlatItems" v-slot="{ item, index, value }">
-                      <ListRow :value="value">
+                      <ListRow
+                        :value="value"
+                        class="cursor-pointer hover:bg-surface-gray-2/70 dark:hover:bg-gray-800/60 transition-colors"
+                        @click="openTimesheetEntry(item)"
+                      >
                         <!-- Sr No -->
                         <ListCell class="justify-center">
                           <span class="text-xs font-mono text-ink-gray-5 dark:text-gray-400">
@@ -2579,9 +2719,24 @@ onUnmounted(() => {
 
                         <!-- Task -->
                         <ListCell class="max-md:hidden">
-                          <div class="truncate text-xs text-ink-gray-7 dark:text-gray-300" :title="getTaskDisplayTitle(item.task)">
-                            {{ getTaskDisplayTitle(item.task) }}
+                          <div v-if="item.task" class="min-w-0 flex flex-col justify-center py-0.5">
+                            <div class="flex items-center gap-1.5 truncate">
+                              <span class="truncate text-xs font-semibold text-ink-gray-9 dark:text-gray-100" :title="getTaskDisplayTitle(item)">
+                                {{ getTaskDisplayTitle(item) }}
+                              </span>
+                              <span
+                                v-if="getTaskStatus(item)"
+                                class="inline-flex items-center px-1.5 py-0.2 shrink-0 text-[9px] font-semibold rounded-sm tracking-wide"
+                                :class="getStatusBadgeClass(getTaskStatus(item))"
+                              >
+                                {{ getTaskStatus(item) }}
+                              </span>
+                            </div>
+                            <span class="truncate text-[10px] text-ink-gray-5 dark:text-gray-400">
+                              {{ item.task }}
+                            </span>
                           </div>
+                          <span v-else class="text-xs text-ink-gray-4 dark:text-gray-500">—</span>
                         </ListCell>
 
                         <!-- Remark / Description -->
@@ -2595,10 +2750,10 @@ onUnmounted(() => {
                           <span v-else class="text-xs text-ink-gray-4 dark:text-gray-500">—</span>
                         </ListCell>
 
-                        <!-- Time Range -->
+                        <!-- Time Range (12-hour format with AM/PM) -->
                         <ListCell class="max-md:hidden justify-center">
-                          <span class="text-[11px] font-mono text-ink-gray-6 dark:text-gray-400 bg-surface-gray-2 dark:bg-gray-800/60 px-1.5 py-0.5 rounded border border-outline-gray-1 dark:border-gray-700/50">
-                            {{ item.from_time?.slice(11, 16) || item.from_time || '—' }} - {{ item.to_time?.slice(11, 16) || item.to_time || '—' }}
+                          <span class="text-[11px] font-mono text-ink-gray-7 dark:text-gray-300 bg-surface-gray-2 dark:bg-gray-800/60 px-2 py-0.5 rounded border border-outline-gray-1 dark:border-gray-700/50 whitespace-nowrap">
+                            {{ formatTime12h(item.from_time) }} - {{ formatTime12h(item.to_time) }}
                           </span>
                         </ListCell>
 
@@ -2606,6 +2761,21 @@ onUnmounted(() => {
                         <ListCell class="justify-end">
                           <span class="text-xs font-bold text-ink-gray-9 dark:text-gray-100">
                             {{ item.hrs ? Number(item.hrs).toFixed(1) + 'h' : '—' }}
+                          </span>
+                        </ListCell>
+
+                        <!-- Modified (Pretty Date) -->
+                        <ListCell class="justify-end">
+                          <span
+                            class="text-xs font-medium whitespace-nowrap inline-flex items-center gap-1.5"
+                            :class="isRowJustNow(item) ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-ink-gray-6 dark:text-gray-400'"
+                            :title="item.modified ? `Modified: ${item.modified}` : ''"
+                          >
+                            <span
+                              v-if="isRowJustNow(item)"
+                              class="size-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse"
+                            />
+                            {{ formatPrettyDate(item) }}
                           </span>
                         </ListCell>
                       </ListRow>
@@ -2639,120 +2809,17 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Timesheet Form Modal -->
-          <teleport to="body">
-            <transition
-              enter-active-class="transition-opacity duration-150"
-              leave-active-class="transition-opacity duration-100"
-              enter-from-class="opacity-0"
-              leave-to-class="opacity-0"
-            >
-              <div v-if="timesheetFormOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div class="absolute inset-0 bg-black/30" @click="timesheetFormOpen = false" />
-                <div class="relative bg-surface-base rounded-xl shadow-2xl border border-outline-gray-2 w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-                  <!-- Header -->
-                  <div class="flex items-center justify-between px-5 py-3.5 border-b border-outline-gray-1 shrink-0">
-                    <h3 class="text-sm font-bold text-ink-gray-9">Log Timesheet</h3>
-                   <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg text-gray-400 dark:text-gray-500 hover:text-ink-gray-6 dark:hover:text-gray-300 hover:bg-surface-gray-3 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="timesheetFormOpen = false">
-                       <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                     </button>
-                   </div>
-
-                   <!-- Body -->
-                   <div class="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-                     <!-- Date + Status -->
-                     <div class="grid grid-cols-2 gap-3">
-                       <div>
-                         <label class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300 mb-1 block">Date</label>
-                         <input type="date" v-model="timesheetFormDate" class="w-full text-sm border border-outline-gray-2 dark:border-gray-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-500 transition" />
-                       </div>
-                       <div>
-                         <label class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300 mb-1 block">Status</label>
-                         <select v-model="timesheetFormStatus" class="w-full text-sm border border-outline-gray-2 dark:border-gray-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-500 transition">
-                           <option value="Draft">Draft</option>
-                           <option value="Submitted">Submitted</option>
-                         </select>
-                       </div>
-                     </div>
-
-                      <!-- Items: Activity | Project | Task | Remark | From | To | Duration -->
-                      <div>
-                        <div class="flex items-center justify-between mb-2">
-                          <label class="text-xs font-semibold text-ink-gray-7 dark:text-gray-300">Time Entries — Activity | Project | Task | Remark | From | To | Duration</label>
-                          <button type="button" class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer transition inline-flex items-center gap-1" @click="addTsFormItem"><Plus class="size-3" /> Add Row</button>
-                        </div>
-                        <div v-for="(item, idx) in timesheetFormItems" :key="idx" class="bg-surface-gray-2 dark:bg-gray-800/40 rounded-lg p-3 mb-3 border border-outline-gray-1 dark:border-gray-700/50">
-                          <!-- Row 1: Activity | Project | Task -->
-                          <div class="grid grid-cols-3 gap-2 mb-2">
-                            <div>
-                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Activity</label>
-                              <select v-model="item.activity_type" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800">
-                                <option value="Task">Task</option>
-                                <option value="Meeting">Meeting</option>
-                                <option value="Research">Research</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Project</label>
-                              <Combobox
-                                v-model="item.project"
-                                :options="availableTimesheetProjects"
-                                placeholder="Select Project"
-                                size="sm"
-                                class="w-full text-xs"
-                                @update:modelValue="onTsItemProjectChange(item)"
-                              />
-                            </div>
-                            <div>
-                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Task</label>
-                              <Combobox
-                                v-model="item.task"
-                                :options="getAvailableTasksForItem(item)"
-                                placeholder="Select Task"
-                                size="sm"
-                                class="w-full text-xs"
-                                @update:modelValue="onTsItemTaskChange(item)"
-                              />
-                            </div>
-                          </div>
-                          <!-- Row 2: Remark (full width, HTML) -->
-                          <div class="mb-2">
-                            <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Remark</label>
-                            <Textarea v-model="item.description" placeholder="Remark / description (supports HTML)" rows="2" class="w-full text-xs" />
-                          </div>
-                          <!-- Row 3: From | To | Duration -->
-                          <div class="grid grid-cols-3 gap-2">
-                            <div>
-                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">From</label>
-                              <input v-model="item.from_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" />
-                            </div>
-                            <div>
-                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">To</label>
-                              <input v-model="item.to_time" type="datetime-local" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-800" />
-                            </div>
-                            <div>
-                              <label class="text-[10px] text-ink-gray-5 dark:text-gray-400 mb-0.5 block">Duration</label>
-                              <input :value="getDuration(item)" disabled type="text" class="w-full text-xs border border-outline-gray-2 dark:border-gray-700 rounded px-2 py-1.5 bg-surface-gray-3 dark:bg-gray-700/50 text-ink-gray-6" placeholder="auto" />
-                            </div>
-                          </div>
-                          <div class="flex justify-end mt-2">
-                            <button v-if="timesheetFormItems.length > 1" type="button" class="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition text-xs" @click="removeTsFormItem(idx)">Remove</button>
-                          </div>
-                        </div>
-                      </div>
-                   </div>
-
-                   <!-- Footer -->
-                   <div class="shrink-0 px-5 py-3 border-t border-outline-gray-1 dark:border-gray-700 flex items-center justify-end gap-2">
-                     <button type="button" class="px-4 py-2 text-xs font-medium text-ink-gray-7 dark:text-gray-300 bg-surface-gray-3 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition cursor-pointer" @click="timesheetFormOpen = false">Cancel</button>
-                     <button type="button" class="px-4 py-2 text-xs font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-black dark:hover:bg-gray-100 transition cursor-pointer disabled:opacity-50" :disabled="timesheetFormSaving" @click="submitTimesheet">
-                      {{ timesheetFormSaving ? 'Saving...' : 'Save Timesheet' }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </transition>
-          </teleport>
+          <!-- Timesheet Entry Modal (Single Row / Activity View) -->
+          <TimesheetEntryModal
+            v-model="timesheetFormOpen"
+            :entry="selectedTsEditingEntry"
+            :date="timesheetFormDate || selectedTsDayDate"
+            :projects="projects"
+            :tasks="tasks"
+            :saving="timesheetFormSaving"
+            :on-save="handleSaveTimesheetEntry"
+            :on-delete="handleDeleteTimesheetEntry"
+          />
         </template>
 
         <!-- 3. PROJECT VIEW (List view with CommonListView + Pagination) -->

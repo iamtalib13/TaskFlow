@@ -114,8 +114,11 @@ tr.is-just-now {
 }
 
 .dark .row-just-now,
+[data-theme="dark"] .row-just-now,
 .dark tr.row-just-now,
-.dark tr.is-just-now {
+[data-theme="dark"] tr.row-just-now,
+.dark tr.is-just-now,
+[data-theme="dark"] tr.is-just-now {
   background-color: rgba(6, 78, 59, 0.35) !important;
 }
 
@@ -125,7 +128,9 @@ tr.is-just-now:hover {
 }
 
 .dark tr.row-just-now:hover,
-.dark tr.is-just-now:hover {
+[data-theme="dark"] tr.row-just-now:hover,
+.dark tr.is-just-now:hover,
+[data-theme="dark"] tr.is-just-now:hover {
   background-color: rgba(6, 78, 59, 0.55) !important;
 }
 
@@ -135,7 +140,9 @@ tr.is-just-now td {
 }
 
 .dark tr.row-just-now td,
-.dark tr.is-just-now td {
+[data-theme="dark"] tr.row-just-now td,
+.dark tr.is-just-now td,
+[data-theme="dark"] tr.is-just-now td {
   background-color: rgba(6, 78, 59, 0.35) !important;
 }
 
@@ -145,7 +152,9 @@ tr.is-just-now:hover td {
 }
 
 .dark tr.row-just-now:hover td,
-.dark tr.is-just-now:hover td {
+[data-theme="dark"] tr.row-just-now:hover td,
+.dark tr.is-just-now:hover td,
+[data-theme="dark"] tr.is-just-now:hover td {
   background-color: rgba(6, 78, 59, 0.55) !important;
 }
 

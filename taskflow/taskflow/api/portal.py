@@ -1873,11 +1873,27 @@ def get_member_timesheets(user: str, from_date: str = "", to_date: str = "") -> 
             filters={"parent": ["in", timesheet_names]},
             fields=[
                 "name", "parent", "activity_type", "project", "task", "from_time",
-                "to_time", "hrs", "completeds", "description",
+                "to_time", "hrs", "completeds", "description", "modified",
             ],
             order_by="from_time asc",
         )
+
+        # Enrich task title and status
+        task_names = [it["task"] for it in all_items if it.get("task")]
+        task_info_map = {}
+        if task_names:
+            task_docs = frappe.get_all(
+                "Taskflow Task",
+                filters={"name": ["in", list(set(task_names))]},
+                fields=["name", "task_title", "status"],
+            )
+            for td in task_docs:
+                task_info_map[td["name"]] = td
+
         for item in all_items:
+            t_info = task_info_map.get(item.get("task"))
+            item["task_title"] = t_info.get("task_title") if t_info else ""
+            item["task_status"] = t_info.get("status") if t_info else ""
             items_map.setdefault(item["parent"], []).append(item)
 
     result = []
@@ -1939,9 +1955,7 @@ def save_timesheet(date: str, items: list[dict] = None, status: str = "Draft") -
 
     if existing:
         ts = frappe.get_doc("Taskflow Timesheet", existing)
-        ts.items = []
-        for item in items:
-            ts.append("table_pfiw", item)
+        ts.set("table_pfiw", items)
         ts.status = status
         ts.calculate_total_hours()
         ts.save(ignore_permissions=True)
@@ -1950,8 +1964,7 @@ def save_timesheet(date: str, items: list[dict] = None, status: str = "Draft") -
         ts.user = user
         ts.timesheet_date = date
         ts.status = status
-        for item in items:
-            ts.append("table_pfiw", item)
+        ts.set("table_pfiw", items)
         ts.calculate_total_hours()
         ts.insert(ignore_permissions=True)
 
@@ -1968,3 +1981,57 @@ def delete_timesheet(timesheet_name: str) -> dict:
     frappe.delete_doc("Taskflow Timesheet", timesheet_name, ignore_permissions=True)
     frappe.db.commit()
     return {"status": "success"}
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def search_project_tasks(project: str = "", query: str = "", limit: int = 5) -> list[dict]:
+    """Search tasks linked to a specific project with a strict limit (default 5).
+
+    Matches project by name or display project_name, and optional query by task_title or name.
+    """
+    _require_login()
+    if not project:
+        return []
+
+    # Find project doc name if project title was provided
+    proj_name = project
+    matched_proj = frappe.db.get_value(
+        "Taskflow Project",
+        {"name": project},
+        "name",
+    ) or frappe.db.get_value(
+        "Taskflow Project",
+        {"project_name": project},
+        "name",
+    )
+    if matched_proj:
+        proj_name = matched_proj
+
+    filters = [["project", "=", proj_name]]
+    if query:
+        q = f"%{query}%"
+        filters.append(["task_title", "like", q])
+
+    tasks = frappe.get_all(
+        "Taskflow Task",
+        filters=filters,
+        fields=["name", "task_title", "project", "status"],
+        order_by="modified desc",
+        limit=int(limit) or 5,
+    )
+
+    # Fallback: If title search returned < limit, also search by name/ID
+    if query and len(tasks) < (int(limit) or 5):
+        existing_names = {t["name"] for t in tasks}
+        by_name = frappe.get_all(
+            "Taskflow Task",
+            filters=[["project", "=", proj_name], ["name", "like", f"%{query}%"]],
+            fields=["name", "task_title", "project", "status"],
+            order_by="modified desc",
+            limit=(int(limit) or 5) - len(tasks),
+        )
+        for t in by_name:
+            if t["name"] not in existing_names:
+                tasks.append(t)
+
+    return tasks

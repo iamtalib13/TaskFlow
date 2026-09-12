@@ -68,15 +68,41 @@
 
         <!-- Table Body -->
         <tbody class="divide-y divide-gray-100 dark:divide-gray-800/80 bg-surface-base">
-          <!-- Loading State -->
-          <tr v-if="loading">
-            <td :colspan="columnSpan" class="py-16 text-center text-ink-gray-5 dark:text-gray-400">
-              <div class="flex flex-col items-center justify-center gap-2">
-                <div class="w-6 h-6 border-2 border-black dark:border-white border-t-transparent rounded-full animate-spin"></div>
-                <span class="text-xs text-ink-gray-5 dark:text-gray-400 font-medium">Loading records...</span>
-              </div>
-            </td>
-          </tr>
+          <!-- Loading State with frappe-ui Skeleton & LoadingIndicator -->
+          <template v-if="loading">
+            <tr v-for="i in 6" :key="'skeleton-' + i" class="border-b border-outline-gray-1 dark:border-gray-800/80">
+              <td v-if="selectable" class="w-9 px-2 py-3 text-center">
+                <Skeleton class="w-4 h-4 rounded mx-auto" />
+              </td>
+              <td
+                v-for="(col, cIdx) in visibleColumns"
+                :key="'skel-col-' + cIdx"
+                class="px-3 py-3"
+              >
+                <!-- First column has avatar + title + subtitle style matching user snippet -->
+                <div v-if="cIdx === 0" class="flex items-center gap-3">
+                  <Skeleton class="size-8 rounded-full shrink-0" />
+                  <div class="flex-1 space-y-1.5 min-w-0">
+                    <Skeleton class="h-3.5 w-36 max-w-full rounded" />
+                    <Skeleton class="h-2.5 w-20 max-w-full rounded" />
+                  </div>
+                </div>
+                <div v-else-if="col.key === 'id' || col.key === 'sr_no'" class="w-16">
+                  <Skeleton class="h-3.5 w-12 rounded" />
+                </div>
+                <div v-else-if="col.key === 'status' || col.key === 'priority'" class="w-20">
+                  <Skeleton class="h-5 w-16 rounded-full" />
+                </div>
+                <div v-else-if="col.key === 'assigned_to'" class="flex items-center gap-2">
+                  <Skeleton class="size-5 rounded-full shrink-0" />
+                  <Skeleton class="h-3 w-20 rounded" />
+                </div>
+                <div v-else class="space-y-1">
+                  <Skeleton class="h-3.5 w-24 max-w-full rounded" />
+                </div>
+              </td>
+            </tr>
+          </template>
 
           <!-- Empty State -->
           <tr v-else-if="rows.length === 0">
@@ -232,8 +258,14 @@
 </template>
 
 <script>
+import { Skeleton, LoadingIndicator } from 'frappe-ui'
+
 export default {
   name: 'CommonListView',
+  components: {
+    Skeleton,
+    LoadingIndicator,
+  },
   props: {
     columns: {
       type: Array,
@@ -373,11 +405,11 @@ export default {
     isJustNowRow(row) {
       if (!row) return false
       const rowCls = this.getRowClass(row)
-      if (typeof rowCls === 'string' && (rowCls.includes('emerald') || rowCls.includes('just-now'))) {
+      if (typeof rowCls === 'string' && rowCls.includes('just-now')) {
         return true
       }
       const p = (row.modified_pretty || '').toString().trim().toLowerCase()
-      if (p === 'just now' || p === 'right now' || p.includes('just now') || p.includes('second')) return true
+      if (p === 'just now' || p === 'right now') return true
       if (row.modified) {
         try {
           const raw = String(row.modified).trim()
