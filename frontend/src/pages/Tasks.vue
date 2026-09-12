@@ -3813,47 +3813,25 @@ onUnmounted(() => {
                     </button>
                   </div>
 
-                  <!-- Role & Access Level -->
-                  <div class="grid grid-cols-2 gap-2">
-                    <div>
-                      <label class="block text-[10px] font-semibold text-ink-gray-5 dark:text-neutral-400 mb-1">Role</label>
-                      <select
-                        v-model="tItem.team_role"
-                        class="w-full text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-md px-2 py-1 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none"
-                      >
-                        <option v-for="r in teamRoleOptions" :key="r" :value="r">{{ r }}</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="block text-[10px] font-semibold text-ink-gray-5 dark:text-neutral-400 mb-1">Access</label>
-                      <select
-                        v-model="tItem.access_level"
-                        class="w-full text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-md px-2 py-1 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none"
-                      >
-                        <option v-for="l in accessLevelOptions" :key="l.value" :value="l.value">{{ l.label }}</option>
-                      </select>
-                    </div>
-                  </div>
-
                   <!-- Permissions Checkboxes -->
-                  <div class="flex items-center gap-4 pt-1 border-t border-outline-gray-1 dark:border-neutral-700/60">
-                    <label class="inline-flex items-center gap-1.5 text-xs text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
+                  <div class="flex items-center gap-6">
+                    <label class="inline-flex items-center gap-2 text-xs font-medium text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         v-model="tItem.read"
                         :true-value="1"
                         :false-value="0"
-                        class="size-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        class="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                       <span>Read</span>
                     </label>
-                    <label class="inline-flex items-center gap-1.5 text-xs text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
+                    <label class="inline-flex items-center gap-2 text-xs font-medium text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         v-model="tItem.write"
                         :true-value="1"
                         :false-value="0"
-                        class="size-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        class="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                       <span>Write</span>
                     </label>
@@ -3925,47 +3903,25 @@ onUnmounted(() => {
                     </button>
                   </div>
 
-                  <!-- Role & Access Level -->
-                  <div class="grid grid-cols-2 gap-2">
-                    <div>
-                      <label class="block text-[10px] font-semibold text-ink-gray-5 dark:text-neutral-400 mb-1">Role</label>
-                      <select
-                        v-model="pItem.team_role"
-                        class="w-full text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-md px-2 py-1 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none"
-                      >
-                        <option v-for="r in teamRoleOptions" :key="r" :value="r">{{ r }}</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="block text-[10px] font-semibold text-ink-gray-5 dark:text-neutral-400 mb-1">Access</label>
-                      <select
-                        v-model="pItem.access_level"
-                        class="w-full text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-md px-2 py-1 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none"
-                      >
-                        <option v-for="l in accessLevelOptions" :key="l.value" :value="l.value">{{ l.label }}</option>
-                      </select>
-                    </div>
-                  </div>
-
                   <!-- Permissions Checkboxes -->
-                  <div class="flex items-center gap-4 pt-1 border-t border-outline-gray-1 dark:border-neutral-700/60">
-                    <label class="inline-flex items-center gap-1.5 text-xs text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
+                  <div class="flex items-center gap-6">
+                    <label class="inline-flex items-center gap-2 text-xs font-medium text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         v-model="pItem.read"
                         :true-value="1"
                         :false-value="0"
-                        class="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        class="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                       />
                       <span>Read</span>
                     </label>
-                    <label class="inline-flex items-center gap-1.5 text-xs text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
+                    <label class="inline-flex items-center gap-2 text-xs font-medium text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         v-model="pItem.write"
                         :true-value="1"
                         :false-value="0"
-                        class="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        class="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                       />
                       <span>Write</span>
                     </label>
