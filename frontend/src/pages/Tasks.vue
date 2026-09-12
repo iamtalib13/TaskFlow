@@ -2802,15 +2802,7 @@ onUnmounted(() => {
                         <span class="font-bold text-ink-gray-9 dark:text-gray-100">{{ ts.name }}</span>
                         <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">{{ ts.status }}</Badge>
                         <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ ts.total_hours }}h</span>
-                        <div class="flex items-center gap-0.5 ml-1 pl-1 border-l border-outline-gray-2 dark:border-gray-700">
-                          <button
-                            type="button"
-                            class="p-0.5 text-ink-gray-5 hover:text-ink-gray-9 dark:hover:text-white rounded hover:bg-surface-gray-3 transition cursor-pointer"
-                            title="Edit Timesheet"
-                            @click="openTimesheetForm(ts.date || selectedTsDayDate, ts)"
-                          >
-                            <span class="text-[11px] font-medium text-[#417c7d] dark:text-[#6fb8b8]">Edit</span>
-                          </button>
+                        <div v-if="ts.status !== 'Submitted'" class="flex items-center gap-0.5 ml-1 pl-1 border-l border-outline-gray-2 dark:border-gray-700">
                           <button
                             type="button"
                             class="p-0.5 text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
@@ -2822,29 +2814,17 @@ onUnmounted(() => {
                         </div>
                       </div>
                     </template>
-                    <template v-if="selectedTsDayEntries.some((t) => t.status === 'Draft')">
-                      <Button
-                        variant="solid"
-                        size="sm"
-                        theme="green"
-                        class="text-xs font-semibold text-white shadow-xs"
-                        @click="promptSubmitTimesheet(selectedTsDayEntries.find((t) => t.status === 'Draft'))"
-                      >
-                        <template #prefix><Send class="size-3" /></template>
-                        <span>Submit</span>
-                      </Button>
-                    </template>
-                    <template v-else>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        class="text-xs text-[#417c7d] hover:text-[#356667] dark:text-[#6fb8b8]"
-                        @click="openTimesheetForm(selectedTsDayDate)"
-                      >
-                        <template #prefix><Plus class="size-3" /></template>
-                        <span>New Timesheet</span>
-                      </Button>
-                    </template>
+                    <Button
+                      v-if="selectedTsDayEntries.some((t) => t.status === 'Draft')"
+                      variant="solid"
+                      size="sm"
+                      theme="green"
+                      class="text-xs font-semibold text-white shadow-xs"
+                      @click="promptSubmitTimesheet(selectedTsDayEntries.find((t) => t.status === 'Draft'))"
+                    >
+                      <template #prefix><Send class="size-3" /></template>
+                      <span>Submit</span>
+                    </Button>
                   </div>
                 </div>
 

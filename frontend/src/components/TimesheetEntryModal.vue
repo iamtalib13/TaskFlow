@@ -19,7 +19,7 @@
             <div>
               <div class="flex items-center gap-2">
                 <h3 class="text-sm font-bold text-ink-gray-9 dark:text-white">
-                  {{ isEdit ? 'Edit Activity Entry' : 'Log Activity Entry' }}
+                  {{ isSubmitted ? 'View Activity Entry' : (isEdit ? 'Edit Activity Entry' : 'Log Activity Entry') }}
                 </h3>
               </div>
               <p class="text-xs text-ink-gray-5 dark:text-gray-400 mt-0.5">
@@ -40,6 +40,7 @@
               Cancel
             </Button>
             <Button
+              v-if="!isSubmitted"
               variant="solid"
               theme="gray"
               type="submit"
@@ -276,7 +277,7 @@
         <div class="shrink-0 px-6 py-3 border-t border-outline-gray-1 dark:border-gray-800 bg-surface-base flex items-center justify-between">
           <div>
             <button
-              v-if="isEdit && onDelete"
+              v-if="isEdit && onDelete && !isSubmitted"
               type="button"
               class="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-semibold cursor-pointer transition inline-flex items-center gap-1"
               @click="confirmDelete"
@@ -294,9 +295,10 @@
               :disabled="saving"
               @click="close"
             >
-              Cancel
+              {{ isSubmitted ? 'Close' : 'Cancel' }}
             </Button>
             <Button
+              v-if="!isSubmitted"
               variant="solid"
               theme="gray"
               type="submit"
@@ -407,6 +409,7 @@ const timeSlotOptions = computed(() => {
 })
 
 const isEdit = computed(() => Boolean(props.entry && (props.entry.name || props.entry.from_time)))
+const isSubmitted = computed(() => form.status === 'Submitted' || form._parentTs?.status === 'Submitted')
 
 const formattedDateDisplay = computed(() => {
   const dStr = form.date || props.date || new Date().toISOString().slice(0, 10)
