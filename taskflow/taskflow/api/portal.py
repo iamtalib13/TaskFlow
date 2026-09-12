@@ -1090,6 +1090,13 @@ def save_employee_assignments(
             })
             proj_doc.save(ignore_permissions=True)
 
+    # Delete records that were removed from modal
+    for (ptype, ptarget), rec in existing_map.items():
+        if ptype == "Taskflow Team" and ptarget not in desired_team_targets:
+            frappe.delete_doc("Taskflow Team Member", rec.name, ignore_permissions=True)
+        elif ptype == "Taskflow Project" and ptarget not in desired_proj_targets:
+            frappe.delete_doc("Taskflow Team Member", rec.name, ignore_permissions=True)
+
     frappe.db.commit()
     return {"message": _("Employee assignments saved successfully")}
 
