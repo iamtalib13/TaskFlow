@@ -102,6 +102,7 @@ import {
 } from '@/data/api.js'
 import TimesheetCalendar from '@/components/TimesheetCalendar.vue'
 import TimesheetEntryModal from '@/components/TimesheetEntryModal.vue'
+import TimesheetMasterReport from '@/components/TimesheetMasterReport.vue'
 
 // --- State & Data ---
 const MAX_VISIBLE = 5
@@ -302,9 +303,22 @@ const navItems = computed(() => {
 })
 
 const currentBreadcrumbs = computed(() => {
+  if (activeSection.value === 'Timesheet') {
+    if (timesheetViewMode.value === 'Reports') {
+      return [
+        { label: 'Workspace', route: '#' },
+        { label: 'Timesheet', route: '#', onClick: () => { timesheetViewMode.value = 'Timesheet' } },
+        { label: 'Reports', route: '#' },
+      ]
+    }
+    return [
+      { label: 'Workspace', route: '#' },
+      { label: 'Timesheet', route: '#' },
+    ]
+  }
+
   const sectionLabel = {
     Task: 'Tasks',
-    Timesheet: 'Timesheet',
     Project: 'Projects',
     Team: 'Team',
   }[activeSection.value] || activeSection.value
@@ -1135,6 +1149,7 @@ const currentUserName = ref('')
 const confirmSubmitTsDialogOpen = ref(false)
 const confirmSubmitTsTarget = ref(null)
 const confirmSubmitTsLoading = ref(false)
+const timesheetViewMode = ref('Timesheet') // 'Timesheet' | 'Reports'
 
 const availableTimesheetMembers = computed(() => {
   const list = []
@@ -2385,6 +2400,28 @@ onUnmounted(() => {
             </button>
             <kbd v-else class="shrink-0 text-[10px] font-mono text-ink-gray-3">/</kbd>
           </div>
+          <!-- Timesheet View Toggle: Timesheet | Reports -->
+          <div
+            v-if="activeSection === 'Timesheet'"
+            class="inline-flex p-0.5 bg-surface-gray-2 dark:bg-gray-800 rounded-lg border border-outline-gray-2 dark:border-gray-700 text-xs font-semibold select-none"
+          >
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-md transition-colors cursor-pointer text-xs"
+              :class="timesheetViewMode === 'Timesheet' ? 'bg-surface-base dark:bg-gray-900 text-ink-gray-9 dark:text-white shadow-xs font-bold' : 'text-ink-gray-6 dark:text-gray-400 hover:text-ink-gray-9 dark:hover:text-white font-medium'"
+              @click="timesheetViewMode = 'Timesheet'"
+            >
+              Timesheet
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-md transition-colors cursor-pointer text-xs"
+              :class="timesheetViewMode === 'Reports' ? 'bg-surface-base dark:bg-gray-900 text-ink-gray-9 dark:text-white shadow-xs font-bold' : 'text-ink-gray-6 dark:text-gray-400 hover:text-ink-gray-9 dark:hover:text-white font-medium'"
+              @click="timesheetViewMode = 'Reports'"
+            >
+              Reports
+            </button>
+          </div>
         </div>
 
         <div class="flex items-center gap-2">
@@ -2594,47 +2631,52 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <!-- 2. TIMESHEET VIEW (Profile top + 2 columns) -->
+        <!-- 2. TIMESHEET VIEW (Profile top + 2 columns OR Reports) -->
         <template v-else-if="activeSection === 'Timesheet'">
-          <div class="shrink-0 mb-3 flex items-center justify-between">
-            <div>
-              <h2 class="text-lg font-bold text-ink-gray-9">Timesheet</h2>
-              <p class="text-xs text-ink-gray-5">
-                Log and track work hours
-                <span v-if="selectedTsUserDisplayName" class="text-[#417c7d] font-semibold">
-                  — {{ selectedTsUserDisplayName }}
-                </span>
-              </p>
-            </div>
-            <div class="flex items-center gap-2.5">
-              <div v-if="availableTimesheetMembers.length > 0" class="relative">
-                 <select
-                   v-model="selectedTimesheetUser"
-                   class="bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-200 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition cursor-pointer"
-                   @change="loadTimesheetCalendar(selectedTimesheetUser)"
-                 >
-                  <option :value="currentUserEmail">
-                    {{ currentUserName ? `${currentUserName} (Me)` : 'My Timesheet' }}
-                  </option>
-                  <option
-                    v-for="m in availableTimesheetMembers"
-                    :key="m.user || m.email || m.employee"
-                    :value="m.user || m.email || m.employee"
-                  >
-                    {{ m.employee_name || m.name || m.user || m.email }}
-                  </option>
-                </select>
+          <!-- Timesheet Master Report View -->
+          <TimesheetMasterReport v-if="timesheetViewMode === 'Reports'" />
+
+          <!-- Standard Timesheet Logging View -->
+          <template v-else>
+            <div class="shrink-0 mb-3 flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-bold text-ink-gray-9">Timesheet</h2>
+                <p class="text-xs text-ink-gray-5">
+                  Log and track work hours
+                  <span v-if="selectedTsUserDisplayName" class="text-[#417c7d] font-semibold">
+                    — {{ selectedTsUserDisplayName }}
+                  </span>
+                </p>
               </div>
-              <Button
-                variant="solid"
-                class="!bg-[#417c7d] hover:!bg-[#356667] !text-white"
-                @click="openTimesheetForm(selectedTsDayDate || '')"
-              >
-                <template #prefix><Plus class="size-3.5" /></template>
-                <span>Log Hours</span>
-              </Button>
+              <div class="flex items-center gap-2.5">
+                <div v-if="availableTimesheetMembers.length > 0" class="relative">
+                   <select
+                     v-model="selectedTimesheetUser"
+                     class="bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-200 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition cursor-pointer"
+                     @change="loadTimesheetCalendar(selectedTimesheetUser)"
+                   >
+                    <option :value="currentUserEmail">
+                      {{ currentUserName ? `${currentUserName} (Me)` : 'My Timesheet' }}
+                    </option>
+                    <option
+                      v-for="m in availableTimesheetMembers"
+                      :key="m.user || m.email || m.employee"
+                      :value="m.user || m.email || m.employee"
+                    >
+                      {{ m.employee_name || m.name || m.user || m.email }}
+                    </option>
+                  </select>
+                </div>
+                <Button
+                  variant="solid"
+                  class="!bg-[#417c7d] hover:!bg-[#356667] !text-white"
+                  @click="openTimesheetForm(selectedTsDayDate || '')"
+                >
+                  <template #prefix><Plus class="size-3.5" /></template>
+                  <span>Log Hours</span>
+                </Button>
+              </div>
             </div>
-          </div>
 
           <!-- 2 Columns Layout: Left (30%) Profile + Calendar | Right (70%) Activity Log from top -->
           <div class="flex-1 min-h-0 flex gap-3 overflow-hidden">
@@ -2988,6 +3030,7 @@ onUnmounted(() => {
             :on-save="handleSaveTimesheetEntry"
             :on-delete="handleDeleteTimesheetEntry"
           />
+          </template>
         </template>
 
         <!-- 3. PROJECT VIEW (List view with CommonListView + Pagination) -->

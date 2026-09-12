@@ -724,6 +724,14 @@ export async function fetchAllTimesheets(fromDate = '', toDate = '', user = '') 
   )
 }
 
+export async function fetchTimesheetMasterReport({ fromDate = '', toDate = '', viewType = 'Weekly', search = '' } = {}) {
+  return callFrappe(
+    'taskflow.taskflow.api.portal.get_timesheet_master_report',
+    { from_date: fromDate, to_date: toDate, view_type: viewType, search },
+    'POST',
+  )
+}
+
 export async function saveTimesheet(date, items = [], status = 'Draft') {
   return callFrappe(
     'taskflow.taskflow.api.portal.save_timesheet',

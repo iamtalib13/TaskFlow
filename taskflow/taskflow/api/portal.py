@@ -5,7 +5,7 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, now_datetime, nowdate
+from frappe.utils import flt, getdate, now_datetime, nowdate
 
 from taskflow.permissions import (
     has_taskflow_project_permission,
@@ -2386,3 +2386,154 @@ def search_project_tasks(project: str = "", query: str = "", limit: int = 5) -> 
                 tasks.append(t)
 
     return tasks
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_timesheet_master_report(
+    from_date: str = "",
+    to_date: str = "",
+    view_type: str = "Weekly",
+    search: str = "",
+    limit: int = 50,
+    start: int = 0
+) -> dict:
+    """Fetch aggregated timesheet data for Timesheet Master Report.
+    Returns:
+      - days: list of date strings and labels in the range
+      - rows: list of employee aggregated metrics (employee, designation, user_image, daily_hours, weekly_total, monthly_total, weekly_pct, monthly_pct, status)
+      - total_employees: int
+    """
+    _require_login()
+
+    from datetime import datetime, timedelta
+
+    if not from_date or not to_date:
+        today_date = datetime.today().date()
+        # Default to current month: 1st to end of month
+        from_date = today_date.replace(day=1).isoformat()
+        # Next month 1st minus 1 day
+        next_month = (today_date.replace(day=28) + timedelta(days=4)).replace(day=1)
+        to_date = (next_month - timedelta(days=1)).isoformat()
+
+    d_start = datetime.strptime(from_date, "%Y-%m-%d").date()
+    d_end = datetime.strptime(to_date, "%Y-%m-%d").date()
+
+    # Build days list in range
+    day_list = []
+    curr = d_start
+    while curr <= d_end:
+        day_list.append({
+            "date": curr.isoformat(),
+            "day_name": curr.strftime("%a"),
+            "day_num": curr.strftime("%d"),
+            "is_weekend": curr.weekday() in (5, 6),
+        })
+        curr += timedelta(days=1)
+
+    # 1. Fetch all timesheets in the date range first
+    ts_rows = frappe.get_all(
+        "Taskflow Timesheet",
+        filters={"timesheet_date": ["between", [from_date, to_date]]},
+        fields=["name", "user", "employee_name", "timesheet_date", "total_working_hours", "status"],
+    )
+
+    # Group hours by (user, date)
+    user_day_hours = {}
+    user_total_period_hours = {}
+    users_with_timesheets = set()
+    for ts in ts_rows:
+        u = ts.get("user") or ""
+        if u:
+            users_with_timesheets.add(u)
+        d_str = str(ts.get("timesheet_date"))
+        hrs = flt(ts.get("total_working_hours") or 0)
+        
+        user_day_hours.setdefault(u, {})[d_str] = user_day_hours.setdefault(u, {}).get(d_str, 0) + hrs
+        user_total_period_hours[u] = user_total_period_hours.get(u, 0) + hrs
+
+    # 2. Fetch employees
+    emp_filters = {}
+    if frappe.db.has_column("Employee", "status"):
+        emp_filters["status"] = "Active"
+
+    employees = frappe.get_all(
+        "Employee",
+        filters=emp_filters,
+        fields=["name", "employee_name", "user_id", "designation", "image"],
+        order_by="employee_name asc",
+    )
+
+    # If search provided, filter employees
+    if search:
+        s = search.lower().strip()
+        employees = [
+            e for e in employees
+            if s in (e.get("employee_name") or "").lower()
+            or s in (e.get("designation") or "").lower()
+            or s in (e.get("user_id") or "").lower()
+        ]
+
+    # Build report rows
+    report_rows = []
+    working_days = sum(1 for d in day_list if not d["is_weekend"]) or len(day_list) or 1
+    expected_period_hours = working_days * 8.0
+    expected_week_hours = 40.0
+    expected_month_hours = 160.0
+
+    for emp in employees:
+        u_id = emp.get("user_id") or emp.get("name")
+        emp_day_map = user_day_hours.get(u_id, {})
+        
+        daily_hours = {}
+        period_hours = 0.0
+        for d in day_list:
+            dh = emp_day_map.get(d["date"], 0.0)
+            daily_hours[d["date"]] = round(dh, 1)
+            period_hours += dh
+
+        weekly_total = round(period_hours, 1)
+        monthly_total = round(user_total_period_hours.get(u_id, period_hours), 1)
+
+        weekly_pct = min(100, int((weekly_total / (expected_week_hours or 40)) * 100))
+        monthly_pct = min(100, int((monthly_total / (expected_month_hours or 160)) * 100))
+
+        pct_check = weekly_pct if view_type == "Weekly" else monthly_pct
+        if pct_check >= 80:
+            status = "On Track"
+        elif pct_check >= 65:
+            status = "Pending"
+        else:
+            status = "At Risk"
+
+        report_rows.append({
+            "employee_id": emp["name"],
+            "employee_name": emp.get("employee_name") or emp["name"],
+            "user_id": emp.get("user_id") or "",
+            "designation": emp.get("designation") or "Team Member",
+            "image": emp.get("image") or None,
+            "daily_hours": daily_hours,
+            "weekly_total": weekly_total,
+            "weekly_pct": weekly_pct,
+            "monthly_total": monthly_total,
+            "monthly_pct": monthly_pct,
+            "status": status,
+        })
+
+    # Sort: active logged hours first, then name
+    report_rows.sort(key=lambda r: (-r["weekly_total"], -r["monthly_total"], r["employee_name"]))
+    total_count = len(report_rows)
+
+    start_idx = int(start) or 0
+    limit_num = int(limit) or 50
+    paged_rows = report_rows[start_idx : start_idx + limit_num]
+
+    for i, r in enumerate(paged_rows, start_idx + 1):
+        r["idx"] = i
+
+    return {
+        "from_date": from_date,
+        "to_date": to_date,
+        "days": day_list,
+        "rows": paged_rows,
+        "total_employees": total_count,
+    }
