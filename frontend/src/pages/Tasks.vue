@@ -2125,6 +2125,23 @@ onMounted(async () => {
 })
 
 function handleGlobalKeydown(e) {
+  // Escape shortcut to close modals
+  if (e.key === 'Escape') {
+    if (memberModalOpen.value) {
+      // If employee search dropdown is open inside modal, close that first, otherwise close modal
+      if (empDropdownOpen.value) {
+        empDropdownOpen.value = false
+      } else {
+        memberModalOpen.value = false
+      }
+      return
+    }
+    if (createTeamOpen.value) {
+      createTeamOpen.value = false
+      return
+    }
+  }
+
   // '/' shortcut — focus search in Task section
   if (
     e.key === '/' &&
