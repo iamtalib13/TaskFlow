@@ -68,6 +68,7 @@ import {
   Sun,
   Search,
   X as XIcon,
+  Trash2,
 } from 'lucide-vue-next'
 
 import CommonListView from '@/components/CommonListView.vue'
