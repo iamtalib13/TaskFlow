@@ -2451,17 +2451,59 @@ def get_timesheet_master_report(
         user_day_hours.setdefault(u, {})[d_str] = user_day_hours.setdefault(u, {}).get(d_str, 0) + hrs
         user_total_period_hours[u] = user_total_period_hours.get(u, 0) + hrs
 
-    # 2. Fetch employees
-    emp_filters = {}
-    if frappe.db.has_column("Employee", "status"):
-        emp_filters["status"] = "Active"
+    # 2. Fetch all employees associated with Taskflow Teams or Projects (member or lead)
+    # Collect employee IDs and user IDs from Taskflow Team Member, Team Lead, and Project Lead
+    tf_emp_ids = set()
+    tf_user_ids = set()
 
-    employees = frappe.get_all(
-        "Employee",
-        filters=emp_filters,
-        fields=["name", "employee_name", "user_id", "designation", "image"],
-        order_by="employee_name asc",
+    # Members from Taskflow Team Member child table
+    member_rows = frappe.get_all(
+        "Taskflow Team Member",
+        fields=["employee", "user"],
     )
+    for m in member_rows:
+        if m.get("employee"):
+            tf_emp_ids.add(str(m["employee"]).strip())
+        if m.get("user"):
+            tf_user_ids.add(str(m["user"]).strip().lower())
+
+    # Leads from Taskflow Team
+    team_rows = frappe.get_all(
+        "Taskflow Team",
+        fields=["team_lead"],
+    )
+    for t in team_rows:
+        if t.get("team_lead"):
+            tf_emp_ids.add(str(t["team_lead"]).strip())
+
+    # Leads from Taskflow Project
+    project_rows = frappe.get_all(
+        "Taskflow Project",
+        fields=["project_lead", "project_lead_user"],
+    )
+    for p in project_rows:
+        if p.get("project_lead"):
+            tf_emp_ids.add(str(p["project_lead"]).strip())
+        if p.get("project_lead_user"):
+            tf_user_ids.add(str(p["project_lead_user"]).strip().lower())
+
+    # Build filter: only employees that match the collected employee IDs or user IDs
+    emp_or_filters = []
+    if tf_emp_ids:
+        emp_or_filters.append(["name", "in", list(tf_emp_ids)])
+    if tf_user_ids:
+        emp_or_filters.append(["user_id", "in", list(tf_user_ids)])
+
+    if not emp_or_filters:
+        # No team/project members exist
+        employees = []
+    else:
+        employees = frappe.get_all(
+            "Employee",
+            or_filters=emp_or_filters,
+            fields=["name", "employee_name", "user_id", "designation", "image"],
+            order_by="employee_name asc",
+        )
 
     # If search provided, filter employees
     if search:
