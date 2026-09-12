@@ -741,6 +741,15 @@ export async function deleteTimesheet(timesheetName) {
   )
 }
 
+export async function submitTimesheet(timesheetName) {
+  if (!timesheetName) return false
+  return callFrappe(
+    'taskflow.taskflow.api.portal.submit_timesheet',
+    { timesheet_name: timesheetName },
+    'POST',
+  )
+}
+
 export async function fetchTaskAttachments(taskId) {
   if (!taskId) return []
   const res = await callFrappe('taskflow.taskflow.api.spa.get_task_attachments', { task_id: taskId })

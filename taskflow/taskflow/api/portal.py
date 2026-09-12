@@ -2318,6 +2318,22 @@ def delete_timesheet(timesheet_name: str) -> dict:
     return {"status": "success"}
 
 
+@frappe.whitelist(methods=["POST"])
+def submit_timesheet(timesheet_name: str) -> dict:
+    """Submit a timesheet, changing its status from Draft to Submitted."""
+    _require_login()
+    if not timesheet_name:
+        frappe.throw("Timesheet name is required.")
+    ts = frappe.get_doc("Taskflow Timesheet", timesheet_name)
+    user = frappe.session.user
+    if user != "Administrator" and "System Manager" not in frappe.get_roles(user) and ts.user != user:
+        frappe.throw(frappe._("Not authorized to submit this timesheet."))
+    ts.status = "Submitted"
+    ts.save(ignore_permissions=True)
+    frappe.db.commit()
+    return {"name": ts.name, "status": ts.status}
+
+
 @frappe.whitelist(methods=["GET", "POST"])
 def search_project_tasks(project: str = "", query: str = "", limit: int = 5) -> list[dict]:
     """Search tasks linked to a specific project with a strict limit (default 5).

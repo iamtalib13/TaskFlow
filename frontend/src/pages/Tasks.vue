@@ -8,6 +8,7 @@ import {
   Button,
   Combobox,
   DesktopShell,
+  Dialog,
   Dropdown,
   FormControl,
   MobileNav,
@@ -69,6 +70,7 @@ import {
   Search,
   X as XIcon,
   Trash2,
+  Send,
 } from 'lucide-vue-next'
 
 import CommonListView from '@/components/CommonListView.vue'
@@ -96,6 +98,7 @@ import {
   fetchAllTimesheets,
   saveTimesheet,
   deleteTimesheet,
+  submitTimesheet,
 } from '@/data/api.js'
 import TimesheetCalendar from '@/components/TimesheetCalendar.vue'
 import TimesheetEntryModal from '@/components/TimesheetEntryModal.vue'
@@ -1129,6 +1132,9 @@ const timesheetFormStatus = ref('Draft')
 const timesheetFormSaving = ref(false)
 const selectedTsEditingEntry = ref(null)
 const currentUserName = ref('')
+const confirmSubmitTsDialogOpen = ref(false)
+const confirmSubmitTsTarget = ref(null)
+const confirmSubmitTsLoading = ref(false)
 
 const availableTimesheetMembers = computed(() => {
   const list = []
@@ -1470,6 +1476,32 @@ async function deleteTimesheetConfirm(ts) {
   } catch (e) {
     console.error('Failed to delete timesheet', e)
     toast.error('Failed to delete timesheet')
+  }
+}
+
+function promptSubmitTimesheet(ts) {
+  if (!ts || !ts.name) return
+  confirmSubmitTsTarget.value = ts
+  confirmSubmitTsDialogOpen.value = true
+}
+
+async function confirmSubmitTimesheetAction() {
+  const ts = confirmSubmitTsTarget.value
+  if (!ts || !ts.name) return
+  confirmSubmitTsLoading.value = true
+  try {
+    await submitTimesheet(ts.name)
+    confirmSubmitTsDialogOpen.value = false
+    confirmSubmitTsTarget.value = null
+    // Invalidate cache and reload
+    if (timesheetCache.value) delete timesheetCache.value[selectedTimesheetUser.value || currentUserEmail.value]
+    await loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
+    toast.success(`Timesheet ${ts.name} submitted successfully!`)
+  } catch (e) {
+    console.error('Failed to submit timesheet', e)
+    toast.error(e?.message || 'Failed to submit timesheet')
+  } finally {
+    confirmSubmitTsLoading.value = false
   }
 }
 
@@ -2790,16 +2822,30 @@ onUnmounted(() => {
                         </div>
                       </div>
                     </template>
+                    <template v-if="selectedTsDayEntries.some((t) => t.status === 'Draft')">
+                      <Button
+                        variant="solid"
+                        size="sm"
+                        theme="green"
+                        class="text-xs font-semibold text-white shadow-xs"
+                        @click="promptSubmitTimesheet(selectedTsDayEntries.find((t) => t.status === 'Draft'))"
+                      >
+                        <template #prefix><Send class="size-3" /></template>
+                        <span>Submit</span>
+                      </Button>
+                    </template>
+                    <template v-else>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        class="text-xs text-[#417c7d] hover:text-[#356667] dark:text-[#6fb8b8]"
+                        @click="openTimesheetForm(selectedTsDayDate)"
+                      >
+                        <template #prefix><Plus class="size-3" /></template>
+                        <span>New Timesheet</span>
+                      </Button>
+                    </template>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    class="text-xs text-[#417c7d] hover:text-[#356667] dark:text-[#6fb8b8]"
-                    @click="openTimesheetForm(selectedTsDayDate)"
-                  >
-                    <template #prefix><Plus class="size-3" /></template>
-                    <span>New Timesheet</span>
-                  </Button>
                 </div>
 
                 <!-- Scrollable List View -->
@@ -4063,6 +4109,42 @@ onUnmounted(() => {
       @create="loadData"
       @update="handleProjectUpdated"
     />
+
+    <!-- Submit Timesheet Confirmation Dialog (Frappe-UI Native Dialog) -->
+    <Dialog
+      v-model="confirmSubmitTsDialogOpen"
+      :options="{
+        title: 'Submit Timesheet',
+        size: 'sm',
+        actions: [
+          {
+            label: 'Submit',
+            theme: 'green',
+            variant: 'solid',
+            loading: confirmSubmitTsLoading,
+            onClick: confirmSubmitTimesheetAction,
+          },
+          {
+            label: 'Cancel',
+            variant: 'subtle',
+            disabled: confirmSubmitTsLoading,
+            onClick: () => { confirmSubmitTsDialogOpen = false; confirmSubmitTsTarget = null },
+          },
+        ],
+      }"
+    >
+      <template #body-content>
+        <div class="space-y-2 text-xs text-ink-gray-7 dark:text-gray-300">
+          <p>
+            Are you sure you want to submit timesheet
+            <span class="font-bold text-ink-gray-9 dark:text-white">{{ confirmSubmitTsTarget?.name }}</span>?
+          </p>
+          <p class="text-ink-gray-5 dark:text-gray-400">
+            Total Hours: <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ confirmSubmitTsTarget?.total_hours }}h</span>. Once submitted, the timesheet will be locked and cannot be edited.
+          </p>
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
