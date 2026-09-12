@@ -3802,57 +3802,68 @@ onUnmounted(() => {
                 />
               </div>
 
-              <!-- List of Assigned Teams -->
-              <div class="p-3 space-y-2.5 max-h-80 overflow-y-auto">
-                <div v-if="employeeTeamAssignments.length === 0" class="py-8 text-center text-xs text-gray-400">
+              <!-- List of Assigned Teams (Minimal List Component) -->
+              <div class="p-2 flex-1 min-h-[160px] max-h-72 overflow-y-auto">
+                <div v-if="employeeTeamAssignments.length === 0" class="py-12 text-center text-xs text-gray-400">
                   No teams assigned yet
                 </div>
 
-                <div
-                  v-for="(tItem, tIdx) in employeeTeamAssignments"
-                  :key="tItem.target || tIdx"
-                  class="p-3 rounded-lg border border-outline-gray-2 dark:border-neutral-800 bg-surface-gray-2/40 dark:bg-neutral-800/40 hover:border-outline-gray-3 transition space-y-2.5"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2 min-w-0">
-                      <span class="size-1.5 rounded-full bg-blue-500 shrink-0" />
-                      <span class="text-xs font-bold text-ink-gray-9 dark:text-white truncate">
-                        {{ tItem.target }}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      class="text-gray-400 hover:text-red-600 p-1 rounded transition cursor-pointer"
-                      title="Remove from this team"
-                      @click="removeTeamFromEmployee(tIdx)"
+                <div v-else class="w-full rounded-lg border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900/60 overflow-hidden">
+                  <List :columns="['minmax(0,1fr)', '7rem', '2rem']" :row-height="40" class="px-2">
+                    <ListRow
+                      v-for="(tItem, tIdx) in employeeTeamAssignments"
+                      :key="tItem.target || tIdx"
+                      class="hover:bg-surface-gray-2/70 dark:hover:bg-neutral-800/60 transition-colors"
                     >
-                      <Trash2 class="size-3.5" />
-                    </button>
-                  </div>
+                      <!-- Name Cell -->
+                      <ListCell>
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="size-1.5 rounded-full bg-blue-500 shrink-0" />
+                          <span class="truncate text-xs font-semibold text-ink-gray-9 dark:text-neutral-100">
+                            {{ tItem.target }}
+                          </span>
+                        </div>
+                      </ListCell>
 
-                  <!-- Permissions Checkboxes -->
-                  <div class="flex items-center gap-6">
-                    <label class="inline-flex items-center gap-2 text-xs font-medium text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        v-model="tItem.read"
-                        :true-value="1"
-                        :false-value="0"
-                        class="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span>Read</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-xs font-medium text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        v-model="tItem.write"
-                        :true-value="1"
-                        :false-value="0"
-                        class="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span>Write</span>
-                    </label>
-                  </div>
+                      <!-- Read / Write Checkboxes Cell -->
+                      <ListCell class="justify-end">
+                        <div class="flex items-center gap-3">
+                          <label class="inline-flex items-center gap-1 text-[11px] font-medium text-ink-gray-7 dark:text-neutral-300 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              v-model="tItem.read"
+                              :true-value="1"
+                              :false-value="0"
+                              class="size-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <span>Read</span>
+                          </label>
+                          <label class="inline-flex items-center gap-1 text-[11px] font-medium text-ink-gray-7 dark:text-neutral-300 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              v-model="tItem.write"
+                              :true-value="1"
+                              :false-value="0"
+                              class="size-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <span>Write</span>
+                          </label>
+                        </div>
+                      </ListCell>
+
+                      <!-- Action Delete Cell -->
+                      <ListCell class="justify-end">
+                        <button
+                          type="button"
+                          class="text-gray-400 hover:text-red-600 p-1 rounded transition cursor-pointer"
+                          title="Remove from this team"
+                          @click="removeTeamFromEmployee(tIdx)"
+                        >
+                          <Trash2 class="size-3.5" />
+                        </button>
+                      </ListCell>
+                    </ListRow>
+                  </List>
                 </div>
               </div>
             </div>
@@ -3892,57 +3903,68 @@ onUnmounted(() => {
                 />
               </div>
 
-              <!-- List of Assigned Projects -->
-              <div class="p-3 space-y-2.5 max-h-80 overflow-y-auto">
-                <div v-if="employeeProjectAssignments.length === 0" class="py-8 text-center text-xs text-gray-400">
+              <!-- List of Assigned Projects (Minimal List Component) -->
+              <div class="p-2 flex-1 min-h-[160px] max-h-72 overflow-y-auto">
+                <div v-if="employeeProjectAssignments.length === 0" class="py-12 text-center text-xs text-gray-400">
                   No projects assigned yet
                 </div>
 
-                <div
-                  v-for="(pItem, pIdx) in employeeProjectAssignments"
-                  :key="pItem.target || pIdx"
-                  class="p-3 rounded-lg border border-outline-gray-2 dark:border-neutral-800 bg-surface-gray-2/40 dark:bg-neutral-800/40 hover:border-outline-gray-3 transition space-y-2.5"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2 min-w-0">
-                      <span class="size-1.5 rounded-full bg-indigo-500 shrink-0" />
-                      <span class="text-xs font-bold text-ink-gray-9 dark:text-white truncate">
-                        {{ projects.find((p) => p.name === pItem.target)?.title || pItem.target }}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      class="text-gray-400 hover:text-red-600 p-1 rounded transition cursor-pointer"
-                      title="Remove from this project"
-                      @click="removeProjectFromEmployee(pIdx)"
+                <div v-else class="w-full rounded-lg border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900/60 overflow-hidden">
+                  <List :columns="['minmax(0,1fr)', '7rem', '2rem']" :row-height="40" class="px-2">
+                    <ListRow
+                      v-for="(pItem, pIdx) in employeeProjectAssignments"
+                      :key="pItem.target || pIdx"
+                      class="hover:bg-surface-gray-2/70 dark:hover:bg-neutral-800/60 transition-colors"
                     >
-                      <Trash2 class="size-3.5" />
-                    </button>
-                  </div>
+                      <!-- Name Cell -->
+                      <ListCell>
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="size-1.5 rounded-full bg-indigo-500 shrink-0" />
+                          <span class="truncate text-xs font-semibold text-ink-gray-9 dark:text-neutral-100">
+                            {{ projects.find((p) => p.name === pItem.target)?.title || pItem.target }}
+                          </span>
+                        </div>
+                      </ListCell>
 
-                  <!-- Permissions Checkboxes -->
-                  <div class="flex items-center gap-6">
-                    <label class="inline-flex items-center gap-2 text-xs font-medium text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        v-model="pItem.read"
-                        :true-value="1"
-                        :false-value="0"
-                        class="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                      />
-                      <span>Read</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-xs font-medium text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        v-model="pItem.write"
-                        :true-value="1"
-                        :false-value="0"
-                        class="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                      />
-                      <span>Write</span>
-                    </label>
-                  </div>
+                      <!-- Read / Write Checkboxes Cell -->
+                      <ListCell class="justify-end">
+                        <div class="flex items-center gap-3">
+                          <label class="inline-flex items-center gap-1 text-[11px] font-medium text-ink-gray-7 dark:text-neutral-300 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              v-model="pItem.read"
+                              :true-value="1"
+                              :false-value="0"
+                              class="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            />
+                            <span>Read</span>
+                          </label>
+                          <label class="inline-flex items-center gap-1 text-[11px] font-medium text-ink-gray-7 dark:text-neutral-300 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              v-model="pItem.write"
+                              :true-value="1"
+                              :false-value="0"
+                              class="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            />
+                            <span>Write</span>
+                          </label>
+                        </div>
+                      </ListCell>
+
+                      <!-- Action Delete Cell -->
+                      <ListCell class="justify-end">
+                        <button
+                          type="button"
+                          class="text-gray-400 hover:text-red-600 p-1 rounded transition cursor-pointer"
+                          title="Remove from this project"
+                          @click="removeProjectFromEmployee(pIdx)"
+                        >
+                          <Trash2 class="size-3.5" />
+                        </button>
+                      </ListCell>
+                    </ListRow>
+                  </List>
                 </div>
               </div>
             </div>
