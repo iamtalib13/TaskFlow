@@ -718,137 +718,455 @@ def get_employees() -> dict:
 
 
 @frappe.whitelist(methods=["POST"])
-def add_team_member(team: str, employee: str, team_role: str, access_level: str, is_active: int = 1) -> dict:
-    """Add a new member to a team."""
+def add_team_member(
+    target: str,
+    employee: str,
+    team_role: str = "Team Member",
+    access_level: str = "Operate",
+    is_active: int = 1,
+    target_type: str = "Team",
+    read: int = 1,
+    write: int = 1,
+    team: str | None = None,
+) -> dict:
+    """Add a new member to a Team or a Project."""
     _require_login()
 
-    if not team or team == "all":
-        frappe.throw(_("Please select a specific team"))
+    # Backwards compatibility if 'team' param was passed instead of 'target'
+    if not target and team:
+        target = team
+
+    if not target or target == "all":
+        frappe.throw(_("Please select a specific {0}").format(target_type or "Team"))
 
     if not employee:
         frappe.throw(_("Please select an employee"))
 
-    # Permission: System Manager or Taskflow Admin can add to any team
+    # Determine DocType & parentfield
+    is_project = (target_type or "").lower() == "project"
+    parent_doctype = "Taskflow Project" if is_project else "Taskflow Team"
+    parent_field = "project_team_members" if is_project else "team_members"
+
+    # Permission check
     user_roles = set(frappe.get_roles(frappe.session.user))
     has_global_access = bool({"System Manager", "Taskflow Admin", "Projects Manager"} & user_roles)
 
     if not has_global_access:
-        from taskflow.taskflow.service.team_hierarchy import can_manage_team
-        if not can_manage_team(frappe.session.user, team):
-            frappe.throw(_("You don't have permission to add members to this team"))
+        if not is_project:
+            from taskflow.taskflow.service.team_hierarchy import can_manage_team
+            if not can_manage_team(frappe.session.user, target):
+                frappe.throw(_("You don't have permission to add members to this team"))
+        else:
+            # Check project permission
+            proj = frappe.get_doc("Taskflow Project", target)
+            proj.check_permission("write")
 
-    # Check if member already exists in this team (query child table directly)
+    # Check if member already exists in this team/project
     existing = frappe.db.sql(
         """SELECT name FROM `tabTaskflow Team Member`
-           WHERE parent = %s AND employee = %s AND is_active = 1
+           WHERE parent = %s AND parenttype = %s AND employee = %s AND is_active = 1
            LIMIT 1""",
-        (team, employee),
+        (target, parent_doctype, employee),
         as_dict=True,
     )
 
     if existing:
-        frappe.throw(_("This employee is already a member of the team"))
+        frappe.throw(_("This employee is already a member of this {0}").format(target_type))
 
-    # Verify team exists
-    if not frappe.db.exists("Taskflow Team", team):
-        frappe.throw(_("Team not found"))
+    # Verify target exists
+    if not frappe.db.exists(parent_doctype, target):
+        frappe.throw(_("{0} not found").format(target_type))
 
     # Verify employee exists
     employee_name = frappe.db.get_value("Employee", employee, "employee_name")
     if not employee_name:
         frappe.throw(_("Employee not found"))
 
-    # Get the team document
-    team_doc = frappe.get_doc("Taskflow Team", team)
-
-    # Get user_id from employee
+    # Get document
+    parent_doc = frappe.get_doc(parent_doctype, target)
     user_id = frappe.db.get_value("Employee", employee, "user_id")
 
     # Add new member to child table
-    team_doc.append("team_members", {
+    parent_doc.append(parent_field, {
         "employee": employee,
         "user": user_id,
         "team_role": team_role,
         "access_level": access_level,
-        "is_active": is_active
+        "is_active": int(is_active) if is_active is not None else 1,
+        "read": int(read) if read is not None else 1,
+        "write": int(write) if write is not None else 1,
     })
 
-    # Save the team document
-    team_doc.save(ignore_permissions=True)
+    parent_doc.save(ignore_permissions=True)
     frappe.db.commit()
 
     return {
-        "message": _("Team member added successfully"),
+        "message": _("Member added successfully"),
         "member": {
             "employee": employee,
             "employee_name": employee_name,
             "team_role": team_role,
-            "access_level": access_level
+            "access_level": access_level,
+            "read": int(read) if read is not None else 1,
+            "write": int(write) if write is not None else 1,
         }
     }
 
 
-@frappe.whitelist()
-def get_team_members(team: str | None = None) -> dict:
-    """Return team members from the team_members child table of Taskflow Team."""
+@frappe.whitelist(methods=["POST"])
+def update_team_member(
+    member_name: str,
+    read: int | None = None,
+    write: int | None = None,
+    team_role: str | None = None,
+    access_level: str | None = None,
+    target: str | None = None,
+    target_type: str | None = None,
+) -> dict:
+    """Update an existing Team Member row (read, write, role, access_level, or move to another target)."""
     _require_login()
-    
+
+    if not member_name:
+        frappe.throw(_("Member ID is required"))
+
+    member_doc = frappe.get_doc("Taskflow Team Member", member_name)
+
+    # Permission check
+    user_roles = set(frappe.get_roles(frappe.session.user))
+    has_global_access = bool({"System Manager", "Taskflow Admin", "Projects Manager"} & user_roles)
+    if not has_global_access:
+        if member_doc.parenttype == "Taskflow Team":
+            from taskflow.taskflow.service.team_hierarchy import can_manage_team
+            if not can_manage_team(frappe.session.user, member_doc.parent):
+                frappe.throw(_("You don't have permission to modify members of this team"))
+        else:
+            proj = frappe.get_doc("Taskflow Project", member_doc.parent)
+            proj.check_permission("write")
+
+    if read is not None:
+        member_doc.read = int(read)
+    if write is not None:
+        member_doc.write = int(write)
+    if team_role is not None:
+        member_doc.team_role = team_role
+    if access_level is not None:
+        member_doc.access_level = access_level
+
+    # If target is changed (e.g. assigning member to another team or project)
+    if target and target != member_doc.parent:
+        dest_type = target_type or ("Taskflow Project" if member_doc.parenttype == "Taskflow Project" else "Taskflow Team")
+        if not dest_type.startswith("Taskflow"):
+            dest_type = "Taskflow Project" if dest_type.lower() == "project" else "Taskflow Team"
+        dest_field = "project_team_members" if dest_type == "Taskflow Project" else "team_members"
+
+        if not frappe.db.exists(dest_type, target):
+            frappe.throw(_("Destination {0} not found").format(dest_type))
+
+        # Check if already in destination
+        already_in_dest = frappe.db.get_value(
+            "Taskflow Team Member",
+            {"parent": target, "parenttype": dest_type, "employee": member_doc.employee, "is_active": 1},
+            "name",
+        )
+        if already_in_dest:
+            frappe.throw(_("Employee is already a member of {0}").format(target))
+
+        # Remove from old parent and add to new parent
+        old_parent = frappe.get_doc(member_doc.parenttype, member_doc.parent)
+        new_parent = frappe.get_doc(dest_type, target)
+
+        # Remove from old
+        old_parent.set(member_doc.parentfield, [m for m in old_parent.get(member_doc.parentfield) if m.name != member_doc.name])
+        old_parent.save(ignore_permissions=True)
+
+        # Append to new
+        new_parent.append(dest_field, {
+            "employee": member_doc.employee,
+            "user": member_doc.user,
+            "team_role": member_doc.team_role,
+            "access_level": member_doc.access_level,
+            "is_active": member_doc.is_active,
+            "read": member_doc.read,
+            "write": member_doc.write,
+        })
+        new_parent.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {"message": _("Member moved and updated successfully")}
+
+    member_doc.save(ignore_permissions=True)
+    frappe.db.commit()
+
+    return {
+        "message": _("Member updated successfully"),
+        "member": {
+            "name": member_doc.name,
+            "read": member_doc.read,
+            "write": member_doc.write,
+            "team_role": member_doc.team_role,
+            "access_level": member_doc.access_level,
+        }
+    }
+
+
+@frappe.whitelist(methods=["POST"])
+def remove_team_member_record(member_name: str) -> dict:
+    """Remove a team member record from team or project."""
+    _require_login()
+
+    if not member_name:
+        frappe.throw(_("Member ID is required"))
+
+    member_doc = frappe.get_doc("Taskflow Team Member", member_name)
+
+    # Permission check
+    user_roles = set(frappe.get_roles(frappe.session.user))
+    has_global_access = bool({"System Manager", "Taskflow Admin", "Projects Manager"} & user_roles)
+    if not has_global_access:
+        if member_doc.parenttype == "Taskflow Team":
+            from taskflow.taskflow.service.team_hierarchy import can_manage_team
+            if not can_manage_team(frappe.session.user, member_doc.parent):
+                frappe.throw(_("You don't have permission to remove members of this team"))
+        else:
+            proj = frappe.get_doc("Taskflow Project", member_doc.parent)
+            proj.check_permission("write")
+
+    parent_doc = frappe.get_doc(member_doc.parenttype, member_doc.parent)
+    parent_doc.set(member_doc.parentfield, [m for m in parent_doc.get(member_doc.parentfield) if m.name != member_name])
+    parent_doc.save(ignore_permissions=True)
+    frappe.db.commit()
+
+    return {"message": _("Member removed successfully")}
+
+
+@frappe.whitelist()
+def get_employee_assignments(employee: str) -> dict:
+    """Return all team and project assignments for a given employee with permissions and roles."""
+    _require_login()
+
+    if not employee:
+        frappe.throw(_("Employee is required"))
+
+    rows = frappe.get_all(
+        "Taskflow Team Member",
+        filters={"employee": employee, "is_active": 1},
+        fields=["name", "parent", "parenttype", "employee", "user", "team_role", "access_level", "read", "write", "is_active"],
+    )
+
+    teams = []
+    projects = []
+    for r in rows:
+        item = {
+            "name": r.name,
+            "target": r.parent,
+            "team_role": r.team_role or "Team Member",
+            "access_level": r.access_level or "Operate",
+            "read": int(r.read) if r.read is not None else 1,
+            "write": int(r.write) if r.write is not None else 1,
+            "is_active": int(r.is_active) if r.is_active is not None else 1,
+        }
+        if r.parenttype == "Taskflow Project":
+            projects.append(item)
+        else:
+            teams.append(item)
+
+    return {"teams": teams, "projects": projects}
+
+
+@frappe.whitelist(methods=["POST"])
+def save_employee_assignments(
+    employee: str,
+    team_assignments: str | list | None = None,
+    project_assignments: str | list | None = None,
+) -> dict:
+    """Sync an employee's assignments across multiple teams and projects."""
+    _require_login()
+
+    if not employee:
+        frappe.throw(_("Employee is required"))
+
+    import json
+    if isinstance(team_assignments, str):
+        try:
+            team_assignments = json.loads(team_assignments)
+        except Exception:
+            team_assignments = []
+    if isinstance(project_assignments, str):
+        try:
+            project_assignments = json.loads(project_assignments)
+        except Exception:
+            project_assignments = []
+
+    team_assignments = team_assignments or []
+    project_assignments = project_assignments or []
+
+    # Verify employee exists
+    emp = frappe.db.get_value("Employee", employee, ["name", "user_id"], as_dict=True)
+    if not emp:
+        frappe.throw(_("Employee not found"))
+    user_id = emp.user_id
+
+    # Existing records for this employee
+    existing_records = frappe.get_all(
+        "Taskflow Team Member",
+        filters={"employee": employee},
+        fields=["name", "parent", "parenttype", "parentfield"],
+    )
+    existing_map = {(r.parenttype, r.parent): r for r in existing_records}
+
+    # Desired keys
+    desired_team_targets = {item.get("target") for item in team_assignments if item.get("target")}
+    desired_proj_targets = {item.get("target") for item in project_assignments if item.get("target")}
+
+    # Process teams
+    for item in team_assignments:
+        target = item.get("target")
+        if not target:
+            continue
+        if not frappe.db.exists("Taskflow Team", target):
+            continue
+
+        read_val = int(item.get("read", 1))
+        write_val = int(item.get("write", 1))
+        role_val = item.get("team_role") or "Team Member"
+        access_val = item.get("access_level") or "Operate"
+
+        key = ("Taskflow Team", target)
+        if key in existing_map:
+            doc_name = existing_map[key].name
+            member_doc = frappe.get_doc("Taskflow Team Member", doc_name)
+            member_doc.read = read_val
+            member_doc.write = write_val
+            member_doc.team_role = role_val
+            member_doc.access_level = access_val
+            member_doc.is_active = 1
+            member_doc.save(ignore_permissions=True)
+        else:
+            team_doc = frappe.get_doc("Taskflow Team", target)
+            team_doc.append("team_members", {
+                "employee": employee,
+                "user": user_id,
+                "team_role": role_val,
+                "access_level": access_val,
+                "read": read_val,
+                "write": write_val,
+                "is_active": 1,
+            })
+            team_doc.save(ignore_permissions=True)
+
+    # Process projects
+    for item in project_assignments:
+        target = item.get("target")
+        if not target:
+            continue
+        if not frappe.db.exists("Taskflow Project", target):
+            continue
+
+        read_val = int(item.get("read", 1))
+        write_val = int(item.get("write", 1))
+        role_val = item.get("team_role") or "Team Member"
+        access_val = item.get("access_level") or "Operate"
+
+        key = ("Taskflow Project", target)
+        if key in existing_map:
+            doc_name = existing_map[key].name
+            member_doc = frappe.get_doc("Taskflow Team Member", doc_name)
+            member_doc.read = read_val
+            member_doc.write = write_val
+            member_doc.team_role = role_val
+            member_doc.access_level = access_val
+            member_doc.is_active = 1
+            member_doc.save(ignore_permissions=True)
+        else:
+            proj_doc = frappe.get_doc("Taskflow Project", target)
+            proj_doc.append("project_team_members", {
+                "employee": employee,
+                "user": user_id,
+                "team_role": role_val,
+                "access_level": access_val,
+                "read": read_val,
+                "write": write_val,
+                "is_active": 1,
+            })
+            proj_doc.save(ignore_permissions=True)
+
+    frappe.db.commit()
+    return {"message": _("Employee assignments saved successfully")}
+
+
+@frappe.whitelist()
+def get_team_members(team: str | None = None, target_type: str = "Team") -> dict:
+    """Return team members from Taskflow Team or Taskflow Project child tables."""
+    _require_login()
+
+    is_project = (target_type or "").lower() == "project"
+    parent_doctype = "Taskflow Project" if is_project else "Taskflow Team"
+
     if not team or team == "all":
-        # Get all teams accessible to the user
-        from taskflow.taskflow.service.team_hierarchy import get_accessible_teams
-        accessible_teams = list(get_accessible_teams(frappe.session.user))
-        
-        if not accessible_teams:
+        if is_project:
+            from taskflow.taskflow.service.project_access import get_user_accessible_projects
+            accessible_targets = list(get_user_accessible_projects(frappe.session.user))
+        else:
+            from taskflow.taskflow.service.team_hierarchy import get_accessible_teams
+            accessible_targets = list(get_accessible_teams(frappe.session.user))
+
+        if not accessible_targets:
             return {"team_members": []}
-        
-        # Get all team members from accessible teams
+
         team_members = frappe.get_all(
             "Taskflow Team Member",
             filters={
-                "parent": ["in", accessible_teams],
-                "is_active": 1
+                "parent": ["in", accessible_targets],
+                "parenttype": parent_doctype,
+                "is_active": 1,
             },
             fields=[
                 "name",
                 "parent as team",
+                "parenttype",
                 "employee",
                 "user",
                 "team_role",
                 "access_level",
-                "is_active"
-            ]
+                "read",
+                "write",
+                "is_active",
+            ],
         )
     else:
-        # Get members for specific team
         team_members = frappe.get_all(
             "Taskflow Team Member",
             filters={
                 "parent": team,
-                "is_active": 1
+                "parenttype": parent_doctype,
+                "is_active": 1,
             },
             fields=[
                 "name",
                 "parent as team",
+                "parenttype",
                 "employee",
                 "user",
                 "team_role",
                 "access_level",
-                "is_active"
-            ]
+                "read",
+                "write",
+                "is_active",
+            ],
         )
-    
+
     # Enrich with employee details
     employee_ids = [m.employee for m in team_members if m.employee]
     employee_map = {}
-    
+
     if employee_ids:
         employees = frappe.get_all(
             "Employee",
             filters={"name": ["in", employee_ids]},
-            fields=["name", "employee_name", "user_id", "image", "designation", "department"]
+            fields=["name", "employee_name", "user_id", "image", "designation", "department"],
         )
         employee_map = {e.name: e for e in employees}
-    
+
     # Get task counts for each member
     for member in team_members:
         emp_data = employee_map.get(member.employee, {})
@@ -856,10 +1174,17 @@ def get_team_members(team: str | None = None) -> dict:
         member.user_image = emp_data.get("image")
         member.designation = emp_data.get("designation", "")
         member.department = emp_data.get("department", "")
-        
+
+        # Default read and write to 1 if None
+        if member.read is None:
+            member.read = 1
+        if member.write is None:
+            member.write = 1
+
         # Get task counts
         if member.user:
-            task_counts = frappe.db.sql("""
+            task_counts = frappe.db.sql(
+                """
                 SELECT 
                     COUNT(*) as total,
                     SUM(CASE WHEN status != 'Completed' THEN 1 ELSE 0 END) as pending,
@@ -867,8 +1192,11 @@ def get_team_members(team: str | None = None) -> dict:
                     SUM(CASE WHEN status = 'Overdue' THEN 1 ELSE 0 END) as overdue
                 FROM `tabTaskflow Task`
                 WHERE _assign LIKE %s
-            """, ('%"' + member.user + '"%',), as_dict=True)
-            
+            """,
+                ('%"' + member.user + '"%',),
+                as_dict=True,
+            )
+
             if task_counts:
                 member.total_tasks = task_counts[0].total or 0
                 member.pending_tasks = task_counts[0].pending or 0
@@ -884,7 +1212,7 @@ def get_team_members(team: str | None = None) -> dict:
             member.pending_tasks = 0
             member.completed_tasks = 0
             member.overdue_tasks = 0
-    
+
     return {"team_members": team_members}
 
 

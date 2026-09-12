@@ -519,9 +519,9 @@ export async function fetchTeams() {
   return data ? data.teams || [] : []
 }
 
-// Fetch team members for a specific team (or all accessible teams)
-export async function fetchTeamMembers(team = 'all') {
-  const data = await callFrappe('taskflow.taskflow.api.portal.get_team_members', { team })
+// Fetch team members for a specific team or project (or all accessible)
+export async function fetchTeamMembers(target = 'all', targetType = 'Team') {
+  const data = await callFrappe('taskflow.taskflow.api.portal.get_team_members', { team: target, target_type: targetType })
   return data ? data.team_members || [] : []
 }
 
@@ -558,16 +558,69 @@ export async function fetchEmployees() {
   return Array.isArray(data) ? data : data ? data.employees || [] : []
 }
 
-// Add a member to a team
-export async function addTeamMember(team, employee, teamRole, accessLevel) {
+// Add a member to a team or project
+export async function addTeamMember(target, employee, teamRole, accessLevel, targetType = 'Team', read = 1, write = 1) {
   return await callFrappe(
     'taskflow.taskflow.api.portal.add_team_member',
-    { team, employee, team_role: teamRole, access_level: accessLevel || 'Operate' },
+    {
+      target,
+      employee,
+      team_role: teamRole,
+      access_level: accessLevel || 'Operate',
+      target_type: targetType,
+      read: read ? 1 : 0,
+      write: write ? 1 : 0,
+    },
     'POST'
   )
 }
 
-// Remove a member from a team (deactivate)
+// Update an existing team member record (read, write, role, accessLevel, or move to another team/project)
+export async function updateTeamMember(memberName, { read, write, teamRole, accessLevel, target, targetType } = {}) {
+  return await callFrappe(
+    'taskflow.taskflow.api.portal.update_team_member',
+    {
+      member_name: memberName,
+      read: read !== undefined ? (read ? 1 : 0) : undefined,
+      write: write !== undefined ? (write ? 1 : 0) : undefined,
+      team_role: teamRole,
+      access_level: accessLevel,
+      target,
+      target_type: targetType,
+    },
+    'POST'
+  )
+}
+
+// Remove a member record
+export async function removeTeamMemberRecord(memberName) {
+  return await callFrappe(
+    'taskflow.taskflow.api.portal.remove_team_member_record',
+    { member_name: memberName },
+    'POST'
+  )
+}
+
+// Fetch all assignments (teams & projects) for an employee
+export async function fetchEmployeeAssignments(employee) {
+  const data = await callFrappe('taskflow.taskflow.api.portal.get_employee_assignments', { employee })
+  return data || { teams: [], projects: [] }
+}
+
+// Save bulk assignments (teams & projects) for an employee
+export async function saveEmployeeAssignments(employee, teamAssignments, projectAssignments) {
+  return await callFrappe(
+    'taskflow.taskflow.api.portal.save_employee_assignments',
+    {
+      employee,
+      team_assignments: JSON.stringify(teamAssignments || []),
+      project_assignments: JSON.stringify(projectAssignments || []),
+    },
+    'POST'
+  )
+}
+
+// Remove a member from a team (legacy)
 export async function removeTeamMember(team, employee) {
   return await callFrappe(
     'taskflow.taskflow.api.workspace.update_team',

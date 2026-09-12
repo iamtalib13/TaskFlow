@@ -87,6 +87,10 @@ import {
   deleteProject,
   fetchEmployees,
   addTeamMember,
+  updateTeamMember,
+  removeTeamMemberRecord,
+  fetchEmployeeAssignments,
+  saveEmployeeAssignments,
   fetchMemberTimesheets,
   fetchAllTimesheets,
   saveTimesheet,
@@ -105,12 +109,15 @@ const statuses = ref(['Open', 'In Progress', 'Review', 'On Hold', 'Completed', '
 const priorities = ref(['Critical', 'High', 'Medium', 'Low'])
 
 // Teams & Team Members state
+const teamMode = ref('Team') // 'Team' | 'Project'
 const teams = ref([])
 const teamMembers = ref([])
 const employees = ref([])
 const teamLoading = ref(false)
 const selectedTeam = ref(null)
+const selectedProject = ref(null)
 const allTeamsSelected = computed(() => !selectedTeam.value)
+const allProjectsSelected = computed(() => !selectedProject.value)
 const activeSpace = ref('All Tasks')
 
 // Active Navigation: ONLY Task, Timesheet, Project, Team
@@ -186,21 +193,6 @@ const onPopState = () => {
     activeSection.value = section
   }
   validateSection()
-  // Restore member from URL
-  try {
-    const params = new URLSearchParams(window.location.search)
-    const memberEmail = params.get('member')
-    if (memberEmail && activeSection.value === 'Team') {
-      const found = teamData.value.find((m) => m.email === memberEmail || m.id === memberEmail)
-      if (found) {
-        selectedMember.value = found
-        loadMemberTimesheets(found)
-      }
-    } else if (!memberEmail) {
-      selectedMember.value = null
-      calendarEvents.value = []
-    }
-  } catch {}
 }
 
 // User Profile Settings State
@@ -1030,14 +1022,16 @@ function handleProjectLoadAll() {
 const selectedTeamKeys = ref([])
 const teamColumns = [
   { key: 'member', label: 'MEMBER', width: '220px', minWidth: '180px', sortable: true, visible: true },
-  { key: 'email', label: 'EMAIL', width: '220px', minWidth: '180px', sortable: true, visible: true },
-  { key: 'role', label: 'ROLE', width: '160px', minWidth: '140px', sortable: true, visible: true },
-  { key: 'active_tasks', label: 'ACTIVE TASKS', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
-  { key: 'logged_hours', label: 'HOURS LOGGED', width: '120px', minWidth: '100px', align: 'right', sortable: true, visible: true },
-  { key: 'status', label: 'STATUS', width: '110px', minWidth: '90px', sortable: true, visible: true },
+  { key: 'email', label: 'EMAIL', width: '200px', minWidth: '160px', sortable: true, visible: true },
+  { key: 'role', label: 'ROLE', width: '150px', minWidth: '130px', sortable: true, visible: true },
+  { key: 'target_parent', label: 'ASSIGNED TO', width: '160px', minWidth: '130px', sortable: true, visible: true },
+  { key: 'permissions', label: 'PERMISSIONS', width: '160px', minWidth: '140px', sortable: false, visible: true },
+  { key: 'active_tasks', label: 'ACTIVE TASKS', width: '110px', minWidth: '90px', align: 'right', sortable: true, visible: true },
+  { key: 'status', label: 'STATUS', width: '90px', minWidth: '80px', sortable: true, visible: true },
+  { key: 'actions', label: 'ACTIONS', width: '90px', minWidth: '80px', align: 'center', sortable: false, visible: true },
 ]
 
-// Team data from backend (Taskflow Team member table)
+// Team data from backend (Taskflow Team / Project member table)
 const teamData = computed(() => {
   if (teamMembers.value && teamMembers.value.length > 0) {
     return teamMembers.value.map((m, idx) => ({
@@ -1055,27 +1049,12 @@ const teamData = computed(() => {
       logged_hours: 0,
       status: m.is_active ? 'Active' : 'Inactive',
       team: m.team || '',
+      parent: m.team || '',
+      parenttype: m.parenttype || (teamMode.value === 'Project' ? 'Taskflow Project' : 'Taskflow Team'),
       employee: m.employee || '',
       access_level: m.access_level || 'Operate',
-    }))
-  }
-  // Fallback: show teams as rows if no members loaded
-  if (teams.value && teams.value.length > 0) {
-    return teams.value.map((t, idx) => ({
-      id: t.name || `TEAM-${idx + 1}`,
-      name: t.team_name || t.name,
-      email: t.team_lead || '',
-      role: 'Team',
-      image: '',
-      department: t.company || '',
-      active_tasks: 0,
-      total_tasks: 0,
-      completed_tasks: 0,
-      logged_hours: 0,
-      status: t.is_active ? 'Active' : 'Inactive',
-      team: t.name,
-      member_count: t.member_count || 0,
-      project_count: t.project_count || 0,
+      read: m.read !== undefined && m.read !== null ? Number(m.read) : 1,
+      write: m.write !== undefined && m.write !== null ? Number(m.write) : 1,
     }))
   }
   return []
@@ -1534,14 +1513,20 @@ async function loadTeams() {
   if (!isSystemManager.value) return
   teamLoading.value = true
   try {
-    const [teamsData, membersData] = await Promise.all([
-      fetchTeams(),
-      fetchTeamMembers('all'),
-    ])
-    teams.value = teamsData || []
-    teamMembers.value = membersData || []
+    if (teamMode.value === 'Project') {
+      const target = selectedProject.value ? selectedProject.value.name : 'all'
+      const membersData = await fetchTeamMembers(target, 'Project')
+      teamMembers.value = membersData || []
+    } else {
+      const [teamsData, membersData] = await Promise.all([
+        fetchTeams(),
+        fetchTeamMembers(selectedTeam.value ? selectedTeam.value.name : 'all', 'Team'),
+      ])
+      teams.value = teamsData || []
+      teamMembers.value = membersData || []
+    }
   } catch (e) {
-    console.error('Failed to load teams', e)
+    console.error('Failed to load team data', e)
   } finally {
     teamLoading.value = false
   }
@@ -1740,8 +1725,9 @@ async function submitCreateTeam() {
   }
 }
 
-// Add Member dialog
+// Add / Edit Member dialog
 const addMemberOpen = ref(false)
+const editMemberModalOpen = ref(false)
 const memberLoading = ref(false)
 const memberSubmitted = ref(false)
 const memberSubmitError = ref('')
@@ -1750,10 +1736,35 @@ const empDropdownOpen = ref(false)
 
 const memberForm = reactive({
   employee: '',
-  team: '',
+  target: '',
   team_role: 'Team Member',
   access_level: 'Operate',
+  read: 1,
+  write: 1,
 })
+
+const editMemberForm = reactive({
+  name: '',
+  employee: '',
+  employee_name: '',
+  user: '',
+  target: '',
+  target_type: 'Team',
+  team_role: 'Team Member',
+  access_level: 'Operate',
+  read: 1,
+  write: 1,
+})
+const editMemberLoading = ref(false)
+const editMemberError = ref('')
+
+function setTeamMode(mode) {
+  if (teamMode.value === mode) return
+  teamMode.value = mode
+  selectedTeam.value = null
+  selectedProject.value = null
+  loadTeams()
+}
 
 const filteredEmployees = computed(() => {
   const q = (empSearch.value || '').toLowerCase().trim()
@@ -1770,82 +1781,14 @@ const filteredEmployees = computed(() => {
 })
 
 const teamMemberEmployeeIds = computed(() => {
+  const currentTarget = memberForm.target
   return new Set(
     (teamMembers.value || [])
-      .filter((m) => m.team === memberForm.team && m.is_active)
+      .filter((m) => (m.team === currentTarget || m.parent === currentTarget) && m.is_active)
       .map((m) => m.employee)
       .filter(Boolean)
   )
 })
-
-const selectedMember = ref(null)
-const calendarEvents = ref([])
-const calendarLoading = ref(false)
-const selectedDayEntries = ref([])
-const selectedDayDate = ref('')
-
-function selectMember(member) {
-  selectedMember.value = member
-  calendarEvents.value = []
-  if (member) {
-    loadMemberTimesheets(member)
-    // Push member into URL
-    try {
-      const url = new URL(window.location.href)
-      url.searchParams.set('member', member.email || member.name)
-      window.history.pushState(null, '', url.toString())
-    } catch {}
-  }
-}
-
-function backToList() {
-  selectedMember.value = null
-  calendarEvents.value = []
-  // Remove member from URL
-  try {
-    const url = new URL(window.location.href)
-    url.searchParams.delete('member')
-    window.history.pushState(null, '', url.toString())
-  } catch {}
-}
-
-async function loadMemberTimesheets(member) {
-  if (!member || !member.email) return
-  calendarLoading.value = true
-  try {
-    const year = new Date().getFullYear()
-    const month = new Date().getMonth()
-    const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
-    const lastDay = new Date(year, month + 1, 0).getDate()
-    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    const data = await fetchMemberTimesheets(member.email, fromDate, toDate)
-    calendarEvents.value = (data || []).map((ts) => ({
-      id: ts.name,
-      title: `${ts.total_hours}h logged`,
-      fromDate: ts.date,
-      toDate: ts.date,
-      fromTime: '00:00',
-      toTime: '23:59',
-      isFullDay: true,
-      color: ts.status === 'Submitted' ? 'green' : 'blue',
-      _ts: ts,
-      _hours: ts.total_hours || 0,
-    }))
-  } catch (e) {
-    console.error('Failed to load timesheets', e)
-    calendarEvents.value = []
-  } finally {
-    calendarLoading.value = false
-  }
-}
-
-function handleCalendarClick(dateStr) {
-  selectedDayDate.value = dateStr
-  selectedDayEntries.value = calendarEvents.value
-    .filter((ev) => ev.fromDate === dateStr)
-    .map((ev) => ev._ts)
-    .filter(Boolean)
-}
 
 function getMemberRoleBadgeClass(role) {
   switch (role) {
@@ -1861,12 +1804,12 @@ function getMemberRoleBadgeClass(role) {
 const memberErrors = computed(() => {
   if (!memberSubmitted.value) return {}
   const e = {}
-  if (!memberForm.team) e.team = 'Team is required.'
+  if (!memberForm.target) e.target = `${teamMode.value} is required.`
   else if (!memberForm.employee) e.employee = 'Employee is required.'
   return e
 })
 
-const memberFormValid = computed(() => !memberErrors.value.team && !memberErrors.value.employee)
+const memberFormValid = computed(() => !memberErrors.value.target && !memberErrors.value.employee)
 
 const selectedEmployee = computed(() => {
   if (!memberForm.employee) return null
@@ -1880,82 +1823,242 @@ const accessLevelOptions = [
   { label: 'Admin', value: 'Admin' },
 ]
 
-function openAddMember() {
-  Object.assign(memberForm, {
-    employee: '',
-    team: selectedTeam.value ? selectedTeam.value.name : '',
+// 2-Column Team & Project Permissions Member Modal
+const memberModalOpen = ref(false)
+const memberModalLoading = ref(false)
+const memberModalSubmitting = ref(false)
+const memberModalError = ref('')
+const memberModalMode = ref('add') // 'add' | 'edit'
+
+const selectedEmployeeId = ref('')
+const selectedEmployeeDoc = computed(() => {
+  if (!selectedEmployeeId.value) return null
+  return (employees.value || []).find((e) => e.name === selectedEmployeeId.value) || null
+})
+
+// Columns state for the modal
+const employeeTeamAssignments = ref([])
+const employeeProjectAssignments = ref([])
+
+// Dropdowns to add a new team or project in the modal
+const newTeamToAdd = ref('')
+const newProjectToAdd = ref('')
+
+const availableTeamsToAdd = computed(() => {
+  const assigned = new Set(employeeTeamAssignments.value.map((t) => t.target))
+  return (teams.value || []).filter((t) => !assigned.has(t.name))
+})
+
+const availableProjectsToAdd = computed(() => {
+  const assigned = new Set(employeeProjectAssignments.value.map((p) => p.target))
+  return (projects.value || []).filter((p) => !assigned.has(p.name))
+})
+
+function addTeamToEmployee() {
+  if (!newTeamToAdd.value) return
+  employeeTeamAssignments.value.push({
+    target: newTeamToAdd.value,
     team_role: 'Team Member',
     access_level: 'Operate',
+    read: 1,
+    write: 1,
   })
-  memberSubmitted.value = false
-  memberSubmitError.value = ''
+  newTeamToAdd.value = ''
+}
+
+function removeTeamFromEmployee(idx) {
+  employeeTeamAssignments.value.splice(idx, 1)
+}
+
+function addProjectToEmployee() {
+  if (!newProjectToAdd.value) return
+  employeeProjectAssignments.value.push({
+    target: newProjectToAdd.value,
+    team_role: 'Team Member',
+    access_level: 'Operate',
+    read: 1,
+    write: 1,
+  })
+  newProjectToAdd.value = ''
+}
+
+function removeProjectFromEmployee(idx) {
+  employeeProjectAssignments.value.splice(idx, 1)
+}
+
+// Open modal for Adding a new member
+function openAddMember() {
+  memberModalMode.value = 'add'
+  selectedEmployeeId.value = ''
   empSearch.value = ''
   empDropdownOpen.value = false
-  addMemberOpen.value = true
+  memberModalError.value = ''
+  employeeTeamAssignments.value = []
+  employeeProjectAssignments.value = []
+  newTeamToAdd.value = ''
+  newProjectToAdd.value = ''
+
+  // Pre-seed current selection if available
+  if (teamMode.value === 'Team' && selectedTeam.value) {
+    employeeTeamAssignments.value.push({
+      target: selectedTeam.value.name,
+      team_role: 'Team Member',
+      access_level: 'Operate',
+      read: 1,
+      write: 1,
+    })
+  } else if (teamMode.value === 'Project' && selectedProject.value) {
+    employeeProjectAssignments.value.push({
+      target: selectedProject.value.name,
+      team_role: 'Team Member',
+      access_level: 'Operate',
+      read: 1,
+      write: 1,
+    })
+  }
+
+  memberModalOpen.value = true
   loadEmployees()
 }
 
-function resetMemberForm() {
-  Object.assign(memberForm, {
-    employee: '',
-    team: '',
-    team_role: 'Team Member',
-    access_level: 'Operate',
-  })
-  memberSubmitted.value = false
-  memberSubmitError.value = ''
+// Select employee in add mode and load existing assignments if any
+async function onSelectEmployeeForModal(emp) {
+  selectedEmployeeId.value = emp.name
   empSearch.value = ''
   empDropdownOpen.value = false
-}
+  memberModalError.value = ''
+  memberModalLoading.value = true
+  try {
+    const data = await fetchEmployeeAssignments(emp.name)
+    const existingTeams = data.teams || []
+    const existingProjects = data.projects || []
 
-function onMemberTeamChange(val) {
-  memberForm.team = val
-  memberForm.employee = ''
-  memberSubmitted.value = false
-  memberSubmitError.value = ''
-  empSearch.value = ''
-  empDropdownOpen.value = false
-  if (val) {
-    loadTeamMembersForTeam(val)
+    // If pre-seeded target wasn't in existing, keep it
+    if (teamMode.value === 'Team' && selectedTeam.value) {
+      if (!existingTeams.find((t) => t.target === selectedTeam.value.name)) {
+        existingTeams.push({
+          target: selectedTeam.value.name,
+          team_role: 'Team Member',
+          access_level: 'Operate',
+          read: 1,
+          write: 1,
+        })
+      }
+    } else if (teamMode.value === 'Project' && selectedProject.value) {
+      if (!existingProjects.find((p) => p.target === selectedProject.value.name)) {
+        existingProjects.push({
+          target: selectedProject.value.name,
+          team_role: 'Team Member',
+          access_level: 'Operate',
+          read: 1,
+          write: 1,
+        })
+      }
+    }
+
+    employeeTeamAssignments.value = existingTeams
+    employeeProjectAssignments.value = existingProjects
+  } catch (e) {
+    console.error('Failed to load employee assignments', e)
+  } finally {
+    memberModalLoading.value = false
   }
 }
 
-function selectEmployee(emp) {
-  memberForm.employee = emp.name
+// Open modal for Editing an existing member row
+async function openEditMember(member) {
+  if (!member) return
+  memberModalMode.value = 'edit'
+  selectedEmployeeId.value = member.employee || ''
   empSearch.value = ''
   empDropdownOpen.value = false
-  memberSubmitted.value = false
-  memberSubmitError.value = ''
-}
+  memberModalError.value = ''
+  newTeamToAdd.value = ''
+  newProjectToAdd.value = ''
+  memberModalOpen.value = true
+  memberModalLoading.value = true
 
-async function submitAddMember() {
-  memberSubmitted.value = true
-  memberSubmitError.value = ''
-  if (!memberFormValid.value) return
-  memberLoading.value = true
-  const keepTeam = memberForm.team
   try {
-    await addTeamMember(
-      memberForm.team,
-      memberForm.employee,
-      memberForm.team_role,
-      memberForm.access_level,
-    )
-    addMemberOpen.value = false
-    resetMemberForm()
-    await loadTeams()
-    // Keep same team selected after adding
-    if (keepTeam) {
-      const team = teams.value.find((t) => t.name === keepTeam)
-      if (team) {
-        selectedTeam.value = team
-        await loadTeamMembersForTeam(team.name)
+    const empId = member.employee || member.name
+    const data = await fetchEmployeeAssignments(empId)
+    employeeTeamAssignments.value = (data.teams || []).map((t) => ({
+      ...t,
+      read: t.read !== undefined ? Number(t.read) : 1,
+      write: t.write !== undefined ? Number(t.write) : 1,
+    }))
+    employeeProjectAssignments.value = (data.projects || []).map((p) => ({
+      ...p,
+      read: p.read !== undefined ? Number(p.read) : 1,
+      write: p.write !== undefined ? Number(p.write) : 1,
+    }))
+
+    // Fallback if empty and current row exists
+    if (employeeTeamAssignments.value.length === 0 && employeeProjectAssignments.value.length === 0) {
+      const item = {
+        name: member.id || member.name,
+        target: member.parent || member.team,
+        team_role: member.role || 'Team Member',
+        access_level: member.access_level || 'Operate',
+        read: member.read !== undefined ? Number(member.read) : 1,
+        write: member.write !== undefined ? Number(member.write) : 1,
+      }
+      if (member.parenttype === 'Taskflow Project') {
+        employeeProjectAssignments.value.push(item)
+      } else {
+        employeeTeamAssignments.value.push(item)
       }
     }
   } catch (e) {
-    memberSubmitError.value = e?.message || 'Failed to add member. They may already be in this team.'
+    console.error('Failed to load employee assignments', e)
   } finally {
-    memberLoading.value = false
+    memberModalLoading.value = false
+  }
+}
+
+// Save all team and project permissions
+async function submitMemberModal() {
+  if (!selectedEmployeeId.value) {
+    memberModalError.value = 'Please select an employee.'
+    return
+  }
+  if (employeeTeamAssignments.value.length === 0 && employeeProjectAssignments.value.length === 0) {
+    memberModalError.value = 'Please assign at least one Team or Project.'
+    return
+  }
+
+  memberModalSubmitting.value = true
+  memberModalError.value = ''
+  try {
+    await saveEmployeeAssignments(
+      selectedEmployeeId.value,
+      employeeTeamAssignments.value,
+      employeeProjectAssignments.value,
+    )
+    memberModalOpen.value = false
+    toast.success('Member permissions saved successfully')
+    await loadTeams()
+  } catch (e) {
+    memberModalError.value = e?.message || 'Failed to save assignments.'
+  } finally {
+    memberModalSubmitting.value = false
+  }
+}
+
+// Remove member from specific team or project
+async function handleRemoveMember(member) {
+  const memberName = member?.name || member?.id
+  if (!memberName) return
+  const empName = member.name || member.employee || 'this member'
+  if (!confirm(`Are you sure you want to remove ${empName} from this ${teamMode.value.toLowerCase()}?`)) return
+  try {
+    await removeTeamMemberRecord(memberName)
+    toast.success('Member removed successfully')
+    if (memberModalOpen.value) {
+      memberModalOpen.value = false
+    }
+    await loadTeams()
+  } catch (e) {
+    toast.error(e?.message || 'Failed to remove member')
   }
 }
 
@@ -1975,30 +2078,29 @@ async function deleteTeamConfirm(team) {
 function selectTeam(team) {
   if (selectedTeam.value && selectedTeam.value.name === team.name) {
     selectedTeam.value = null
-    loadTeams()
   } else {
     selectedTeam.value = team
-    loadTeamMembersForTeam(team.name)
   }
+  loadTeams()
 }
 
 function selectAllTeams() {
-  if (selectedTeam.value) {
-    selectedTeam.value = null
-    loadTeams()
-  }
+  selectedTeam.value = null
+  loadTeams()
 }
 
-async function loadTeamMembersForTeam(teamName) {
-  teamLoading.value = true
-  try {
-    const data = await fetchTeamMembers(teamName)
-    teamMembers.value = data || []
-  } catch (e) {
-    console.error('Failed to load team members', e)
-  } finally {
-    teamLoading.value = false
+function selectProject(proj) {
+  if (selectedProject.value && selectedProject.value.name === proj.name) {
+    selectedProject.value = null
+  } else {
+    selectedProject.value = proj
   }
+  loadTeams()
+}
+
+function selectAllProjects() {
+  selectedProject.value = null
+  loadTeams()
 }
 
 onMounted(async () => {
@@ -2962,25 +3064,54 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <!-- 4. TEAM VIEW (List view only as requested) -->
+        <!-- 4. TEAM VIEW -->
         <template v-else-if="activeSection === 'Team'">
-          <div class="shrink-0 mb-3 flex items-center justify-between">
-            <div>
-              <h2 class="text-lg font-bold text-ink-gray-9">Team Members</h2>
-              <p class="text-xs text-ink-gray-5">
-                Workspace collaborators and task allocation
-                <span v-if="selectedTeam" class="text-blue-600 font-medium">
-                  — {{ selectedTeam.team_name || selectedTeam.name }}
-                </span>
-              </p>
+          <div class="shrink-0 mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div>
+                <h2 class="text-lg font-bold text-ink-gray-9">Team Members</h2>
+                <p class="text-xs text-ink-gray-5">
+                  Workspace collaborators and access allocation
+                  <span v-if="teamMode === 'Team' && selectedTeam" class="text-blue-600 font-medium">
+                    — {{ selectedTeam.team_name || selectedTeam.name }}
+                  </span>
+                  <span v-else-if="teamMode === 'Project' && selectedProject" class="text-blue-600 font-medium">
+                    — {{ selectedProject.title || selectedProject.name }}
+                  </span>
+                </p>
+              </div>
+
+              <!-- Team vs Project Mode Toggle -->
+              <div class="inline-flex p-0.5 rounded-lg bg-surface-gray-2 dark:bg-neutral-800 border border-outline-gray-2 dark:border-neutral-700">
+                <button
+                  type="button"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer select-none"
+                  :class="teamMode === 'Team'
+                    ? 'bg-surface-base dark:bg-neutral-900 text-ink-gray-9 dark:text-white shadow-xs'
+                    : 'text-ink-gray-5 hover:text-ink-gray-8 dark:text-neutral-400 dark:hover:text-white'"
+                  @click="setTeamMode('Team')"
+                >
+                  Taskflow Team
+                </button>
+                <button
+                  type="button"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer select-none"
+                  :class="teamMode === 'Project'
+                    ? 'bg-surface-base dark:bg-neutral-900 text-ink-gray-9 dark:text-white shadow-xs'
+                    : 'text-ink-gray-5 hover:text-ink-gray-8 dark:text-neutral-400 dark:hover:text-white'"
+                  @click="setTeamMode('Project')"
+                >
+                  Taskflow Project
+                </button>
+              </div>
             </div>
+
             <div class="flex items-center gap-2">
               <span class="text-xs text-ink-gray-5 font-medium">{{ teamData.length }} members</span>
               <Button
                 variant="solid"
                 theme="gray"
                 label="Add Member"
-                
                 @click="openAddMember"
               >
                 <template #prefix><UserPlus class="size-4" /></template>
@@ -2988,9 +3119,9 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Teams capsule list with + button -->
-          <div v-if="teams.length > 0" class="shrink-0 mb-3 flex flex-wrap items-center gap-2">
-            <!-- All Teams badge (default selected) -->
+          <!-- Capsule list: Teams mode -->
+          <div v-if="teamMode === 'Team' && teams.length > 0" class="shrink-0 mb-3 flex flex-wrap items-center gap-2">
+            <!-- All Teams badge -->
             <button
               type="button"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer select-none"
@@ -3027,33 +3158,62 @@ onUnmounted(() => {
             </button>
           </div>
 
+          <!-- Capsule list: Projects mode -->
+          <div v-else-if="teamMode === 'Project' && projects.length > 0" class="shrink-0 mb-3 flex flex-wrap items-center gap-2">
+            <!-- All Projects badge -->
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer select-none"
+              :class="allProjectsSelected
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-200'
+                : 'bg-surface-base text-ink-gray-7 border-outline-gray-2 hover:bg-surface-gray-2 hover:border-outline-gray-3'"
+              @click="selectAllProjects"
+            >
+              <span class="size-1.5 rounded-full shrink-0" :class="allProjectsSelected ? 'bg-surface-base' : 'bg-blue-500'" />
+              All Projects
+              <span class="font-bold" :class="allProjectsSelected ? 'text-blue-100' : 'text-ink-gray-5'">({{ teamData.length }})</span>
+            </button>
+            <button
+              v-for="p in projects"
+              :key="p.name"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer select-none"
+              :class="selectedProject && selectedProject.name === p.name
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-200'
+                : 'bg-surface-base text-ink-gray-7 border-outline-gray-2 hover:bg-surface-gray-2 hover:border-outline-gray-3'"
+              @click="selectProject(p)"
+            >
+              <span class="size-1.5 rounded-full shrink-0" :class="selectedProject && selectedProject.name === p.name ? 'bg-surface-base' : 'bg-indigo-500'" />
+              {{ p.title || p.name }}
+            </button>
+          </div>
+
           <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
-            <!-- Empty state: team selected but no members -->
+            <!-- Empty state: target selected but no members -->
             <div
-              v-if="selectedTeam && !teamLoading && teamData.length === 0 && !selectedMember"
+              v-if="!teamLoading && teamData.length === 0"
               class="flex-1 flex flex-col items-center justify-center text-center py-12"
             >
               <div class="size-14 rounded-2xl bg-surface-gray-3 flex items-center justify-center mb-4">
                 <Users class="size-7 text-gray-400" />
               </div>
-              <p class="text-sm font-semibold text-ink-gray-7 mb-1">No team members yet</p>
+              <p class="text-sm font-semibold text-ink-gray-7 mb-1">No members found</p>
               <p class="text-xs text-gray-400 mb-4 max-w-xs">
-                This team has no members. Add someone to get started.
+                No members found in this {{ teamMode.toLowerCase() }}. Add members with Read & Write permissions to collaborate.
               </p>
               <Button
                 variant="solid"
                 theme="gray"
                 label="Add Member"
-                
                 @click="openAddMember"
               >
                 <template #prefix><UserPlus class="size-3.5" /></template>
               </Button>
             </div>
 
-            <!-- Member list (hidden when profile is open) -->
+            <!-- Member list -->
             <div
-              v-else-if="!selectedMember"
+              v-else
               class="flex-1 min-h-0 overflow-auto"
             >
               <CommonListView
@@ -3061,7 +3221,7 @@ onUnmounted(() => {
                 :columns="teamColumns"
                 :rows="teamData"
                 :loading="teamLoading"
-                @row-click="(row) => selectMember(row)"
+                @row-click="(row) => openEditMember(row)"
               >
                 <template #cell-member="{ row }">
                   <div class="flex items-center gap-2.5">
@@ -3079,7 +3239,44 @@ onUnmounted(() => {
                 </template>
 
                 <template #cell-email="{ row }">
-                  <span class="font-mono text-xs text-ink-gray-6">{{ row.email }}</span>
+                  <span class="font-mono text-xs text-ink-gray-6">{{ row.email || '—' }}</span>
+                </template>
+
+                <template #cell-role="{ row }">
+                  <span
+                    class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border"
+                    :class="getMemberRoleBadgeClass(row.role)"
+                  >
+                    {{ row.role }}
+                  </span>
+                </template>
+
+                <template #cell-target_parent="{ row }">
+                  <span class="inline-flex items-center gap-1.5 text-xs text-ink-gray-7 font-medium">
+                    <span class="size-1.5 rounded-full" :class="row.parenttype === 'Taskflow Project' ? 'bg-indigo-500' : 'bg-blue-500'" />
+                    {{ row.team || row.parent || '—' }}
+                  </span>
+                </template>
+
+                <template #cell-permissions="{ row }">
+                  <div class="inline-flex items-center gap-1.5" @click.stop>
+                    <span
+                      class="px-2 py-0.5 rounded text-[10px] font-semibold border"
+                      :class="row.read
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                        : 'bg-surface-gray-2 text-ink-gray-4 border-outline-gray-2 dark:bg-neutral-800 dark:text-neutral-500'"
+                    >
+                      Read
+                    </span>
+                    <span
+                      class="px-2 py-0.5 rounded text-[10px] font-semibold border"
+                      :class="row.write
+                        ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800'
+                        : 'bg-surface-gray-2 text-ink-gray-4 border-outline-gray-2 dark:bg-neutral-800 dark:text-neutral-500'"
+                    >
+                      Write
+                    </span>
+                  </div>
                 </template>
 
                 <template #cell-active_tasks="{ row }">
@@ -3098,179 +3295,28 @@ onUnmounted(() => {
                     {{ row.status }}
                   </Badge>
                 </template>
+
+                <template #cell-actions="{ row }">
+                  <div class="flex items-center justify-center gap-1" @click.stop>
+                    <button
+                      type="button"
+                      class="p-1 rounded-md text-ink-gray-5 hover:text-blue-600 hover:bg-surface-gray-2 transition cursor-pointer"
+                      title="Edit Permissions & Team"
+                      @click="openEditMember(row)"
+                    >
+                      <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="p-1 rounded-md text-ink-gray-4 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                      title="Remove Member"
+                      @click="handleRemoveMember(row)"
+                    >
+                      <Trash2 class="size-3.5" />
+                    </button>
+                  </div>
+                </template>
               </CommonListView>
-            </div>
-
-            <!-- Full profile view (replaces list) -->
-            <div
-              v-else
-              class="flex-1 min-h-0 flex overflow-hidden"
-            >
-              <!-- Profile card (left, ~260px) -->
-              <div class="w-[260px] shrink-0 overflow-y-auto border-r border-outline-gray-2 bg-surface-base">
-                <div class="py-5 px-5">
-                  <!-- Back button -->
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-1.5 text-xs font-medium text-ink-gray-5 hover:text-ink-gray-7 mb-4 cursor-pointer transition"
-                    @click="backToList"
-                  >
-                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                    Back to members
-                  </button>
-
-                  <!-- Avatar + Name -->
-                  <div class="flex flex-col items-center text-center mb-5">
-                    <div class="size-20 rounded-full bg-surface-gray-3 overflow-hidden shadow-md mb-3">
-                      <Avatar
-                        :image="selectedMember.image"
-                        :label="selectedMember.name"
-                        size="3xl"
-                        shape="circle"
-                        class="size-20"
-                      />
-                    </div>
-                    <h3 class="text-base font-bold text-ink-gray-9 leading-tight">{{ selectedMember.name }}</h3>
-                    <p class="text-xs text-ink-gray-5 mt-0.5">{{ selectedMember.email }}</p>
-                    <span
-                      class="inline-flex mt-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
-                      :class="getMemberRoleBadgeClass(selectedMember.role)"
-                    >
-                      {{ selectedMember.role }}
-                    </span>
-                  </div>
-
-                  <!-- Stats -->
-                  <div class="grid grid-cols-2 gap-2.5 mb-5">
-                    <div class="text-center p-2.5 bg-surface-gray-2 rounded-lg">
-                      <p class="text-lg font-bold text-ink-gray-9">{{ selectedMember.active_tasks || 0 }}</p>
-                      <p class="text-[10px] text-ink-gray-5">Active</p>
-                    </div>
-                    <div class="text-center p-2.5 bg-surface-gray-2 rounded-lg">
-                      <p class="text-lg font-bold text-ink-gray-9">{{ selectedMember.completed_tasks || 0 }}</p>
-                      <p class="text-[10px] text-ink-gray-5">Done</p>
-                    </div>
-                    <div class="text-center p-2.5 bg-surface-gray-2 rounded-lg">
-                      <p class="text-lg font-bold text-ink-gray-9">{{ selectedMember.total_tasks || 0 }}</p>
-                      <p class="text-[10px] text-ink-gray-5">Total</p>
-                    </div>
-                    <div class="text-center p-2.5 rounded-lg" :class="(selectedMember.overdue_tasks || 0) > 0 ? 'bg-red-50' : 'bg-surface-gray-2'">
-                      <p class="text-lg font-bold" :class="(selectedMember.overdue_tasks || 0) > 0 ? 'text-red-600' : 'text-ink-gray-9'">{{ selectedMember.overdue_tasks || 0 }}</p>
-                      <p class="text-[10px] text-ink-gray-5">Overdue</p>
-                    </div>
-                  </div>
-
-                  <!-- Details -->
-                  <div class="divide-y divide-gray-100 border-t border-outline-gray-1">
-                    <div class="flex items-center justify-between py-2.5">
-                      <span class="text-xs text-ink-gray-5">Status</span>
-                      <Badge :theme="selectedMember.status === 'Active' ? 'green' : 'gray'" variant="subtle" size="sm">
-                        {{ selectedMember.status }}
-                      </Badge>
-                    </div>
-                    <div class="flex items-center justify-between py-2.5">
-                      <span class="text-xs text-ink-gray-5">Access</span>
-                      <span class="text-xs font-medium text-ink-gray-7">{{ selectedMember.access_level || 'Operate' }}</span>
-                    </div>
-                    <div class="flex items-center justify-between py-2.5">
-                      <span class="text-xs text-ink-gray-5">Team</span>
-                      <span class="text-xs font-medium text-ink-gray-7 truncate ml-2">{{ selectedTeam?.team_name || selectedTeam?.name || '—' }}</span>
-                    </div>
-                    <div class="flex items-center justify-between py-2.5">
-                      <span class="text-xs text-ink-gray-5">Employee</span>
-                      <span class="text-xs font-mono text-ink-gray-6">{{ selectedMember.employee || '—' }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Calendar + Activity list (50/50) -->
-              <div class="flex-1 min-w-0 flex overflow-hidden">
-                <!-- Calendar (50%) -->
-                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-surface-base border-r border-outline-gray-2">
-                  <TimesheetCalendar
-                    :events="calendarEvents"
-                    :loading="calendarLoading"
-                    @cellClick="handleCalendarClick"
-                    class="flex-1 min-h-0"
-                  />
-                </div>
-
-                <!-- Activity list (50%) -->
-                <div class="w-1/2 min-w-0 flex flex-col overflow-hidden bg-surface-base">
-                  <!-- Header -->
-                  <div class="shrink-0 px-4 py-2.5 border-b border-outline-gray-1">
-                    <h4 class="text-xs font-bold text-ink-gray-7 uppercase tracking-wide">Activity Log</h4>
-                    <p v-if="selectedDayDate" class="text-[11px] text-ink-gray-5 mt-0.5">{{ selectedDayDate }}</p>
-                  </div>
-
-                  <!-- Placeholder when no day selected -->
-                  <div
-                    v-if="!selectedDayDate"
-                    class="flex-1 flex flex-col items-center justify-center text-center px-4"
-                  >
-                    <div class="size-10 rounded-xl bg-surface-gray-3 flex items-center justify-center mb-3">
-                      <Clock class="size-5 text-gray-400" />
-                    </div>
-                    <p class="text-xs font-semibold text-ink-gray-6 mb-1">Select a timesheet day</p>
-                    <p class="text-[10px] text-gray-400">Click on any day in the calendar to view work entries</p>
-                  </div>
-
-                  <!-- Entries when day selected -->
-                  <div v-else class="flex-1 overflow-y-auto">
-                    <!-- No entries for this day -->
-                    <div
-                      v-if="selectedDayEntries.length === 0"
-                      class="flex flex-col items-center justify-center text-center px-4 py-10"
-                    >
-                      <div class="size-10 rounded-xl bg-red-50 flex items-center justify-center mb-3">
-                        <Clock class="size-5 text-red-400" />
-                      </div>
-                      <p class="text-xs font-semibold text-ink-gray-6 mb-1">No timesheet logged</p>
-                      <p class="text-[10px] text-gray-400">No work entries found for this day</p>
-                    </div>
-
-                    <!-- Timesheet entries -->
-                    <div v-else>
-                      <div v-for="(ts, tIdx) in selectedDayEntries" :key="ts.name || tIdx" class="px-4 py-3 border-b border-gray-50 last:border-b-0">
-                        <div class="flex items-center justify-between mb-2">
-                          <div class="flex items-center gap-2">
-                            <span class="text-[11px] font-bold text-ink-gray-8">{{ ts.name }}</span>
-                            <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">{{ ts.status }}</Badge>
-                          </div>
-                          <span class="text-[11px] font-bold text-green-600">{{ ts.total_hours }}h</span>
-                        </div>
-                        <div class="space-y-1.5">
-                          <div
-                            v-for="(item, iIdx) in ts.items"
-                            :key="iIdx"
-                            class="flex items-center gap-2 text-[10px] bg-surface-gray-2 rounded-lg px-2.5 py-2"
-                          >
-                            <span
-                              class="inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold border shrink-0"
-                              :class="{
-                                'bg-blue-50 text-blue-700 border-blue-200': item.activity_type === 'Task',
-                                'bg-amber-50 text-amber-700 border-amber-200': item.activity_type === 'Meeting',
-                                'bg-purple-50 text-purple-700 border-purple-200': item.activity_type === 'Research',
-                              }"
-                            >
-                              {{ item.activity_type }}
-                            </span>
-                            <div class="min-w-0 flex-1">
-                              <span v-if="item.project" class="text-ink-gray-7 font-medium truncate block">{{ item.project }}</span>
-                              <span v-if="item.task" class="text-ink-gray-5 truncate block">/ {{ item.task }}</span>
-                            </div>
-                            <span class="text-ink-gray-7 font-bold shrink-0">{{ item.hrs }}h</span>
-                            <span class="text-gray-400 shrink-0">
-                              {{ item.from_time?.slice(11, 16) }} – {{ item.to_time?.slice(11, 16) }}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </template>
@@ -3599,79 +3645,67 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Add Member Modal -->
-    <div v-if="addMemberOpen" class="fixed inset-0 z-50 flex items-center justify-center">
-      <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" @click="addMemberOpen = false" />
-      <div class="relative bg-surface-base rounded-xl shadow-2xl w-full max-w-lg mx-4">
+    <!-- Modern 2-Column Team & Project Permissions Member Modal -->
+    <div v-if="memberModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/50 backdrop-blur-md transition-opacity" @click="memberModalOpen = false" />
+      <div class="relative bg-surface-base dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-outline-gray-2 dark:border-neutral-800 z-10">
         <!-- Header -->
-        <div class="flex items-center justify-between px-5 py-4 border-b border-outline-gray-2">
-          <div class="flex items-center gap-2.5">
-            <div class="size-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <UserPlus class="size-4 text-blue-600" />
+        <div class="flex items-center justify-between px-6 py-4 border-b border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="size-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <Users class="size-5" />
             </div>
             <div>
-              <h3 class="text-base font-bold text-ink-gray-9">Add Team Member</h3>
-              <p class="text-xs text-ink-gray-5">Assign an employee to a team with a role</p>
+              <h3 class="text-base font-bold text-ink-gray-9 dark:text-white leading-snug">
+                {{ memberModalMode === 'add' ? 'Assign Member to Teams & Projects' : 'Manage Member Permissions' }}
+              </h3>
+              <p class="text-xs text-ink-gray-5 dark:text-neutral-400">
+                Configure team memberships and project-specific Read/Write permissions
+              </p>
             </div>
           </div>
           <button
             type="button"
-            class="size-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-surface-gray-3 hover:text-ink-gray-6 transition cursor-pointer"
-            @click="addMemberOpen = false"
+            class="size-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-surface-gray-2 dark:hover:bg-neutral-800 hover:text-ink-gray-7 dark:hover:text-white transition cursor-pointer"
+            @click="memberModalOpen = false"
           >
-            <span class="text-lg leading-none">&times;</span>
+            <span class="text-xl leading-none">&times;</span>
           </button>
         </div>
 
-        <!-- Body -->
-        <div class="px-5 py-5 space-y-4">
-
-          <!-- Step 1: Team (always visible) -->
-          <div>
-            <label class="block text-xs font-semibold text-ink-gray-7 mb-1.5">Step 1 — Select Team *</label>
-            <select
-              :value="memberForm.team"
-              class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 bg-surface-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-              @change="onMemberTeamChange($event.target.value)"
-            >
-              <option value="" disabled>Choose a team...</option>
-              <option v-for="t in teams" :key="t.name" :value="t.name">
-                {{ t.team_name || t.name }} ({{ t.member_count || 0 }} members)
-              </option>
-            </select>
-            <p v-if="memberSubmitted && memberErrors.team" class="text-xs text-red-600 mt-1">{{ memberErrors.team }}</p>
-          </div>
-
-          <!-- Step 2: Employee (only after team selected) -->
-          <div v-if="memberForm.team" class="transition-all duration-200 relative">
-            <label class="block text-xs font-semibold text-ink-gray-7 mb-1.5">Step 2 — Select Employee *</label>
-
-            <!-- Selected employee display / trigger -->
-            <div
-              v-if="memberForm.employee && !empDropdownOpen"
-              class="flex items-center justify-between w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 bg-surface-base hover:border-outline-gray-3 transition cursor-pointer"
-              @click="empDropdownOpen = true; empSearch = ''"
-            >
-              <div class="flex items-center gap-2 min-w-0">
-                <Avatar :label="selectedEmployee?.employee_name || memberForm.employee" size="sm" class="shrink-0" />
-                <span class="truncate">{{ selectedEmployee?.employee_name || memberForm.employee }}</span>
+        <!-- Sub-header: Employee Selection (Only in Add mode or when changing) -->
+        <div class="px-6 py-3.5 bg-surface-gray-2/50 dark:bg-neutral-800/30 border-b border-outline-gray-2 dark:border-neutral-800 shrink-0">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3 flex-1">
+              <Avatar
+                v-if="selectedEmployeeDoc"
+                :label="selectedEmployeeDoc.employee_name || selectedEmployeeDoc.name"
+                size="md"
+                shape="circle"
+                class="shrink-0"
+              />
+              <div v-if="selectedEmployeeDoc" class="min-w-0">
+                <span class="text-sm font-bold text-ink-gray-9 dark:text-white truncate block">
+                  {{ selectedEmployeeDoc.employee_name || selectedEmployeeDoc.name }}
+                </span>
+                <span class="text-xs text-ink-gray-5 dark:text-neutral-400 truncate block">
+                  {{ selectedEmployeeDoc.user_id || selectedEmployeeDoc.name }} · {{ selectedEmployeeDoc.designation || 'Member' }}
+                </span>
               </div>
-              <span class="text-gray-400 text-xs shrink-0 ml-2">&#10005;</span>
+              <div v-else class="text-xs font-semibold text-ink-gray-6 dark:text-neutral-300">
+                Select Employee *
+              </div>
             </div>
 
-            <!-- Search input -->
-            <div v-else>
+            <!-- Employee Dropdown / Picker -->
+            <div v-if="memberModalMode === 'add'" class="relative w-full sm:w-72">
               <div class="relative">
                 <input
-                  ref="empSearchInput"
                   v-model="empSearch"
                   type="text"
-                  placeholder="Type to search employee..."
+                  placeholder="Search & choose employee..."
                   autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="off"
-                  spellcheck="false"
-                  class="w-full text-sm border border-outline-gray-2 rounded-lg pl-3 pr-8 py-2 bg-surface-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  class="w-full text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-lg pl-3 pr-8 py-2 bg-surface-base dark:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   @focus="empDropdownOpen = true"
                   @keydown.escape="empDropdownOpen = false"
                 />
@@ -3679,116 +3713,290 @@ onUnmounted(() => {
                   {{ filteredEmployees.length }}
                 </span>
               </div>
-            </div>
 
-            <!-- Dropdown list -->
-            <div v-if="empDropdownOpen" class="fixed inset-0 z-10" @click="empDropdownOpen = false" />
-            <div
-              v-if="empDropdownOpen"
-              class="absolute z-20 mt-1 w-full bg-surface-base border border-outline-gray-2 rounded-lg shadow-lg max-h-60 overflow-y-auto"
-              @click.stop
-            >
-              <div v-if="filteredEmployees.length === 0" class="px-3 py-4 text-center text-sm text-gray-400">
-                No employees found
-              </div>
-              <button
-                v-for="emp in filteredEmployees"
-                :key="emp.name"
-                type="button"
-                class="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition cursor-pointer"
-                :class="[
-                  teamMemberEmployeeIds.has(emp.name)
-                    ? 'bg-surface-gray-2 text-gray-400 cursor-not-allowed opacity-60'
-                    : memberForm.employee === emp.name
-                      ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                      : 'text-ink-gray-7 hover:bg-surface-gray-2'
-                ]"
-                :disabled="teamMemberEmployeeIds.has(emp.name)"
-                @click="!teamMemberEmployeeIds.has(emp.name) && selectEmployee(emp)"
+              <!-- Floating Dropdown list -->
+              <div v-if="empDropdownOpen" class="fixed inset-0 z-20" @click="empDropdownOpen = false" />
+              <div
+                v-if="empDropdownOpen"
+                class="absolute z-30 mt-1 w-full bg-surface-base dark:bg-neutral-800 border border-outline-gray-2 dark:border-neutral-700 rounded-lg shadow-xl max-h-56 overflow-y-auto"
+                @click.stop
               >
-                <Avatar :label="emp.employee_name || emp.name" size="sm" class="shrink-0" />
-                <div class="min-w-0 flex-1">
-                  <p class="font-medium truncate">{{ emp.employee_name || emp.name }}</p>
-                  <p v-if="emp.designation || emp.department" class="text-xs text-gray-400 truncate">
-                    {{ emp.designation }}{{ emp.department ? ' · ' + emp.department : '' }}
-                  </p>
+                <div v-if="filteredEmployees.length === 0" class="px-3 py-3 text-center text-xs text-gray-400">
+                  No employees found
                 </div>
-                <span
-                  v-if="teamMemberEmployeeIds.has(emp.name)"
-                  class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-200 text-ink-gray-5"
+                <button
+                  v-for="emp in filteredEmployees"
+                  :key="emp.name"
+                  type="button"
+                  class="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs transition cursor-pointer hover:bg-surface-gray-2 dark:hover:bg-neutral-700"
+                  :class="selectedEmployeeId === emp.name ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold' : 'text-ink-gray-8 dark:text-neutral-200'"
+                  @click="onSelectEmployeeForModal(emp)"
                 >
-                  Already added
-                </span>
-              </button>
-            </div>
-
-            <p v-if="memberSubmitted && memberErrors.employee" class="text-xs text-red-600 mt-1">{{ memberErrors.employee }}</p>
-          </div>
-
-          <!-- Employee Preview Card -->
-          <div v-if="selectedEmployee" class="flex items-center gap-3 p-3 bg-surface-gray-2 rounded-lg border border-outline-gray-2 transition-all duration-200">
-            <Avatar
-              :label="selectedEmployee.employee_name || selectedEmployee.name"
-              size="lg"
-              shape="circle"
-              class="shrink-0"
-            />
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-semibold text-ink-gray-9 truncate">{{ selectedEmployee.employee_name || selectedEmployee.name }}</p>
-              <p v-if="selectedEmployee.designation" class="text-xs text-ink-gray-5 truncate">{{ selectedEmployee.designation }}</p>
-              <p v-if="selectedEmployee.department" class="text-xs text-gray-400 truncate">{{ selectedEmployee.department }}</p>
-            </div>
-            <span class="shrink-0 px-2 py-0.5 text-[10px] font-medium bg-green-50 text-green-700 border border-green-200 rounded-full">Active</span>
-          </div>
-
-          <!-- Step 3: Role & Access (only after employee selected) -->
-          <div v-if="memberForm.employee" class="grid grid-cols-2 gap-4 transition-all duration-200">
-            <div>
-              <label class="block text-xs font-semibold text-ink-gray-7 mb-1.5">Step 3 — Role</label>
-              <select
-                v-model="memberForm.team_role"
-                class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 bg-surface-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-              >
-                <option v-for="r in teamRoleOptions" :key="r" :value="r">{{ r }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-ink-gray-7 mb-1.5">Access Level</label>
-              <select
-                v-model="memberForm.access_level"
-                class="w-full text-sm border border-outline-gray-2 rounded-lg px-3 py-2 bg-surface-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-              >
-                <option v-for="l in accessLevelOptions" :key="l.value" :value="l.value">{{ l.label }}</option>
-              </select>
+                  <Avatar :label="emp.employee_name || emp.name" size="sm" class="shrink-0" />
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium truncate">{{ emp.employee_name || emp.name }}</p>
+                    <p class="text-[10px] text-gray-400 truncate">{{ emp.designation || emp.department || emp.user_id }}</p>
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
+        </div>
 
-          <!-- Submit Error -->
-          <div v-if="memberSubmitError" class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <!-- Body: 2 COLUMNS (Left: Teams, Right: Projects) -->
+        <div class="flex-1 min-h-0 overflow-y-auto p-6">
+          <div v-if="memberModalLoading" class="py-16 text-center text-xs text-gray-400">
+            Loading employee assignments...
+          </div>
+
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <!-- LEFT COLUMN: TASKFLOW TEAMS -->
+            <div class="flex flex-col border border-outline-gray-2 dark:border-neutral-800 rounded-xl bg-surface-base dark:bg-neutral-900/60 overflow-hidden shadow-xs">
+              <div class="px-4 py-3 bg-surface-gray-2/60 dark:bg-neutral-800/60 border-b border-outline-gray-2 dark:border-neutral-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="size-2 rounded-full bg-blue-500" />
+                  <span class="text-xs font-bold text-ink-gray-9 dark:text-white uppercase tracking-wider">
+                    Taskflow Teams
+                  </span>
+                  <span class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60">
+                    {{ employeeTeamAssignments.length }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Team Add Bar -->
+              <div class="p-3 border-b border-outline-gray-1 dark:border-neutral-800 flex items-center gap-2 bg-surface-base dark:bg-neutral-900">
+                <select
+                  v-model="newTeamToAdd"
+                  class="flex-1 text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="" disabled>+ Assign to a team...</option>
+                  <option v-for="t in availableTeamsToAdd" :key="t.name" :value="t.name">
+                    {{ t.team_name || t.name }}
+                  </option>
+                </select>
+                <Button
+                  size="sm"
+                  variant="solid"
+                  theme="gray"
+                  label="Add"
+                  :disabled="!newTeamToAdd"
+                  @click="addTeamToEmployee"
+                />
+              </div>
+
+              <!-- List of Assigned Teams -->
+              <div class="p-3 space-y-2.5 max-h-80 overflow-y-auto">
+                <div v-if="employeeTeamAssignments.length === 0" class="py-8 text-center text-xs text-gray-400">
+                  No teams assigned yet
+                </div>
+
+                <div
+                  v-for="(tItem, tIdx) in employeeTeamAssignments"
+                  :key="tItem.target || tIdx"
+                  class="p-3 rounded-lg border border-outline-gray-2 dark:border-neutral-800 bg-surface-gray-2/40 dark:bg-neutral-800/40 hover:border-outline-gray-3 transition space-y-2.5"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="size-1.5 rounded-full bg-blue-500 shrink-0" />
+                      <span class="text-xs font-bold text-ink-gray-9 dark:text-white truncate">
+                        {{ tItem.target }}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      class="text-gray-400 hover:text-red-600 p-1 rounded transition cursor-pointer"
+                      title="Remove from this team"
+                      @click="removeTeamFromEmployee(tIdx)"
+                    >
+                      <Trash2 class="size-3.5" />
+                    </button>
+                  </div>
+
+                  <!-- Role & Access Level -->
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[10px] font-semibold text-ink-gray-5 dark:text-neutral-400 mb-1">Role</label>
+                      <select
+                        v-model="tItem.team_role"
+                        class="w-full text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-md px-2 py-1 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none"
+                      >
+                        <option v-for="r in teamRoleOptions" :key="r" :value="r">{{ r }}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-semibold text-ink-gray-5 dark:text-neutral-400 mb-1">Access</label>
+                      <select
+                        v-model="tItem.access_level"
+                        class="w-full text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-md px-2 py-1 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none"
+                      >
+                        <option v-for="l in accessLevelOptions" :key="l.value" :value="l.value">{{ l.label }}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Permissions Checkboxes -->
+                  <div class="flex items-center gap-4 pt-1 border-t border-outline-gray-1 dark:border-neutral-700/60">
+                    <label class="inline-flex items-center gap-1.5 text-xs text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        v-model="tItem.read"
+                        :true-value="1"
+                        :false-value="0"
+                        class="size-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>Read</span>
+                    </label>
+                    <label class="inline-flex items-center gap-1.5 text-xs text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        v-model="tItem.write"
+                        :true-value="1"
+                        :false-value="0"
+                        class="size-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>Write</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: TASKFLOW PROJECTS -->
+            <div class="flex flex-col border border-outline-gray-2 dark:border-neutral-800 rounded-xl bg-surface-base dark:bg-neutral-900/60 overflow-hidden shadow-xs">
+              <div class="px-4 py-3 bg-surface-gray-2/60 dark:bg-neutral-800/60 border-b border-outline-gray-2 dark:border-neutral-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="size-2 rounded-full bg-indigo-500" />
+                  <span class="text-xs font-bold text-ink-gray-9 dark:text-white uppercase tracking-wider">
+                    Taskflow Projects
+                  </span>
+                  <span class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60">
+                    {{ employeeProjectAssignments.length }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Project Add Bar -->
+              <div class="p-3 border-b border-outline-gray-1 dark:border-neutral-800 flex items-center gap-2 bg-surface-base dark:bg-neutral-900">
+                <select
+                  v-model="newProjectToAdd"
+                  class="flex-1 text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="" disabled>+ Assign to a project...</option>
+                  <option v-for="p in availableProjectsToAdd" :key="p.name" :value="p.name">
+                    {{ p.title || p.name }}
+                  </option>
+                </select>
+                <Button
+                  size="sm"
+                  variant="solid"
+                  theme="gray"
+                  label="Add"
+                  :disabled="!newProjectToAdd"
+                  @click="addProjectToEmployee"
+                />
+              </div>
+
+              <!-- List of Assigned Projects -->
+              <div class="p-3 space-y-2.5 max-h-80 overflow-y-auto">
+                <div v-if="employeeProjectAssignments.length === 0" class="py-8 text-center text-xs text-gray-400">
+                  No projects assigned yet
+                </div>
+
+                <div
+                  v-for="(pItem, pIdx) in employeeProjectAssignments"
+                  :key="pItem.target || pIdx"
+                  class="p-3 rounded-lg border border-outline-gray-2 dark:border-neutral-800 bg-surface-gray-2/40 dark:bg-neutral-800/40 hover:border-outline-gray-3 transition space-y-2.5"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="size-1.5 rounded-full bg-indigo-500 shrink-0" />
+                      <span class="text-xs font-bold text-ink-gray-9 dark:text-white truncate">
+                        {{ projects.find((p) => p.name === pItem.target)?.title || pItem.target }}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      class="text-gray-400 hover:text-red-600 p-1 rounded transition cursor-pointer"
+                      title="Remove from this project"
+                      @click="removeProjectFromEmployee(pIdx)"
+                    >
+                      <Trash2 class="size-3.5" />
+                    </button>
+                  </div>
+
+                  <!-- Role & Access Level -->
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[10px] font-semibold text-ink-gray-5 dark:text-neutral-400 mb-1">Role</label>
+                      <select
+                        v-model="pItem.team_role"
+                        class="w-full text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-md px-2 py-1 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none"
+                      >
+                        <option v-for="r in teamRoleOptions" :key="r" :value="r">{{ r }}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-semibold text-ink-gray-5 dark:text-neutral-400 mb-1">Access</label>
+                      <select
+                        v-model="pItem.access_level"
+                        class="w-full text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-md px-2 py-1 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none"
+                      >
+                        <option v-for="l in accessLevelOptions" :key="l.value" :value="l.value">{{ l.label }}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Permissions Checkboxes -->
+                  <div class="flex items-center gap-4 pt-1 border-t border-outline-gray-1 dark:border-neutral-700/60">
+                    <label class="inline-flex items-center gap-1.5 text-xs text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        v-model="pItem.read"
+                        :true-value="1"
+                        :false-value="0"
+                        class="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span>Read</span>
+                    </label>
+                    <label class="inline-flex items-center gap-1.5 text-xs text-ink-gray-8 dark:text-neutral-200 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        v-model="pItem.write"
+                        :true-value="1"
+                        :false-value="0"
+                        class="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span>Write</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal Error Alert -->
+          <div v-if="memberModalError" class="mt-4 flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg">
             <span class="text-red-500 text-xs mt-0.5">&#9888;</span>
-            <p class="text-xs text-red-700">{{ memberSubmitError }}</p>
+            <p class="text-xs text-red-700 dark:text-red-300">{{ memberModalError }}</p>
           </div>
         </div>
 
         <!-- Footer -->
-        <div class="flex items-center justify-between px-5 py-3.5 border-t border-outline-gray-1 bg-surface-gray-2 rounded-b-xl">
-          <p v-if="memberForm.team" class="text-[11px] text-gray-400">
-            Adding to: <span class="font-medium text-ink-gray-6">{{ teams.find((t) => t.name === memberForm.team)?.team_name || memberForm.team }}</span>
-          </p>
-          <div v-else />
+        <div class="flex items-center justify-between px-6 py-3.5 border-t border-outline-gray-2 dark:border-neutral-800 bg-surface-gray-2/50 dark:bg-neutral-800/40 shrink-0">
+          <div class="text-xs text-ink-gray-5 dark:text-neutral-400">
+            Total: <span class="font-bold text-ink-gray-9 dark:text-white">{{ employeeTeamAssignments.length }} teams, {{ employeeProjectAssignments.length }} projects</span>
+          </div>
           <div class="flex items-center gap-2">
-            <Button variant="subtle" label="Cancel" @click="addMemberOpen = false" />
+            <Button variant="subtle" label="Cancel" @click="memberModalOpen = false" />
             <Button
               variant="solid"
               theme="gray"
-              label="Add Member"
-              
-              :loading="memberLoading"
-              :disabled="!memberForm.employee || memberLoading"
-              @click="submitAddMember"
-            >
-              <template #prefix><UserPlus class="size-3.5" /></template>
-            </Button>
+              label="Save Assignments & Permissions"
+              :loading="memberModalSubmitting"
+              :disabled="!selectedEmployeeId || memberModalSubmitting"
+              @click="submitMemberModal"
+            />
           </div>
         </div>
       </div>
