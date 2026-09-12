@@ -4113,37 +4113,33 @@ onUnmounted(() => {
     <!-- Submit Timesheet Confirmation Dialog (Frappe-UI Native Dialog) -->
     <Dialog
       v-model="confirmSubmitTsDialogOpen"
-      :options="{
-        title: 'Submit Timesheet',
-        size: 'sm',
-        actions: [
-          {
-            label: 'Submit',
-            theme: 'green',
-            variant: 'solid',
-            loading: confirmSubmitTsLoading,
-            onClick: confirmSubmitTimesheetAction,
-          },
-          {
-            label: 'Cancel',
-            variant: 'subtle',
-            disabled: confirmSubmitTsLoading,
-            onClick: () => { confirmSubmitTsDialogOpen = false; confirmSubmitTsTarget = null },
-          },
-        ],
-      }"
+      title="Submit Timesheet"
+      size="sm"
+      :actions="[
+        {
+          label: 'Submit',
+          theme: 'green',
+          variant: 'solid',
+          loading: confirmSubmitTsLoading,
+          onClick: confirmSubmitTimesheetAction,
+        },
+        {
+          label: 'Cancel',
+          variant: 'subtle',
+          disabled: confirmSubmitTsLoading,
+          onClick: () => { confirmSubmitTsDialogOpen = false; confirmSubmitTsTarget = null },
+        },
+      ]"
     >
-      <template #body-content>
-        <div class="space-y-2 text-xs text-ink-gray-7 dark:text-gray-300">
-          <p>
-            Are you sure you want to submit timesheet
-            <span class="font-bold text-ink-gray-9 dark:text-white">{{ confirmSubmitTsTarget?.name }}</span>?
-          </p>
-          <p class="text-ink-gray-5 dark:text-gray-400">
-            Total Hours: <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ confirmSubmitTsTarget?.total_hours }}h</span>. Once submitted, the timesheet will be locked and cannot be edited.
-          </p>
-        </div>
-      </template>
+      <div class="space-y-2 text-xs text-ink-gray-7 dark:text-gray-300 py-1">
+        <p>
+          Are you sure you want to submit timesheet
+          <span class="font-bold text-ink-gray-9 dark:text-white">{{ confirmSubmitTsTarget?.name }}</span>?
+        </p>
+        <p class="text-ink-gray-5 dark:text-gray-400">
+          Total Hours: <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ confirmSubmitTsTarget?.total_hours }}h</span>. Once submitted, the timesheet will be locked and cannot be edited.
+        </p>
+      </div>
     </Dialog>
   </div>
 </template>
