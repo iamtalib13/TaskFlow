@@ -1844,6 +1844,7 @@ const employeeProjectAssignments = ref([])
 // Dropdowns to add a new team or project in the modal
 const newTeamToAdd = ref('')
 const newProjectToAdd = ref('')
+const projectSearchQuery = ref('')
 
 const availableTeamsToAdd = computed(() => {
   const assigned = new Set(employeeTeamAssignments.value.map((t) => t.target))
@@ -1853,6 +1854,24 @@ const availableTeamsToAdd = computed(() => {
 const availableProjectsToAdd = computed(() => {
   const assigned = new Set(employeeProjectAssignments.value.map((p) => p.target))
   return (projects.value || []).filter((p) => !assigned.has(p.name))
+})
+
+const projectOptionsToAdd = computed(() => {
+  const q = (projectSearchQuery.value || '').trim().toLowerCase()
+  let list = availableProjectsToAdd.value
+  if (q) {
+    list = list.filter((p) => {
+      const name = (p.name || '').toLowerCase()
+      const title = (p.title || p.project_name || p.display_name || '').toLowerCase()
+      const team = (p.team || '').toLowerCase()
+      return name.includes(q) || title.includes(q) || team.includes(q)
+    })
+  }
+  return list.slice(0, 5).map((p) => ({
+    label: p.display_name || p.title || p.project_name || p.name,
+    value: p.name,
+    team: p.team || '',
+  }))
 })
 
 function addTeamToEmployee() {
@@ -1881,6 +1900,7 @@ function addProjectToEmployee() {
     write: 1,
   })
   newProjectToAdd.value = ''
+  projectSearchQuery.value = ''
 }
 
 function removeProjectFromEmployee(idx) {
@@ -1898,6 +1918,7 @@ function openAddMember() {
   employeeProjectAssignments.value = []
   newTeamToAdd.value = ''
   newProjectToAdd.value = ''
+  projectSearchQuery.value = ''
 
   // Pre-seed current selection if available
   if (teamMode.value === 'Team' && selectedTeam.value) {
@@ -1976,6 +1997,7 @@ async function openEditMember(member) {
   memberModalError.value = ''
   newTeamToAdd.value = ''
   newProjectToAdd.value = ''
+  projectSearchQuery.value = ''
   memberModalOpen.value = true
   memberModalLoading.value = true
 
@@ -3892,15 +3914,28 @@ onUnmounted(() => {
 
               <!-- Project Add Bar -->
               <div class="p-3 border-b border-outline-gray-1 dark:border-neutral-800 flex items-center gap-2 bg-surface-base dark:bg-neutral-900">
-                <select
-                  v-model="newProjectToAdd"
-                  class="flex-1 text-xs border border-outline-gray-2 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 bg-surface-base dark:bg-neutral-800 text-ink-gray-8 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="" disabled>+ Assign to a project...</option>
-                  <option v-for="p in availableProjectsToAdd" :key="p.name" :value="p.name">
-                    {{ p.title || p.name }}
-                  </option>
-                </select>
+                <div class="flex-1 min-w-0">
+                  <Combobox
+                    v-model="newProjectToAdd"
+                    v-model:query="projectSearchQuery"
+                    :options="projectOptionsToAdd"
+                    :filterable="false"
+                    placeholder="Search and select project..."
+                    size="sm"
+                    class="w-full"
+                  >
+                    <template #item-label="{ item }">
+                      <div class="min-w-0 flex-1 py-0.5">
+                        <div class="truncate font-semibold text-xs text-ink-gray-9 dark:text-gray-100">
+                          {{ item.label }}
+                        </div>
+                        <div v-if="item.team" class="truncate text-[11px] text-ink-gray-5 dark:text-gray-400">
+                          Team: {{ item.team }}
+                        </div>
+                      </div>
+                    </template>
+                  </Combobox>
+                </div>
                 <Button
                   size="sm"
                   variant="solid"
