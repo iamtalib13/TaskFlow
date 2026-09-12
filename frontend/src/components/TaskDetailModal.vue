@@ -593,17 +593,33 @@
               <div class="space-y-3.5 text-xs">
                 <!-- Project Selector -->
                 <div class="space-y-1">
-                  <label class="text-[11px] font-semibold text-ink-gray-6 block">Project</label>
-                  <select
+                  <div class="flex items-center justify-between">
+                    <label class="text-[11px] font-semibold text-ink-gray-6 block">Project</label>
+                    <span v-if="form.project" class="text-[10px] text-[#417c7d] font-semibold cursor-pointer hover:underline" @click="form.project = ''; onProjectChange()">
+                      Clear
+                    </span>
+                  </div>
+                  <Combobox
                     v-model="form.project"
-                    class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 hover:bg-surface-base focus:bg-surface-base focus:border-teal-600 focus:outline-none focus:ring-0 text-ink-gray-8 transition-colors"
+                    v-model:query="projectSearchQuery"
+                    :options="projectOptions"
+                    :filterable="false"
+                    placeholder="Search and select project..."
+                    size="sm"
+                    class="w-full"
                     @change="onProjectChange"
                   >
-                    <option value="">Select Project</option>
-                    <option v-for="p in projects" :key="p.name" :value="p.name">
-                      {{ p.display_name || p.name }}
-                    </option>
-                  </select>
+                    <template #item-label="{ item }">
+                      <div class="min-w-0 flex-1 py-0.5">
+                        <div class="truncate font-semibold text-xs text-ink-gray-9 dark:text-gray-100">
+                          {{ item.label }}
+                        </div>
+                        <div v-if="item.team" class="truncate text-[11px] text-ink-gray-5 dark:text-gray-400">
+                          Team: {{ item.team }}
+                        </div>
+                      </div>
+                    </template>
+                  </Combobox>
                 </div>
 
                 <!-- Assigned To List -->
@@ -959,6 +975,7 @@ export default {
       localTeamMembers: [],
       taskTypes: ['Task', 'Bug', 'Customization Request'],
       pendingFromOptions: [],
+      projectSearchQuery: '',
       form: {
         id: '',
         title: '',
@@ -1013,6 +1030,23 @@ export default {
     currentUserInitials() {
       // Basic placeholder for now, you could map this to frappe.session.user
       return 'ME'
+    },
+    projectOptions() {
+      const q = (this.projectSearchQuery || '').trim().toLowerCase()
+      let list = this.projects || []
+      if (q) {
+        list = list.filter((p) => {
+          const name = (p.name || '').toLowerCase()
+          const title = (p.title || p.project_name || p.display_name || '').toLowerCase()
+          const team = (p.team || '').toLowerCase()
+          return name.includes(q) || title.includes(q) || team.includes(q)
+        })
+      }
+      return list.slice(0, 5).map((p) => ({
+        label: p.display_name || p.title || p.project_name || p.name,
+        value: p.name,
+        team: p.team || '',
+      }))
     },
     effectiveTeam() {
       if (this.form.team) return this.form.team

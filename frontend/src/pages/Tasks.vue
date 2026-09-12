@@ -3809,12 +3809,19 @@ onUnmounted(() => {
                 </div>
 
                 <div v-else class="w-full rounded-lg border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900/60 overflow-hidden">
-                  <List :columns="['minmax(0,1fr)', '7rem', '2rem']" :row-height="40" class="px-2">
+                  <List :columns="['2.5rem', 'minmax(0,1fr)', '7rem', '2rem']" :row-height="40" class="px-2">
                     <ListRow
                       v-for="(tItem, tIdx) in employeeTeamAssignments"
                       :key="tItem.target || tIdx"
                       class="hover:bg-surface-gray-2/70 dark:hover:bg-neutral-800/60 transition-colors"
                     >
+                      <!-- Sr No Cell -->
+                      <ListCell class="justify-center">
+                        <span class="text-xs font-mono text-ink-gray-5 dark:text-gray-400 font-semibold">
+                          #{{ tIdx + 1 }}
+                        </span>
+                      </ListCell>
+
                       <!-- Name Cell -->
                       <ListCell>
                         <div class="flex items-center gap-2 min-w-0">
@@ -3910,12 +3917,19 @@ onUnmounted(() => {
                 </div>
 
                 <div v-else class="w-full rounded-lg border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900/60 overflow-hidden">
-                  <List :columns="['minmax(0,1fr)', '7rem', '2rem']" :row-height="40" class="px-2">
+                  <List :columns="['2.5rem', 'minmax(0,1fr)', '7rem', '2rem']" :row-height="40" class="px-2">
                     <ListRow
                       v-for="(pItem, pIdx) in employeeProjectAssignments"
                       :key="pItem.target || pIdx"
                       class="hover:bg-surface-gray-2/70 dark:hover:bg-neutral-800/60 transition-colors"
                     >
+                      <!-- Sr No Cell -->
+                      <ListCell class="justify-center">
+                        <span class="text-xs font-mono text-ink-gray-5 dark:text-gray-400 font-semibold">
+                          #{{ pIdx + 1 }}
+                        </span>
+                      </ListCell>
+
                       <!-- Name Cell -->
                       <ListCell>
                         <div class="flex items-center gap-2 min-w-0">

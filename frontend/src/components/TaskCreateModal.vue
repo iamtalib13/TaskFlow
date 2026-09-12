@@ -107,17 +107,30 @@
 
             <!-- Right Column (col-span-5): Meta Fields (Independent Panel) -->
             <div class="lg:col-span-5 flex flex-col space-y-3.5 bg-surface-gray-1/50 dark:bg-gray-900/40 p-4 rounded-xl border border-outline-gray-1 dark:border-gray-800 max-h-[72vh] overflow-y-auto">
-              <!-- Project (Searchable Combobox) -->
+              <!-- Project (Searchable Combobox with 5 items limit and Team subtitle) -->
               <div>
                 <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Project</label>
                 <Combobox
                   v-model="form.project"
+                  v-model:query="projectSearchQuery"
                   :options="projectOptions"
+                  :filterable="false"
                   placeholder="Search and select project..."
                   size="sm"
                   class="w-full"
                   @change="onProjectChange"
-                />
+                >
+                  <template #item-label="{ item }">
+                    <div class="min-w-0 flex-1 py-0.5">
+                      <div class="truncate font-semibold text-xs text-ink-gray-9 dark:text-gray-100">
+                        {{ item.label }}
+                      </div>
+                      <div v-if="item.team" class="truncate text-[11px] text-ink-gray-5 dark:text-gray-400">
+                        Team: {{ item.team }}
+                      </div>
+                    </div>
+                  </template>
+                </Combobox>
               </div>
 
               <!-- Task Type & Status -->
@@ -425,6 +438,7 @@ export default {
       localTeamMembers: [],
       taskTypes: ['Task', 'Bug', 'Customization Request'],
       pendingFromOptions: ['User', 'Team', 'Client', 'Management', 'External Partner', 'Vendor'],
+      projectSearchQuery: '',
       form: {
         title: '',
         project: '',
@@ -485,9 +499,20 @@ export default {
   },
   computed: {
     projectOptions() {
-      return (this.projects || []).map((p) => ({
-        label: p.display_name || p.project_name || p.name,
+      const q = (this.projectSearchQuery || '').trim().toLowerCase()
+      let list = this.projects || []
+      if (q) {
+        list = list.filter((p) => {
+          const name = (p.name || '').toLowerCase()
+          const title = (p.title || p.project_name || p.display_name || '').toLowerCase()
+          const team = (p.team || '').toLowerCase()
+          return name.includes(q) || title.includes(q) || team.includes(q)
+        })
+      }
+      return list.slice(0, 5).map((p) => ({
+        label: p.display_name || p.title || p.project_name || p.name,
         value: p.name,
+        team: p.team || '',
       }))
     },
     guidedByOptions() {
