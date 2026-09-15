@@ -2418,16 +2418,18 @@ def get_timesheet_master_report(
     d_start = datetime.strptime(from_date, "%Y-%m-%d").date()
     d_end = datetime.strptime(to_date, "%Y-%m-%d").date()
 
-    # Build days list in range
+    # Build days list in range (excluding Sunday)
     day_list = []
     curr = d_start
     while curr <= d_end:
-        day_list.append({
-            "date": curr.isoformat(),
-            "day_name": curr.strftime("%a"),
-            "day_num": curr.strftime("%d"),
-            "is_weekend": curr.weekday() in (5, 6),
-        })
+        # curr.weekday(): Monday is 0, Sunday is 6
+        if curr.weekday() != 6:
+            day_list.append({
+                "date": curr.isoformat(),
+                "day_name": curr.strftime("%a"),
+                "day_num": curr.strftime("%d"),
+                "is_weekend": curr.weekday() == 5, # Saturday
+            })
         curr += timedelta(days=1)
 
     # 1. Fetch all timesheets in the date range first
@@ -2516,11 +2518,23 @@ def get_timesheet_master_report(
         ]
 
     # Build report rows
+    # Working hours policy: Mon-Fri: 8 hrs (10am-6pm), Sat: 6 hrs (10am-4pm), Sun: off
     report_rows = []
-    working_days = sum(1 for d in day_list if not d["is_weekend"]) or len(day_list) or 1
-    expected_period_hours = working_days * 8.0
-    expected_week_hours = 40.0
-    expected_month_hours = 160.0
+    
+    # Calculate expected hours in current period based on actual days in day_list
+    expected_period_hours = 0.0
+    for d in day_list:
+        curr_dt = datetime.strptime(d["date"], "%Y-%m-%d").date()
+        if curr_dt.weekday() == 5: # Saturday: 10am to 4pm = 6 hours
+            expected_period_hours += 6.0
+        elif curr_dt.weekday() < 5: # Monday to Friday: 10am to 6pm = 8 hours
+            expected_period_hours += 8.0
+
+    # For standard week (Mon-Fri 5*8=40 + Sat 6 = 46 hrs)
+    expected_week_hours = 46.0 if view_type == "Weekly" else (expected_period_hours or 46.0)
+
+    # For monthly: calculate total expected working hours in the given month (or period)
+    expected_month_hours = expected_period_hours if view_type == "Monthly" else 184.0
 
     for emp in employees:
         u_id = emp.get("user_id") or emp.get("name")
@@ -2536,8 +2550,8 @@ def get_timesheet_master_report(
         weekly_total = round(period_hours, 1)
         monthly_total = round(user_total_period_hours.get(u_id, period_hours), 1)
 
-        weekly_pct = min(100, int((weekly_total / (expected_week_hours or 40)) * 100))
-        monthly_pct = min(100, int((monthly_total / (expected_month_hours or 160)) * 100))
+        weekly_pct = min(100, int((weekly_total / (expected_week_hours or 46.0)) * 100))
+        monthly_pct = min(100, int((monthly_total / (expected_month_hours or 184.0)) * 100))
 
         pct_check = weekly_pct if view_type == "Weekly" else monthly_pct
         if pct_check >= 80:

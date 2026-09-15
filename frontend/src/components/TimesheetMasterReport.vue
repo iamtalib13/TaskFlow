@@ -89,8 +89,7 @@
               <!-- Top Header Row -->
               <tr class="border-b border-outline-gray-2 dark:border-gray-800 bg-surface-gray-1/60 dark:bg-gray-800/50 text-[11px] font-semibold text-ink-gray-6 dark:text-gray-400 uppercase tracking-wider select-none">
                 <th class="w-10 px-3 py-2.5 text-center">#</th>
-                <th class="min-w-[180px] px-3 py-2.5">Employee</th>
-                <th class="min-w-[150px] px-3 py-2.5">Designation</th>
+                <th class="min-w-[200px] px-3 py-2.5">Employee</th>
 
                 <!-- Date Navigation Header (e.g. Week 1 / Days) -->
                 <th :colspan="daysInView.length" class="px-3 py-2.5 text-center border-l border-r border-outline-gray-2 dark:border-gray-800 bg-surface-gray-2/70 dark:bg-gray-800/80">
@@ -135,7 +134,6 @@
               <tr class="border-b border-outline-gray-2 dark:border-gray-800 bg-surface-gray-1/30 dark:bg-gray-800/20 text-[10px] font-semibold text-ink-gray-5 dark:text-gray-400 select-none">
                 <th class="px-3 py-1.5"></th>
                 <th class="px-3 py-1.5"></th>
-                <th class="px-3 py-1.5"></th>
 
                 <!-- Specific Days (Mon 01, Tue 02 ...) -->
                 <th
@@ -173,12 +171,11 @@
                     <div class="flex items-center gap-2.5">
                       <Skeleton class="size-7 rounded-full shrink-0" />
                       <div class="space-y-1">
-                        <Skeleton class="h-3.5 w-24" />
+                        <Skeleton class="h-3.5 w-28" />
                         <Skeleton class="h-2.5 w-16" />
                       </div>
                     </div>
                   </td>
-                  <td class="px-3 py-3"><Skeleton class="h-3.5 w-28" /></td>
                   <td v-for="m in daysInView.length" :key="m" class="px-2 py-3 text-center">
                     <Skeleton class="h-3.5 w-7 mx-auto" />
                   </td>
@@ -192,7 +189,7 @@
 
               <!-- Empty State -->
               <tr v-else-if="rows.length === 0">
-                <td :colspan="8 + daysInView.length" class="text-center py-12 text-ink-gray-5 dark:text-gray-400">
+                <td :colspan="7 + daysInView.length" class="text-center py-12 text-ink-gray-5 dark:text-gray-400">
                   <div class="flex flex-col items-center justify-center gap-2">
                     <Clock class="size-8 text-ink-gray-3 stroke-1" />
                     <p class="font-medium text-sm">No employee timesheet records found for this period</p>
@@ -234,63 +231,71 @@
                   </div>
                 </td>
 
-                <!-- Designation -->
-                <td class="px-3 py-2.5 text-ink-gray-7 dark:text-gray-300 truncate max-w-[180px]" :title="row.designation">
-                  {{ row.designation }}
-                </td>
-
                 <!-- Daily Hours Cells -->
                 <td
                   v-for="d in daysInView"
                   :key="d.date"
-                  class="px-2 py-2.5 text-center font-mono text-xs border-r border-outline-gray-1 dark:border-gray-800"
-                  :class="[
-                    d.is_weekend ? 'bg-surface-gray-2/20 dark:bg-gray-800/20' : '',
-                    (row.daily_hours[d.date] || 0) > 0 ? 'font-bold text-ink-gray-9 dark:text-gray-100' : 'text-ink-gray-4 dark:text-gray-600'
-                  ]"
+                  class="px-1.5 py-2 text-center font-mono text-xs border-r border-outline-gray-1 dark:border-gray-800"
+                  :class="d.is_weekend ? 'bg-surface-gray-2/20 dark:bg-gray-800/20' : ''"
                 >
-                  {{ formatHoursVal(row.daily_hours[d.date]) }}
+                  <span
+                    v-if="(row.daily_hours[d.date] || 0) > 0"
+                    class="inline-block px-2 py-0.5 rounded font-bold hours-active-badge"
+                  >
+                    {{ formatHoursVal(row.daily_hours[d.date]) }}
+                  </span>
+                  <span v-else class="hours-zero-text">
+                    0.0
+                  </span>
                 </td>
 
                 <!-- Weekly Total Hours -->
-                <td class="px-2 py-2.5 text-right font-mono font-bold text-ink-gray-9 dark:text-gray-100 border-r border-outline-gray-1 dark:border-gray-800">
+                <td class="px-2 py-2.5 text-right font-mono border-r border-outline-gray-1 dark:border-gray-800" :class="row.weekly_total > 0 ? 'hours-total-active' : 'text-ink-gray-4 dark:text-gray-500'">
                   {{ row.weekly_total.toFixed(1) }}
                 </td>
 
                 <!-- Weekly % Progress Bar -->
-                <td class="px-2 py-2.5 border-r border-outline-gray-2 dark:border-gray-800">
+                <td class="px-2.5 py-2.5 border-r border-outline-gray-2 dark:border-gray-800">
                   <div class="flex items-center gap-2">
-                    <span class="text-[11px] font-mono font-medium text-ink-gray-6 dark:text-gray-400 w-7 text-right shrink-0">
-                      {{ row.weekly_pct }}%
-                    </span>
-                    <div class="flex-1 h-2 bg-surface-gray-3 dark:bg-gray-800 rounded-full overflow-hidden min-w-[50px]">
+                    <div class="flex-1 h-2.5 bg-gray-200/80 dark:bg-gray-700/80 rounded-full overflow-hidden min-w-[55px] p-[1px] shadow-inner">
                       <div
-                        class="h-full rounded-full transition-all duration-300"
+                        v-if="row.weekly_pct > 0"
+                        class="h-full rounded-full transition-all duration-500 shadow-xs"
                         :class="getProgressColorClass(row.weekly_pct)"
-                        :style="{ width: `${Math.min(100, row.weekly_pct)}%` }"
+                        :style="{ width: `${Math.min(100, Math.max(8, row.weekly_pct))}%` }"
                       />
                     </div>
+                    <span
+                      class="text-[11px] font-mono font-bold w-9 text-right shrink-0"
+                      :class="getProgressTextClass(row.weekly_pct)"
+                    >
+                      {{ row.weekly_pct }}%
+                    </span>
                   </div>
                 </td>
 
                 <!-- Monthly Total Hours -->
-                <td class="px-2 py-2.5 text-right font-mono font-bold text-ink-gray-9 dark:text-gray-100 border-r border-outline-gray-1 dark:border-gray-800">
+                <td class="px-2 py-2.5 text-right font-mono border-r border-outline-gray-1 dark:border-gray-800" :class="row.monthly_total > 0 ? 'hours-total-active' : 'text-ink-gray-4 dark:text-gray-500'">
                   {{ row.monthly_total.toFixed(1) }}
                 </td>
 
                 <!-- Monthly % Progress Bar -->
-                <td class="px-2 py-2.5 border-r border-outline-gray-2 dark:border-gray-800">
+                <td class="px-2.5 py-2.5 border-r border-outline-gray-2 dark:border-gray-800">
                   <div class="flex items-center gap-2">
-                    <span class="text-[11px] font-mono font-medium text-ink-gray-6 dark:text-gray-400 w-7 text-right shrink-0">
-                      {{ row.monthly_pct }}%
-                    </span>
-                    <div class="flex-1 h-2 bg-surface-gray-3 dark:bg-gray-800 rounded-full overflow-hidden min-w-[50px]">
+                    <div class="flex-1 h-2.5 bg-gray-200/80 dark:bg-gray-700/80 rounded-full overflow-hidden min-w-[55px] p-[1px] shadow-inner">
                       <div
-                        class="h-full rounded-full transition-all duration-300"
+                        v-if="row.monthly_pct > 0"
+                        class="h-full rounded-full transition-all duration-500 shadow-xs"
                         :class="getProgressColorClass(row.monthly_pct)"
-                        :style="{ width: `${Math.min(100, row.monthly_pct)}%` }"
+                        :style="{ width: `${Math.min(100, Math.max(8, row.monthly_pct))}%` }"
                       />
                     </div>
+                    <span
+                      class="text-[11px] font-mono font-bold w-9 text-right shrink-0"
+                      :class="getProgressTextClass(row.monthly_pct)"
+                    >
+                      {{ row.monthly_pct }}%
+                    </span>
                   </div>
                 </td>
 
@@ -384,30 +389,38 @@ function goToPage(page) {
   loadReportData()
 }
 
+function formatLocalYMD(d) {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // Compute Current Range Dates based on viewType & currentDateAnchor
 const dateRange = computed(() => {
   const d = new Date(currentDateAnchor.value)
   if (viewType.value === 'Weekly') {
-    // Current week: Monday to Sunday
+    // Current week: Monday to Saturday (excluding Sunday)
     const day = d.getDay()
     const diffToMon = (day === 0 ? -6 : 1) - day
-    const mon = new Date(d)
-    mon.setDate(d.getDate() + diffToMon)
-    const sun = new Date(mon)
-    sun.setDate(mon.getDate() + 6)
+    const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diffToMon)
+    const sat = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diffToMon + 5)
     return {
-      start: mon.toISOString().slice(0, 10),
-      end: sun.toISOString().slice(0, 10),
+      start: formatLocalYMD(mon),
+      end: formatLocalYMD(sat),
     }
   } else if (viewType.value === 'Daily') {
     // Current date
-    const iso = d.toISOString().slice(0, 10)
+    const iso = formatLocalYMD(d)
     return { start: iso, end: iso }
   } else {
     // Monthly: 1st of month to end of month
-    const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10)
-    return { start, end }
+    const start = new Date(d.getFullYear(), d.getMonth(), 1)
+    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+    return {
+      start: formatLocalYMD(start),
+      end: formatLocalYMD(end),
+    }
   }
 })
 
@@ -457,9 +470,19 @@ function formatHoursVal(val) {
 }
 
 function getProgressColorClass(pct) {
-  if (pct >= 80) return 'bg-emerald-500 dark:bg-emerald-400'
-  if (pct >= 65) return 'bg-amber-500 dark:bg-amber-400'
-  return 'bg-rose-500 dark:bg-rose-400'
+  if (pct >= 90) return 'progress-bar-emerald'
+  if (pct >= 80) return 'progress-bar-green'
+  if (pct >= 65) return 'progress-bar-amber'
+  if (pct >= 40) return 'progress-bar-orange'
+  return 'progress-bar-rose'
+}
+
+function getProgressTextClass(pct) {
+  if (pct >= 80) return 'progress-text-emerald'
+  if (pct >= 65) return 'progress-text-amber'
+  if (pct >= 40) return 'progress-text-orange'
+  if (pct > 0) return 'progress-text-rose'
+  return 'text-ink-gray-4 dark:text-gray-500'
 }
 
 function getStatusClass(status) {
@@ -551,7 +574,7 @@ function exportToCSV() {
   if (!rows.value || rows.value.length === 0) return
 
   const dayCols = daysInView.value.map((d) => d.date)
-  const headers = ['#', 'Employee', 'Employee ID', 'Designation', ...dayCols, 'Weekly Total', 'Weekly %', 'Monthly Total', 'Monthly %', 'Status']
+  const headers = ['#', 'Employee', 'Employee ID', ...dayCols, 'Weekly Total', 'Weekly %', 'Monthly Total', 'Monthly %', 'Status']
 
   const csvRows = [headers.join(',')]
 
@@ -561,7 +584,6 @@ function exportToCSV() {
       r.idx,
       `"${r.employee_name}"`,
       `"${r.employee_id}"`,
-      `"${r.designation}"`,
       ...dayVals,
       r.weekly_total.toFixed(1),
       `${r.weekly_pct}%`,

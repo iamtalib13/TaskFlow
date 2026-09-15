@@ -183,3 +183,76 @@ span[data-type="tag"] {
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* Timesheet Master Report Cell Highlights */
+.hours-active-badge {
+  color: #047857 !important; /* emerald-700 */
+  background-color: #ecfdf5 !important; /* emerald-50 */
+  border: 1px solid #a7f3d0 !important; /* emerald-200 */
+  box-shadow: 0 1px 2px 0 rgba(16, 185, 129, 0.1) !important;
+}
+
+.dark .hours-active-badge,
+[data-theme="dark"] .hours-active-badge {
+  color: #6ee7b7 !important;
+  background-color: rgba(6, 78, 59, 0.5) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+.hours-zero-text {
+  color: #9ca3af !important;
+}
+
+.dark .hours-zero-text,
+[data-theme="dark"] .hours-zero-text {
+  color: #4b5563 !important;
+}
+
+.hours-total-active {
+  color: #047857 !important;
+  font-weight: 700 !important;
+}
+
+.dark .hours-total-active,
+[data-theme="dark"] .hours-total-active {
+  color: #34d399 !important;
+  font-weight: 700 !important;
+}
+
+/* Timesheet Master Report Progress Bars */
+.progress-bar-emerald {
+  background: linear-gradient(90deg, #10b981 0%, #14b8a6 100%) !important;
+}
+
+.progress-bar-green {
+  background: linear-gradient(90deg, #10b981 0%, #22c55e 100%) !important;
+}
+
+.progress-bar-amber {
+  background: linear-gradient(90deg, #f59e0b 0%, #eab308 100%) !important;
+}
+
+.progress-bar-orange {
+  background: linear-gradient(90deg, #f97316 0%, #f59e0b 100%) !important;
+}
+
+.progress-bar-rose {
+  background: linear-gradient(90deg, #ef4444 0%, #ec4899 100%) !important;
+}
+
+.progress-text-emerald {
+  color: #059669 !important;
+}
+
+.progress-text-amber {
+  color: #d97706 !important;
+}
+
+.progress-text-orange {
+  color: #ea580c !important;
+}
+
+.progress-text-rose {
+  color: #e11d48 !important;
+}
+
