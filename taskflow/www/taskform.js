@@ -508,9 +508,15 @@
 	function populateProjectSelect() {
 		if (!refs.projectSelect) return;
 		const projects = (state.bootstrap && state.bootstrap.projects) || [];
-		refs.projectSelect.innerHTML = projects.map(p =>
-			`<option value="${escapeHtml(p.name)}">${escapeHtml(p.project_name)}</option>`
-		).join("");
+		refs.projectSelect.innerHTML = projects.map(p => {
+			let display = p.project_name;
+			if (p.parent_project) {
+				const parent = projects.find((pp) => pp.name === p.parent_project);
+				const parentName = parent ? parent.project_name : p.parent_project;
+				display = `${parentName} / ${p.project_name}`;
+			}
+			return `<option value="${escapeHtml(p.name)}">${escapeHtml(display)}</option>`;
+		}).join("");
 	}
 
 	function populateAssigneeDropdowns() {

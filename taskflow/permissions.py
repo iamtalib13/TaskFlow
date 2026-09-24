@@ -106,7 +106,7 @@ def has_taskflow_task_permission(doc, user=None, permission_type=None):
 					for row in doc.get("table_gqbl", [])
 					if row.user_id
 				)
-				or doc.assigned_by == user
+				or getattr(doc, "assigned_by", None) == user
 				or doc.owner == user
 			)
 		)

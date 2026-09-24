@@ -1,30 +1,1901 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" href="/assets/taskflow/frontend/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Taskflow</title>
-    <script type="module" crossorigin src="/assets/taskflow/frontend/assets/index-0eqLnXCj.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/taskflow/frontend/assets/index-2SRK5IEA.css">
-  </head>
-  <body class="bg-gray-50 text-gray-900 antialiased">
-    <div id="app"></div>
-    <div id="modals"></div>
-    <div id="popovers"></div>
+{% extends "templates/base.html" %} {% block head %}
+<link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet" />
+<link href="/assets/taskflow/css/quill.snow.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="/assets/taskflow/js/quill.js"></script>
+{% endblock %} {% block banner %}{% endblock %} {% block navbar %}{% endblock %} {% block content
+%}
+<div class="taskflow-container">
+	<aside class="taskflow-sidebar-nav">
+		<!-- Navigation Sidebar -->
 
-    <script>
-      window.csrf_token = '{{ csrf_token }}';
-      window.site_name = '{{ site_name }}';
-      if (!window.frappe) window.frappe = {};
-      window.frappe.boot = {{ (boot or {}) | tojson }};
-    </script>
-  
-          <script>
-              {% for key in boot %}
-              window["{{ key }}"] = {{ boot[key] | tojson }};
-              {% endfor %}
-          </script>
-          </body>
-          
-</html>
+		<nav class="taskflow-nav">
+			<ul class="taskflow-nav-list">
+				<li
+					class="taskflow-nav-item active"
+					data-nav="dashboard"
+					role="button"
+					tabindex="0"
+					aria-current="page"
+				>
+					<span class="taskflow-nav-icon">▤</span> Dashboard
+				</li>
+				<li
+					class="taskflow-nav-item"
+					data-nav="my-tasks"
+					role="button"
+					tabindex="0"
+					aria-current="false"
+				>
+					<span class="taskflow-nav-icon">✓</span> Tasks
+					<span class="taskflow-badge" data-my-tasks-count>0</span>
+				</li>
+				<li
+					class="taskflow-nav-item"
+					data-nav="calendar"
+					role="button"
+					tabindex="0"
+					aria-current="false"
+				>
+					<span class="taskflow-nav-icon">📅</span> Calendar
+				</li>
+				<li
+					class="taskflow-nav-item"
+					data-nav="team"
+					role="button"
+					tabindex="0"
+					aria-current="false"
+				>
+					<span class="taskflow-nav-icon">👥</span> Team
+				</li>
+			</ul>
+		</nav>
+	</aside>
+
+	<aside class="taskflow-sidebar-projects">
+		<!-- Projects Sidebar -->
+		<div class="taskflow-brand-section">
+			<!-- Moved from nav sidebar -->
+			<div class="taskflow-logo">
+				<div style="display: flex; align-items: center; gap: 10px">
+					<div class="taskflow-logo-icon">T</div>
+					<span class="taskflow-logo-text">Taskflow</span>
+				</div>
+				<button
+					class="taskflow-btn-home-brand"
+					onclick="window.location.href = '/app/sahayog-home'"
+					title="Sahayog Home"
+				>
+					🏠
+				</button>
+			</div>
+			<button class="taskflow-btn-primary full-width" type="button" data-new-project>
+				<span class="taskflow-btn-icon">+</span> New Project
+			</button>
+		</div>
+		<div class="taskflow-section-header" style="display: none">
+			<span id="teamSectionLabel">Team: All Teams</span>
+		</div>
+		<div style="padding: 11px 24px">
+			<div class="taskflow-labeled-field">
+				<select
+					class="taskflow-team-switcher"
+					data-team-switcher
+					aria-label="Select team"
+					required
+				>
+					<option value="all">All Teams</option>
+				</select>
+				<label class="taskflow-labeled-field__label">Team</label>
+			</div>
+		</div>
+		<div style="padding: 11px 24px">
+			<div class="taskflow-labeled-field">
+				<input
+					type="text"
+					data-project-search
+					aria-label="Search projects"
+					placeholder=" "
+				/>
+				<label class="taskflow-labeled-field__label">
+					Projects <span class="taskflow-badge" data-project-count>0</span>
+				</label>
+			</div>
+		</div>
+		<div class="taskflow-project-list" data-project-list>
+			<!-- Dynamic Project List -->
+		</div>
+	</aside>
+
+	<!-- Main Content -->
+	<main class="taskflow-main">
+		<!-- Top Header -->
+		<header class="taskflow-header">
+			<div class="taskflow-header-left">
+				<button
+					class="taskflow-sidebar-toggle"
+					type="button"
+					aria-label="Toggle sidebars"
+					aria-expanded="true"
+				>
+					☰
+				</button>
+				<div class="taskflow-breadcrumbs">
+					<span>Projects</span> / <span data-project-breadcrumb>Website Redesign</span>
+				</div>
+			</div>
+			<div class="taskflow-header-right">
+				<div data-oldest-task-alert></div>
+				<div class="taskflow-search-bar">
+					<span class="taskflow-search-icon">⌕</span>
+					<input type="text" aria-label="Search tasks" placeholder="Search" />
+				</div>
+				<button
+					class="taskflow-header-btn"
+					type="button"
+					aria-label="Notifications"
+					disabled
+				>
+					🔔
+				</button>
+				<div class="taskflow-user-profile" id="userProfileDropdownWrapper">
+					<span class="taskflow-user-name" data-user-name>User</span>
+					<div class="taskflow-user-avatar" data-user-avatar-container>
+						<img src="/assets/taskflow/favicon.png" alt="User" data-user-image />
+					</div>
+					<!-- Dropdown Menu -->
+					<div
+						class="taskflow-user-dropdown"
+						id="userProfileDropdown"
+						aria-hidden="true"
+					>
+						<a class="taskflow-user-dropdown-item" href="/app/sahayog-home/">
+							<span>🏠</span> Sahayog Home
+						</a>
+						<div class="taskflow-user-dropdown-divider"></div>
+						<button
+							class="taskflow-user-dropdown-item taskflow-user-dropdown-logout"
+							id="userLogoutBtn"
+							type="button"
+						>
+							<span>🚪</span> Logout
+						</button>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<!-- Project Toolbar -->
+		<div
+			class="taskflow-toolbar"
+			style="
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 16px;
+				padding: 32px 32px 16px;
+			"
+		>
+			<div
+				style="
+					display: flex;
+					width: 100%;
+					justify-content: space-between;
+					align-items: flex-end;
+					flex-wrap: nowrap;
+					gap: 16px;
+				"
+			>
+				<div class="taskflow-project-info">
+					<h1 class="taskflow-project-title" data-project-title>&nbsp;</h1>
+					<div
+						class="taskflow-member-selector-container taskflow-hidden"
+						data-member-selector-wrapper
+						style="margin-left: 12px; display: flex; gap: 8px"
+					>
+						<select
+							class="taskflow-member-selector"
+							data-my-tasks-team-selector
+							aria-label="Select team"
+							style="
+								padding: 4px 8px;
+								border-radius: 6px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 14px;
+								font-weight: 600;
+							"
+						>
+							<option value="all">All Teams</option>
+						</select>
+						<select
+							class="taskflow-member-selector"
+							data-my-tasks-project-selector
+							aria-label="Select project"
+							style="
+								padding: 4px 8px;
+								border-radius: 6px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 14px;
+								font-weight: 600;
+							"
+						>
+							<option value="all">All Projects</option>
+						</select>
+						<select
+							class="taskflow-member-selector"
+							data-member-selector
+							aria-label="Select member"
+							style="
+								padding: 4px 8px;
+								border-radius: 6px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 14px;
+								font-weight: 600;
+							"
+						></select>
+					</div>
+				</div>
+				<div class="taskflow-toolbar-actions">
+					<button class="taskflow-btn-toolbar" type="button" data-bulk-insert-button>
+						<span class="taskflow-icon">📋</span> Bulk Insert
+					</button>
+					<button class="taskflow-btn-toolbar" type="button" data-download-button style="background: #f0fdf4; border-color: #bbf7d0; color: #166534;">
+						<span class="taskflow-icon">📥</span> Download
+					</button>
+					<button class="taskflow-btn-toolbar" type="button" data-filter-button>
+						<span class="taskflow-icon">⏳</span> Filter
+					</button>
+
+					<div class="taskflow-btn-group">
+						<button class="taskflow-btn-primary" type="button" data-new-task>
+							+ Add Task
+						</button>
+						<button
+							class="taskflow-btn-primary-dropdown"
+							type="button"
+							aria-label="More task actions"
+							disabled
+						>
+							⌵
+						</button>
+					</div>
+				</div>
+			</div>
+			<!-- KPI cards container right under Project Info -->
+			<div
+				class="taskflow-project-kpis"
+				data-project-kpis
+				style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; width: 100%"
+			></div>
+		</div>
+
+		<!-- View Navigation Tabs -->
+		<div class="taskflow-tabs" data-task-view-toggle role="tablist" aria-label="Task views">
+			<button
+				class="taskflow-tab active"
+				type="button"
+				data-view="list"
+				role="tab"
+				aria-selected="true"
+			>
+				Table
+			</button>
+			<button
+				class="taskflow-tab"
+				type="button"
+				data-view="kanban"
+				role="tab"
+				aria-selected="false"
+			>
+				Kanban
+			</button>
+			<button
+				class="taskflow-tab"
+				type="button"
+				data-view="dashboard"
+				role="tab"
+				aria-selected="false"
+			>
+				Dashboard
+			</button>
+			<button
+				class="taskflow-tab"
+				type="button"
+				data-view="timeline"
+				role="tab"
+				aria-selected="false"
+			>
+				Timeline
+			</button>
+			<button
+				class="taskflow-tab taskflow-hidden"
+				type="button"
+				data-view="project-settings"
+				data-project-tab
+				role="tab"
+				aria-selected="false"
+			>
+				Project Settings
+			</button>
+			<button
+				class="taskflow-tab"
+				type="button"
+				data-view="work-history"
+				role="tab"
+				aria-selected="false"
+			>
+				Work History
+			</button>
+			<button
+				class="taskflow-tab"
+				type="button"
+				data-view="send-mail"
+				role="tab"
+				aria-selected="false"
+				style="margin-left: auto;"
+			>
+				Send Mail
+			</button>
+		</div>
+
+		<!-- Content Area -->
+		<div class="taskflow-content" data-taskflow-root>
+			<!-- Team View -->
+			<div class="taskflow-team-view taskflow-view-content taskflow-hidden" data-team-view>
+				<div
+					class="taskflow-section-header"
+					style="
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						margin-bottom: 20px;
+					"
+				>
+					<div style="display: flex; align-items: center; gap: 16px;">
+						<h2>Team</h2>
+						<button 
+							class="taskflow-btn-primary" 
+							data-add-team-member 
+							style="padding: 6px 16px; font-size: 14px;"
+							title="Add Team Member"
+						>
+							<span class="taskflow-btn-icon">+</span> Add Member
+						</button>
+						<button 
+							class="taskflow-btn-primary" 
+							data-add-team 
+							style="padding: 6px 16px; font-size: 14px; background: #10b981;"
+							title="Add Team"
+						>
+							<span class="taskflow-btn-icon">+</span> Add Team
+						</button>
+					</div>
+					<div class="taskflow-btn-group" data-team-view-toggle>
+						<button
+							class="taskflow-tab active"
+							data-view="members"
+							role="tab"
+							aria-selected="true"
+						>
+							Members
+						</button>
+						<button
+							class="taskflow-tab"
+							data-view="cards"
+							role="tab"
+							aria-selected="false"
+						>
+							Cards
+						</button>
+						<button
+							class="taskflow-tab"
+							data-view="timeline"
+							role="tab"
+							aria-selected="false"
+						>
+							Timeline
+						</button>
+					</div>
+				</div>
+
+				<!-- Members View -->
+				<div
+					class="taskflow-team-members-wrapper"
+					data-team-members
+					style="display: block"
+				></div>
+
+				<!-- Cards View -->
+				<div
+					class="taskflow-team-split-view taskflow-hidden"
+					data-team-cards-wrapper
+					style="display: flex; gap: 24px"
+				>
+					<div
+						class="taskflow-team-list"
+						data-team-grid
+						style="width: 350px; flex-shrink: 0"
+					></div>
+					<div
+						class="taskflow-team-detail"
+						data-team-detail
+						style="
+							flex: 1;
+							background: white;
+							border-radius: 12px;
+							border: 1px solid var(--taskflow-border);
+							padding: 24px;
+						"
+					>
+						<div class="taskflow-empty">Select a team member to view details.</div>
+					</div>
+				</div>
+
+				<div
+					class="taskflow-team-timeline-wrapper taskflow-hidden"
+					data-team-timeline
+				></div>
+			</div>
+
+			<!-- List View -->
+			<div
+				class="taskflow-list-wrapper taskflow-view-content"
+				data-list-view
+				style="display: flex; flex-direction: column; height: 100%"
+			></div>
+
+			<!-- Kanban Board -->
+			<div class="taskflow-board-wrapper taskflow-view-content taskflow-hidden">
+				<div class="taskflow-board" data-task-board></div>
+			</div>
+
+			<div data-task-load-more class="taskflow-load-more-wrap" style="display: none; text-align: center; padding: 16px 0;">
+				<button id="taskLoadMoreBtn" type="button" data-load-more-btn class="taskflow-btn-secondary" style="padding: 8px 24px; border: 1px solid var(--taskflow-border); border-radius: 8px; background: var(--taskflow-primary); color: #fff; font-weight: 600; cursor: pointer;">Load More</button>
+			</div>
+
+			<!-- Dashboard View -->
+			<div
+				class="taskflow-dashboard-view taskflow-view-content taskflow-hidden"
+				data-dashboard-view
+			></div>
+
+			<!-- Timeline (Calendar) View -->
+			<div
+				class="taskflow-timeline-wrapper taskflow-view-content taskflow-hidden"
+				data-timeline-view
+			>
+				<div
+					class="taskflow-calendar-header"
+					style="
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						padding: 16px 24px;
+						border-bottom: 1px solid var(--taskflow-border);
+						background: #ffffff;
+						gap: 16px;
+						flex-wrap: wrap;
+					"
+				>
+					<h3
+						data-calendar-title
+						style="
+							margin: 0;
+							font-size: 18px;
+							font-weight: 700;
+							color: var(--taskflow-text);
+						"
+					>
+						Calendar
+					</h3>
+					<div
+						class="taskflow-calendar-filters"
+						data-calendar-filters
+						style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
+					>
+						<select
+							data-calendar-team-filter
+							aria-label="Filter calendar by team"
+							style="
+								padding: 7px 9px;
+								border-radius: 8px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 13px;
+								min-width: 150px;
+							"
+						></select>
+						<select
+							data-calendar-project-filter
+							aria-label="Filter calendar by project"
+							style="
+								padding: 7px 9px;
+								border-radius: 8px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 13px;
+								min-width: 170px;
+							"
+						></select>
+						<select
+							data-calendar-member-filter
+							aria-label="Filter calendar by team member"
+							style="
+								padding: 7px 9px;
+								border-radius: 8px;
+								border: 1px solid var(--taskflow-border);
+								font-size: 13px;
+								min-width: 170px;
+							"
+						></select>
+					</div>
+					<div
+						class="taskflow-calendar-kpis"
+						data-calendar-kpis
+						style="display: flex; align-items: center; gap: 16px; font-size: 13px"
+					></div>
+					<div
+						class="taskflow-calendar-controls"
+						style="display: flex; align-items: center; gap: 12px"
+					>
+						<button
+							class="taskflow-button secondary"
+							type="button"
+							data-calendar-prev
+							style="padding: 6px 12px; font-size: 13px"
+						>
+							&larr; Prev
+						</button>
+						<span
+							data-calendar-month
+							style="
+								font-size: 15px;
+								font-weight: 600;
+								min-width: 120px;
+								text-align: center;
+								color: var(--taskflow-text);
+							"
+						></span>
+						<button
+							class="taskflow-button secondary"
+							type="button"
+							data-calendar-next
+							style="padding: 6px 12px; font-size: 13px"
+						>
+							Next &rarr;
+						</button>
+					</div>
+				</div>
+				<div class="taskflow-calendar-grid" data-calendar-grid></div>
+			</div>
+
+			<!-- Files View -->
+			<div
+				class="taskflow-files-wrapper taskflow-view-content taskflow-hidden"
+				data-files-view
+			></div>
+
+			<!-- Settings View -->
+			<div
+				class="taskflow-settings-wrapper taskflow-view-content taskflow-hidden"
+				data-settings-view
+			></div>
+
+			<!-- Project Settings View -->
+			<div
+				class="taskflow-settings-wrapper taskflow-view-content taskflow-hidden"
+				data-project-settings-view
+			></div>
+
+			<!-- Work History View -->
+			<div
+				class="taskflow-view-content taskflow-hidden"
+				data-work-history-view
+				style="padding: 0px; overflow-y: auto"
+			></div>
+
+			<!-- Send Mail View -->
+			<div
+				class="taskflow-view-content taskflow-hidden"
+				data-send-mail-view
+				style="padding: 20px; overflow-y: auto"
+			>
+				<h2>Send Mail</h2>
+				<p style="color: var(--text-color-muted); margin-top: 8px;">Send email notifications to team members.</p>
+			</div>
+
+			<!-- Stats Area (Hidden by default in new design but kept for state) -->
+			<div class="taskflow-hidden" data-stats></div>
+			<div class="taskflow-hidden" data-taskflow-loading>Loading...</div>
+		</div>
+	</main>
+</div>
+
+<!-- Modals preserved from original -->
+<div
+	class="taskflow-modal-backdrop"
+	data-modal-name="project"
+	data-project-modal
+	aria-hidden="true"
+>
+	<div
+		class="taskflow-modal quick-project-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="taskflow-project-modal-title"
+	>
+		<form class="taskflow-form" data-project-form>
+			<div class="taskflow-modal-header">
+				<h3 id="taskflow-project-modal-title" data-project-form-title>Create Project</h3>
+				<div class="taskflow-modal-header-actions">
+					<button
+						class="taskflow-button secondary"
+						type="button"
+						data-close-modal="project"
+					>
+						Close
+					</button>
+					<button class="taskflow-button primary" type="submit">Save Project</button>
+				</div>
+			</div>
+			<div class="taskflow-modal-main-content">
+				<input type="hidden" name="name" />
+				<div class="quick-project-layout">
+					<!-- Left Section: Basic Info & Description -->
+					<div class="quick-project-section">
+						<div class="quick-project-section-title">Project Details</div>
+
+						<label class="quick-project-field-full"
+							>Project Name *
+							<input
+								type="text"
+								name="project_name"
+								required
+								placeholder="Enter project name"
+							/>
+						</label>
+
+						<label class="quick-project-field-full"
+							>Project Code *
+							<input
+								type="text"
+								name="project_code"
+								required
+								placeholder="e.g. PROJ"
+							/>
+						</label>
+
+						<label class="quick-project-field-full"
+							>Description
+							<textarea
+								name="description"
+								rows="6"
+								placeholder="Project objectives, notes, or requirements..."
+								style="resize: vertical; min-height: 120px"
+							></textarea>
+						</label>
+					</div>
+
+					<!-- Right Section: Attributes & Meta -->
+					<div class="quick-project-section">
+						<div class="quick-project-section-title">Planning & Meta</div>
+
+						<div class="quick-project-field-group">
+							<label class="quick-project-field-full"
+								>Team *
+								<select name="team" required></select>
+							</label>
+
+							<label class="quick-project-field-full"
+								>Project Lead
+								<select name="project_lead"></select>
+							</label>
+
+							<label
+								>Start Date
+								<input type="date" name="start_date" />
+							</label>
+
+							<label
+								>End Date
+								<input type="date" name="end_date" />
+							</label>
+
+							<label
+								>Status
+								<select name="status">
+									<option>Draft</option>
+									<option>Planning</option>
+									<option>Active</option>
+									<option>On Hold</option>
+									<option>Completed</option>
+									<option>Archived</option>
+								</select>
+							</label>
+
+							<label
+								>Priority
+								<select name="priority">
+									<option>Low</option>
+									<option selected>Medium</option>
+									<option>High</option>
+									<option>Critical</option>
+								</select>
+							</label>
+
+							<label
+								>Expected Hours
+								<input
+									type="number"
+									step="0.01"
+									name="expected_hours"
+									placeholder="0.00"
+								/>
+							</label>
+
+							<label
+								>Completion %
+								<input
+									type="number"
+									min="0"
+									max="100"
+									name="completion_percent"
+									value="0"
+								/>
+							</label>
+						</div>
+					</div>
+				</div>
+				<div class="taskflow-rail-row" style="margin-top: 16px">
+					<span class="taskflow-muted"
+						>Only users with project management access can save projects.</span
+					>
+				</div>
+			</div>
+		</form>
+	</div>
+</div>
+
+<!-- Quick Create Modal -->
+<div
+	class="taskflow-modal-backdrop"
+	data-modal-name="task-quick"
+	data-task-modal-quick
+	aria-hidden="true"
+>
+	<style>
+		/* Project Calendar View Styles */
+		.taskflow-calendar-grid-container {
+			display: grid;
+			grid-template-columns: repeat(7, minmax(0, 1fr));
+			border-top: 1px solid var(--taskflow-border);
+			border-left: 1px solid var(--taskflow-border);
+			border-radius: 8px;
+			overflow: hidden;
+			background: #ffffff;
+			width: 100%;
+		}
+		.taskflow-calendar-day-header {
+			background: #f8fafc;
+			padding: 10px;
+			text-align: center;
+			font-weight: 600;
+			font-size: 12px;
+			color: var(--taskflow-text-muted);
+			border-right: 1px solid var(--taskflow-border);
+			border-bottom: 1px solid var(--taskflow-border);
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+		}
+		.taskflow-calendar-day-cell {
+			min-height: 100px;
+			padding: 8px;
+			background: #ffffff;
+			border-right: 1px solid var(--taskflow-border);
+			border-bottom: 1px solid var(--taskflow-border);
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+			position: relative;
+		}
+		.taskflow-calendar-day-cell.other-month {
+			background: #f1f5f9;
+		}
+		.taskflow-calendar-day-cell.today {
+			background: #f0f7ff !important;
+			border: 1px solid #3b82f6 !important;
+			box-shadow: inset 0 0 0 1px #3b82f6 !important;
+		}
+		.taskflow-calendar-day-number {
+			font-size: 12px;
+			font-weight: 700;
+			color: var(--taskflow-text);
+			margin-bottom: 4px;
+		}
+		.taskflow-calendar-day-cell.today .taskflow-calendar-day-number {
+			color: var(--taskflow-primary);
+			display: inline-block;
+			background: #dbeafe;
+			border-radius: 50%;
+			width: 20px;
+			height: 20px;
+			text-align: center;
+			line-height: 20px;
+		}
+		.taskflow-calendar-task-badge {
+			font-size: 11px;
+			font-weight: 600;
+			padding: 3px 6px;
+			border-radius: 4px;
+			color: #1e293b;
+			cursor: pointer;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			transition: transform 0.1s ease;
+		}
+		.taskflow-calendar-task-badge:hover {
+			transform: translateY(-1px);
+			filter: brightness(0.95);
+		}
+		.taskflow-calendar-task-badge.status-open {
+			background: #ffedd5;
+			border-left: 3px solid #f97316;
+		}
+		.taskflow-calendar-task-badge.status-in-progress {
+			background: #ffedd5;
+			border-left: 3px solid #f97316;
+		}
+		.taskflow-calendar-task-badge.status-completed {
+			background: #dcfce7;
+			border-left: 3px solid #22c55e;
+		}
+		.taskflow-calendar-task-badge.status-overdue {
+			background: #fee2e2;
+			border-left: 3px solid #ef4444;
+		}
+
+		.taskflow-calendar-more-btn {
+			display: block;
+			width: 100%;
+			background: none;
+			border: none;
+			font-size: 10px;
+			font-weight: 700;
+			color: var(--taskflow-primary, #6366f1);
+			text-align: center;
+			cursor: pointer;
+			padding: 2px 4px;
+			border-radius: 4px;
+			transition: background 0.12s;
+		}
+		.taskflow-calendar-more-btn:hover {
+			background: #ede9fe;
+			color: #4f46e5;
+		}
+		.cal-day-popup-task {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			padding: 10px 10px;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: background 0.12s;
+			border: 1px solid transparent;
+		}
+		.cal-day-popup-task:hover {
+			background: #f8fafc;
+			border-color: #e2e8f0;
+		}
+
+		/* Quick Create Project Modal styles */
+		.quick-project-modal {
+			width: 90vw !important;
+			max-width: 850px !important;
+			border-radius: 12px !important;
+			background: #ffffff !important;
+			box-shadow:
+				0 20px 25px -5px rgba(0, 0, 0, 0.1),
+				0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+			border: 1px solid var(--taskflow-border) !important;
+		}
+
+		.quick-project-modal .taskflow-modal-header {
+			display: flex !important;
+			justify-content: space-between !important;
+			align-items: center !important;
+			width: 100% !important;
+			padding: 16px 24px !important;
+			border-bottom: 1px solid var(--taskflow-border) !important;
+			box-sizing: border-box !important;
+			background: #ffffff !important;
+		}
+
+		.quick-project-modal .taskflow-modal-header h3 {
+			margin: 0 !important;
+			font-size: 18px !important;
+			font-weight: 700 !important;
+			color: var(--taskflow-text) !important;
+			line-height: 1 !important;
+		}
+
+		.quick-project-modal .taskflow-modal-header-actions {
+			display: flex !important;
+			align-items: center !important;
+			gap: 10px !important;
+		}
+
+		.quick-project-modal .taskflow-modal-main-content {
+			padding: 24px !important;
+			border-right: none !important;
+		}
+
+		.quick-project-layout {
+			display: grid;
+			grid-template-columns: 1.2fr 1fr;
+			gap: 24px;
+			padding: 4px 0;
+		}
+
+		@media (max-width: 768px) {
+			.quick-project-layout {
+				grid-template-columns: 1fr;
+				gap: 16px;
+			}
+		}
+
+		.quick-project-section {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+
+		.quick-project-section-title {
+			font-size: 13px;
+			font-weight: 700;
+			color: var(--taskflow-text);
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			border-bottom: 1px solid var(--taskflow-border);
+			padding-bottom: 6px;
+			margin-bottom: 4px;
+		}
+
+		.quick-project-field-group {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 14px;
+		}
+
+		.quick-project-field-full {
+			grid-column: 1 / -1;
+		}
+
+		.quick-project-layout label {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			font-size: 12px;
+			font-weight: 600;
+			color: var(--taskflow-text-muted);
+		}
+
+		.quick-project-layout input,
+		.quick-project-layout select,
+		.quick-project-layout textarea {
+			padding: 9px 12px;
+			border-radius: 8px;
+			border: 1px solid var(--taskflow-border);
+			background-color: #f8fafc;
+			font-size: 13px;
+			color: var(--taskflow-text);
+			outline: none;
+			transition: all 0.2s ease;
+		}
+
+		.quick-project-layout input:focus,
+		.quick-project-layout select:focus,
+		.quick-project-layout textarea:focus {
+			border-color: var(--taskflow-primary);
+			background-color: #ffffff;
+			box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+		}
+
+		/* Quick Create Task Modal styles */
+		.quick-task-modal {
+			width: 90vw !important;
+			max-width: 850px !important;
+			max-height: 90vh !important;
+			border-radius: 12px !important;
+			background: #ffffff !important;
+			box-shadow:
+				0 20px 25px -5px rgba(0, 0, 0, 0.1),
+				0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+			border: 1px solid var(--taskflow-border) !important;
+			display: flex !important;
+			flex-direction: column !important;
+			overflow: hidden !important;
+		}
+
+		.quick-task-modal .taskflow-modal-main-content {
+			overflow-y: auto !important;
+			flex: 1 !important;
+			min-height: 0 !important;
+		}
+
+		.quick-task-layout {
+			display: grid;
+			grid-template-columns: 1.2fr 1fr;
+			gap: 24px;
+			padding: 4px 0;
+		}
+
+		@media (max-width: 768px) {
+			.quick-task-layout {
+				grid-template-columns: 1fr;
+				gap: 16px;
+			}
+		}
+
+		.quick-task-section {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+
+		.quick-task-section-title {
+			font-size: 13px;
+			font-weight: 700;
+			color: var(--taskflow-text);
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			border-bottom: 1px solid var(--taskflow-border);
+			padding-bottom: 6px;
+			margin-bottom: 4px;
+		}
+
+		.quick-task-field-group {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 14px;
+		}
+
+		.quick-task-field-full {
+			grid-column: 1 / -1;
+		}
+
+		.quick-task-layout label {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			font-size: 12px;
+			font-weight: 600;
+			color: var(--taskflow-text-muted);
+		}
+
+		.quick-task-layout input,
+		.quick-task-layout select {
+			padding: 9px 12px;
+			border-radius: 8px;
+			border: 1px solid var(--taskflow-border);
+			background-color: #f8fafc;
+			font-size: 13px;
+			color: var(--taskflow-text);
+			outline: none;
+			transition: all 0.2s ease;
+		}
+
+		.quick-task-layout input:focus,
+		.quick-task-layout select:focus {
+			border-color: var(--taskflow-primary);
+			background-color: #ffffff;
+			box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+		}
+		.quick-task-modal .taskflow-modal-header {
+			display: flex !important;
+			justify-content: space-between !important;
+			align-items: center !important;
+			width: 100% !important;
+			padding: 16px 24px !important;
+			border-bottom: 1px solid var(--taskflow-border) !important;
+			box-sizing: border-box !important;
+			background: #ffffff !important;
+		}
+		.quick-task-modal .taskflow-modal-header h3 {
+			margin: 0 !important;
+			font-size: 18px !important;
+			font-weight: 700 !important;
+			color: var(--taskflow-text) !important;
+			line-height: 1 !important;
+		}
+		.quick-task-modal .taskflow-modal-header-actions {
+			display: flex !important;
+			align-items: center !important;
+			gap: 10px !important;
+		}
+	</style>
+	<div
+		class="taskflow-modal quick-task-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="taskflow-task-quick-title"
+	>
+		<form class="taskflow-form" data-task-form-quick>
+			<div class="taskflow-modal-header">
+				<h3 id="taskflow-task-quick-title">Quick Create Task</h3>
+				<div class="taskflow-modal-header-actions">
+					<button
+						class="taskflow-button secondary"
+						type="button"
+						data-close-modal="task-quick"
+					>
+						Close
+					</button>
+					<button class="taskflow-button primary" type="submit">Create Task</button>
+				</div>
+			</div>
+			<div class="taskflow-modal-main-content">
+				<input type="hidden" name="name" />
+				<div class="quick-task-layout">
+					<!-- Left Section: Task Details -->
+					<div class="quick-task-section">
+						<div class="quick-task-section-title">Task Details</div>
+
+						<label class="quick-task-field-full"
+							>Task Title *
+							<input
+								type="text"
+								name="task_title"
+								required
+								placeholder="What needs to be done?"
+							/>
+						</label>
+
+						<div
+							class="quick-task-field-full"
+							style="display: flex; flex-direction: column; gap: 6px"
+						>
+							<span
+								style="
+									font-size: 12px;
+									font-weight: 600;
+									color: var(--taskflow-text-muted);
+								"
+								>Description</span
+							>
+							<div
+								id="quick-task-desc-editor"
+								style="
+									min-height: 120px;
+									border: 1px solid var(--taskflow-border);
+									border-radius: 8px;
+									background: #fff;
+								"
+							></div>
+							<input type="hidden" name="description" />
+						</div>
+
+						<div class="quick-task-field-group">
+							<label
+								>Responsible Person
+								<select name="responsible_person" id="quickTaskResponsiblePerson">
+									<option value="">Select...</option>
+								</select>
+							</label>
+
+							<label
+								>Guided By
+								<select name="guided_by" id="quickTaskGuidedBy">
+									<option value="">Select...</option>
+								</select>
+							</label>
+						</div>
+
+						<label
+							>Pending With
+							<input type="text" name="pending_with" placeholder="Enter name" />
+						</label>
+
+						<label
+							>Pending From
+							<select name="pending_from">
+								<option value="">Select...</option>
+								<option value="Netwin Vendor">Netwin Vendor</option>
+								<option value="SIL Vendor">SIL Vendor</option>
+								<option value="Whitestone Vendor">Whitestone Vendor</option>
+								<option value="Perfios Vendor">Perfios Vendor</option>
+								<option value="Infosys Vendor">Infosys Vendor</option>
+								<option value="Operation Team">Operation Team</option>
+								<option value="Our Side">Our Side</option>
+								<option value="Rhythmflows">Rhythmflows</option>
+								<option value="Other">Other</option>
+							</select>
+						</label>
+
+						<div class="quick-task-field-group">
+							<label
+								>Toll ID
+								<input type="text" name="toll_id" placeholder="Enter Toll ID" />
+							</label>
+
+							<label
+								>Ticket Date
+								<input type="date" name="ticket_date" />
+							</label>
+						</div>
+
+						<label
+							>Ticket Raised By
+							<input type="text" name="ticket_raised_by" placeholder="Enter name" />
+						</label>
+					</div>
+
+					<!-- Right Section: People & Schedule -->
+					<div class="quick-task-section">
+						<div class="quick-task-section-title">People & Schedule</div>
+
+						<label class="quick-task-field-full"
+							>Assignee
+							<div
+								class="taskflow-assignee-widget"
+								style="width: 100%; margin-top: 6px"
+							>
+								<div
+									class="assignee-badges"
+									id="quickAssigneeBadges"
+									style="
+										display: flex;
+										flex-direction: column;
+										gap: 6px;
+										margin-bottom: 8px;
+									"
+								></div>
+								<select
+									class="sidebar-select"
+									style="width: 100%"
+									id="quickTaskAssignedToSelect"
+								>
+									<option value="">Add Assignee...</option>
+								</select>
+							</div>
+						</label>
+
+						<label class="quick-task-field-full"
+							>Project *
+							<select
+								name="project"
+								required
+								id="quickTaskProjectSelect"
+							></select>
+						</label>
+
+						<div class="quick-task-field-group">
+							<label
+								>Task Type
+								<select name="task_type">
+									<option selected value="Task">Task</option>
+									<option value="Bug">Bug</option>
+									<option value="Customization Request">
+										Customization Request
+									</option>
+								</select>
+							</label>
+
+							<label
+								>Priority
+								<select name="priority">
+									<option value="Low">Low</option>
+									<option selected value="Medium">Medium</option>
+									<option value="High">High</option>
+									<option value="Critical">Critical</option>
+								</select>
+							</label>
+						</div>
+
+						<label
+							>Status
+							<select name="status">
+								<option selected value="Open">Open</option>
+								<option value="In Progress">In Progress</option>
+								<option value="Review">Review</option>
+								<option value="On Hold">On Hold</option>
+								<option value="Completed">Completed</option>
+							</select>
+						</label>
+
+						<div class="quick-task-field-group">
+							<label
+								>Start Date *
+								<input type="date" name="start_date" required />
+							</label>
+
+							<label
+								>Due Date *
+								<input type="date" name="due_date" required />
+							</label>
+						</div>
+
+						<label id="quickCompletedDateLabel" style="display: none"
+							>Completed Date
+							<input type="date" name="completed_date" />
+						</label>
+
+						<label
+							>Expected Resolution Date
+							<input type="date" name="expected_resolution_date" />
+						</label>
+
+						<label
+							>Attachment
+							<input type="file" name="attachment" id="quickTaskAttachment" />
+						</label>
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+</div>
+
+<!-- Status Filter Sidebar -->
+<div class="taskflow-filter-sidebar" data-filter-sidebar aria-hidden="true">
+	<div style="padding: 24px">
+		<h3 style="margin-top: 0; font-size: 18px">Filter by Status</h3>
+		<div
+			style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px"
+			data-status-checkboxes
+		>
+			<label><input type="checkbox" value="Open" checked /> Open</label>
+			<label><input type="checkbox" value="In Progress" checked /> In Progress</label>
+			<label><input type="checkbox" value="Review" checked /> Review</label>
+			<label><input type="checkbox" value="On Hold" checked /> On Hold</label>
+			<label><input type="checkbox" value="Completed" checked /> Completed</label>
+			<label><input type="checkbox" value="Cancelled" checked /> Cancelled</label>
+			<label><input type="checkbox" value="Overdue" checked /> Overdue</label>
+		</div>
+		<h3 style="margin-top: 20px; font-size: 18px">Filter by Assignee</h3>
+		<div
+			style="
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+				margin-top: 16px;
+				max-height: 200px;
+				overflow-y: auto;
+			"
+			data-assignee-checkboxes
+		>
+			<!-- Checkboxes will be populated via JS -->
+		</div>
+		<div style="display: flex; gap: 8px; margin-top: 24px">
+			<button
+				class="taskflow-btn-primary"
+				type="button"
+				data-apply-filter
+				style="flex: 1; padding: 8px"
+			>
+				Apply
+			</button>
+			<button
+				class="taskflow-button secondary"
+				type="button"
+				data-clear-filter
+				style="padding: 8px 16px"
+			>
+				Clear
+			</button>
+		</div>
+	</div>
+</div>
+
+<!-- Task Detail Iframe Modal -->
+<div class="taskflow-modal-backdrop" data-task-detail-iframe-backdrop aria-hidden="true">
+	<style>
+		.task-detail-iframe-modal {
+			width: 95vw !important;
+			max-width: 1200px !important;
+			height: 90vh !important;
+			border-radius: 16px !important;
+			background: #ffffff !important;
+			box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+			border: 1px solid var(--taskflow-border) !important;
+			display: flex !important;
+			flex-direction: column !important;
+			overflow: hidden !important;
+		}
+
+		.task-detail-iframe-modal .taskflow-modal-header {
+			display: flex !important;
+			justify-content: space-between !important;
+			align-items: center !important;
+			padding: 14px 20px !important;
+			border-bottom: 1px solid var(--taskflow-border) !important;
+			background: #ffffff !important;
+			flex-shrink: 0 !important;
+		}
+
+		.task-detail-iframe-modal .taskflow-modal-header h3 {
+			margin: 0 !important;
+			font-size: 16px !important;
+			font-weight: 600 !important;
+			color: var(--taskflow-text) !important;
+		}
+
+		.task-detail-iframe-container {
+			flex: 1 !important;
+			width: 100% !important;
+			height: 100% !important;
+			position: relative !important;
+			background: #ffffff !important;
+		}
+
+		.task-detail-iframe-container iframe {
+			width: 100% !important;
+			height: 100% !important;
+			border: none !important;
+		}
+	</style>
+	<div
+		class="taskflow-modal task-detail-iframe-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="task-detail-iframe-title"
+	>
+		<div class="taskflow-modal-header">
+			<h3 id="task-detail-iframe-title">Task Details</h3>
+			<div class="taskflow-modal-header-actions">
+				<button class="taskflow-button secondary" type="button" data-close-iframe-modal>
+					Close
+				</button>
+			</div>
+		</div>
+		<div class="task-detail-iframe-container">
+			<iframe id="taskDetailIframe" src="about:blank"></iframe>
+		</div>
+	</div>
+</div>
+
+<!-- Add Team Member Modal -->
+<div
+	class="taskflow-modal-backdrop"
+	data-modal-name="add-member"
+	data-add-member-modal
+	aria-hidden="true"
+>
+	<style>
+		/* Employee dropdown scrollbar styling */
+		[data-employee-dropdown]::-webkit-scrollbar {
+			width: 8px;
+		}
+		[data-employee-dropdown]::-webkit-scrollbar-track {
+			background: #f1f5f9;
+			border-radius: 4px;
+		}
+		[data-employee-dropdown]::-webkit-scrollbar-thumb {
+			background: #cbd5e1;
+			border-radius: 4px;
+		}
+		[data-employee-dropdown]::-webkit-scrollbar-thumb:hover {
+			background: #94a3b8;
+		}
+		
+		/* Search input focus state */
+		[data-employee-search]:focus {
+			border-color: #3b82f6 !important;
+			background: #ffffff !important;
+			box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+		}
+	</style>
+	<div
+		class="taskflow-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="add-member-modal-title"
+		style="width: 90vw; max-width: 500px; border-radius: 12px;"
+	>
+		<form class="taskflow-form" data-add-member-form>
+			<div class="taskflow-modal-header">
+				<h3 id="add-member-modal-title">Add Team Member</h3>
+				<div class="taskflow-modal-header-actions">
+					<button
+						class="taskflow-button secondary"
+						type="button"
+						data-close-modal="add-member"
+					>
+						Close
+					</button>
+					<button class="taskflow-button primary" type="submit">Add Member</button>
+				</div>
+			</div>
+			<div class="taskflow-modal-main-content" style="padding: 24px;">
+				<div style="display: flex; flex-direction: column; gap: 20px;">
+					<!-- Employee Selection -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Employee *
+						</span>
+						<div style="position: relative;">
+							<input 
+								type="text" 
+								name="employee_search"
+								data-employee-search
+								autocomplete="off"
+								placeholder="Search employee..."
+								required
+								style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s; width: 100%;"
+							/>
+							<input type="hidden" name="employee" data-employee-value required />
+							<div 
+								data-employee-dropdown
+								style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 250px; overflow-y: auto; z-index: 1000;"
+							>
+								<div data-employee-options style="padding: 4px;"></div>
+								<div data-employee-loading style="padding: 16px; text-align: center; color: #64748b; font-size: 13px; display: none;">
+									Loading employees...
+								</div>
+								<div data-employee-empty style="padding: 16px; text-align: center; color: #94a3b8; font-size: 13px; display: none;">
+									No employees found
+								</div>
+							</div>
+						</div>
+					</label>
+
+					<!-- Team Role Selection -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Team Role *
+						</span>
+						<select 
+							name="team_role" 
+							required
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						>
+							<option value="">Select Role</option>
+							<option value="Team Lead">Team Lead</option>
+							<option value="Project Manager">Project Manager</option>
+							<option value="Team Member" selected>Team Member</option>
+							<option value="Viewer">Viewer</option>
+							<option value="Auditor">Auditor</option>
+							<option value="Coordinator">Coordinator</option>
+						</select>
+					</label>
+
+					<!-- Access Level Selection -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Access Level *
+						</span>
+						<select 
+							name="access_level" 
+							required
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						>
+							<option value="">Select Access Level</option>
+							<option value="View">View</option>
+							<option value="Operate" selected>Operate</option>
+							<option value="Manage">Manage</option>
+							<option value="Admin">Admin</option>
+						</select>
+					</label>
+
+					<!-- Is Active Checkbox -->
+					<label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+						<input 
+							type="checkbox" 
+							name="is_active" 
+							checked
+							style="width: 18px; height: 18px; cursor: pointer;"
+						>
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Active Member
+						</span>
+					</label>
+				</div>
+				</div>
+		</form>
+	</div>
+</div>
+
+<!-- Add Team Modal -->
+<div
+	class="taskflow-modal-backdrop"
+	data-modal-name="add-team"
+	data-add-team-modal
+	aria-hidden="true"
+>
+	<div
+		class="taskflow-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="add-team-modal-title"
+		style="width: 90vw; max-width: 600px; border-radius: 12px;"
+	>
+		<form class="taskflow-form" data-add-team-form>
+			<div class="taskflow-modal-header">
+				<h3 id="add-team-modal-title">Add Team</h3>
+				<div class="taskflow-modal-header-actions">
+					<button
+						class="taskflow-button secondary"
+						type="button"
+						data-close-modal="add-team"
+					>
+						Close
+					</button>
+					<button class="taskflow-button primary" type="submit">Create Team</button>
+				</div>
+			</div>
+			<div class="taskflow-modal-main-content" style="padding: 24px;">
+				<div style="display: flex; flex-direction: column; gap: 20px;">
+					<!-- Team Name -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Team Name *
+						</span>
+						<input 
+							type="text" 
+							name="team_name" 
+							required
+							placeholder="Enter team name"
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						/>
+					</label>
+
+					<!-- Visibility Scope -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Visibility Scope *
+						</span>
+						<select 
+							name="visibility_scope" 
+							required
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						>
+							<option value="Team" selected>Team</option>
+							<option value="Parent Team">Parent Team</option>
+							<option value="Global">Global</option>
+						</select>
+					</label>
+
+					<!-- Description -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Description
+						</span>
+						<textarea 
+							name="description" 
+							rows="3"
+							placeholder="Enter team description"
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s; resize: vertical;"
+						></textarea>
+					</label>
+
+					<!-- Team Lead -->
+					<label style="display: flex; flex-direction: column; gap: 8px;">
+						<span style="font-size: 13px; font-weight: 600; color: #475569;">
+							Team Lead
+						</span>
+						<select 
+							name="team_lead"
+							style="padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s;"
+						>
+							<option value="">Select Team Lead</option>
+						</select>
+					</label>
+
+					<!-- Team Members Table -->
+					<div style="display: flex; flex-direction: column; gap: 8px;">
+						<div style="display: flex; align-items: center; justify-content: space-between;">
+							<span style="font-size: 13px; font-weight: 600; color: #475569;">
+								Team Members
+							</span>
+							<button 
+								type="button" 
+								data-add-team-member-row
+								style="padding: 4px 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; color: #3b82f6; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+							>
+								+ Add Row
+							</button>
+						</div>
+						<div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+							<table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+								<thead>
+									<tr style="background: #f8fafc;">
+										<th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">Employee</th>
+										<th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">Team Role</th>
+										<th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">Access Level</th>
+										<th style="padding: 10px 12px; width: 50px; border-bottom: 1px solid #e2e8f0;"></th>
+									</tr>
+								</thead>
+								<tbody data-team-members-body>
+									<tr data-team-member-row>
+										<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+											<select name="member_user" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+												<option value="">Select Employee</option>
+											</select>
+										</td>
+										<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+											<select name="team_role" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+												<option value="Team Member">Team Member</option>
+												<option value="Team Lead">Team Lead</option>
+												<option value="Coordinator">Coordinator</option>
+												<option value="Viewer">Viewer</option>
+												<option value="Auditor">Auditor</option>
+											</select>
+										</td>
+										<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+											<select name="access_level" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+												<option value="View">View</option>
+												<option value="Operate" selected>Operate</option>
+												<option value="Manage">Manage</option>
+												<option value="Admin">Admin</option>
+											</select>
+										</td>
+										<td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+											<button type="button" data-remove-team-member-row style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 16px;">&times;</button>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+</div>
+
+<!-- Bulk Insert Modal -->
+<div id="bulkInsertModal" class="taskflow-modal-backdrop">
+	<div class="taskflow-modal" style="max-width: 500px; width: 100%;">
+		<div class="taskflow-modal-header">
+			<h3 style="margin: 0; font-size: 18px; font-weight: 600;">Bulk Insert Tasks</h3>
+			<div style="display: flex; align-items: center; gap: 8px;">
+				<button id="bulkGetTemplate" type="button" style="
+					padding: 6px 12px;
+					border-radius: 6px;
+					border: 1px solid #e2e8f0;
+					background: white;
+					color: #475569;
+					font-size: 13px;
+					font-weight: 500;
+					cursor: pointer;
+					transition: all 0.2s;
+					display: flex;
+					align-items: center;
+					gap: 4px;
+				">
+					📥 Get Template
+				</button>
+				<button class="taskflow-modal-close" data-close-modal="bulkInsertModal">&times;</button>
+			</div>
+		</div>
+		<div class="taskflow-modal-body">
+			<p style="margin: 0 0 16px; color: #64748b; font-size: 14px;">
+				Upload an Excel (.xlsx) or CSV file to bulk create tasks.
+			</p>
+			
+			<!-- File Upload Area -->
+			<div id="bulkUploadArea" style="
+				border: 2px dashed #cbd5e1;
+				border-radius: 12px;
+				padding: 40px 20px;
+				text-align: center;
+				cursor: pointer;
+				transition: all 0.2s;
+				background: #f8fafc;
+			">
+				<input type="file" id="bulkFileInput" accept=".xlsx,.csv" style="display: none;" />
+				<div style="font-size: 40px; margin-bottom: 12px;">📁</div>
+				<div style="font-size: 14px; font-weight: 600; color: #334155; margin-bottom: 4px;">
+					Drop file here or click to browse
+				</div>
+				<div style="font-size: 12px; color: #94a3b8;">
+					Supports .xlsx and .csv files
+				</div>
+			</div>
+
+			<!-- Selected File Info -->
+			<div id="bulkFileInfo" style="display: none; margin-top: 16px; padding: 12px; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0;">
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<span style="font-size: 20px;">📄</span>
+					<div style="flex: 1;">
+						<div id="bulkFileName" style="font-size: 14px; font-weight: 600; color: #166534;"></div>
+						<div id="bulkFileSize" style="font-size: 12px; color: #16a34a;"></div>
+					</div>
+					<button id="bulkRemoveFile" style="background: none; border: none; cursor: pointer; font-size: 18px; color: #dc2626;">&times;</button>
+				</div>
+			</div>
+
+			<!-- Upload Progress -->
+			<div id="bulkUploadProgress" style="display: none; margin-top: 16px;">
+				<div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+					<span style="font-size: 13px; color: #475569;">Uploading...</span>
+					<span id="bulkUploadPercent" style="font-size: 13px; font-weight: 600; color: #3b82f6;">0%</span>
+				</div>
+				<div style="height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+					<div id="bulkProgressBar" style="height: 100%; background: #3b82f6; width: 0%; transition: width 0.3s;"></div>
+				</div>
+			</div>
+
+			<!-- Error Message -->
+			<div id="bulkUploadError" style="display: none; margin-top: 16px; padding: 12px; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca;">
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<span style="color: #dc2626;">⚠️</span>
+					<span id="bulkErrorMessage" style="font-size: 13px; color: #991b1b;"></span>
+				</div>
+			</div>
+		</div>
+		<div class="taskflow-modal-footer">
+			<button class="taskflow-btn-cancel" data-close-modal="bulkInsertModal">Cancel</button>
+			<button id="bulkUploadBtn" class="taskflow-btn-primary" disabled>Upload & Process</button>
+		</div>
+	</div>
+</div>
+
+<!-- Download Popup Modal -->
+<div id="downloadPopupModal" class="taskflow-modal-backdrop">
+	<div class="taskflow-modal" style="max-width: 520px; width: 100%;">
+		<div class="taskflow-modal-header">
+			<h3 style="margin:0; font-size:16px; font-weight:600;">Download Tasks</h3>
+			<button class="taskflow-modal-close" data-close-modal="downloadPopupModal">&times;</button>
+		</div>
+		<div class="taskflow-modal-body">
+			<style>
+				.custom-select-wrapper { position: relative; }
+				.custom-dropdown { position: absolute; top: calc(100% + 6px); left: 0; right: 0; max-height: 160px; overflow-y: auto; background: white; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,0.12); z-index: 50; display: none; }
+				.custom-dropdown.open { display: block; }
+				.custom-dropdown-item { padding: 9px 12px; font-size: 13px; color: #334155; cursor: pointer; transition: background 0.15s; }
+				.custom-dropdown-item:hover, .custom-dropdown-item.highlight { background: #f1f5f9; color: #0f172a; }
+				.custom-dropdown-item.selected { background: #ecfdf5; color: #065f46; font-weight: 600; }
+				.custom-dropdown-empty { padding: 12px; font-size: 12px; color: #94a3b8; text-align: center; }
+				.search-input { width: 100%; padding: 8px 32px 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; background: white; transition: border-color 0.15s, box-shadow 0.15s; }
+				.search-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+				.search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none; font-size: 12px; }
+			</style>
+			<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+				<div>
+					<label style="display:block; font-size:11px; font-weight:600; color:#475569; margin-bottom:4px;">Team</label>
+					<div class="custom-select-wrapper">
+						<input type="text" id="downloadTeamFilter" class="search-input" placeholder="Search team..." autocomplete="off" />
+						<span class="search-icon">▾</span>
+						<div id="downloadTeamDropdown" class="custom-dropdown"></div>
+					</div>
+				</div>
+				<div>
+					<label style="display:block; font-size:11px; font-weight:600; color:#475569; margin-bottom:4px;">Project</label>
+					<div class="custom-select-wrapper">
+						<input type="text" id="downloadProjectFilter" class="search-input" placeholder="Search project..." autocomplete="off" />
+						<span class="search-icon">▾</span>
+						<div id="downloadProjectDropdown" class="custom-dropdown"></div>
+					</div>
+				</div>
+			</div>
+			<div style="margin-bottom: 12px;">
+				<label style="display:block; font-size:11px; font-weight:600; color:#475569; margin-bottom:4px;">Status</label>
+				<div class="custom-select-wrapper">
+					<input type="text" id="downloadStatusFilter" class="search-input" placeholder="Search status..." autocomplete="off" />
+					<span class="search-icon">▾</span>
+					<div id="downloadStatusDropdown" class="custom-dropdown"></div>
+				</div>
+			</div>
+			<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+				<div>
+					<label style="display:block; font-size:11px; font-weight:600; color:#475569; margin-bottom:4px;">From Date</label>
+					<input type="date" id="downloadFromDate" style="width:100%; padding:8px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px;" />
+				</div>
+				<div>
+					<label style="display:block; font-size:11px; font-weight:600; color:#475569; margin-bottom:4px;">To Date</label>
+					<input type="date" id="downloadToDate" style="width:100%; padding:8px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px;" />
+				</div>
+			</div>
+			<div id="downloadPopupInfo" style="padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:12px; color:#334155; text-align:center;"></div>
+		</div>
+		<div class="taskflow-modal-footer">
+			<button class="taskflow-btn-cancel" data-close-modal="downloadPopupModal">Cancel</button>
+			<button id="downloadPopupConfirmBtn" class="taskflow-btn-primary" style="background:#16a34a; border-color:#16a34a;">📥 Download</button>
+		</div>
+	</div>
+</div>
+
+<script>
+	window.csrf_token = window.csrf_token || "{{ csrf_token }}";
+</script>
+{% endblock %} {% block footer %}{% endblock %}

@@ -80,7 +80,7 @@ def get_task_permission_condition(user: str) -> str:
 			f"SELECT `parent` FROM `tabTask Assignment` WHERE `user_id` = {frappe.db.escape(user_employee)}"
 			f")"
 		)
-	conditions.append(f"`tabTaskflow Task`.`assigned_by` = {frappe.db.escape(user)}")
+	# assigned_by column removed from Taskflow Task — use owner instead
 	conditions.append(f"`tabTaskflow Task`.`owner` = {frappe.db.escape(user)}")
 	return " or ".join(f"({condition})" for condition in conditions if condition) or "1=0"
 

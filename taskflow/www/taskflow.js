@@ -78,6 +78,7 @@ function getColumnCount() {
 		calendarDate: new Date(),
 		calendarProject: "",
 		calendarMember: "",
+		collapsedProjects: new Set(JSON.parse(localStorage.getItem("taskflow_collapsed_projects") || "[]")),
 	};
 
 	const refs = {};
@@ -899,7 +900,166 @@ function getColumnCount() {
 		const bulkUploadPercent = document.getElementById("bulkUploadPercent");
 		const bulkUploadError = document.getElementById("bulkUploadError");
 		const bulkErrorMessage = document.getElementById("bulkErrorMessage");
+		const downloadPopupModal = document.getElementById("downloadPopupModal");
+		const downloadPopupInfo = document.getElementById("downloadPopupInfo");
+		const downloadPopupConfirmBtn = document.getElementById("downloadPopupConfirmBtn");
 		let selectedBulkFile = null;
+		let lastBulkInsertResult = null;
+
+		const DOWNLOAD_STATUS_OPTIONS = ["Open","In Progress","Review","On Hold","Completed","Cancelled","Overdue"];
+		let _projDisplayToName = new Map();
+		function initCustomSearchDropdown(inputId, dropdownId, getOptions) {
+			const input = document.getElementById(inputId);
+			const dropdown = document.getElementById(dropdownId);
+			if (!input || !dropdown) return;
+			function render(filter="") {
+				const opts = getOptions() || [];
+				const filtered = filter ? opts.filter((o) => o.toLowerCase().includes(filter.toLowerCase().trim())) : opts;
+				if (!filtered.length) {
+					dropdown.innerHTML = '<div class="custom-dropdown-empty">No results</div>';
+				} else {
+					dropdown.innerHTML = filtered.map((o) => `<div class="custom-dropdown-item" data-value="${o.replace(/"/g, '&quot;')}">${o}</div>`).join("");
+					dropdown.querySelectorAll(".custom-dropdown-item").forEach((el) => {
+						el.addEventListener("click", () => {
+							input.value = el.dataset.value;
+							dropdown.classList.remove("open");
+							updateDownloadPopupInfo();
+						});
+					});
+					dropdown.querySelectorAll(".custom-dropdown-item").forEach((el) => {
+						if (el.dataset.value === input.value) el.classList.add("selected");
+					});
+				}
+			}
+			input.addEventListener("focus", () => { render(input.value); dropdown.classList.add("open"); });
+			input.addEventListener("input", () => { render(input.value); dropdown.classList.add("open"); updateDownloadPopupInfo(); });
+			input.addEventListener("click", () => { render(input.value); dropdown.classList.add("open"); });
+		}
+		function populateDownloadFilters() {
+			const teams = (state.bootstrap && state.bootstrap.teams) || [];
+			const teamNames = [...new Set(teams.map((t) => t.name).concat(teams.map((t) => t.team_name).filter(Boolean)).filter(Boolean))];
+			const projs = (state.bootstrap && state.bootstrap.projects) || [];
+			_projDisplayToName = new Map();
+			const projDisplays = [];
+			projs.forEach((p) => {
+				let display = p.project_name;
+				if (p.parent_project) {
+					const parent = projs.find((pp) => pp.name === p.parent_project);
+					const parentName = parent ? parent.project_name : p.parent_project;
+					display = `${parentName} / ${p.project_name}`;
+				}
+				_projDisplayToName.set(display, p.name);
+				_projDisplayToName.set(p.name, p.name);
+				_projDisplayToName.set(p.project_name, p.name);
+				projDisplays.push(display);
+			});
+			const uniqProjDisplays = [...new Set(projDisplays)];
+			initCustomSearchDropdown("downloadTeamFilter", "downloadTeamDropdown", () => teamNames);
+			initCustomSearchDropdown("downloadProjectFilter", "downloadProjectDropdown", () => uniqProjDisplays);
+			initCustomSearchDropdown("downloadStatusFilter", "downloadStatusDropdown", () => DOWNLOAD_STATUS_OPTIONS);
+			document.addEventListener("click", (e) => {
+				if (!e.target.closest(".custom-select-wrapper")) {
+					document.querySelectorAll(".custom-dropdown.open").forEach((d) => d.classList.remove("open"));
+				}
+			});
+		}
+		function getFilteredTasksForDownload() {
+			// Use bootstrap.tasks (all visible projects, up to 100) as primary source so filtering by different project works
+			// when user is in project A but selects project B in popup, currentTasks/projectWorkspace only has A, so would show 0
+			let tasks = (state.bootstrap && state.bootstrap.tasks && state.bootstrap.tasks.length ? state.bootstrap.tasks : (state.projectWorkspace && state.projectWorkspace.tasks) || (state.currentTasks && state.currentTasks.length ? state.currentTasks : []));
+			// Also merge all sources to ensure we have all tasks (in case bootstrap is paginated)
+			const allTasksMap = new Map();
+			[state.bootstrap?.tasks, state.projectWorkspace?.tasks, state.currentTasks].forEach((arr) => {
+				(arr || []).forEach((t) => { if (t && t.name) allTasksMap.set(t.name, t); });
+			});
+			if (allTasksMap.size > tasks.length) tasks = Array.from(allTasksMap.values());
+			console.log("[Download] source tasks:", tasks.length, "currentTasks:", state.currentTasks?.length, "projectWorkspace:", state.projectWorkspace?.tasks?.length, "bootstrap:", state.bootstrap?.tasks?.length, "merged:", tasks.length);
+			const teamVal = (document.getElementById("downloadTeamFilter")?.value || "").toLowerCase().trim();
+			let projValRaw = (document.getElementById("downloadProjectFilter")?.value || "").trim();
+			let projVal = projValRaw.toLowerCase();
+			if (projValRaw && _projDisplayToName.has(projValRaw)) {
+				projVal = _projDisplayToName.get(projValRaw).toLowerCase();
+			} else if (projValRaw.includes("/")) {
+				const parts = projValRaw.split("/").map((s) => s.trim()).filter(Boolean);
+				const childPart = parts[parts.length - 1];
+				if (childPart) projVal = childPart.toLowerCase();
+			}
+			const projDisplayVal = projValRaw.toLowerCase();
+			const statusVal = (document.getElementById("downloadStatusFilter")?.value || "").toLowerCase().trim();
+			const fromVal = document.getElementById("downloadFromDate")?.value || "";
+			const toVal = document.getElementById("downloadToDate")?.value || "";
+			const filtered = tasks.filter((t) => {
+				if (teamVal && !(t.team || "").toLowerCase().includes(teamVal)) return false;
+				if (projVal) {
+					const p1 = (t.project || "").toLowerCase();
+					const p2 = (t.project_title || "").toLowerCase();
+					if (!p1.includes(projVal) && !p2.includes(projVal) && !p1.includes(projDisplayVal) && !p2.includes(projDisplayVal)) return false;
+				}
+				if (statusVal && !(t.status || "").toLowerCase().includes(statusVal)) return false;
+				// From/To filter on due_date or start_date or creation
+				const dateStr = (t.due_date || t.start_date || t.creation || "").slice(0, 10);
+				if (fromVal && dateStr && dateStr < fromVal) return false;
+				if (toVal && dateStr && dateStr > toVal) return false;
+				return true;
+			});
+			console.log("[Download] filtered:", filtered.length, "team:", teamVal, "project:", projVal, "status:", statusVal, "from:", fromVal, "to:", toVal);
+			return filtered;
+		}
+		async function updateDownloadPopupInfo() {
+			if (!downloadPopupInfo) return;
+			const teamVal = document.getElementById("downloadTeamFilter")?.value || "";
+			const projVal = document.getElementById("downloadProjectFilter")?.value || "";
+			const statusVal = document.getElementById("downloadStatusFilter")?.value || "";
+			const fromVal = document.getElementById("downloadFromDate")?.value || "";
+			const toVal = document.getElementById("downloadToDate")?.value || "";
+			// Until Team or Project is selected, don't show count
+			if (!teamVal && !projVal) {
+				downloadPopupInfo.innerHTML = `<span style="color:#94a3b8; font-size:12px;">Select Team or Project to see count</span>`;
+				return;
+			}
+			try {
+				const tasks = await apiCall("get_tasks_for_export", { team: teamVal, project: projVal, status: statusVal, from_date: fromVal, to_date: toVal });
+				const count = Array.isArray(tasks) ? tasks.length : 0;
+				if (lastBulkInsertResult && !teamVal && !projVal && !statusVal && !fromVal && !toVal) {
+					const c = lastBulkInsertResult.created_count ?? (lastBulkInsertResult.created_tasks?.length || 0);
+					const e = lastBulkInsertResult.error_count ?? (lastBulkInsertResult.errors?.length || 0);
+					downloadPopupInfo.innerHTML = `<b>${c} created</b> • <b>${e} errors</b> — Bulk Insert results<br><span style="font-size:11px;color:#64748b;">Filtered tasks: ${count} (all when Status/From/To empty)</span>`;
+				} else {
+					downloadPopupInfo.innerHTML = `<b>${count} tasks</b> matched filters<br><span style="font-size:11px;color:#64748b;">Will be exported as CSV (every status when Status empty)</span>`;
+				}
+				return;
+			} catch (e) {
+				// fallback to client
+				if (!teamVal && !projVal) {
+					downloadPopupInfo.innerHTML = `<span style="color:#94a3b8; font-size:12px;">Select Team or Project to see count</span>`;
+					return;
+				}
+			}
+			if (!teamVal && !projVal) {
+				downloadPopupInfo.innerHTML = `<span style="color:#94a3b8; font-size:12px;">Select Team or Project to see count</span>`;
+				return;
+			}
+			if (lastBulkInsertResult && !teamVal && !projVal && !statusVal && !fromVal && !toVal) {
+				const c = lastBulkInsertResult.created_count ?? (lastBulkInsertResult.created_tasks?.length || 0);
+				const e = lastBulkInsertResult.error_count ?? (lastBulkInsertResult.errors?.length || 0);
+				downloadPopupInfo.innerHTML = `<b>${c} created</b> • <b>${e} errors</b> — Bulk Insert results<br><span style="font-size:11px;color:#64748b;">Filtered tasks: ${getFilteredTasksForDownload().length}</span>`;
+			} else {
+				const filtered = getFilteredTasksForDownload();
+				downloadPopupInfo.innerHTML = `<b>${filtered.length} tasks</b> matched filters<br><span style="font-size:11px;color:#64748b;">Will be exported as CSV</span>`;
+			}
+		}
+		async function openDownloadPopup() {
+			if (!downloadPopupModal || !downloadPopupInfo) {
+				downloadBulkResults();
+				return;
+			}
+			populateDownloadFilters();
+			await updateDownloadPopupInfo();
+			downloadPopupModal.classList.add("open");
+		}
+		function closeDownloadPopup() {
+			downloadPopupModal?.classList.remove("open");
+		}
 
 		function openBulkInsertModal() {
 			if (bulkInsertModal) {
@@ -925,6 +1085,109 @@ function getColumnCount() {
 			if (bulkUploadArea) {
 				bulkUploadArea.style.borderColor = "#cbd5e1";
 				bulkUploadArea.style.background = "#f8fafc";
+			}
+		}
+
+		async function downloadBulkResults() {
+			const teamVal = document.getElementById("downloadTeamFilter")?.value || "";
+			const projVal = document.getElementById("downloadProjectFilter")?.value || "";
+			const statusVal = document.getElementById("downloadStatusFilter")?.value || "";
+			const fromVal = document.getElementById("downloadFromDate")?.value || "";
+			const toVal = document.getElementById("downloadToDate")?.value || "";
+			const hasFilter = !!(teamVal || projVal || statusVal || fromVal || toVal);
+			const isPopupOpen = downloadPopupModal?.classList.contains("open");
+			// If no filter and we have bulk result and popup not open, download bulk results
+			if (lastBulkInsertResult && !hasFilter && !isPopupOpen) {
+				const data = lastBulkInsertResult;
+				const rows = [["Task Name", "Status", "Message"]];
+				if (Array.isArray(data.created_tasks)) {
+					data.created_tasks.forEach((name) => rows.push([name, "Created", "Success"]));
+				}
+				if (Array.isArray(data.errors)) {
+					data.errors.forEach((err) => rows.push(["", "Error", err]));
+				}
+				if (rows.length === 1) {
+					rows.push(["No data", "", data.message || ""]);
+				}
+				const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+				const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = `bulk_insert_results_${new Date().toISOString().slice(0, 10)}.csv`;
+				a.style.display = "none";
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				URL.revokeObjectURL(url);
+				return;
+			}
+			// Otherwise fetch all matching tasks from server (handles 356 tasks, every status when Status/From/To empty)
+			try {
+				const tasks = await apiCall("get_tasks_for_export", {
+					team: teamVal,
+					project: projVal,
+					status: statusVal,
+					from_date: fromVal,
+					to_date: toVal,
+				});
+				const list = Array.isArray(tasks) ? tasks : (tasks && tasks.message ? tasks.message : []);
+				if (!list || !list.length) {
+					if (typeof frappe !== "undefined" && frappe.show_alert) frappe.show_alert({ message: "No tasks match filters (0 tasks)", indicator: "orange" }, 3);
+					return;
+				}
+				const headers = ["team", "status", "project", "task_title", "priority", "task_type", "assigned_to", "start_date", "due_date", "description"];
+				const rows = [headers];
+				list.forEach((t) => {
+					rows.push(headers.map((h) => {
+						let v = t[h] ?? "";
+						if (Array.isArray(v)) v = v.join(";");
+						if (v && typeof v === "object") v = JSON.stringify(v);
+						return String(v).replace(/"/g, '""');
+					}));
+				});
+				const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+				const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = `tasks_export_${new Date().toISOString().slice(0, 10)}.csv`;
+				a.style.display = "none";
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				URL.revokeObjectURL(url);
+				if (typeof frappe !== "undefined" && frappe.show_alert) frappe.show_alert({ message: `Downloaded ${list.length} tasks`, indicator: "green" }, 3);
+				return;
+			} catch (e) {
+				console.error("Export failed, falling back to client filter", e);
+				// fallback to client-side
+				const tasks = getFilteredTasksForDownload();
+				if (!tasks.length) {
+					if (typeof frappe !== "undefined" && frappe.show_alert) frappe.show_alert({ message: "No tasks match filters", indicator: "orange" }, 3);
+					return;
+				}
+				const headers = ["team", "status", "project", "task_title", "priority", "task_type", "assigned_to", "start_date", "due_date", "description"];
+				const rows = [headers];
+				tasks.forEach((t) => {
+					rows.push(headers.map((h) => {
+						let v = t[h] ?? "";
+						if (Array.isArray(v)) v = v.join(";");
+						if (v && typeof v === "object") v = JSON.stringify(v);
+						return String(v).replace(/"/g, '""');
+					}));
+				});
+				const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+				const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = `tasks_export_${new Date().toISOString().slice(0, 10)}.csv`;
+				a.style.display = "none";
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				URL.revokeObjectURL(url);
 			}
 		}
 
@@ -996,13 +1259,18 @@ function getColumnCount() {
 			xhr.onload = function () {
 				if (xhr.status === 200) {
 					const response = JSON.parse(xhr.responseText);
-					if (response.message) {
-						closeBulkInsertModal();
-						if (typeof frappe !== "undefined" && frappe.show_alert) {
-							frappe.show_alert({ message: response.message, indicator: "green" }, 5);
-						}
-						refreshView();
+					const result = response.message;
+					if (result && typeof result === "object") {
+						lastBulkInsertResult = result;
+					} else {
+						lastBulkInsertResult = { message: result, created_tasks: [], errors: [] };
 					}
+					const msgText = lastBulkInsertResult.message || "Bulk insert completed";
+					closeBulkInsertModal();
+					if (typeof frappe !== "undefined" && frappe.show_alert) {
+						frappe.show_alert({ message: typeof msgText === "string" ? msgText : JSON.stringify(msgText), indicator: "green" }, 5);
+					}
+					refreshView();
 				} else {
 					let errMsg = "Upload failed. Please try again.";
 					try {
@@ -1023,6 +1291,25 @@ function getColumnCount() {
 		document.querySelector("[data-bulk-insert-button]")?.addEventListener("click", (e) => {
 			e.stopPropagation();
 			openBulkInsertModal();
+		});
+
+		// Standalone Download button (visible always in toolbar) — Download only -> show popup
+		document.querySelector("[data-download-button]")?.addEventListener("click", (e) => {
+			e.stopPropagation();
+			openDownloadPopup();
+		});
+		downloadPopupConfirmBtn?.addEventListener("click", () => {
+			downloadBulkResults();
+			closeDownloadPopup();
+		});
+		document.querySelectorAll('[data-close-modal="downloadPopupModal"]').forEach((btn) => {
+			btn.addEventListener("click", closeDownloadPopup);
+		});
+		downloadPopupModal?.addEventListener("click", (e) => {
+			if (e.target === downloadPopupModal) closeDownloadPopup();
+		});
+		["downloadFromDate","downloadToDate"].forEach((id) => {
+			document.getElementById(id)?.addEventListener("change", updateDownloadPopupInfo);
 		});
 
 		bulkUploadArea?.addEventListener("click", () => bulkFileInput?.click());
@@ -1783,8 +2070,40 @@ function getColumnCount() {
 
 		const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
-		refs.projectList.innerHTML = projects
-			.map((project, idx) => {
+		// Build parent -> children map for hierarchical display
+		const projectMap = new Map(projects.map((p) => [p.name, p]));
+		const childrenMap = new Map();
+		const roots = [];
+		projects.forEach((p) => {
+			const parent = p.parent_project;
+			if (parent && projectMap.has(parent)) {
+				if (!childrenMap.has(parent)) childrenMap.set(parent, []);
+				childrenMap.get(parent).push(p);
+			} else {
+				roots.push(p);
+			}
+		});
+		const sortFn = (a, b) => {
+			const pendingA = a.open_tasks || 0;
+			const pendingB = b.open_tasks || 0;
+			if (pendingB !== pendingA) return pendingB - pendingA;
+			return (a.project_name || "").localeCompare(b.project_name || "");
+		};
+		roots.sort(sortFn);
+		childrenMap.forEach((list) => list.sort(sortFn));
+		const isCollapsed = (name) => state.collapsedProjects.has(name);
+		const flat = [];
+		function addWithIndent(proj, depth) {
+			flat.push({ project: proj, depth });
+			// Only add children if parent not collapsed
+			if (isCollapsed(proj.name)) return;
+			const children = childrenMap.get(proj.name) || [];
+			children.forEach((child) => addWithIndent(child, depth + 1));
+		}
+		roots.forEach((r) => addWithIndent(r, 0));
+
+		refs.projectList.innerHTML = flat
+			.map(({ project, depth }, idx) => {
 				const activeClass =
 					state.navMode === "dashboard" && project.name === state.selectedProject
 						? "active"
@@ -1792,18 +2111,42 @@ function getColumnCount() {
 				const color = colors[idx % colors.length];
 				const initialsStr = initials(project.project_name);
 				const pendingCount = project.open_tasks || 0;
+				const indent = depth * 18;
+				const prefix = depth > 0 ? "↳ " : "";
+				const parentHint = depth > 0 ? ` (child of ${escapeHtml(project.parent_project)})` : "";
+				const hasChildren = childrenMap.has(project.name);
+				const collapsed = hasChildren && isCollapsed(project.name);
+				const toggleIcon = hasChildren ? (collapsed ? "▸" : "▾") : "";
 				return `
-					<div class="taskflow-project-item ${activeClass}" data-project-select="${escapeHtml(project.name)}" role="button" tabindex="0">
-						<div class="taskflow-project-icon" style="background: ${color}">${initialsStr}</div>
-						<span class="taskflow-project-name">${escapeHtml(project.project_name || project.name)}</span>
+					<div class="taskflow-project-item ${activeClass}" data-project-select="${escapeHtml(project.name)}" role="button" tabindex="0" style="margin-left:${indent}px; ${depth>0 ? 'border-left:2px solid #e2e8f0; padding-left:8px;' : ''}" title="${escapeHtml(project.project_name || project.name)}${parentHint}">
+						${hasChildren ? `<span class="taskflow-project-toggle" data-toggle-parent="${escapeHtml(project.name)}" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-right:4px; font-size:10px; color:#64748b; cursor:pointer; user-select:none; border-radius:4px; background:${collapsed ? '#f1f5f9' : 'transparent'};">${toggleIcon}</span>` : `<span style="width:18px; display:inline-block; margin-right:4px;"></span>`}
+						<div class="taskflow-project-icon" style="background: ${color}; ${depth>0 ? 'width:28px; height:28px; font-size:10px;' : ''}">${initialsStr}</div>
+						<span class="taskflow-project-name">${prefix}${escapeHtml(project.project_name || project.name)}</span>
 						${pendingCount > 0 ? `<span class="taskflow-badge">${pendingCount}</span>` : ""}
 					</div>
 				`;
 			})
 			.join("");
 
+		refs.projectList.querySelectorAll("[data-toggle-parent]").forEach((toggle) => {
+			toggle.addEventListener("click", (e) => {
+				e.stopPropagation();
+				const parentName = toggle.dataset.toggleParent;
+				if (state.collapsedProjects.has(parentName)) {
+					state.collapsedProjects.delete(parentName);
+				} else {
+					state.collapsedProjects.add(parentName);
+				}
+				localStorage.setItem("taskflow_collapsed_projects", JSON.stringify([...state.collapsedProjects]));
+				renderProjectList();
+			});
+		});
 		refs.projectList.querySelectorAll("[data-project-select]").forEach((button) => {
-			button.addEventListener("click", () => selectProject(button.dataset.projectSelect));
+			// Don't trigger select when clicking toggle (handled above)
+			button.addEventListener("click", (e) => {
+				if (e.target.closest("[data-toggle-parent]")) return;
+				selectProject(button.dataset.projectSelect);
+			});
 			button.addEventListener("keydown", (event) => {
 				if (event.key !== "Enter" && event.key !== " ") return;
 				event.preventDefault();
@@ -2000,12 +2343,26 @@ function getColumnCount() {
 		const completedTasks = project.completed_tasks || 0;
 		const pendingCount = Math.max(totalTasks - completedTasks, 0);
 
-		refs.projectTitle.innerHTML = `
-			${escapeHtml(project.project_name)}
-			<span style="font-size: 20px; font-weight: 800; margin-left: 12px;">
-				<span style="color: #ef4444;">${pendingCount}</span> / ${totalTasks}
-			</span>
-		`;
+		// Child project: show "Parent / Child x/y" in taskflow-project-info, only for child condition
+		let titleHtml;
+		if (project.parent_project) {
+			const parentProj = state.bootstrap && state.bootstrap.projects.find((p) => p.name === project.parent_project);
+			const parentName = parentProj ? parentProj.project_name : project.parent_project;
+			titleHtml = `
+				${escapeHtml(parentName)} / ${escapeHtml(project.project_name)}
+				<span style="font-size: 20px; font-weight: 800; margin-left: 12px;">
+					<span style="color: #ef4444;">${pendingCount}</span> / ${totalTasks}
+				</span>
+			`;
+		} else {
+			titleHtml = `
+				${escapeHtml(project.project_name)}
+				<span style="font-size: 20px; font-weight: 800; margin-left: 12px;">
+					<span style="color: #ef4444;">${pendingCount}</span> / ${totalTasks}
+				</span>
+			`;
+		}
+		refs.projectTitle.innerHTML = titleHtml;
 
 		renderKpiCards(tasks, project.status_counts);
 		if (breadcrumb) breadcrumb.textContent = project.project_name;
@@ -4271,8 +4628,15 @@ function getColumnCount() {
 					: state.bootstrap.projects || [];
 				projSelect.innerHTML = projectOptions
 					.map(
-						(p) =>
-							`<option value="${p.name}" ${p.name === currentProjName ? "selected" : ""}>${p.project_name}</option>`,
+						(p) => {
+							let displayName = p.project_name;
+							if (p.parent_project) {
+								const parentProj = state.bootstrap.projects.find((pp) => pp.name === p.parent_project);
+								const parentName = parentProj ? parentProj.project_name : p.parent_project;
+								displayName = `${parentName} / ${p.project_name}`;
+							}
+							return `<option value="${p.name}" ${p.name === currentProjName ? "selected" : ""}>${displayName}</option>`;
+						},
 					)
 					.join("");
 				projSelect.disabled = Boolean(currentProjName);
@@ -5258,11 +5622,60 @@ function getColumnCount() {
 	async function closeIframeModal() {
 		const iframeModal = document.querySelector("[data-task-detail-iframe-backdrop]");
 		if (iframeModal && iframeModal.classList.contains("open")) {
-			toggleModal(iframeModal, false);
+			// Preserve loaded pagination (e.g., 40) so opening a record doesn't reset to 20
+			const prevTasks = state.projectWorkspace?.tasks ? [...state.projectWorkspace.tasks] : null;
+			const prevPage = state.projectTaskPage;
+			const prevHasMore = state.projectHasMore;
 			const iframe = document.getElementById("taskDetailIframe");
+			const taskName = iframe?.src ? new URL(iframe.src, window.location.origin).searchParams.get("task") : null;
+			toggleModal(iframeModal, false);
 			if (iframe) iframe.src = "about:blank";
 			await loadBootstrap(state.selectedProject, { updateUrl: false });
-			await loadStateFromUrl({ updateUrl: false });
+			// If we had loaded more than initial 20, restore it instead of resetting
+			if (prevTasks && prevTasks.length > 20 && state.projectWorkspace) {
+				if (taskName) {
+					try {
+						const detail = await apiCall("get_task_details", { task: taskName });
+						if (detail && detail.task) {
+							const idx = prevTasks.findIndex((t) => t.name === taskName);
+							if (idx !== -1) prevTasks[idx] = detail.task;
+						}
+					} catch (e) {}
+				}
+				state.projectWorkspace.tasks = prevTasks;
+				state.projectTaskPage = prevPage;
+				state.projectHasMore = prevHasMore;
+				renderProjectWorkspace();
+				// Preserve scroll to Sr No 45 (task that was opened) instead of resetting to 1
+				if (taskName) {
+					setTimeout(() => {
+						const idx = prevTasks.findIndex((t) => t.name === taskName);
+						const srNo = idx !== -1 ? idx + 1 : null;
+						// Try to find row by task name
+						let row = document.querySelector(`[data-task-name="${taskName}"]`) || document.querySelector(`tr[data-name="${taskName}"]`);
+						if (!row) {
+							// Fallback: find by text content
+							row = [...document.querySelectorAll("tr[data-task], tr[data-name], .taskflow-card")].find((el) => el.textContent.includes(taskName));
+						}
+						if (row) {
+							row.scrollIntoView({ behavior: "smooth", block: "center" });
+							row.style.transition = "background 0.3s";
+							const origBg = row.style.background;
+							row.style.background = "#fef3c7";
+							setTimeout(() => { row.style.background = origBg; }, 1500);
+						} else if (srNo) {
+							const scrollEl = document.querySelector("[data-task-table-scroll]") || document.querySelector(".taskflow-super-table-scroll") || document.querySelector("[data-list-view]") || document.querySelector(".taskflow-list-view");
+							if (scrollEl) {
+								// LIST_ROW_HEIGHT = 48, header ~ 40
+								scrollEl.scrollTop = Math.max(0, (srNo - 3) * 48);
+							}
+						}
+						// Also update URL to keep task param for Sr No reference? No, keep clean
+					}, 200);
+				}
+			} else {
+				await loadStateFromUrl({ updateUrl: false });
+			}
 		}
 	}
 	window.closeIframeModal = closeIframeModal;

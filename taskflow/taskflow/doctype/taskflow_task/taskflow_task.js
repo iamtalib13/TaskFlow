@@ -350,6 +350,7 @@ const TaskflowTaskUI = {
           <option value="Operation Team" ${frm.doc.pending_from === "Operation Team" ? "selected" : ""}>Operation Team</option>
           <option value="Our Side" ${frm.doc.pending_from === "Our Side" ? "selected" : ""}>Our Side</option>
           <option value="Rhythmflows" ${frm.doc.pending_from === "Rhythmflows" ? "selected" : ""}>Rhythmflows</option>
+          <option value="Other" ${frm.doc.pending_from === "Other" ? "selected" : ""}>Other</option>
         </select>
       </div>
       <div class="tft-field-group">

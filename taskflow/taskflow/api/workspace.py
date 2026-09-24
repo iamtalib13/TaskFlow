@@ -99,7 +99,6 @@ TASK_WRITE_FIELDS = {
     "project",
     "team",
     "parent_task",
-    "assigned_by",
     "assigned_to",
     "_assign",
     "status",
