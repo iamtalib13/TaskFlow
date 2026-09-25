@@ -325,6 +325,55 @@ def _get_project_task_counts(project_names: list[str]) -> dict[str, dict]:
     return counts
 
 
+def _rollup_child_task_counts(project_rows, task_counts: dict) -> dict:
+    """Add each child project's task counts into its parent project (in place).
+
+    project_rows: iterable of objects with `.name` and `.parent_project`.
+    task_counts: {project: {total, open, completed, statuses}} — a parent that has no
+    tasks of its own still gets an entry when its children have tasks.
+    """
+    children_map: dict[str, list[str]] = {}
+    for row in project_rows:
+        parent = row.get("parent_project")
+        child = row.get("name")
+        if parent and child and parent != child:
+            children_map.setdefault(parent, []).append(child)
+
+    done: set[str] = set()
+
+    def blank() -> dict:
+        return {"total": 0, "open": 0, "completed": 0, "statuses": {}}
+
+    def roll(name: str) -> dict | None:
+        if name in done:
+            return task_counts.get(name)
+        done.add(name)
+        child_aggs = []
+        for child in children_map.get(name, []):
+            child_agg = roll(child)
+            if child_agg:
+                child_aggs.append(child_agg)
+        agg = task_counts.get(name)
+        if agg is None and not child_aggs:
+            return None
+        if agg is None:
+            agg = blank()
+            task_counts[name] = agg
+        for child_agg in child_aggs:
+            if child_agg is agg:
+                continue
+            agg["total"] += child_agg.get("total", 0)
+            agg["open"] += child_agg.get("open", 0)
+            agg["completed"] += child_agg.get("completed", 0)
+            for status, count in (child_agg.get("statuses") or {}).items():
+                agg["statuses"][status] = agg["statuses"].get(status, 0) + count
+        return agg
+
+    for name in list(task_counts.keys()) + list(children_map.keys()):
+        roll(name)
+    return task_counts
+
+
 def _serialize_project(
     project,
     task_counts: dict[str, dict] | None = None,
@@ -535,6 +584,8 @@ def get_portal_bootstrap() -> dict:
     project_names = [project.name for project in projects]
     project_map = {project.name: project.project_name for project in projects}
     task_counts = _get_project_task_counts(project_names)
+    # Parent project shows aggregated counts of its child projects
+    task_counts = _rollup_child_task_counts(projects, task_counts)
 
     teams = _get_accessible_teams()
     team_names = [team["name"] for team in teams]
@@ -679,10 +730,17 @@ def get_project_workspace(project: str, start: int = 0, page_length: int = 20) -
     project_map_hier = {project_doc.name: project_doc.project_name}
     for c in child_projects:
         project_map_hier[c.name] = f"{project_doc.project_name} / {c.project_name}"
+    # Counts for parent include all its child projects (0/0 → aggregated)
+    workspace_counts = _get_project_task_counts(project_list)
+    workspace_counts = _rollup_child_task_counts(
+        [{"name": project, "parent_project": project_doc.parent_project}]
+        + [{"name": c.name, "parent_project": project} for c in child_projects],
+        workspace_counts,
+    )
     return {
         "project": _serialize_project(
             project_doc,
-            _get_project_task_counts([project]),
+            workspace_counts,
             _bulk_employee_names([member.employee for member in project_members if member.employee]),
         ),
         "tasks": [

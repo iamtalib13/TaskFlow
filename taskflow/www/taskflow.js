@@ -906,8 +906,9 @@ function getColumnCount() {
 		let selectedBulkFile = null;
 		let lastBulkInsertResult = null;
 
-		const DOWNLOAD_STATUS_OPTIONS = ["Open","In Progress","Review","On Hold","Completed","Cancelled","Overdue"];
+		const DOWNLOAD_STATUS_OPTIONS = ["All","Open","In Progress","Review","On Hold","Completed","Cancelled","Overdue"];
 		let _projDisplayToName = new Map();
+		const isAllValue = (v) => { const s = String(v || "").trim().toLowerCase(); return s === "all" || s === "all date"; };
 		function initCustomSearchDropdown(inputId, dropdownId, getOptions) {
 			const input = document.getElementById(inputId);
 			const dropdown = document.getElementById(dropdownId);
@@ -955,8 +956,13 @@ function getColumnCount() {
 			});
 			const uniqProjDisplays = [...new Set(projDisplays)];
 			initCustomSearchDropdown("downloadTeamFilter", "downloadTeamDropdown", () => teamNames);
-			initCustomSearchDropdown("downloadProjectFilter", "downloadProjectDropdown", () => uniqProjDisplays);
+			initCustomSearchDropdown("downloadProjectFilter", "downloadProjectDropdown", () => ["All", ...uniqProjDisplays]);
 			initCustomSearchDropdown("downloadStatusFilter", "downloadStatusDropdown", () => DOWNLOAD_STATUS_OPTIONS);
+			// "All" selected by default in Project & Status
+			const projInput = document.getElementById("downloadProjectFilter");
+			const statusInput = document.getElementById("downloadStatusFilter");
+			if (projInput && !projInput.value.trim()) projInput.value = "All";
+			if (statusInput && !statusInput.value.trim()) statusInput.value = "All";
 			document.addEventListener("click", (e) => {
 				if (!e.target.closest(".custom-select-wrapper")) {
 					document.querySelectorAll(".custom-dropdown.open").forEach((d) => d.classList.remove("open"));
@@ -974,8 +980,10 @@ function getColumnCount() {
 			});
 			if (allTasksMap.size > tasks.length) tasks = Array.from(allTasksMap.values());
 			console.log("[Download] source tasks:", tasks.length, "currentTasks:", state.currentTasks?.length, "projectWorkspace:", state.projectWorkspace?.tasks?.length, "bootstrap:", state.bootstrap?.tasks?.length, "merged:", tasks.length);
-			const teamVal = (document.getElementById("downloadTeamFilter")?.value || "").toLowerCase().trim();
+			const teamRaw = (document.getElementById("downloadTeamFilter")?.value || "").trim();
+			const teamVal = isAllValue(teamRaw) ? "" : teamRaw.toLowerCase();
 			let projValRaw = (document.getElementById("downloadProjectFilter")?.value || "").trim();
+			if (isAllValue(projValRaw)) projValRaw = "";
 			let projVal = projValRaw.toLowerCase();
 			if (projValRaw && _projDisplayToName.has(projValRaw)) {
 				projVal = _projDisplayToName.get(projValRaw).toLowerCase();
@@ -985,7 +993,8 @@ function getColumnCount() {
 				if (childPart) projVal = childPart.toLowerCase();
 			}
 			const projDisplayVal = projValRaw.toLowerCase();
-			const statusVal = (document.getElementById("downloadStatusFilter")?.value || "").toLowerCase().trim();
+			const statusRaw = (document.getElementById("downloadStatusFilter")?.value || "").trim();
+			const statusVal = isAllValue(statusRaw) ? "" : statusRaw.toLowerCase();
 			const fromVal = document.getElementById("downloadFromDate")?.value || "";
 			const toVal = document.getElementById("downloadToDate")?.value || "";
 			const filtered = tasks.filter((t) => {
@@ -1007,13 +1016,16 @@ function getColumnCount() {
 		}
 		async function updateDownloadPopupInfo() {
 			if (!downloadPopupInfo) return;
-			const teamVal = document.getElementById("downloadTeamFilter")?.value || "";
-			const projVal = document.getElementById("downloadProjectFilter")?.value || "";
-			const statusVal = document.getElementById("downloadStatusFilter")?.value || "";
+			const teamVal = isAllValue(document.getElementById("downloadTeamFilter")?.value) ? "" : (document.getElementById("downloadTeamFilter")?.value || "");
+			const projVal = isAllValue(document.getElementById("downloadProjectFilter")?.value) ? "" : (document.getElementById("downloadProjectFilter")?.value || "");
+			const statusVal = isAllValue(document.getElementById("downloadStatusFilter")?.value) ? "" : (document.getElementById("downloadStatusFilter")?.value || "");
 			const fromVal = document.getElementById("downloadFromDate")?.value || "";
 			const toVal = document.getElementById("downloadToDate")?.value || "";
+			// Raw selection (incl. "All") counts as user choosing a filter → show count
+			const teamRawSel = (document.getElementById("downloadTeamFilter")?.value || "").trim();
+			const projRawSel = (document.getElementById("downloadProjectFilter")?.value || "").trim();
 			// Until Team or Project is selected, don't show count
-			if (!teamVal && !projVal) {
+			if (!teamRawSel && !projRawSel) {
 				downloadPopupInfo.innerHTML = `<span style="color:#94a3b8; font-size:12px;">Select Team or Project to see count</span>`;
 				return;
 			}
@@ -1030,16 +1042,16 @@ function getColumnCount() {
 				return;
 			} catch (e) {
 				// fallback to client
-				if (!teamVal && !projVal) {
+				if (!teamRawSel && !projRawSel) {
 					downloadPopupInfo.innerHTML = `<span style="color:#94a3b8; font-size:12px;">Select Team or Project to see count</span>`;
 					return;
 				}
 			}
-			if (!teamVal && !projVal) {
+			if (!teamRawSel && !projRawSel) {
 				downloadPopupInfo.innerHTML = `<span style="color:#94a3b8; font-size:12px;">Select Team or Project to see count</span>`;
 				return;
 			}
-			if (lastBulkInsertResult && !teamVal && !projVal && !statusVal && !fromVal && !toVal) {
+			if (lastBulkInsertResult && !teamRawSel && !projRawSel && !statusVal && !fromVal && !toVal) {
 				const c = lastBulkInsertResult.created_count ?? (lastBulkInsertResult.created_tasks?.length || 0);
 				const e = lastBulkInsertResult.error_count ?? (lastBulkInsertResult.errors?.length || 0);
 				downloadPopupInfo.innerHTML = `<b>${c} created</b> • <b>${e} errors</b> — Bulk Insert results<br><span style="font-size:11px;color:#64748b;">Filtered tasks: ${getFilteredTasksForDownload().length}</span>`;
@@ -1054,6 +1066,7 @@ function getColumnCount() {
 				return;
 			}
 			populateDownloadFilters();
+			if (typeof updateAllDateBtnState === "function") updateAllDateBtnState();
 			await updateDownloadPopupInfo();
 			downloadPopupModal.classList.add("open");
 		}
@@ -1089,12 +1102,18 @@ function getColumnCount() {
 		}
 
 		async function downloadBulkResults() {
-			const teamVal = document.getElementById("downloadTeamFilter")?.value || "";
-			const projVal = document.getElementById("downloadProjectFilter")?.value || "";
-			const statusVal = document.getElementById("downloadStatusFilter")?.value || "";
+			const teamVal = isAllValue(document.getElementById("downloadTeamFilter")?.value) ? "" : (document.getElementById("downloadTeamFilter")?.value || "");
+			const projVal = isAllValue(document.getElementById("downloadProjectFilter")?.value) ? "" : (document.getElementById("downloadProjectFilter")?.value || "");
+			const statusVal = isAllValue(document.getElementById("downloadStatusFilter")?.value) ? "" : (document.getElementById("downloadStatusFilter")?.value || "");
 			const fromVal = document.getElementById("downloadFromDate")?.value || "";
 			const toVal = document.getElementById("downloadToDate")?.value || "";
-			const hasFilter = !!(teamVal || projVal || statusVal || fromVal || toVal);
+			// Raw values (incl. "All") count as an intentional filter choice
+			const hasFilter = !!(
+				(document.getElementById("downloadTeamFilter")?.value || "").trim() ||
+				(document.getElementById("downloadProjectFilter")?.value || "").trim() ||
+				(document.getElementById("downloadStatusFilter")?.value || "").trim() ||
+				fromVal || toVal
+			);
 			const isPopupOpen = downloadPopupModal?.classList.contains("open");
 			// If no filter and we have bulk result and popup not open, download bulk results
 			if (lastBulkInsertResult && !hasFilter && !isPopupOpen) {
@@ -1310,6 +1329,34 @@ function getColumnCount() {
 		});
 		["downloadFromDate","downloadToDate"].forEach((id) => {
 			document.getElementById(id)?.addEventListener("change", updateDownloadPopupInfo);
+		});
+		function updateAllDateBtnState() {
+			const from = document.getElementById("downloadFromDate")?.value || "";
+			const to = document.getElementById("downloadToDate")?.value || "";
+			const btn = document.getElementById("downloadAllDateBtn");
+			const hint = document.getElementById("downloadAllDateHint");
+			const allMode = !from && !to;
+			if (btn) {
+				btn.style.background = allMode ? "#eff6ff" : "#fff";
+				btn.style.borderColor = allMode ? "#3b82f6" : "#e2e8f0";
+				btn.style.color = allMode ? "#1d4ed8" : "#475569";
+			}
+			if (hint) {
+				hint.innerHTML = allMode
+					? '<b style="color:#1d4ed8;">All Date ✓</b> — no date filter, downloading all tasks'
+					: `Date filter active (${from} → ${to})`;
+			}
+		}
+		document.getElementById("downloadAllDateBtn")?.addEventListener("click", () => {
+			const from = document.getElementById("downloadFromDate");
+			const to = document.getElementById("downloadToDate");
+			if (from) from.value = "";
+			if (to) to.value = "";
+			updateAllDateBtnState();
+			updateDownloadPopupInfo();
+		});
+		["downloadFromDate","downloadToDate"].forEach((id) => {
+			document.getElementById(id)?.addEventListener("change", () => { updateAllDateBtnState(); updateDownloadPopupInfo(); });
 		});
 
 		bulkUploadArea?.addEventListener("click", () => bulkFileInput?.click());
