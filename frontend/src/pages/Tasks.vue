@@ -210,7 +210,7 @@ const userImage = 'https://avatars.githubusercontent.com/u/499550?v=4'
 const currentUserEmail = ref('')
 
 // Active status tab filter
-const statusTab = ref('All')
+const statusTab = ref('Pending')
 
 const STORAGE_KEY_ASSIGNED_TO_ME = 'taskflow_assigned_to_me'
 
@@ -436,7 +436,6 @@ const sortKey = ref('modified')
 const sortOrder = ref('desc')
 const taskSearch = ref('')
 const taskSearchInput = ref(null)
-const isSearchFocused = ref(false)
 
 function handleSortChange({ key, order }) {
   sortKey.value = key
@@ -635,17 +634,18 @@ const getPriorityTextClass = (priority) => {
   }
 }
 
-// Reactive status tab options with counts for each status
+// Status filter groups shown in the task list filter bar.
+// Cancelled tasks are intentionally not part of any group.
+const STATUS_GROUPS = {
+  Pending: ['Open', 'In Progress', 'Review', 'On Hold', 'Overdue'],
+  Completed: ['Completed'],
+}
+
+// Reactive status tab options with counts for each status group
 const statusOptions = computed(() => {
   const counts = {
-    All: 0,
-    Open: 0,
-    'In Progress': 0,
-    Review: 0,
-    'On Hold': 0,
+    Pending: 0,
     Completed: 0,
-    Cancelled: 0,
-    Overdue: 0,
   }
 
   let baseTasks = tasks.value
@@ -659,24 +659,18 @@ const statusOptions = computed(() => {
     baseTasks = baseTasks.filter((t) => selectedProjects.value.includes(t.project))
   }
 
-  counts.All = baseTasks.length
-
   baseTasks.forEach((t) => {
     const s = t.status || 'Open'
-    if (counts[s] !== undefined) {
-      counts[s]++
+    if (STATUS_GROUPS.Pending.includes(s)) {
+      counts.Pending++
+    } else if (STATUS_GROUPS.Completed.includes(s)) {
+      counts.Completed++
     }
   })
 
   return [
-    { label: `All (${counts.All})`, value: 'All' },
-    { label: `Open (${counts.Open})`, value: 'Open' },
-    { label: `In Progress (${counts['In Progress']})`, value: 'In Progress' },
-    { label: `Review (${counts.Review})`, value: 'Review' },
-    { label: `On Hold (${counts['On Hold']})`, value: 'On Hold' },
+    { label: `Pending (${counts.Pending})`, value: 'Pending' },
     { label: `Completed (${counts.Completed})`, value: 'Completed' },
-    { label: `Cancelled (${counts.Cancelled})`, value: 'Cancelled' },
-    { label: `Overdue (${counts.Overdue})`, value: 'Overdue' },
   ]
 })
 
@@ -693,8 +687,9 @@ const visibleTasks = computed(() => {
     list = list.filter((t) => selectedProjects.value.includes(t.project))
   }
 
-  if (statusTab.value && statusTab.value !== 'All') {
-    list = list.filter((t) => t.status === statusTab.value)
+  const group = STATUS_GROUPS[statusTab.value]
+  if (group) {
+    list = list.filter((t) => group.includes(t.status))
   }
 
   // Smart search — title, id, project, status, priority, assigned_to, team
@@ -2374,31 +2369,37 @@ onUnmounted(() => {
           <Breadcrumbs :items="currentBreadcrumbs" />
 
           <!-- Smart Search (only in Task section) -->
-          <div
-            v-if="activeSection === 'Task'"
-            class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-gray-2 transition-all duration-200"
-            :class="isSearchFocused || taskSearch ? 'w-56' : 'w-36'"
-          >
-            <Search class="size-3.5 text-ink-gray-4 shrink-0" />
-            <input
+          <div v-if="activeSection === 'Task'" role="search">
+            <TextInput
               ref="taskSearchInput"
               v-model="taskSearch"
-              type="text"
-              placeholder="Search tasks..."
-              class="flex-1 bg-transparent outline-none text-xs text-ink-gray-7 placeholder:text-ink-gray-4 min-w-0"
-              @focus="isSearchFocused = true"
-              @blur="isSearchFocused = false"
-              @keydown.escape="taskSearch = ''; taskSearchInput?.blur()"
-            />
-            <button
-              v-if="taskSearch"
-              type="button"
-              class="shrink-0 text-ink-gray-4 hover:text-ink-gray-7 transition-colors cursor-pointer"
-              @click="taskSearch = ''; taskSearchInput?.focus()"
+              type="search"
+              size="sm"
+              class="w-56 [&_input::-webkit-search-cancel-button]:appearance-none"
+              placeholder="Search tasks"
+              aria-label="Search tasks"
+              @keydown.esc="taskSearch = ''"
             >
-              <XIcon class="size-3" />
-            </button>
-            <kbd v-else class="shrink-0 text-[10px] font-mono text-ink-gray-3">/</kbd>
+              <template #prefix>
+                <Search class="size-3.5 text-ink-gray-5" aria-hidden="true" />
+              </template>
+              <template #suffix>
+                <button
+                  v-if="taskSearch"
+                  type="button"
+                  class="text-ink-gray-4 hover:text-ink-gray-7 transition-colors cursor-pointer"
+                  aria-label="Clear search"
+                  @click="taskSearch = ''; taskSearchInput?.focus()"
+                >
+                  <XIcon class="size-3" aria-hidden="true" />
+                </button>
+                <kbd
+                  v-else
+                  class="text-[10px] font-mono text-ink-gray-3"
+                  aria-hidden="true"
+                >/</kbd>
+              </template>
+            </TextInput>
           </div>
           <!-- Timesheet View Toggle: Timesheet | Reports -->
           <div
