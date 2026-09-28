@@ -6,3 +6,5 @@ tags
 node_modules
 __pycache__
 .aider*
+.opencode*
+opencode.json
