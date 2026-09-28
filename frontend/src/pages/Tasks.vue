@@ -64,6 +64,7 @@ import {
   Archive,
   UserPlus,
   MoreHorizontal,
+  Download,
   LayoutDashboard,
   UserCheck,
   Moon,
@@ -106,6 +107,7 @@ import TimesheetEntryModal from '@/components/TimesheetEntryModal.vue'
 import TimesheetMasterReport from '@/components/TimesheetMasterReport.vue'
 import { SECTIONS, buildViewPath, cleanPath, parseView } from '@/utils/url'
 import { writeToClipboard } from '@/utils/clipboard'
+import { downloadCsv } from '@/utils/csv'
 
 // --- State & Data ---
 const MAX_VISIBLE = 5
@@ -872,6 +874,70 @@ function handleLoadMore() {
 
 function handleLoadAll() {
   tasksDisplayLimit.value = visibleTasks.value.length
+}
+
+// --- Task CSV report ---
+
+// Which task field feeds each table column. Keyed by the column `key` the
+// table already uses, so the report tracks the list: a hidden column leaves
+// the export too, and a new column is one entry here.
+const taskReportFields = {
+  id: (t) => t.id,
+  title: (t) => t.title,
+  project: (t) => t.project,
+  status: (t) => t.status,
+  team: (t) => t.team,
+  priority: (t) => t.priority,
+  // ";" not "," so a multi-assignee row cannot be read as extra columns
+  // before the escaping pass ever sees it.
+  assigned_to: (t) =>
+    (Array.isArray(t.assignees) ? t.assignees : [])
+      .map((a) => a?.name)
+      .filter(Boolean)
+      .join('; ') || t.assigned_to_name || '',
+  // The bootstrap payload calls this `due`, a just-saved task `due_date`.
+  // Accept both, or the column is blank for everything loaded on refresh.
+  due_date: (t) => (t.due_date || t.due ? formatDueDate(t.due_date || t.due) : ''),
+  // The raw timestamp, not the "3h ago" shown on screen: a report has to stay
+  // true after it is read, and Excel needs a value it can sort on.
+  modified: (t) => t.modified,
+}
+
+const taskReportColumns = computed(() =>
+  tableColumns.filter((col) => col.visible !== false && taskReportFields[col.key])
+)
+
+const canDownloadTaskReport = computed(() => tasks.value.length > 0)
+
+function downloadTaskReport() {
+  const columns = taskReportColumns.value
+  // The report is the whole permission-scoped set, not the filtered list:
+  // `tasks` is everything the bootstrap returned for this user (every status,
+  // every project and team they can see), while `visibleTasks` is narrowed by
+  // the status tab, the team/project selects and the column filters. A report
+  // has to be complete, so the screen's filters are deliberately not applied.
+  const rows = tasks.value
+
+  if (!columns.length || !rows.length) {
+    toast.error('No tasks to export')
+    return
+  }
+
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`
+
+  const ok = downloadCsv(
+    `Task_Report_${stamp}.csv`,
+    columns.map((c) => c.label),
+    rows.map((t) => columns.map((c) => taskReportFields[c.key](t)))
+  )
+
+  if (ok) {
+    toast.success(`Exported ${rows.length} ${rows.length === 1 ? 'task' : 'tasks'} to CSV`)
+  } else {
+    toast.error('Could not generate the CSV file')
+  }
 }
 
 // --- 2. Project List View State & Columns ---
@@ -2584,6 +2650,25 @@ onUnmounted(() => {
                 class="size-4 text-ink-gray-7 hover:text-gray-950 transition-colors"
                 :class="{ 'animate-spin': loading }"
               />
+            </template>
+          </Button>
+
+          <!-- Download Report: exports every task the user can see, all statuses
+               included. The status tab, team/project selects and column filters
+               narrow the list on screen but are deliberately not applied here. -->
+          <Button
+            v-if="activeSection === 'Task' && !detailModalOpen"
+            variant="ghost"
+            size="sm"
+            label="Download Report"
+            :disabled="!canDownloadTaskReport"
+            :title="canDownloadTaskReport
+              ? `Download all ${tasks.length} tasks as CSV`
+              : 'No tasks available to export'"
+            @click="downloadTaskReport"
+          >
+            <template #prefix>
+              <Download class="size-4 text-ink-gray-7" />
             </template>
           </Button>
 
