@@ -135,45 +135,53 @@
 
               <!-- Task Type & Status -->
               <div class="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Task Type</label>
-                  <div class="relative flex items-center">
-                    <select
-                      v-model="form.task_type"
-                      class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 hover:border-outline-gray-3 dark:hover:border-gray-600 rounded-lg pl-7 pr-7 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition appearance-none cursor-pointer"
-                    >
-                      <option v-for="t in taskTypes" :key="t" :value="t" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ t }}</option>
-                    </select>
+                <FormControl
+                  v-model="form.task_type"
+                  type="select"
+                  label="Task Type"
+                  placeholder="Select task type"
+                  :options="taskTypeOptions"
+                >
+                  <template #item-prefix="{ item }">
                     <component
-                      :is="getTaskTypeIcon(form.task_type)"
-                      class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
-                      :class="getTaskTypeIconClass(form.task_type)"
+                      :is="getTaskTypeIcon(item.value)"
+                      class="size-3.5 shrink-0"
+                      :class="getTaskTypeIconClass(item.value)"
                     />
-                    <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none text-gray-400 dark:text-gray-500" />
-                  </div>
-                </div>
+                  </template>
+                </FormControl>
 
-                <div>
-                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Status</label>
-                  <select
-                    v-model="form.status"
-                    class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                  >
-                    <option v-for="s in statuses" :key="s" :value="s" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ s }}</option>
-                  </select>
-                </div>
+                <FormControl
+                  v-model="form.status"
+                  type="select"
+                  label="Status"
+                  placeholder="Select status"
+                  :options="statusOptions"
+                >
+                  <template #item-prefix="{ item }">
+                    <span
+                      class="size-2 shrink-0 rounded-full"
+                      :class="getStatusDotClass(item.value)"
+                    />
+                  </template>
+                </FormControl>
               </div>
 
               <!-- Priority -->
-              <div>
-                <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Priority</label>
-                <select
-                  v-model="form.priority"
-                  class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
-                >
-                  <option v-for="p in priorities" :key="p" :value="p" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ p }}</option>
-                </select>
-              </div>
+              <FormControl
+                v-model="form.priority"
+                type="select"
+                label="Priority"
+                placeholder="Select priority"
+                :options="priorityOptions"
+              >
+                <template #item-prefix="{ item }">
+                  <span
+                    class="size-2 shrink-0 rounded-full"
+                    :class="getPriorityDotClass(item.value)"
+                  />
+                </template>
+              </FormControl>
 
               <!-- Assigned To -->
               <div>
@@ -376,7 +384,7 @@
 </template>
 
 <script>
-import { MultiSelect, DatePicker, Combobox, Button, toast } from 'frappe-ui'
+import { MultiSelect, DatePicker, Combobox, Button, FormControl, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
 import { saveTask, getErrorMessage, fetchTeamMembers, fetchTaskflowSettings } from '../data/api'
 import FrappeRichEditor from './FrappeRichEditor.vue'
@@ -389,6 +397,7 @@ export default {
     DatePicker,
     Combobox,
     MultiSelect,
+    FormControl,
     FrappeRichEditor,
     Calendar,
     Bug,
@@ -498,6 +507,18 @@ export default {
     this.loadTaskflowSettings()
   },
   computed: {
+    // frappe-ui Select needs option objects; the plain string prop lists above
+    // stay the single source of truth.
+    statusOptions() {
+      return (this.statuses || []).map((s) => ({ label: s, value: s }))
+    },
+    priorityOptions() {
+      return (this.priorities || []).map((p) => ({ label: p, value: p }))
+    },
+    taskTypeOptions() {
+      return (this.taskTypes || []).map((t) => ({ label: t, value: t }))
+    },
+
     projectOptions() {
       const q = (this.projectSearchQuery || '').trim().toLowerCase()
       let list = this.projects || []
@@ -669,6 +690,36 @@ export default {
       if (type === 'Bug') return 'text-rose-600'
       if (type === 'Customization Request') return 'text-purple-600'
       return 'text-[#417c7d]'
+    },
+    getStatusDotClass(status) {
+      switch (status) {
+        case 'Completed':
+          return 'bg-emerald-500'
+        case 'Overdue':
+          return 'bg-rose-500'
+        case 'On Hold':
+          return 'bg-blue-500'
+        case 'In Progress':
+          return 'bg-indigo-500'
+        case 'Review':
+          return 'bg-purple-500'
+        default:
+          return 'bg-slate-400'
+      }
+    },
+    getPriorityDotClass(priority) {
+      switch (priority) {
+        case 'Critical':
+          return 'bg-rose-500'
+        case 'High':
+          return 'bg-orange-500'
+        case 'Medium':
+          return 'bg-amber-400'
+        case 'Low':
+          return 'bg-slate-400'
+        default:
+          return 'bg-slate-400'
+      }
     },
   },
 }

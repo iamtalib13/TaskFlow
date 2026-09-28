@@ -1,14 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
-const getBasePath = () => {
-  if (typeof window === 'undefined') return '/'
-  const p = window.location.pathname
-  if (p.startsWith('/tasks')) return '/tasks'
-  if (p.startsWith('/mytasks')) return '/mytasks'
-  if (p.startsWith('/taskflow')) return '/taskflow'
-  if (p.startsWith('/frontend')) return '/frontend'
-  return '/'
-}
+import { getAppBase } from '@/utils/url'
 
 const routes = [
   {
@@ -17,17 +8,25 @@ const routes = [
     component: () => import('@/pages/Tasks.vue'),
   },
   {
-    path: '/tasks',
-    redirect: '/',
+    path: '/task/:id',
+    name: 'TaskDetail',
+    component: () => import('@/pages/Tasks.vue'),
   },
+  // Every path renders the page: the active section and the deep-linked task
+  // live in the URL, and the page reads them itself. A catch-all *redirect*
+  // would make vue-router rewrite the address bar on load.
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/',
+    name: 'Section',
+    component: () => import('@/pages/Tasks.vue'),
   },
 ]
 
 const router = createRouter({
-  history: createWebHistory(getBasePath()),
+  // Base must be slash-free, otherwise links resolve to `/taskflow//task/<id>`
+  history: createWebHistory(
+    typeof window === 'undefined' ? '/' : getAppBase(window.location.pathname) || '/'
+  ),
   routes,
 })
 

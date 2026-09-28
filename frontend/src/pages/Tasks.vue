@@ -60,6 +60,7 @@ import {
   LogOut,
   Link as LinkIcon,
   Check,
+  Copy,
   Archive,
   UserPlus,
   MoreHorizontal,
@@ -103,6 +104,8 @@ import {
 import TimesheetCalendar from '@/components/TimesheetCalendar.vue'
 import TimesheetEntryModal from '@/components/TimesheetEntryModal.vue'
 import TimesheetMasterReport from '@/components/TimesheetMasterReport.vue'
+import { SECTIONS, buildViewPath, cleanPath, parseView } from '@/utils/url'
+import { writeToClipboard } from '@/utils/clipboard'
 
 // --- State & Data ---
 const MAX_VISIBLE = 5
@@ -126,26 +129,16 @@ const allProjectsSelected = computed(() => !selectedProject.value)
 const activeSpace = ref('All Tasks')
 
 // Active Navigation: ONLY Task, Timesheet, Project, Team
-const VALID_SECTIONS = ['Task', 'Timesheet', 'Project', 'Team']
-const getSectionFromURL = () => {
-  try {
-    const params = new URLSearchParams(window.location.search)
-    const section = params.get('section')
-    if (section && VALID_SECTIONS.includes(section)) return section
-  } catch {}
-  return 'Task'
-}
+// The section is a path segment (`/taskflow/timesheet`), not a query param.
+const getSectionFromURL = () => parseView(window.location.pathname).section
 const activeSection = ref(getSectionFromURL())
 
-// Redirect Team to Task if not System Manager
+// Redirect Team to Task if not System Manager.
+// The `activeSection` watcher below owns the section query param, so a reset
+// here re-triggers that watcher and the URL is rewritten from there.
 function validateSection() {
   if (activeSection.value === 'Team' && !isSystemManager.value) {
     activeSection.value = 'Task'
-    try {
-      const url = new URL(window.location.href)
-      url.searchParams.set('section', 'Task')
-      window.history.replaceState(null, '', url.toString())
-    } catch {}
   }
 }
 
@@ -178,13 +171,10 @@ watch(isSidebarCollapsed, (val) => {
   }
 })
 
-// Sync activeSection with URL query param
+// Keep the address bar in step with the active section. Uses replaceState so
+// switching sections in the sidebar does not flood the back button.
 watch(activeSection, (val) => {
-  try {
-    const url = new URL(window.location.href)
-    url.searchParams.set('section', val)
-    window.history.replaceState(null, '', url.toString())
-  } catch {}
+  syncURL(false)
   validateSection()
   if (val === 'Timesheet') {
     loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
@@ -194,10 +184,13 @@ watch(activeSection, (val) => {
 // Handle browser back/forward
 const onPopState = () => {
   const section = getSectionFromURL()
-  if (VALID_SECTIONS.includes(section)) {
+  if (SECTIONS.includes(section)) {
     activeSection.value = section
   }
   validateSection()
+  openTaskFromURL()
+  // Normalise the entry URL without adding a history entry
+  syncURL(false)
 }
 
 // User Profile Settings State
@@ -293,6 +286,9 @@ const navItems = computed(() => {
   if (selectedProjects.value && selectedProjects.value.length > 0) {
     taskCount = taskCount.filter((t) => selectedProjects.value.includes(t.project))
   }
+  if (selectedTeams.value && selectedTeams.value.length > 0) {
+    taskCount = taskCount.filter((t) => t.team && selectedTeams.value.includes(t.team))
+  }
 
   return [
     { id: 'Task', label: 'Task', icon: CheckSquare, badge: taskCount.length },
@@ -303,31 +299,39 @@ const navItems = computed(() => {
 })
 
 const currentBreadcrumbs = computed(() => {
-  if (activeSection.value === 'Timesheet') {
-    if (timesheetViewMode.value === 'Reports') {
-      return [
-        { label: 'Workspace', route: '#' },
-        { label: 'Timesheet', route: '#', onClick: () => { timesheetViewMode.value = 'Timesheet' } },
-        { label: 'Reports', route: '#' },
-      ]
-    }
+  // Task form open: Task / <task id>.
+  // Clicking Task returns to the list, clicking the id copies it. No `route` on
+  // purpose: frappe-ui renders an item with a `route` as a router-link, which
+  // would navigate (and leave a stray `#` in the URL) instead of just running
+  // the onClick.
+  if (detailModalOpen.value && activeTask.value) {
+    const task = activeTask.value
     return [
-      { label: 'Workspace', route: '#' },
-      { label: 'Timesheet', route: '#' },
+      { label: 'Task', onClick: () => { detailModalOpen.value = false; activeTask.value = null } },
+      { label: task.id, copyable: true, onClick: () => copyTaskId(task) },
     ]
   }
 
-  const sectionLabel = {
-    Task: 'Tasks',
-    Project: 'Projects',
-    Team: 'Team',
-  }[activeSection.value] || activeSection.value
+  // Section ids are already the singular labels (SECTIONS / navItems)
+  if (activeSection.value === 'Timesheet' && timesheetViewMode.value === 'Reports') {
+    return [
+      { label: 'Timesheet', onClick: () => { timesheetViewMode.value = 'Timesheet' } },
+      { label: 'Reports' },
+    ]
+  }
 
   return [
-    { label: 'Workspace', route: '#' },
-    { label: sectionLabel, route: '#' },
+    { label: activeSection.value },
   ]
 })
+
+// Sidebar navigation: switching section also closes an open task form,
+// so clicking "Task" always lands back on the list.
+const selectSection = (id) => {
+  activeSection.value = id
+  detailModalOpen.value = false
+  activeTask.value = null
+}
 
 // User Menu
 const userMenu = [
@@ -349,31 +353,118 @@ function showToast(msg) {
   setTimeout(() => { toastVisible.value = false }, 3000)
 }
 
-// Multi-select project filter
+
+// Multi-select team filter. Named taskTeamOptions because `teamOptions` is
+// already the Team section's dropdown (system-manager screen).
+const selectedTeams = ref([])
+
+const taskTeamOptions = computed(() => {
+  const set = new Set()
+  if (Array.isArray(tasks.value)) {
+    tasks.value.forEach((t) => {
+      if (t.team) set.add(t.team)
+    })
+  }
+  return Array.from(set)
+    .sort((a, b) => a.localeCompare(b))
+    .map((t) => ({ value: t, label: t }))
+})
+
+// Multi-select project filter, narrowed by the team selection above.
 const selectedProjects = ref([])
 
 const projectOptions = computed(() => {
+  const teams = selectedTeams.value && selectedTeams.value.length > 0 ? selectedTeams.value : null
   const set = new Set()
-  if (Array.isArray(projects.value)) {
+
+  if (Array.isArray(tasks.value)) {
+    tasks.value.forEach((t) => {
+      if (!t.project) return
+      // With teams chosen, only offer projects those teams actually have work
+      // in; a project from another team would just yield an empty list.
+      if (teams && !(t.team && teams.includes(t.team))) return
+      set.add(t.project)
+    })
+  }
+
+  // Only with no team filter do we offer the whole project list, so projects
+  // that have no tasks yet stay selectable.
+  if (!teams && Array.isArray(projects.value)) {
     projects.value.forEach((p) => {
       const val = p.name || p.display_name
       if (val) set.add(val)
     })
   }
-  if (Array.isArray(tasks.value)) {
-    tasks.value.forEach((t) => {
-      if (t.project) set.add(t.project)
-    })
+
+  // Keep already-chosen projects listed even when they fall outside the current
+  // team selection, so their chip stays visible and removable instead of
+  // silently filtering the list to nothing.
+  if (Array.isArray(selectedProjects.value)) {
+    selectedProjects.value.forEach((p) => set.add(p))
   }
-  return Array.from(set).map((p) => ({
-    value: p,
-    label: p,
-  }))
+
+  return Array.from(set).map((p) => ({ value: p, label: p }))
 })
 
 // Modals
 const detailModalOpen = ref(false)
 const activeTask = ref(null)
+
+// The address bar is written from exactly one place, derived from state, so the
+// section and the task can never disagree with each other or with the path:
+//   /taskflow                 list view
+//   /taskflow/task/<task_id>  form view
+// `buildViewPath` is idempotent, so a rewrite never accumulates stray slashes.
+const syncURL = (push = false) => {
+  try {
+    const url = new URL(window.location.href)
+    const taskId = detailModalOpen.value && activeTask.value ? activeTask.value.id : ''
+    const nextPath = buildViewPath(taskId ? 'Task' : activeSection.value, taskId, url.pathname)
+    const changed = nextPath !== cleanPath(url.pathname)
+    url.pathname = nextPath
+    url.search = '' // clean Frappe-style URL, no query string
+    window.history[changed && push ? 'pushState' : 'replaceState'](null, '', url.toString())
+  } catch {}
+}
+
+// Deep link: <base>/task/<task_id> reopens that task's form on load/refresh.
+//
+// The id has to be captured from the *raw* entry URL before syncURL() runs.
+// syncURL() derives the path from reactive state, and detailModalOpen is still
+// false on mount, so it would strip the incoming /task/<id> segment and leave
+// openTaskFromURL() with nothing to read — silently bouncing every deep link
+// (including shared task links) back to the list.
+let pendingDeepLinkTaskId = null
+
+const captureDeepLink = () => {
+  try {
+    const { taskId } = parseView(window.location.pathname)
+    if (taskId) pendingDeepLinkTaskId = taskId
+  } catch {}
+}
+
+const openTaskFromURL = () => {
+  let taskId = pendingDeepLinkTaskId
+  if (!taskId) {
+    try {
+      taskId = parseView(window.location.pathname).taskId
+    } catch {}
+  }
+  pendingDeepLinkTaskId = null
+
+  const task = taskId ? tasks.value.find((t) => t.id === taskId) : null
+  if (!task && taskId) {
+    // Either the id doesn't exist or it isn't in the user's accessible set.
+    // Say so instead of silently dropping them on the list.
+    toast.error(`Task ${taskId} could not be opened`)
+  }
+  activeTask.value = task
+  detailModalOpen.value = !!task
+}
+
+// Single sync point for the URL: covers openDetail, breadcrumb, sidebar, Escape, Cancel, delete.
+watch([detailModalOpen, () => activeTask.value?.id], () => syncURL(true))
+
 const createModalOpen = ref(false)
 const showSettings = ref(false)
 
@@ -430,21 +521,57 @@ const tableColumns = [
   { key: 'modified', label: 'MODIFIED', width: '120px', minWidth: '100px', sortable: true, visible: true },
 ]
 
+// Per-column header filters (client-side, combined with the existing filters)
+// Every sortable column gets a text filter except due_date, which is left
+// unfiltered on purpose.
+const columnFilters = ref({
+  id: '',
+  title: '',
+  project: '',
+  status: '',
+  team: '',
+  priority: '',
+  assigned_to: '',
+  modified: '',
+})
+
+function hasColumnFilters() {
+  return Object.values(columnFilters.value).some((v) => v && String(v).trim())
+}
+
+function matchesText(needle, value) {
+  if (!needle || !String(needle).trim()) return true
+  return String(value || '').toLowerCase().includes(String(needle).trim().toLowerCase())
+}
+
+function assigneeText(t) {
+  const names = [t.assigned_to_name, t.assigned_to]
+  if (Array.isArray(t.assignees)) {
+    t.assignees.forEach((a) => names.push(typeof a === 'string' ? a : a?.full_name || a?.name || ''))
+  }
+  return names.filter(Boolean).join(' ')
+}
+
+// The MODIFIED column shows a relative label ("Just now", "3h ago"), so match
+// against that plus the raw date — otherwise typing what is on screen finds
+// nothing.
+function modifiedSearchText(t) {
+  return [t.modified_pretty, formatPrettyDate(t), t.modified].filter(Boolean).join(' ')
+}
+
 const selectedRowKeys = ref([])
 const tasksDisplayLimit = ref(20)
 const sortKey = ref('modified')
 const sortOrder = ref('desc')
-const taskSearch = ref('')
-const taskSearchInput = ref(null)
 
 function handleSortChange({ key, order }) {
   sortKey.value = key
   sortOrder.value = order
 }
 
-watch([statusTab, selectedProjects, showAssignedToMe, taskSearch], () => {
+watch([statusTab, selectedProjects, selectedTeams, showAssignedToMe, columnFilters], () => {
   tasksDisplayLimit.value = 20
-})
+}, { deep: true })
 
 function formatDueDate(dateVal) {
   if (!dateVal) return '—'
@@ -658,6 +785,9 @@ const statusOptions = computed(() => {
   if (selectedProjects.value && selectedProjects.value.length > 0) {
     baseTasks = baseTasks.filter((t) => selectedProjects.value.includes(t.project))
   }
+  if (selectedTeams.value && selectedTeams.value.length > 0) {
+    baseTasks = baseTasks.filter((t) => t.team && selectedTeams.value.includes(t.team))
+  }
 
   baseTasks.forEach((t) => {
     const s = t.status || 'Open'
@@ -686,34 +816,28 @@ const visibleTasks = computed(() => {
   if (selectedProjects.value && selectedProjects.value.length > 0) {
     list = list.filter((t) => selectedProjects.value.includes(t.project))
   }
+  if (selectedTeams.value && selectedTeams.value.length > 0) {
+    list = list.filter((t) => t.team && selectedTeams.value.includes(t.team))
+  }
 
   const group = STATUS_GROUPS[statusTab.value]
   if (group) {
     list = list.filter((t) => group.includes(t.status))
   }
 
-  // Smart search — title, id, project, status, priority, assigned_to, team
-  const q = taskSearch.value.trim().toLowerCase()
-  if (q) {
-    const tokens = q.split(/\s+/).filter(Boolean)
+  // Per-column header filters
+  if (hasColumnFilters()) {
+    const cf = columnFilters.value
     list = list.filter((t) => {
-      const assigneesText = (t.assignees || []).map((a) => a.name || '').join(' ')
-      const fullText = [
-        t.title,
-        t.id,
-        t.project,
-        t.status,
-        t.priority,
-        t.assigned_to,
-        t.team,
-        t.owner,
-        assigneesText,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      return tokens.every((token) => fullText.includes(token))
+      if (!matchesText(cf.id, t.id)) return false
+      if (!matchesText(cf.title, t.title)) return false
+      if (!matchesText(cf.project, t.project)) return false
+      if (!matchesText(cf.status, t.status)) return false
+      if (!matchesText(cf.team, t.team)) return false
+      if (!matchesText(cf.priority, t.priority)) return false
+      if (!matchesText(cf.assigned_to, assigneeText(t))) return false
+      if (!matchesText(cf.modified, modifiedSearchText(t))) return false
+      return true
     })
   }
 
@@ -1589,6 +1713,20 @@ function openDetail(task) {
   detailModalOpen.value = true
 }
 
+// Copy is available from the task form's breadcrumb, not from the list cell —
+// clicking an id in the list opens that task's form.
+async function copyTaskId(task) {
+  const id = task?.id
+  if (!id) return
+  try {
+    await writeToClipboard(id)
+    toast.success(`Task ID "${id}" copied`)
+  } catch (e) {
+    console.error('Failed to copy task ID', e)
+    toast.error('Could not copy task ID')
+  }
+}
+
 async function onSaveTask(updatedTask) {
   const now = new Date()
   updatedTask.modified = now.toISOString()
@@ -2181,7 +2319,14 @@ onMounted(async () => {
   window.addEventListener('popstate', onPopState)
   // Keyboard shortcut: press '/' to focus search (when not typing in an input)
   window.addEventListener('keydown', handleGlobalKeydown)
+  // Grab an incoming /task/<id> deep link *before* repairing the URL, otherwise
+  // syncURL() would erase the id we're about to open.
+  captureDeepLink()
+  // Repair a sloppy entry URL (e.g. `/taskflow//task/TFT-00330?section=Task` or a
+  // trailing slash) before anything reads it.
+  syncURL(false)
   await loadData()
+  openTaskFromURL()
   if (isSystemManager.value) {
     loadTeams()
   }
@@ -2192,6 +2337,11 @@ onMounted(async () => {
 function handleGlobalKeydown(e) {
   // Escape shortcut to close modals
   if (e.key === 'Escape') {
+    if (detailModalOpen.value) {
+      detailModalOpen.value = false
+      activeTask.value = null
+      return
+    }
     if (memberModalOpen.value) {
       // If employee search dropdown is open inside modal, close that first, otherwise close modal
       if (empDropdownOpen.value) {
@@ -2207,15 +2357,6 @@ function handleGlobalKeydown(e) {
     }
   }
 
-  // '/' shortcut — focus search in Task section
-  if (
-    e.key === '/' &&
-    activeSection.value === 'Task' &&
-    !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)
-  ) {
-    e.preventDefault()
-    taskSearchInput.value?.focus()
-  }
 }
 
 onUnmounted(() => {
@@ -2269,7 +2410,7 @@ onUnmounted(() => {
                       ? 'bg-surface-gray-3 dark:bg-neutral-800 text-gray-950 dark:text-white font-semibold shadow-xs border border-outline-gray-2/80 dark:border-neutral-700'
                       : 'text-ink-gray-6 dark:text-neutral-400 hover:bg-surface-gray-2 dark:hover:bg-neutral-800/60 hover:text-ink-gray-9 dark:hover:text-white border border-transparent'
                   ]"
-                  @click="activeSection = item.id"
+                  @click="selectSection(item.id)"
                 >
                   <component
                     :is="item.icon"
@@ -2302,7 +2443,7 @@ onUnmounted(() => {
                       ? '!bg-surface-gray-3 dark:!bg-neutral-800 !text-gray-950 dark:!text-white font-semibold shadow-xs border border-outline-gray-2/80 dark:border-neutral-700'
                       : 'text-ink-gray-6 dark:text-neutral-300 hover:!bg-surface-gray-2 dark:hover:!bg-neutral-800/60 hover:!text-ink-gray-9 dark:hover:!text-white border border-transparent'
                   ]"
-                  @click="activeSection = item.id"
+                  @click="selectSection(item.id)"
                 >
                   <template #prefix>
                     <component
@@ -2331,8 +2472,28 @@ onUnmounted(() => {
             </nav>
           </ScrollArea>
 
-          <!-- Sidebar Footer (User Account & Settings) -->
+          <!-- Sidebar Footer (Theme Toggle & User Account) -->
           <div class="p-2 border-t border-outline-gray-1 dark:border-neutral-800 bg-surface-base">
+            <!-- Theme Toggle -->
+            <button
+              type="button"
+              class="flex w-full items-center gap-2.5 rounded-lg p-1.5 mb-1 hover:bg-surface-gray-1 dark:hover:bg-neutral-800 transition text-left cursor-pointer"
+              :class="{ 'justify-center': isSidebarCollapsed }"
+              :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+              @click="toggleTheme"
+            >
+              <component
+                :is="isDark ? Sun : Moon"
+                class="size-4 shrink-0 text-ink-gray-5 dark:text-neutral-400"
+              />
+              <span
+                v-if="!isSidebarCollapsed"
+                class="flex-1 text-sm font-medium text-ink-gray-6 dark:text-neutral-300"
+              >
+                {{ isDark ? 'Light mode' : 'Dark mode' }}
+              </span>
+            </button>
+
             <Dropdown :options="userMenu">
               <template #trigger="{ open }">
                 <button
@@ -2366,41 +2527,20 @@ onUnmounted(() => {
       <PageHeader class="border-b border-outline-gray-2 bg-surface-base">
         <div class="flex items-center gap-3 flex-1 min-w-0">
           <!-- Breadcrumbs for current section -->
-          <Breadcrumbs :items="currentBreadcrumbs" />
+          <Breadcrumbs :items="currentBreadcrumbs">
+            <template #suffix="{ item }">
+              <Copy
+                v-if="item.copyable"
+                class="size-3 shrink-0 text-ink-gray-4"
+                aria-hidden="true"
+              />
+            </template>
+          </Breadcrumbs>
 
-          <!-- Smart Search (only in Task section) -->
-          <div v-if="activeSection === 'Task'" role="search">
-            <TextInput
-              ref="taskSearchInput"
-              v-model="taskSearch"
-              type="search"
-              size="sm"
-              class="w-56 [&_input::-webkit-search-cancel-button]:appearance-none"
-              placeholder="Search tasks"
-              aria-label="Search tasks"
-              @keydown.esc="taskSearch = ''"
-            >
-              <template #prefix>
-                <Search class="size-3.5 text-ink-gray-5" aria-hidden="true" />
-              </template>
-              <template #suffix>
-                <button
-                  v-if="taskSearch"
-                  type="button"
-                  class="text-ink-gray-4 hover:text-ink-gray-7 transition-colors cursor-pointer"
-                  aria-label="Clear search"
-                  @click="taskSearch = ''; taskSearchInput?.focus()"
-                >
-                  <XIcon class="size-3" aria-hidden="true" />
-                </button>
-                <kbd
-                  v-else
-                  class="text-[10px] font-mono text-ink-gray-3"
-                  aria-hidden="true"
-                >/</kbd>
-              </template>
-            </TextInput>
-          </div>
+          <!-- Task form primary controls (Task type / Status / Priority) teleport in here.
+               Always rendered so the Teleport target exists before the form mounts. -->
+          <div id="task-form-header-slot" class="flex items-center gap-1.5 sm:gap-2 shrink-0"></div>
+
           <!-- Timesheet View Toggle: Timesheet | Reports -->
           <div
             v-if="activeSection === 'Timesheet'"
@@ -2426,18 +2566,6 @@ onUnmounted(() => {
         </div>
 
         <div class="flex items-center gap-2">
-          <!-- Theme Toggle -->
-          <Button
-            variant="ghost"
-            title="Toggle Theme"
-            @click="toggleTheme"
-          >
-            <template #icon>
-              <Moon v-if="!isDark" class="size-4 text-ink-gray-7 hover:text-ink-gray-9 transition-colors" />
-              <Sun v-else class="size-4 text-ink-gray-7 hover:text-ink-gray-9 transition-colors" />
-            </template>
-          </Button>
-          
           <!-- Page Loading Indicator -->
           <div v-if="loading" class="flex items-center gap-2 px-2 py-1 rounded bg-surface-gray-2 dark:bg-gray-800 text-ink-gray-5 dark:text-gray-400 text-xs font-medium">
             <LoadingIndicator :scale="75" />
@@ -2459,9 +2587,9 @@ onUnmounted(() => {
             </template>
           </Button>
 
-          <!-- Add Task Button (in Task view) -->
+          <!-- Add Task Button (in Task view, hidden while the task form is open) -->
           <Button
-            v-if="activeSection === 'Task'"
+            v-if="activeSection === 'Task' && !detailModalOpen"
             variant="solid"
             theme="gray"
             label="Add task"
@@ -2484,15 +2612,46 @@ onUnmounted(() => {
               <Plus class="size-4 mr-0.5" />
             </template>
           </Button>
+
+          <!-- Task form actions (autosave, Share, Delete, Cancel, Save Task) teleport in here.
+               Always rendered so the Teleport target exists before the form mounts. -->
+          <div id="task-form-actions-slot" class="flex items-center shrink-0"></div>
         </div>
       </PageHeader>
 
-      <!-- Main Body Container: Full height flex layout, no page scroll -->
-      <div class="w-full flex-1 min-h-0 flex flex-col px-3 pt-2 pb-2 overflow-hidden">
+      <!-- Main Body Container: Full height flex layout, no page scroll.
+           The padding belongs to the list views (tables need to breathe). The
+           task form goes edge-to-edge instead: with any inset here the form's
+           column dividers floated away from the page edges and started 8px
+           below the header, so they never met the header's bottom border. -->
+      <div
+        class="w-full flex-1 min-h-0 flex flex-col overflow-hidden"
+        :class="detailModalOpen ? '' : 'px-3 pt-2 pb-2'"
+      >
         <!-- 1. TASK VIEW -->
         <template v-if="activeSection === 'Task'">
+          <!-- Task Form: replaces the list (filter bar + table) while a task is open -->
+          <div v-if="detailModalOpen" class="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <TaskDetailModal
+              v-model="detailModalOpen"
+              :task="activeTask"
+              :projects="projects"
+              :teams="teams"
+              :people="people"
+              :team-members="teamMembers"
+              :statuses="statuses"
+              :priorities="priorities"
+              :current-user="currentUserEmail"
+              :on-save="onSaveTask"
+              :on-delete="onDeleteTask"
+              @save="onSaveTask"
+              @delete="onDeleteTask"
+              @close="activeTask = null"
+            />
+          </div>
+
           <!-- Sub-Header Tabs & Task Count (Locked sticky filter header) -->
-          <div class="shrink-0 pb-2 mb-2 bg-surface-base flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
+          <div v-if="!detailModalOpen" class="shrink-0 pb-2 mb-2 bg-surface-base flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
             <div class="flex items-center gap-2">
               <div class="flex items-center gap-1.5">
                 <Switch v-model="showAssignedToMe" />
@@ -2506,6 +2665,12 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center gap-3 text-xs font-medium text-ink-gray-6">
               <MultiSelect
+                v-model="selectedTeams"
+                :options="taskTeamOptions"
+                placeholder="Select Team"
+                class="w-48"
+              />
+              <MultiSelect
                 v-model="selectedProjects"
                 :options="projectOptions"
                 placeholder="Select Project"
@@ -2516,9 +2681,10 @@ onUnmounted(() => {
           </div>
 
           <!-- Tasks List Table View: Fills remaining height, rows scroll under sticky thead -->
-          <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
+          <div v-if="!detailModalOpen" class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
             <CommonListView
               v-model:selectedRows="selectedRowKeys"
+              :filter-row="true"
               :columns="tableColumns"
               :rows="paginatedTableTasks"
               :loading="loading"
@@ -2531,9 +2697,87 @@ onUnmounted(() => {
               @load-more="handleLoadMore"
               @load-all="handleLoadAll"
             >
+              <!-- Per-column header filters (search-style, matching the header search bar) -->
+              <template #header-id>
+                <div class="mt-1 w-full" @click.stop>
+                  <TextInput v-model="columnFilters.id" type="search" size="xs" class="w-full" placeholder="ID" aria-label="Filter by ID">
+                    <template #prefix>
+                      <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
+                    </template>
+                  </TextInput>
+                </div>
+              </template>
+              <template #header-title>
+                <div class="mt-1 w-full" @click.stop>
+                  <TextInput v-model="columnFilters.title" type="search" size="xs" class="w-full" placeholder="Task" aria-label="Filter by task title">
+                    <template #prefix>
+                      <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
+                    </template>
+                  </TextInput>
+                </div>
+              </template>
+              <template #header-project>
+                <div class="mt-1 w-full" @click.stop>
+                  <TextInput v-model="columnFilters.project" type="search" size="xs" class="w-full" placeholder="Project" aria-label="Filter by project">
+                    <template #prefix>
+                      <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
+                    </template>
+                  </TextInput>
+                </div>
+              </template>
+              <template #header-status>
+                <div class="mt-1 w-full" @click.stop>
+                  <TextInput v-model="columnFilters.status" type="search" size="xs" class="w-full" placeholder="Status" aria-label="Filter by status">
+                    <template #prefix>
+                      <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
+                    </template>
+                  </TextInput>
+                </div>
+              </template>
+              <template #header-team>
+                <div class="mt-1 w-full" @click.stop>
+                  <TextInput v-model="columnFilters.team" type="search" size="xs" class="w-full" placeholder="Team" aria-label="Filter by team">
+                    <template #prefix>
+                      <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
+                    </template>
+                  </TextInput>
+                </div>
+              </template>
+              <template #header-priority>
+                <div class="mt-1 w-full" @click.stop>
+                  <TextInput v-model="columnFilters.priority" type="search" size="xs" class="w-full" placeholder="Priority" aria-label="Filter by priority">
+                    <template #prefix>
+                      <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
+                    </template>
+                  </TextInput>
+                </div>
+              </template>
+              <template #header-assigned_to>
+                <div class="mt-1 w-full" @click.stop>
+                  <TextInput v-model="columnFilters.assigned_to" type="search" size="xs" class="w-full" placeholder="Assigned" aria-label="Filter by assigned to">
+                    <template #prefix>
+                      <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
+                    </template>
+                  </TextInput>
+                </div>
+              </template>
+              <template #header-modified>
+                <div class="mt-1 w-full" @click.stop>
+                  <TextInput v-model="columnFilters.modified" type="search" size="xs" class="w-full" placeholder="Modified" aria-label="Filter by modified">
+                    <template #prefix>
+                      <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
+                    </template>
+                  </TextInput>
+                </div>
+              </template>
+              <!-- due_date intentionally has no filter: the range pickers it
+                   used to carry are gone, and the user asked for no control on
+                   that column. -->
+
               <template #cell-id="{ row }">
                 <span
                   class="font-mono font-semibold text-ink-gray-8 dark:text-gray-200 hover:text-[#417c7d] hover:underline cursor-pointer"
+                  :title="`Open ${row.id}`"
                   @click.stop="openDetail(row)"
                 >
                   {{ row.id }}
@@ -3684,24 +3928,6 @@ onUnmounted(() => {
       </SettingsContent>
     </SettingsDialog>
 
-    <!-- Task Detail Modal (Backdrop Blur Glassmorphism) -->
-    <TaskDetailModal
-      v-model="detailModalOpen"
-      :task="activeTask"
-      :projects="projects"
-      :teams="teams"
-      :people="people"
-      :team-members="teamMembers"
-      :statuses="statuses"
-      :priorities="priorities"
-      :current-user="currentUserEmail"
-      :on-save="onSaveTask"
-      :on-delete="onDeleteTask"
-      @save="onSaveTask"
-      @delete="onDeleteTask"
-      @close="activeTask = null"
-    />
-
     <!-- Task Create Modal -->
     <TaskCreateModal
       v-model="createModalOpen"
@@ -4165,8 +4391,10 @@ onUnmounted(() => {
         </p>
       </div>
     </Dialog>
-  </div>
-</template>
+                </div>
+              </template>
+
+
 
 <style scoped>
 .toast-enter-active,

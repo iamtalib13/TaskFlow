@@ -14,7 +14,7 @@
     >
       <table class="w-full text-left border-collapse text-xs select-text outline-none focus:outline-none table-fixed">
         <!-- Table Header (Sticky at top) -->
-        <thead class="sticky top-0 z-30 bg-surface-gray-2/95 dark:bg-gray-900/95 backdrop-blur-xs border-b border-outline-gray-2 dark:border-gray-800 text-ink-gray-6 dark:text-gray-300 font-semibold tracking-wide uppercase text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+        <thead ref="theadRef" class="sticky top-0 z-30 bg-surface-gray-2/95 dark:bg-gray-900/95 backdrop-blur-xs border-b border-outline-gray-2 dark:border-gray-800 text-ink-gray-6 dark:text-gray-300 font-semibold tracking-wide uppercase text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
           <tr>
             <!-- Select All Checkbox -->
             <th
@@ -46,25 +46,80 @@
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
-                'px-3 py-2 whitespace-nowrap transition-colors select-none',
+                'px-3 py-2 whitespace-nowrap select-none',
                 col.sticky ? 'sticky z-40 bg-surface-gray-2 dark:bg-gray-900 border-r border-outline-gray-2/70 dark:border-gray-800' : '',
-                col.sortable ? 'cursor-pointer hover:text-ink-gray-9 dark:hover:text-white' : '',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
               ]"
-              @click="col.sortable && handleHeaderSort(col.key)"
+              :aria-sort="col.sortable ? (sortKey === col.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none') : undefined"
             >
-              <div class="inline-flex items-center gap-1.5 font-semibold text-ink-gray-6 dark:text-gray-300">
-                <span>{{ col.label }}</span>
-                <span v-if="col.sortable" class="text-gray-400 dark:text-gray-500 text-[10px]">
-                  <template v-if="sortKey === col.key">
-                    {{ sortOrder === 'asc' ? '▲' : '▼' }}
-                  </template>
-                  <template v-else>↕</template>
-                </span>
-              </div>
+              <button
+                v-if="col.sortable"
+                type="button"
+                class="group inline-flex max-w-full items-center gap-1 rounded text-[11px] font-medium text-ink-gray-6 transition-colors hover:text-ink-gray-9 focus:outline-none focus-visible:ring-1 focus-visible:ring-teal-600 dark:hover:text-white"
+                :class="col.align === 'right' ? 'flex-row-reverse' : ''"
+                :title="`Sort by ${col.label}`"
+                @click.stop="handleHeaderSort(col.key)"
+              >
+                <span class="truncate">{{ col.label }}</span>
+                <component
+                  :is="sortIndicator(col.key)"
+                  class="size-3 shrink-0 transition-colors"
+                  :class="sortKey === col.key
+                    ? 'text-teal-700 dark:text-teal-300'
+                    : 'text-ink-gray-4 opacity-0 group-hover:opacity-100 dark:text-gray-500'"
+                />
+              </button>
+              <span
+                v-else
+                class="text-[11px] font-medium text-ink-gray-6 dark:text-gray-300"
+              >{{ col.label }}</span>
             </th>
           </tr>
+
         </thead>
+
+        <!-- Column filter row. Kept in its own <tbody> rather than in <thead>,
+             but pinned directly under the label row so both stay visible while
+             the data scrolls.
+
+             Gated on an explicit prop, not on "does a header-* slot exist": the
+             Project and Team tables have columns called `team` and `modified`,
+             the same keys as the Task table's filter slots, so slot sniffing
+             gave them a phantom, empty filter row.
+
+             Each cell is sticky on both axes when the column is. The background
+             has to be on the cell itself: a sticky cell escapes the row's
+             background box and would let the scrolled rows show through. -->
+        <tbody
+          v-if="showFilterRow"
+          class="border-b border-outline-gray-1 dark:border-gray-800/80"
+        >
+          <tr>
+            <td
+              v-if="selectable"
+              :style="{ top: headHeight + 'px' }"
+              :class="[
+                'sticky z-20 bg-surface-base w-9 px-2 py-1.5',
+                isCheckboxSticky ? 'left-0' : '',
+              ]"
+            ></td>
+            <td
+              v-for="col in visibleColumns"
+              :key="'filter-' + col.key"
+              :style="{
+                width: col.width || 'auto',
+                minWidth: col.minWidth || '80px',
+                maxWidth: col.width || 'none',
+                top: headHeight + 'px',
+              }"
+              class="sticky z-20 bg-surface-base px-2 py-1.5"
+            >
+              <div class="w-full" @click.stop>
+                <slot :name="'header-' + col.key" :col="col" />
+              </div>
+            </td>
+          </tr>
+        </tbody>
 
         <!-- Table Body -->
         <tbody class="divide-y divide-gray-100 dark:divide-gray-800/80 bg-surface-base">
@@ -139,7 +194,9 @@
               v-if="selectable"
               :class="[
                 'w-9 px-2 py-2 text-center border-r border-outline-gray-1 dark:border-gray-800 transition-colors',
-                isCheckboxSticky ? 'sticky left-0 z-20' : '',
+                // Below the pinned filter row (z-20) so a row scrolled under the
+                // filters never paints on top of them.
+                isCheckboxSticky ? 'sticky left-0 z-10' : '',
                 isRowSelected(row)
                   ? '!bg-blue-50/60 dark:!bg-blue-900/30'
                   : isJustNowRow(row)
@@ -259,12 +316,16 @@
 
 <script>
 import { Skeleton, LoadingIndicator } from 'frappe-ui'
+import { ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-vue-next'
 
 export default {
   name: 'CommonListView',
   components: {
     Skeleton,
     LoadingIndicator,
+    ArrowUp,
+    ArrowDown,
+    ChevronsUpDown,
   },
   props: {
     columns: {
@@ -282,6 +343,13 @@ export default {
     selectable: {
       type: Boolean,
       default: true,
+    },
+    // Opt-in: render a filter row under the header for the columns that get a
+    // `header-<key>` slot. Off by default so tables that pass no filter slots
+    // don't get an empty band.
+    filterRow: {
+      type: Boolean,
+      default: false,
     },
     selectedRows: {
       type: Array,
@@ -333,6 +401,25 @@ export default {
     return {
       pageSizes: [20, 50, 100, 500],
       isScrolledHorizontally: false,
+      // Height of the label row, so the filter row can pin directly beneath it.
+      // The default is the measured height (py-2 + text-[11px] + 1px border) and
+      // is used until the observer reports, which avoids a one-frame jump.
+      headHeight: 33,
+    }
+  },
+  mounted() {
+    this.measureHeadHeight()
+    if (typeof ResizeObserver !== 'undefined' && this.$refs.theadRef) {
+      // Theme, font or browser zoom can change the label row's height, which
+      // would otherwise leave a gap or an overlap under the pinned filter row.
+      this.headResizeObserver = new ResizeObserver(this.measureHeadHeight)
+      this.headResizeObserver.observe(this.$refs.theadRef)
+    }
+  },
+  beforeDestroy() {
+    if (this.headResizeObserver) {
+      this.headResizeObserver.disconnect()
+      this.headResizeObserver = null
     }
   },
   computed: {
@@ -341,6 +428,13 @@ export default {
     },
     isCheckboxSticky() {
       return this.stickyCheckbox && this.visibleColumns.some((col) => col.sticky)
+    },
+    // Whether to render the per-column filter row. Must be a computed, not a
+    // method: `v-if="showFilterRow"` in the template evaluates the member
+    // itself, and a method reference is a truthy function object, so the row
+    // rendered on every table no matter what the prop said.
+    showFilterRow() {
+      return this.filterRow
     },
     columnSpan() {
       return this.visibleColumns.length + (this.selectable ? 1 : 0)
@@ -396,6 +490,18 @@ export default {
     },
   },
   methods: {
+    measureHeadHeight() {
+      const h = this.$refs.theadRef && this.$refs.theadRef.offsetHeight
+      if (h && h !== this.headHeight) this.headHeight = h
+    },
+    // lucide icon for a column's sort state: direction arrows when it is the
+    // active sort, a neutral up/down pair as the hover affordance otherwise.
+    sortIndicator(colKey) {
+      if (this.sortKey === colKey) {
+        return this.sortOrder === 'asc' ? ArrowUp : ArrowDown
+      }
+      return ChevronsUpDown
+    },
     getRowClass(row, idx) {
       if (typeof this.rowClass === 'function') {
         return this.rowClass(row, idx)

@@ -1,151 +1,118 @@
 <template>
   <div
     v-if="modelValue"
-    class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 transition-all duration-200 animate-in fade-in"
-    role="dialog"
-    aria-modal="true"
+    class="w-full h-full min-h-0 flex flex-col overflow-hidden"
     aria-labelledby="task-title-input"
-    @click.self="close"
   >
     <div
-      class="bg-surface-base rounded-2xl shadow-2xl border border-outline-gray-2/90 w-full max-w-[96vw] 2xl:max-w-[1480px] h-[95vh] max-h-[980px] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
+      class="bg-surface-base w-full h-full min-h-0 flex flex-col overflow-hidden"
     >
-      <!-- TOP HEADER / BREADCRUMBS BAR (Clarity Minimal Design) -->
-      <header class="h-11 sm:h-12 bg-surface-base border-b border-outline-gray-2/80 px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 select-none">
-        <!-- Left: Sleek Breadcrumbs & Subtle Auto-save indicator -->
-        <div class="flex items-center space-x-3 text-xs min-w-0">
-          <button
-            type="button"
-            class="text-ink-gray-4 hover:text-ink-gray-7 hover:bg-surface-gray-3 p-1 -ml-1 rounded transition-colors inline-flex items-center justify-center cursor-pointer"
-            title="Back to Tasks"
-            @click="close"
+      <!-- Task primary controls: rendered into the Tasks page header (#task-form-header-slot)
+           so they sit on the same bar as the breadcrumb, without exposing the form state. -->
+      <Teleport to="#task-form-header-slot">
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <!-- Task Type: frappe-ui Select, type icon in the prefix slot -->
+          <Select
+            v-model="form.task_type"
+            :options="taskTypeOptions"
+            size="sm"
+            variant="subtle"
+            side="bottom"
+            :disabled="saving || deleting"
+            class="w-[9.5rem] shrink-0"
           >
-            <ArrowLeft class="size-3.5 text-ink-gray-5" />
-          </button>
+            <template #prefix>
+              <component
+                :is="getTaskTypeIcon(form.task_type)"
+                class="size-3 shrink-0"
+                :class="getTaskTypeIconClass(form.task_type)"
+              />
+            </template>
+            <template #item-prefix="{ item }">
+              <component
+                :is="getTaskTypeIcon(item.value)"
+                class="size-3 shrink-0"
+                :class="getTaskTypeIconClass(item.value)"
+              />
+            </template>
+          </Select>
 
-          <div class="h-3.5 w-px bg-surface-gray-4"></div>
+          <!-- Priority: frappe-ui Select, flag in the prefix slot.
+               `sm:inline-flex`, not `sm:block` — Select puts this class straight on
+               its trigger button, and forcing display:block there drops the
+               trigger out of flex layout (it grew to 47px vs the 28px its
+               siblings render at) and scattered the flag/value/chevron. -->
+          <Select
+            v-model="form.priority"
+            :options="priorityOptions"
+            size="sm"
+            variant="subtle"
+            side="bottom"
+            :disabled="saving || deleting"
+            class="w-[7.5rem] shrink-0 hidden sm:inline-flex"
+          >
+            <template #prefix>
+              <Flag class="size-2.5 shrink-0 text-blue-600" />
+            </template>
+            <template #item-prefix>
+              <Flag class="size-2.5 shrink-0 text-blue-600" />
+            </template>
+          </Select>
+        </div>
+      </Teleport>
 
-          <nav aria-label="Breadcrumb" class="flex items-center space-x-2 text-xs truncate">
-            <button
-              type="button"
-              class="text-ink-gray-5 hover:text-ink-gray-8 transition-colors font-medium cursor-pointer"
-              @click="close"
-            >
-              Tasks
-            </button>
-            <span class="text-slate-300 font-normal">/</span>
-            <span class="text-ink-gray-6 hover:text-ink-gray-9 font-medium truncate max-w-[140px] sm:max-w-[200px]">
-              {{ form.project || 'Audit Management' }}
-            </span>
-            <span class="text-slate-300 font-normal">/</span>
-            <div
-              class="flex items-center gap-1 group cursor-pointer"
-              title="Click to copy task ID"
-              @click="copyTaskId"
-            >
-              <span class="font-mono text-ink-gray-8 font-medium text-[11px]">
-                {{ form.id || 'NEW-TASK' }}
-              </span>
-              <button
-                type="button"
-                class="text-ink-gray-4 hover:text-ink-gray-6 p-0.5 rounded opacity-60 group-hover:opacity-100 transition-opacity"
-                title="Copy task ID"
-              >
-                <Copy class="size-2.5" />
-              </button>
-            </div>
-          </nav>
-
-          <div class="h-3 w-px bg-surface-gray-4 hidden md:block"></div>
-
+      <!-- Autosave indicator + form actions: rendered into the page header's action group
+           so the form no longer needs a header bar of its own. -->
+      <Teleport to="#task-form-actions-slot">
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
           <!-- Save Status Indicator -->
-          <div class="hidden md:flex items-center gap-1.5 text-[11px] font-normal">
+          <div class="flex items-center gap-1.5 text-[11px] font-normal">
             <span
               class="w-1.5 h-1.5 rounded-full"
               :class="saving ? 'bg-amber-500 animate-pulse' : 'bg-teal-600'"
             ></span>
             <span class="text-ink-gray-4">{{ saving ? 'Saving...' : 'Saved' }}</span>
           </div>
-        </div>
 
-        <!-- Right: Refined lightweight actions & selectors -->
-        <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
-          <!-- Task Type Dropdown Selector -->
-          <div class="relative flex items-center">
-            <select
-              v-model="form.task_type"
-              class="appearance-none text-[11px] font-semibold pl-6 pr-5 py-1 rounded-md border border-outline-gray-2 bg-surface-gray-2/70 hover:bg-surface-gray-3 text-ink-gray-7 cursor-pointer focus:ring-1 focus:ring-teal-600 focus:outline-none transition"
-              :class="getTaskTypeSelectClass(form.task_type)"
-            >
-              <option v-for="t in taskTypes" :key="t" :value="t">{{ t }}</option>
-            </select>
-            <component
-              :is="getTaskTypeIcon(form.task_type)"
-              class="absolute left-2 size-3 pointer-events-none"
-              :class="getTaskTypeIconClass(form.task_type)"
-            />
-            <ChevronDown class="absolute right-1.5 size-2.5 text-ink-gray-4 pointer-events-none" />
-          </div>
+          <!-- Secondary actions (Share / Delete) tucked behind an overflow menu.
+               Placed before the status picker and Save so Save stays the last,
+               most prominent control on the right. -->
+          <Dropdown :options="overflowMenuOptions" align="end">
+            <template #trigger>
+              <button
+                type="button"
+                class="p-1.5 text-ink-gray-4 hover:text-ink-gray-7 hover:bg-surface-gray-3 rounded-md transition-colors cursor-pointer"
+                title="More actions"
+                :disabled="saving || deleting"
+              >
+                <MoreHorizontal class="size-3.5" />
+              </button>
+            </template>
+          </Dropdown>
 
-          <!-- Status Dropdown Selector -->
-          <div class="relative flex items-center">
-            <select
-              v-model="form.status"
-              class="appearance-none text-[11px] font-semibold pl-5 pr-5 py-1 rounded-md border border-outline-gray-2 bg-surface-gray-2/70 hover:bg-surface-gray-3 text-ink-gray-7 cursor-pointer focus:ring-1 focus:ring-teal-600 focus:outline-none transition"
-            >
-              <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
-            </select>
-            <span
-              class="absolute left-2 size-2 rounded-full pointer-events-none"
-              :class="getStatusDotClass(form.status)"
-            />
-            <ChevronDown class="absolute right-1.5 size-2.5 text-ink-gray-4 pointer-events-none" />
-          </div>
-
-          <!-- Priority Dropdown Selector -->
-          <div class="relative flex items-center hidden sm:flex">
-            <select
-              v-model="form.priority"
-              class="appearance-none text-[11px] font-semibold pl-5 pr-5 py-1 rounded-md border border-outline-gray-2 bg-surface-gray-2/70 hover:bg-surface-gray-3 text-ink-gray-7 cursor-pointer focus:ring-1 focus:ring-teal-600 focus:outline-none transition"
-            >
-              <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
-            </select>
-            <Flag class="absolute left-2 size-2.5 text-blue-600 pointer-events-none" />
-            <ChevronDown class="absolute right-1.5 size-2.5 text-ink-gray-4 pointer-events-none" />
-          </div>
-
-          <!-- Share Button -->
-          <button
-            type="button"
-            class="p-1.5 text-ink-gray-5 hover:text-ink-gray-8 hover:bg-surface-gray-3 rounded-md transition-colors text-xs inline-flex items-center gap-1.5 px-2 cursor-pointer"
-            title="Share Task Link"
-            @click="copyShareLink"
-          >
-            <Share2 class="size-3 text-ink-gray-4" />
-            <span class="hidden sm:inline-block font-normal">Share</span>
-          </button>
-
-          <!-- Delete Task Button -->
-          <button
-            v-if="form.id && form.id !== 'new'"
-            type="button"
-            class="p-1.5 text-ink-gray-4 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-            title="Delete Task"
-            :disabled="deleting || saving"
-            @click="confirmDelete"
-          >
-            <Trash2 class="size-3.5" />
-          </button>
-
-          <div class="h-3.5 w-px bg-surface-gray-4 mx-1"></div>
-
-          <!-- Cancel Button -->
-          <Button
+          <!-- Status: frappe-ui Select, status dot in the prefix slot -->
+          <Select
+            v-model="form.status"
+            :options="statusOptions"
+            size="sm"
             variant="subtle"
-            @click="close"
+            side="bottom"
+            :disabled="saving || deleting"
+            class="w-[8.5rem] shrink-0"
           >
-            Cancel
-          </Button>
+            <template #prefix>
+              <span
+                class="size-2 shrink-0 rounded-full"
+                :class="getStatusDotClass(form.status)"
+              />
+            </template>
+            <template #item-prefix="{ item }">
+              <span
+                class="size-2 shrink-0 rounded-full"
+                :class="getStatusDotClass(item.value)"
+              />
+            </template>
+          </Select>
 
           <!-- Save Task Button -->
           <Button
@@ -161,7 +128,7 @@
             Save Task
           </Button>
         </div>
-      </header>
+      </Teleport>
 
       <!-- Error Message Banner -->
       <div
@@ -187,214 +154,304 @@
         <!-- FAR LEFT PANEL: Responsibilities & Status -->
         <aside
           aria-label="Responsibilities Panel"
-          class="w-full lg:w-60 lg:shrink-0 border-b lg:border-b-0 lg:border-r border-outline-gray-2 bg-surface-gray-2/80 flex flex-col overflow-y-auto"
+          class="w-full lg:w-72 lg:shrink-0 border-b lg:border-b-0 lg:border-r border-outline-gray-2 bg-surface-gray-1 flex flex-col overflow-y-auto"
         >
-          <div class="p-4 sm:p-5 space-y-5">
-            <h3 class="text-[10px] font-bold text-ink-gray-4 uppercase tracking-wider">People & Roles</h3>
-            <div class="space-y-4">
-
-
-              <!-- Pending From -->
-              <div class="space-y-1">
-                <label class="text-[11px] font-semibold text-ink-gray-6 block">Pending From</label>
-                <select
-                  v-model="form.pending_from"
-                  class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-outline-gray-2 bg-surface-base hover:bg-surface-gray-2 focus:bg-surface-base focus:border-teal-600 focus:outline-none focus:ring-0 text-ink-gray-8 transition-colors"
-                >
-                  <option value="" disabled selected>Pending from...</option>
-                  <option v-for="v in pendingFromOptions" :key="v" :value="v">{{ v }}</option>
-                </select>
+          <div class="p-4 space-y-5">
+            <!-- Section: Assignment -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <h2 class="text-xs font-semibold text-ink-gray-6">Assignment</h2>
+                <span class="font-mono text-[10px] text-ink-gray-4">{{ form.id || 'NEW' }}</span>
               </div>
 
-              <!-- Guided By -->
-              <div class="space-y-1">
-                <label class="text-[11px] font-semibold text-ink-gray-6 block">Guided By</label>
-                <Combobox
-                  v-model="form.guided_by"
-                  :options="guidedByOptions"
-                  placeholder="Select or search..."
-                  size="sm"
-                  class="w-full"
-                />
-              </div>
-
-
-            </div>
-          
-<!-- Section 3: Schedule & Dates -->
-              <div class="pt-0 space-y-3 mt-4" data-purpose="schedule-section">
-                <div class="flex items-center justify-between pb-1">
-                  <div class="flex items-center space-x-2">
-                    <Calendar class="size-3 text-teal-600" />
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-ink-gray-6">Schedule & Dates</h2>
-                  </div>
-                  <span class="bg-surface-gray-3 text-ink-gray-7 px-2 py-0.5 rounded text-xs font-mono font-medium">
-                    Duration: {{ computedDuration }}
-                  </span>
-                </div>
-                <div class="grid grid-cols-1 gap-3">
-                  <!-- Start Date -->
-                  <div class="p-2.5 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 flex flex-col justify-between">
-                    <span class="text-[11px] font-medium text-ink-gray-5 mb-1 flex items-center gap-1.5">
-                      <Calendar class="size-3 text-ink-gray-4" />
-                      Start Date
-                    </span>
-                    <DatePicker
-                      v-model="form.start_date"
-                      format="DD-MM-YYYY"
-                      placeholder="DD-MM-YYYY"
-                      size="sm"
-                      variant="outline"
-                      class="w-full text-xs font-semibold font-mono"
+              <div class="space-y-3.5">
+                <!-- Project -->
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <label class="text-[11px] font-medium text-ink-gray-5">Project</label>
+                    <button
+                      v-if="form.project"
+                      type="button"
+                      class="text-[11px] font-medium text-ink-gray-4 hover:text-ink-gray-7 transition-colors cursor-pointer"
+                      @click="form.project = ''; onProjectChange()"
                     >
-                      <template #actions="{ setDate, close }">
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
-                      </template>
-                    </DatePicker>
+                      Clear
+                    </button>
                   </div>
-
-                  <!-- Due Date (with Overdue alert styling) -->
-                  <div
-                    class="p-2.5 rounded-lg border flex flex-col justify-between"
-                    :class="isOverdue ? 'border-rose-200 bg-rose-50/50' : 'border-outline-gray-2 bg-surface-gray-2/80'"
+                  <Combobox
+                    v-model="form.project"
+                    v-model:query="projectSearchQuery"
+                    :options="projectOptions"
+                    :filterable="false"
+                    placeholder="Search and select project..."
+                    size="sm"
+                    variant="subtle"
+                    class="w-full"
+                    @change="onProjectChange"
                   >
-                    <div class="flex items-center justify-between mb-1">
-                      <span
-                        class="text-[11px] font-medium flex items-center gap-1.5"
-                        :class="isOverdue ? 'text-rose-700' : 'text-ink-gray-5'"
+                    <template #item-label="{ item }">
+                      <div class="min-w-0 flex-1 py-0.5">
+                        <div class="truncate font-medium text-xs text-ink-gray-8 dark:text-gray-100">
+                          {{ item.label }}
+                        </div>
+                        <div v-if="item.team" class="truncate text-[11px] text-ink-gray-5 dark:text-gray-400">
+                          Team: {{ item.team }}
+                        </div>
+                      </div>
+                    </template>
+                  </Combobox>
+                </div>
+
+                <!-- Assigned To -->
+                <div class="space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <label class="text-[11px] font-medium text-ink-gray-5">Assigned To</label>
+                    <span v-if="form.assignees && form.assignees.length > 0" class="text-[11px] text-ink-gray-4">
+                      {{ form.assignees.length }} assigned
+                    </span>
+                  </div>
+
+                  <div v-if="form.assignees && form.assignees.length > 0" class="space-y-1.5">
+                    <div
+                      v-for="assignee in form.assignees"
+                      :key="getAssigneeValue(assignee)"
+                      class="group flex items-center gap-2 rounded-md border border-outline-gray-2 bg-surface-base px-2 py-1.5 hover:border-outline-gray-3 transition-colors"
+                    >
+                      <div
+                        class="size-5 shrink-0 rounded-full text-white text-[9px] font-semibold flex items-center justify-center"
+                        :class="getAvatarColor(getAssigneeName(assignee))"
                       >
-                        <AlertTriangle v-if="isOverdue" class="size-3 text-rose-500" />
-                        <Calendar v-else class="size-3 text-ink-gray-4" />
-                        Due Date
-                      </span>
-                      <span
-                        v-if="isOverdue"
-                        class="text-[10px] font-semibold text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded"
+                        {{ getInitials(getAssigneeName(assignee)) }}
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <p class="truncate text-xs font-medium text-ink-gray-8">
+                          {{ getAssigneeName(assignee) }}
+                        </p>
+                        <p v-if="getAssigneeRole(assignee)" class="truncate text-[10px] text-ink-gray-4">
+                          {{ getAssigneeRole(assignee) }}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        class="shrink-0 text-ink-gray-4 hover:text-rose-600 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        :title="'Remove ' + getAssigneeName(assignee)"
+                        @click="removeAssignee(assignee)"
                       >
-                        {{ overdueDays }}d Overdue
-                      </span>
+                        <X class="size-3" />
+                      </button>
                     </div>
-                    <DatePicker
-                      v-model="form.due_date"
-                      format="DD-MM-YYYY"
-                      placeholder="DD-MM-YYYY"
-                      size="sm"
-                      variant="outline"
-                      class="w-full text-xs font-bold font-mono"
-                      :class="isOverdue ? 'text-rose-700' : 'text-ink-gray-8'"
-                    >
-                      <template #actions="{ setDate, close }">
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
-                      </template>
-                    </DatePicker>
                   </div>
 
-                  <!-- Estimated Date -->
-                  <div class="p-2.5 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 flex flex-col justify-between">
-                    <span class="text-[11px] font-medium text-ink-gray-5 mb-1 flex items-center gap-1.5">
-                      <Calendar class="size-3 text-ink-gray-4" />
-                      Estimated Date
-                    </span>
-                    <DatePicker
-                      v-model="form.expected_resolution_date"
-                      format="DD-MM-YYYY"
-                      placeholder="DD-MM-YYYY"
-                      size="sm"
-                      variant="outline"
-                      class="w-full text-xs font-semibold font-mono text-ink-gray-8"
-                    >
-                      <template #actions="{ setDate, close }">
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
-                      </template>
-                    </DatePicker>
-                  </div>
-
-                  <!-- Completed Date -->
-                  <div class="p-2.5 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 flex flex-col justify-between">
-                    <span class="text-[11px] font-medium text-ink-gray-5 mb-1 flex items-center gap-1.5">
-                      <Calendar class="size-3 text-ink-gray-4" />
-                      Completed Date
-                    </span>
-                    <DatePicker
-                      v-model="form.completed_on"
-                      format="DD-MM-YYYY"
-                      placeholder="DD-MM-YYYY"
-                      size="sm"
-                      variant="outline"
-                      class="w-full text-xs font-semibold font-mono text-ink-gray-8"
-                    >
-                      <template #actions="{ setDate, close }">
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
-                        <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
-                      </template>
-                    </DatePicker>
-                  </div>
+                  <Combobox
+                    :modelValue="null"
+                    :options="assigneeOptions"
+                    :placeholder="effectiveTeam ? `+ Add ${effectiveTeam} member...` : '+ Add Assignee...'"
+                    size="sm"
+                    variant="subtle"
+                    class="w-full"
+                    trigger="button"
+                    @update:modelValue="(val) => { if (val && !form.assignees.includes(val.value || val)) form.assignees.push(val.value || val) }"
+                  />
                 </div>
               </div>
+            </div>
 
+            <!-- Section: People & Roles -->
+            <div class="space-y-3 pt-5 border-t border-outline-gray-2">
+              <h2 class="text-xs font-semibold text-ink-gray-6">People &amp; Roles</h2>
 
+              <div class="space-y-3.5">
+                <div class="space-y-1">
+                  <label class="text-[11px] font-medium text-ink-gray-5">Pending From</label>
+                  <Select
+                    v-model="form.pending_from"
+                    :options="pendingFromOptions"
+                    placeholder="Pending from..."
+                    size="sm"
+                    variant="subtle"
+                    class="w-full"
+                  />
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-[11px] font-medium text-ink-gray-5">Guided By</label>
+                  <Combobox
+                    v-model="form.guided_by"
+                    :options="guidedByOptions"
+                    placeholder="Select or search..."
+                    size="sm"
+                    variant="subtle"
+                    class="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Section: Schedule & Dates -->
+            <div class="space-y-3 pt-5 border-t border-outline-gray-2" data-purpose="schedule-section">
+              <div class="flex items-center justify-between">
+                <h2 class="text-xs font-semibold text-ink-gray-6">Schedule &amp; Dates</h2>
+                <span class="text-[11px] font-medium text-ink-gray-4">
+                  Duration: {{ computedDuration }}
+                </span>
+              </div>
+
+              <div class="space-y-3.5">
+                <!-- Start Date -->
+                <div class="space-y-1">
+                  <label class="text-[11px] font-medium text-ink-gray-5">Start Date</label>
+                  <DatePicker
+                    v-model="form.start_date"
+                    format="DD-MM-YYYY"
+                    placeholder="DD-MM-YYYY"
+                    size="sm"
+                    variant="subtle"
+                    class="w-full text-xs"
+                  >
+                    <template #actions="{ setDate, close }">
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
+                    </template>
+                  </DatePicker>
+                </div>
+
+                <!-- Due Date -->
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <label
+                      class="text-[11px] font-medium"
+                      :class="isOverdue ? 'text-rose-600' : 'text-ink-gray-5'"
+                    >
+                      Due Date
+                    </label>
+                    <Badge
+                      v-if="isOverdue"
+                      theme="red"
+                      variant="subtle"
+                      size="sm"
+                      :label="`${overdueDays}d overdue`"
+                    />
+                  </div>
+                  <DatePicker
+                    v-model="form.due_date"
+                    format="DD-MM-YYYY"
+                    placeholder="DD-MM-YYYY"
+                    size="sm"
+                    variant="subtle"
+                    class="w-full text-xs font-medium"
+                    :class="isOverdue ? 'text-rose-600' : ''"
+                  >
+                    <template #actions="{ setDate, close }">
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
+                    </template>
+                  </DatePicker>
+                </div>
+
+                <!-- Estimated Date -->
+                <div class="space-y-1">
+                  <label class="text-[11px] font-medium text-ink-gray-5">Estimated Date</label>
+                  <DatePicker
+                    v-model="form.expected_resolution_date"
+                    format="DD-MM-YYYY"
+                    placeholder="DD-MM-YYYY"
+                    size="sm"
+                    variant="subtle"
+                    class="w-full text-xs"
+                  >
+                    <template #actions="{ setDate, close }">
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
+                    </template>
+                  </DatePicker>
+                </div>
+
+                <!-- Completed Date -->
+                <div class="space-y-1">
+                  <label class="text-[11px] font-medium text-ink-gray-5">Completed Date</label>
+                  <DatePicker
+                    v-model="form.completed_on"
+                    format="DD-MM-YYYY"
+                    placeholder="DD-MM-YYYY"
+                    size="sm"
+                    variant="subtle"
+                    class="w-full text-xs"
+                  >
+                    <template #actions="{ setDate, close }">
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'day', close)">Tomorrow</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 7, 'day', close)">One Week</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 15, 'day', close)">15 Days</button>
+                      <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 1, 'month', close)">1 Month</button>
+                    </template>
+                  </DatePicker>
+                </div>
+              </div>
+            </div>
           </div>
         </aside>
 
-        <!-- MIDDLE MAIN AREA: Work, Document Flow, Attachments, Dates & Ticket -->
+        <!-- MIDDLE MAIN AREA: Work, Document Flow, Attachments, Dates & Ticket.
+             No padding and no max-width here on purpose: the canvas has to sit
+             flush against the sidebar divider and the comments-panel divider,
+             otherwise the vertical rules float in the middle of the page
+             instead of running into the page edges. Section spacing lives on
+             the canvas sections themselves (p-4). -->
         <section
           aria-label="Task Content and Document Area"
-          class="flex-1 overflow-y-auto px-4 sm:px-8 py-5 border-b lg:border-b-0 lg:border-r border-outline-gray-2"
+          class="flex-1 overflow-y-auto border-b lg:border-b-0 lg:border-r border-outline-gray-2"
         >
-          <div class="max-w-4xl mx-auto space-y-4">
+          <div class="min-h-full">
 
 
-            <!-- Unified Document Canvas -->
-            <div
-              class="bg-surface-base divide-y overflow-hidden divide-slate-200 border border-outline-gray-2/80 rounded-xl shadow-xs"
-              data-purpose="document-canvas"
-            >
-              <!-- Section 1: Task Title & Description Editor -->
-              <div class="p-5 space-y-3" data-purpose="task-title-and-description-section">
-                <div class="space-y-1" data-purpose="task-title-section">
-                  <input
-                    id="task-title-input"
-                    v-model="form.title"
-                    class="w-full text-2xl font-bold text-ink-gray-9 placeholder-slate-300 border-0 border-b border-transparent hover:border-outline-gray-2 focus:border-teal-600 focus:ring-0 px-0 py-0.5 bg-transparent tracking-tight transition-colors"
-                    placeholder="Task title..."
-                    type="text"
-                  />
-                  <div class="text-[11px] text-ink-gray-4 font-normal flex items-center gap-2">
-                    <span>{{ form.project || 'Audit Management' }}</span>
-                    <span>•</span>
-                    <span>{{ createdTimeAgo }}</span>
-                    <span v-if="form.estimated_hours">• {{ form.estimated_hours }}h estimated</span>
-                  </div>
-                </div>
-
-                <!-- Rich Text Description Editor Component -->
-                <div class="rounded-lg overflow-hidden" data-purpose="task-description-editor">
-                  <FrappeRichEditor
-                    v-model="form.description"
-                    :people="people"
-                    min-height="min-h-48"
-                    placeholder="Review the server farm cabling alignment and verify calibration records... (Markdown supported)"
-                  />
+            <!-- Unified Document Canvas: no outer border/radius — the page
+                 background already frames it, so a card inside it only
+                 doubled the edges and ate horizontal space. -->
+            <div class="bg-surface-base" data-purpose="document-canvas">
+              <!-- Sticky title bar. It lives outside the padded sections so the
+                   divider runs the full width, and it carries its own opaque
+                   background so scrolling content passes under it cleanly. -->
+              <div
+                class="sticky top-0 z-10 bg-surface-base border-b border-slate-200 px-4 py-2.5"
+                data-purpose="task-title-section"
+              >
+                <input
+                  id="task-title-input"
+                  v-model="form.title"
+                  class="w-full text-2xl font-bold text-ink-gray-9 placeholder-slate-300 border-0 border-b border-transparent hover:border-outline-gray-2 focus:border-teal-600 focus:ring-0 px-0 py-0.5 bg-transparent tracking-tight transition-colors"
+                  placeholder="Task title..."
+                  type="text"
+                />
+                <div class="text-[11px] text-ink-gray-4 font-normal flex items-center gap-2">
+                  <span>{{ form.project || 'Audit Management' }}</span>
+                  <span>•</span>
+                  <span>{{ createdTimeAgo }}</span>
+                  <span v-if="form.estimated_hours">• {{ form.estimated_hours }}h estimated</span>
                 </div>
               </div>
 
+              <div class="divide-y divide-slate-200" data-purpose="task-title-and-description-section">
+                <!-- Rich Text Description Editor Component -->
+                <div class="p-4" data-purpose="task-description-editor">
+                  <FrappeRichEditor
+                    v-model="form.description"
+                    :people="people"
+                    min-height="min-h-32"
+                    placeholder="Review the server farm cabling alignment and verify calibration records... (Markdown supported)"
+                  />
+                </div>
+
               <!-- Section 2: Attachments Section -->
-              <div class="p-5 space-y-3" data-purpose="attachments-section">
+              <div class="p-4 space-y-3" data-purpose="attachments-section">
                 <div class="flex items-center justify-between pb-1">
                   <div class="flex items-center space-x-2">
                     <Paperclip class="size-3 text-ink-gray-4" />
@@ -461,37 +518,32 @@
               </div>
 
               <!-- Section 4: Ticket Details -->
-              <div class="p-5 space-y-3" data-purpose="ticket-details-section">
-                <div class="flex items-center justify-between pb-1">
+              <div class="p-4 space-y-3.5" data-purpose="ticket-details-section">
+                <div class="flex items-center justify-between">
                   <div class="flex items-center space-x-2">
-                    <Ticket class="size-3 text-teal-600" />
+                    <Ticket class="size-3 text-ink-gray-4" />
                     <h2 class="text-xs font-bold uppercase tracking-wider text-ink-gray-6">Ticket Details</h2>
-                    <span
+                    <Badge
                       v-if="form.ticket_id || form.toll_id"
-                      class="bg-teal-50 text-teal-800 border border-teal-200/60 text-[10px] font-semibold px-2 py-0.2 rounded-full"
-                    >
-                      Linked Ticket
-                    </span>
+                      theme="blue"
+                      variant="subtle"
+                      size="sm"
+                      label="Linked Ticket"
+                    />
                   </div>
-                  <span v-if="form.ticket_id || form.toll_id" class="font-mono text-[11px] text-ink-gray-4">
-                    {{ form.ticket_id || 'TCK-NEW' }} {{ form.toll_id ? '• ' + form.toll_id : '' }}
-                  </span>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
                   <!-- Ticket Date -->
-                  <div class="p-2.5 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 flex flex-col justify-between">
-                    <span class="text-[11px] font-medium text-ink-gray-5 mb-1 flex items-center gap-1.5">
-                      <Calendar class="size-3 text-ink-gray-4" />
-                      Ticket Date
-                    </span>
+                  <div class="space-y-1">
+                    <label class="text-[11px] font-medium text-ink-gray-5">Ticket Date</label>
                     <DatePicker
                       v-model="form.ticket_date"
                       format="DD-MM-YYYY"
                       placeholder="DD-MM-YYYY"
                       size="sm"
-                      variant="outline"
-                      class="w-full text-xs font-semibold font-mono"
+                      variant="subtle"
+                      class="w-full text-xs"
                     >
                       <template #actions="{ setDate, close }">
                         <button type="button" :class="rowCls" @click="applyQuickDate(setDate, 0, 'day', close)">Today</button>
@@ -501,187 +553,94 @@
                     </DatePicker>
                   </div>
 
-                  <!-- Toll ID -->
-                  <div class="p-2.5 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 flex flex-col justify-between">
-                    <span class="text-[11px] font-medium text-ink-gray-5 mb-1 flex items-center gap-1.5">
-                      <Flag class="size-3 text-ink-gray-4" />
-                      Toll ID
-                    </span>
-                    <input
-                      v-model="form.toll_id"
-                      type="text"
-                      placeholder="TL-XXXX"
-                      class="w-full text-xs font-semibold text-ink-gray-8 font-mono bg-transparent border-0 p-0 focus:ring-0 outline-none"
-                    />
+                  <!-- Raised By -->
+                  <div class="space-y-1">
+                    <label class="text-[11px] font-medium text-ink-gray-5">Raised By</label>
+                    <TextInput
+                      v-model="form.ticket_raised_by"
+                      size="sm"
+                      variant="subtle"
+                      placeholder="Name / Email"
+                    >
+                      <template #prefix>
+                        <span
+                          class="size-4 shrink-0 rounded-full text-white text-[8px] font-semibold flex items-center justify-center"
+                          :class="getAvatarColor(form.ticket_raised_by || 'TK')"
+                        >
+                          {{ getInitials(form.ticket_raised_by || 'TK') }}
+                        </span>
+                      </template>
+                    </TextInput>
                   </div>
 
                   <!-- Ticket ID -->
-                  <div class="p-2.5 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 flex flex-col justify-between group">
-                    <span class="text-[11px] font-medium text-ink-gray-5 mb-1 flex items-center justify-between">
-                      <span class="flex items-center gap-1.5">
-                        <Ticket class="size-3 text-amber-500" />
-                        Ticket ID
-                      </span>
-                      <button
-                        v-if="form.ticket_id"
-                        type="button"
-                        class="text-ink-gray-4 hover:text-ink-gray-6 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                        title="Copy Ticket ID"
-                        @click="copyText(form.ticket_id)"
-                      >
-                        <Copy class="size-2.5" />
-                      </button>
-                    </span>
-                    <input
+                  <div class="space-y-1">
+                    <label class="text-[11px] font-medium text-ink-gray-5">Ticket ID</label>
+                    <TextInput
                       v-model="form.ticket_id"
-                      type="text"
+                      size="sm"
+                      variant="subtle"
                       placeholder="TCK-XXXX"
-                      class="w-full text-xs font-bold text-ink-gray-8 font-mono bg-transparent border-0 p-0 focus:ring-0 outline-none"
+                      class="font-mono font-medium"
+                    >
+                      <template #suffix>
+                        <button
+                          v-if="form.ticket_id"
+                          type="button"
+                          class="text-ink-gray-4 hover:text-ink-gray-7 transition-colors cursor-pointer"
+                          title="Copy Ticket ID"
+                          @click="copyText(form.ticket_id)"
+                        >
+                          <Copy class="size-3" />
+                        </button>
+                      </template>
+                    </TextInput>
+                  </div>
+
+                  <!-- Toll ID -->
+                  <div class="space-y-1">
+                    <label class="text-[11px] font-medium text-ink-gray-5">Toll ID</label>
+                    <TextInput
+                      v-model="form.toll_id"
+                      size="sm"
+                      variant="subtle"
+                      placeholder="TL-XXXX"
+                      class="font-mono"
+                    >
+                      <template #prefix>
+                        <Flag class="size-3 text-ink-gray-4" />
+                      </template>
+                    </TextInput>
+                  </div>
+
+                  <!-- Ticket Description -->
+                  <div class="space-y-1 sm:col-span-2">
+                    <label class="text-[11px] font-medium text-ink-gray-5">Ticket Description</label>
+                    <Textarea
+                      v-model="form.ticket_description"
+                      size="sm"
+                      variant="subtle"
+                      :rows="3"
+                      placeholder="Ticket details or incident report..."
                     />
                   </div>
-
-                  <!-- Raised By -->
-                  <div class="p-2.5 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 flex flex-col justify-between">
-                    <span class="text-[11px] font-medium text-ink-gray-5 mb-1 flex items-center gap-1.5">
-                      <User class="size-3 text-ink-gray-4" />
-                      Raised By
-                    </span>
-                    <div class="flex items-center gap-1.5 min-w-0">
-                      <div class="w-4 h-4 rounded-full bg-teal-700 text-white text-[8px] font-bold flex items-center justify-center shrink-0">
-                        {{ getInitials(form.ticket_raised_by || 'TK') }}
-                      </div>
-                      <input
-                        v-model="form.ticket_raised_by"
-                        type="text"
-                        placeholder="Name / Email"
-                        class="w-full text-xs font-semibold text-ink-gray-8 bg-transparent border-0 p-0 focus:ring-0 outline-none truncate"
-                      />
-                    </div>
-                  </div>
                 </div>
-
-                <div class="space-y-1.5">
-                  <label class="text-[11px] font-medium text-ink-gray-5 block">Ticket Description</label>
-                  <textarea
-                    v-model="form.ticket_description"
-                    rows="2"
-                    placeholder="Ticket details or incident report..."
-                    class="w-full p-3 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 text-xs text-ink-gray-7 leading-relaxed font-sans focus:border-teal-600 focus:bg-surface-base transition-colors outline-none resize-none"
-                  ></textarea>
-                </div>
+              </div>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- RIGHT INSPECTOR SIDEBAR (~32% width, approx 380px-420px) -->
+        <!-- RIGHT PANEL: Comments & Activity (chat). No `lg:border-l`: the centre
+             section already draws its own right border, and both together made a
+             2px divider that read heavier than the 1px one on the left. One
+             border per divider, owned by the left-hand panel. -->
         <aside
-          aria-label="Task Inspector and Activity Timeline"
-          class="w-full lg:w-[380px] xl:w-[410px] bg-surface-base border-t lg:border-t-0 lg:border-l border-outline-gray-2 flex flex-col shrink-0 h-full overflow-hidden"
+          aria-label="Task Comments and Activity"
+          class="w-full lg:w-[380px] xl:w-[410px] bg-surface-base border-t lg:border-t-0 border-outline-gray-2 flex flex-col shrink-0 h-full overflow-hidden"
         >
-          <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <!-- TOP INSPECTOR SECTION: Assignment & Attributes -->
-            <div class="p-4 sm:p-5 shrink-0 space-y-4">
-              <div class="flex items-center justify-between pb-3 border-b border-outline-gray-2">
-                <div class="flex items-center space-x-2">
-                  <UserCheck class="size-3.5 text-teal-600" />
-                  <h2 class="text-xs font-bold uppercase tracking-wider text-ink-gray-7">Assignment</h2>
-                </div>
-                <span class="font-mono text-[10px] text-ink-gray-4">{{ form.id || 'NEW' }}</span>
-              </div>
-
-              <div class="space-y-3.5 text-xs">
-                <!-- Project Selector -->
-                <div class="space-y-1">
-                  <div class="flex items-center justify-between">
-                    <label class="text-[11px] font-semibold text-ink-gray-6 block">Project</label>
-                    <span v-if="form.project" class="text-[10px] text-[#417c7d] font-semibold cursor-pointer hover:underline" @click="form.project = ''; onProjectChange()">
-                      Clear
-                    </span>
-                  </div>
-                  <Combobox
-                    v-model="form.project"
-                    v-model:query="projectSearchQuery"
-                    :options="projectOptions"
-                    :filterable="false"
-                    placeholder="Search and select project..."
-                    size="sm"
-                    class="w-full"
-                    @change="onProjectChange"
-                  >
-                    <template #item-label="{ item }">
-                      <div class="min-w-0 flex-1 py-0.5">
-                        <div class="truncate font-semibold text-xs text-ink-gray-9 dark:text-gray-100">
-                          {{ item.label }}
-                        </div>
-                        <div v-if="item.team" class="truncate text-[11px] text-ink-gray-5 dark:text-gray-400">
-                          Team: {{ item.team }}
-                        </div>
-                      </div>
-                    </template>
-                  </Combobox>
-                </div>
-
-                <!-- Assigned To List -->
-                <div class="space-y-2">
-                  <div class="flex items-center justify-between">
-                    <label class="text-[11px] font-semibold text-ink-gray-6">Assigned To</label>
-                    <span v-if="form.assignees && form.assignees.length > 0" class="text-[10px] text-ink-gray-4">
-                      {{ form.assignees.length }} assigned
-                    </span>
-                  </div>
-
-                  <div v-if="form.assignees && form.assignees.length > 0" class="space-y-2">
-                    <div
-                      v-for="assignee in form.assignees"
-                      :key="getAssigneeValue(assignee)"
-                      class="flex items-center justify-between p-2 rounded-lg border border-outline-gray-2 bg-surface-gray-2 hover:bg-surface-base hover:border-outline-gray-3 transition-colors group"
-                    >
-                      <div class="flex items-center space-x-2.5 min-w-0">
-                        <div
-                          class="w-7 h-7 rounded-full text-white text-[10px] font-bold flex items-center justify-center shrink-0 shadow-xs"
-                          :class="getAvatarColor(getAssigneeName(assignee))"
-                        >
-                          {{ getInitials(getAssigneeName(assignee)) }}
-                        </div>
-                        <div class="min-w-0">
-                          <p class="font-semibold text-ink-gray-8 text-xs truncate">
-                            {{ getAssigneeName(assignee) }}
-                          </p>
-                          <p class="text-[10px] text-ink-gray-4 truncate">
-                            {{ getAssigneeRole(assignee) }}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        class="text-ink-gray-4 hover:text-rose-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                        :title="'Remove ' + getAssigneeName(assignee)"
-                        @click="removeAssignee(assignee)"
-                      >
-                        <Trash2 class="size-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Add Assignee Selector -->
-                  <div class="pt-0.5">
-                    <Combobox
-                      :modelValue="null"
-                      :options="assigneeOptions"
-                      :placeholder="effectiveTeam ? `+ Add ${effectiveTeam} member...` : '+ Add Assignee...'"
-                      size="sm"
-                      class="w-full"
-                      trigger="button"
-                      @update:modelValue="(val) => { if (val && !form.assignees.includes(val.value || val)) form.assignees.push(val.value || val) }"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- BOTTOM INSPECTOR SECTION: Comments & Activity Audit -->
-            <div class="flex-1 flex flex-col min-h-0 border-t border-outline-gray-2 bg-surface-gray-2/80">
+            <!-- Comments & Activity Audit (chat) -->
+            <div class="flex-1 flex flex-col min-h-0 bg-surface-gray-2/80">
               <!-- Tabs Header -->
               <div class="px-4 sm:px-5 pt-3 pb-2 bg-surface-base border-b border-outline-gray-2 flex items-center justify-between shrink-0 select-none">
                 <div class="flex items-center space-x-4">
@@ -791,7 +750,6 @@
                 />
               </div>
             </div>
-          </div>
         </aside>
       </main>
     </div>
@@ -799,7 +757,7 @@
 </template>
 
 <script>
-import { Combobox, MultiSelect, DatePicker, toast, Button } from 'frappe-ui'
+import { Combobox, MultiSelect, DatePicker, Dropdown, Select, TextInput, Textarea, Badge, toast, Button } from 'frappe-ui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 dayjs.extend(relativeTime)
@@ -818,6 +776,7 @@ import {
   uploadTaskAttachment,
   fetchTaskflowSettings
 } from '../data/api'
+import { writeToClipboard } from '../utils/clipboard'
 import FrappeRichEditor from './FrappeRichEditor.vue'
 import TaskCommentEditor from './TaskCommentEditor.vue'
 import {
@@ -826,13 +785,11 @@ import {
   Share2,
   Trash2,
   Check,
+  MoreHorizontal,
   AlertTriangle,
   ArrowRight,
   Paperclip,
-  Calendar,
   Ticket,
-  User,
-  UserCheck,
   SlidersHorizontal,
   MessageSquare,
   Clock,
@@ -843,12 +800,12 @@ import {
   FileText,
   Image as ImageIcon,
   FileSpreadsheet,
-  ChevronDown,
   Flag,
   Bug,
   Sparkles,
   CheckSquare,
   AtSign,
+  X,
 } from 'lucide-vue-next'
 
 const DEFAULT_GUIDES = [
@@ -882,9 +839,14 @@ const DEFAULT_GUIDES = [
 export default {
   name: 'TaskDetailModal',
   components: {
+    Badge,
     Button,
     Combobox,
     DatePicker,
+    Dropdown,
+    Select,
+    TextInput,
+    Textarea,
     MultiSelect,
     FrappeRichEditor,
     TaskCommentEditor,
@@ -893,13 +855,11 @@ export default {
     Share2,
     Trash2,
     Check,
+    MoreHorizontal,
     AlertTriangle,
     ArrowRight,
     Paperclip,
-    Calendar,
     Ticket,
-    User,
-    UserCheck,
     SlidersHorizontal,
     MessageSquare,
     Clock,
@@ -910,12 +870,12 @@ export default {
     FileText,
     ImageIcon,
     FileSpreadsheet,
-    ChevronDown,
     Flag,
     Bug,
     Sparkles,
     CheckSquare,
     AtSign,
+    X,
   },
   props: {
     modelValue: {
@@ -1013,6 +973,36 @@ export default {
     }
   },
   computed: {
+    // frappe-ui Select wants option objects when a row needs more than a bare
+    // label; the plain string lists are kept as the single source of truth.
+    statusOptions() {
+      return this.statuses.map((s) => ({ label: s, value: s }))
+    },
+    priorityOptions() {
+      return this.priorities.map((p) => ({ label: p, value: p }))
+    },
+    taskTypeOptions() {
+      return this.taskTypes.map((t) => ({ label: t, value: t }))
+    },
+
+    // Overflow menu behind the three-dots trigger in the form header.
+    // Delete is hidden for an unsaved task, matching the old inline button.
+    overflowMenuOptions() {
+      return [
+        {
+          label: 'Share',
+          icon: Share2,
+          onClick: () => this.copyShareLink(),
+        },
+        {
+          label: 'Delete',
+          icon: Trash2,
+          theme: 'red',
+          condition: () => Boolean(this.form.id && this.form.id !== 'new'),
+          onClick: () => this.confirmDelete(),
+        },
+      ]
+    },
     guidedByOptions() {
       // Unique members mapped for Combobox format {label, value}
       const unique = new Map()
@@ -1384,19 +1374,35 @@ export default {
       const charCode = (name || '').charCodeAt(0) || 0
       return colors[charCode % colors.length]
     },
-    copyTaskId() {
+    async copyTaskId() {
       if (!this.form.id) return
-      navigator.clipboard.writeText(this.form.id)
-      toast.success(`Task ID "${this.form.id}" copied`)
+      try {
+        await writeToClipboard(this.form.id)
+        toast.success(`Task ID "${this.form.id}" copied`)
+      } catch (e) {
+        console.error('Failed to copy task ID', e)
+        toast.error('Could not copy task ID')
+      }
     },
-    copyShareLink() {
-      navigator.clipboard.writeText(window.location.href)
-      toast.success('Task link copied to clipboard')
+    async copyShareLink() {
+      const url = window.location.href
+      try {
+        await writeToClipboard(url)
+        toast.success('URL Copied', { description: url })
+      } catch (e) {
+        console.error('Failed to copy task URL', e)
+        toast.error('Could not copy URL', { description: url })
+      }
     },
-    copyText(text) {
+    async copyText(text) {
       if (!text) return
-      navigator.clipboard.writeText(text)
-      toast.success('Copied to clipboard')
+      try {
+        await writeToClipboard(text)
+        toast.success('Copied to clipboard')
+      } catch (e) {
+        console.error('Failed to copy text', e)
+        toast.error('Could not copy to clipboard')
+      }
     },
     getFileExtension(att) {
       const name = att?.name || att?.file_name || ''
@@ -1692,16 +1698,6 @@ export default {
           return 'bg-purple-500'
         default:
           return 'bg-slate-400'
-      }
-    },
-    getTaskTypeSelectClass(type) {
-      switch (type) {
-        case 'Bug':
-          return 'bg-rose-50/80 text-rose-700 border-rose-200'
-        case 'Customization Request':
-          return 'bg-purple-50/80 text-purple-700 border-purple-200'
-        default:
-          return 'bg-teal-50/80 text-teal-800 border-teal-200'
       }
     },
     getTaskTypeIcon(type) {
