@@ -69,9 +69,13 @@
           <div class="flex items-center gap-1.5 text-[11px] font-normal">
             <span
               class="w-1.5 h-1.5 rounded-full"
-              :class="saving ? 'bg-amber-500 animate-pulse' : 'bg-teal-600'"
+              :class="saving ? 'bg-amber-500 animate-pulse' : (isDirty ? 'bg-rose-500 animate-pulse' : 'bg-teal-600')"
             ></span>
-            <span class="text-ink-gray-4">{{ saving ? 'Saving...' : 'Saved' }}</span>
+            <span
+              :class="saving ? 'text-ink-gray-4' : (isDirty ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-ink-gray-4')"
+            >
+              {{ saving ? 'Saving...' : (isDirty ? 'Please Save' : 'Saved') }}
+            </span>
           </div>
 
           <!-- Secondary actions (Share / Delete) tucked behind an overflow menu.
@@ -931,6 +935,8 @@ export default {
       deleting: false,
       errorMessage: '',
       isInitializing: false,
+      isDirty: false,
+      initialSnapshot: '',
       loadingComments: false,
       submittingComment: false,
       activeRightTab: 'comments',
@@ -1197,8 +1203,21 @@ export default {
           }
 
           this.$nextTick(() => {
+            this.initialSnapshot = JSON.stringify(this.form)
+            this.isDirty = false
             this.isInitializing = false
           })
+        }
+      },
+    },
+    form: {
+      deep: true,
+      handler() {
+        if (this.isInitializing) return
+        if (this.initialSnapshot) {
+          this.isDirty = JSON.stringify(this.form) !== this.initialSnapshot
+        } else {
+          this.isDirty = true
         }
       },
     },
@@ -1669,6 +1688,8 @@ export default {
         if (res && res.id && !this.form.id) {
           this.form.id = res.id
         }
+        this.initialSnapshot = JSON.stringify(this.form)
+        this.isDirty = false
         this.saving = false
       } catch (err) {
         this.saving = false
