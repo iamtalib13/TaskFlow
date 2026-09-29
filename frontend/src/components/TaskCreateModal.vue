@@ -107,15 +107,56 @@
 
             <!-- Right Column (col-span-5): Meta Fields (Independent Panel) -->
             <div class="lg:col-span-5 flex flex-col space-y-3.5 bg-surface-gray-1/50 dark:bg-gray-900/40 p-4 rounded-xl border border-outline-gray-1 dark:border-gray-800 max-h-[72vh] overflow-y-auto">
-              <!-- Project (Searchable Combobox with 5 items limit and Team subtitle) -->
+              <!-- Team Selection -->
               <div>
-                <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Project</label>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300">Team</label>
+                  <button
+                    v-if="selectedTeamValue"
+                    type="button"
+                    class="text-[11px] text-ink-gray-5 hover:text-ink-gray-8 dark:hover:text-gray-200 transition-colors cursor-pointer"
+                    @click="clearTeam"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <Combobox
+                  v-model="form.team"
+                  v-model:query="teamSearchQuery"
+                  :options="teamOptions"
+                  :filterable="false"
+                  placeholder="Search and select team..."
+                  size="sm"
+                  class="w-full"
+                  @change="onTeamChange"
+                >
+                  <template #item-label="{ item }">
+                    <div class="truncate font-semibold text-xs text-ink-gray-9 dark:text-gray-100 py-0.5">
+                      {{ item.label }}
+                    </div>
+                  </template>
+                </Combobox>
+              </div>
+
+              <!-- Project (Searchable Combobox filtered by Team) -->
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300">Project</label>
+                  <button
+                    v-if="selectedProjectValue"
+                    type="button"
+                    class="text-[11px] text-ink-gray-5 hover:text-ink-gray-8 dark:hover:text-gray-200 transition-colors cursor-pointer"
+                    @click="clearProject"
+                  >
+                    Clear
+                  </button>
+                </div>
                 <Combobox
                   v-model="form.project"
                   v-model:query="projectSearchQuery"
                   :options="projectOptions"
                   :filterable="false"
-                  placeholder="Search and select project..."
+                  :placeholder="selectedTeamValue ? `Select project from ${selectedTeamValue}...` : 'Search and select project...'"
                   size="sm"
                   class="w-full"
                   @change="onProjectChange"
@@ -125,12 +166,15 @@
                       <div class="truncate font-semibold text-xs text-ink-gray-9 dark:text-gray-100">
                         {{ item.label }}
                       </div>
-                      <div v-if="item.team" class="truncate text-[11px] text-ink-gray-5 dark:text-gray-400">
+                      <div v-if="item.team && !selectedTeamValue" class="truncate text-[11px] text-ink-gray-5 dark:text-gray-400">
                         Team: {{ item.team }}
                       </div>
                     </div>
                   </template>
                 </Combobox>
+                <p v-if="selectedTeamValue && projectOptions.length === 0" class="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                  No projects found for {{ selectedTeamValue }}.
+                </p>
               </div>
 
               <!-- Task Type & Status -->
@@ -481,11 +525,12 @@ export default {
       localTeamMembers: [],
       taskTypes: ['Task', 'Bug', 'Customization Request'],
       pendingFromOptions: ['User', 'Team', 'Client', 'Management', 'External Partner', 'Vendor'],
+      teamSearchQuery: '',
       projectSearchQuery: '',
       form: {
         title: '',
-        project: '',
         team: '',
+        project: '',
         task_type: 'Task',
         assignees: [],
         assigned_to: '',
@@ -509,11 +554,12 @@ export default {
       if (val) {
         this.loadTaskflowSettings()
         this.errorMessage = ''
-        const defaultTeam = this.teams[0]?.name || ''
+        this.teamSearchQuery = ''
+        this.projectSearchQuery = ''
         this.form = {
           title: '',
+          team: '',
           project: '',
-          team: defaultTeam,
           task_type: 'Task',
           assignees: [],
           assigned_to: '',
@@ -529,10 +575,10 @@ export default {
           ticket_raised_by: '',
           description: '',
         }
-        if (defaultTeam) {
-          this.loadTeamMembersForTeam(defaultTeam)
-        }
       }
+    },
+    'form.team'() {
+      this.onTeamChange()
     },
     'form.project'() {
       this.onProjectChange()
@@ -559,9 +605,37 @@ export default {
       return (this.taskTypes || []).map((t) => ({ label: t, value: t }))
     },
 
+    selectedTeamValue() {
+      if (!this.form.team) return ''
+      return typeof this.form.team === 'object' ? (this.form.team.value || this.form.team.label || '') : this.form.team
+    },
+    selectedProjectValue() {
+      if (!this.form.project) return ''
+      return typeof this.form.project === 'object' ? (this.form.project.value || this.form.project.label || '') : this.form.project
+    },
+    teamOptions() {
+      const q = (this.teamSearchQuery || '').trim().toLowerCase()
+      let list = (this.teams || []).map((t) => {
+        const val = typeof t === 'object' ? (t.name || t.team_name || '') : t
+        const label = typeof t === 'object' ? (t.team_name || t.name || '') : t
+        return { label, value: val }
+      }).filter((t) => Boolean(t.value))
+
+      if (q) {
+        list = list.filter((t) => t.label.toLowerCase().includes(q) || t.value.toLowerCase().includes(q))
+      }
+      return list
+    },
     projectOptions() {
       const q = (this.projectSearchQuery || '').trim().toLowerCase()
       let list = this.projects || []
+      const currentTeam = this.selectedTeamValue
+
+      // Filter by selected Team
+      if (currentTeam) {
+        list = list.filter((p) => p.team === currentTeam)
+      }
+
       if (q) {
         list = list.filter((p) => {
           const name = (p.name || '').toLowerCase()
@@ -570,7 +644,7 @@ export default {
           return name.includes(q) || title.includes(q) || team.includes(q)
         })
       }
-      return list.slice(0, 5).map((p) => ({
+      return list.map((p) => ({
         label: p.display_name || p.title || p.project_name || p.name,
         value: p.name,
         team: p.team || '',
@@ -590,8 +664,8 @@ export default {
       return Array.from(unique.values())
     },
     effectiveTeam() {
-      if (this.form.team) return this.form.team
-      const projVal = typeof this.form.project === 'object' ? (this.form.project.value || '') : (this.form.project || '')
+      if (this.selectedTeamValue) return this.selectedTeamValue
+      const projVal = this.selectedProjectValue
       const selected = (this.projects || []).find((p) => p.name === projVal)
       if (selected && selected.team) return selected.team
       return ''
@@ -655,16 +729,39 @@ export default {
         console.error('Failed to load Taskflow Settings in TaskCreateModal', e)
       }
     },
-    onProjectChange() {
-      const projVal = typeof this.form.project === 'object' ? (this.form.project.value || '') : (this.form.project || '')
+    onProjectChange(val) {
+      const projVal = typeof val === 'object' ? (val?.value || '') : (val || this.selectedProjectValue)
       const selected = (this.projects || []).find((p) => p.name === projVal)
       if (selected && selected.team) {
-        this.form.team = selected.team
+        if (!this.selectedTeamValue) {
+          this.form.team = selected.team
+        }
       }
       this.loadTeamMembersForTeam(this.effectiveTeam)
     },
-    onTeamChange() {
-      this.loadTeamMembersForTeam(this.effectiveTeam)
+    onTeamChange(val) {
+      const teamVal = typeof val === 'object' ? (val?.value || '') : (val || this.selectedTeamValue)
+      const projVal = this.selectedProjectValue
+      if (projVal && teamVal) {
+        const proj = (this.projects || []).find((p) => p.name === projVal)
+        if (proj && proj.team && proj.team !== teamVal) {
+          this.form.project = ''
+          this.projectSearchQuery = ''
+        }
+      }
+      if (teamVal) {
+        this.loadTeamMembersForTeam(teamVal)
+      }
+    },
+    clearTeam() {
+      this.form.team = ''
+      this.teamSearchQuery = ''
+      this.onTeamChange('')
+    },
+    clearProject() {
+      this.form.project = ''
+      this.projectSearchQuery = ''
+      this.onProjectChange('')
     },
     async loadTeamMembersForTeam(team) {
       if (!team) return
@@ -699,14 +796,15 @@ export default {
       }
       this.creating = true
       this.errorMessage = ''
-      const projVal = typeof this.form.project === 'object' ? (this.form.project.value || '') : (this.form.project || '')
+      const projVal = this.selectedProjectValue
+      const teamVal = this.effectiveTeam
       const assigneeIds = (this.form.assignees || []).map((a) => (typeof a === 'object' ? (a.value || a.user_id || a.user || a.email) : a)).filter(Boolean)
       const guidedByVal = typeof this.form.guided_by === 'object' ? (this.form.guided_by.value || '') : (this.form.guided_by || '')
       const payload = {
         ...this.form,
         project: projVal,
         guided_by: guidedByVal,
-        team: this.effectiveTeam || this.form.team || undefined,
+        team: teamVal || undefined,
         assignees: assigneeIds,
         assigned_to: assigneeIds[0] || '',
         completed_on: this.form.status === 'Completed' ? (this.form.completed_on || dayjs().format('YYYY-MM-DD')) : '',
