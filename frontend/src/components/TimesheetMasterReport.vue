@@ -109,17 +109,17 @@
     </div>
 
     <!-- Main Table Container -->
-    <div :class="embedded ? 'w-full overflow-hidden flex flex-col' : 'flex-1 min-h-0 overflow-auto p-4 sm:p-6'">
-      <div :class="embedded ? 'w-full overflow-hidden flex flex-col' : 'bg-white dark:bg-gray-900 border border-outline-gray-2 dark:border-gray-800 rounded-xl shadow-xs overflow-hidden flex flex-col'">
+    <div :class="embedded ? 'w-full overflow-hidden flex flex-col' : 'flex-1 min-h-0 flex flex-col p-4 sm:p-6'">
+      <div :class="embedded ? 'w-full overflow-hidden flex flex-col' : 'min-h-0 bg-white dark:bg-gray-900 border border-outline-gray-2 dark:border-gray-800 rounded-xl shadow-xs overflow-hidden flex flex-col'">
         <!-- Table Scroll Area -->
-        <div class="overflow-x-auto" :class="embedded ? 'max-h-[500px] overflow-y-auto' : 'min-h-[400px]'">
+        <div class="overflow-auto" :class="embedded ? 'max-h-[500px]' : 'min-h-0 flex-1'">
           <table class="w-full text-left border-collapse">
             <!-- Table Header -->
-            <thead>
+            <thead class="sticky top-0 z-20 shadow-[0_1px_0_0_var(--outline-gray-2,#e5e7eb)]">
               <!-- Top Header Row -->
-              <tr class="border-b border-outline-gray-2 dark:border-gray-800 bg-surface-gray-1/60 dark:bg-gray-800/50 text-[11px] font-semibold text-ink-gray-6 dark:text-gray-400 uppercase tracking-wider select-none">
-                <th class="w-10 px-3 py-2.5 text-center">#</th>
-                <th class="min-w-[200px] px-3 py-2.5">Employee</th>
+              <tr class="border-b border-outline-gray-2 dark:border-gray-800 bg-surface-gray-1 dark:bg-gray-800 text-[11px] font-semibold text-ink-gray-6 dark:text-gray-400 uppercase tracking-wider select-none">
+                <th class="sticky left-0 z-10 w-10 min-w-[40px] max-w-[40px] bg-surface-gray-1 dark:bg-gray-800 px-3 py-2.5 text-center">#</th>
+                <th class="sticky left-[40px] z-10 shadow-[1px_0_0_0_var(--outline-gray-2,#e5e7eb)] bg-surface-gray-1 dark:bg-gray-800 min-w-[200px] px-3 py-2.5">Employee</th>
 
                 <!-- Date Navigation Header (e.g. Week 1 / Days) -->
                 <th :colspan="daysInView.length" class="px-3 py-2.5 text-center border-l border-r border-outline-gray-2 dark:border-gray-800 bg-surface-gray-2/70 dark:bg-gray-800/80">
@@ -161,9 +161,9 @@
               </tr>
 
               <!-- Sub-header Row for Days, Hours & % -->
-              <tr class="border-b border-outline-gray-2 dark:border-gray-800 bg-surface-gray-1/30 dark:bg-gray-800/20 text-[10px] font-semibold text-ink-gray-5 dark:text-gray-400 select-none">
-                <th class="px-3 py-1.5"></th>
-                <th class="px-3 py-1.5"></th>
+              <tr class="border-b border-outline-gray-2 dark:border-gray-800 bg-surface-base dark:bg-gray-900 text-[10px] font-semibold text-ink-gray-5 dark:text-gray-400 select-none">
+                <th class="sticky left-0 z-10 w-10 min-w-[40px] max-w-[40px] bg-surface-base dark:bg-gray-900 px-3 py-1.5"></th>
+                <th class="sticky left-[40px] z-10 shadow-[1px_0_0_0_var(--outline-gray-2,#e5e7eb)] bg-surface-base dark:bg-gray-900 px-3 py-1.5"></th>
 
                 <!-- Specific Days (Mon 01, Tue 02 ...) -->
                 <th
@@ -196,8 +196,8 @@
               <!-- Loading Skeleton -->
               <template v-if="loading">
                 <tr v-for="n in 8" :key="n" class="animate-pulse">
-                  <td class="px-3 py-3 text-center"><Skeleton class="h-4 w-4 mx-auto" /></td>
-                  <td class="px-3 py-3">
+                  <td class="sticky left-0 z-10 w-10 min-w-[40px] max-w-[40px] bg-surface-base dark:bg-gray-900 px-3 py-3 text-center"><Skeleton class="h-4 w-4 mx-auto" /></td>
+                  <td class="sticky left-[40px] z-10 shadow-[1px_0_0_0_var(--outline-gray-2,#e5e7eb)] bg-surface-base dark:bg-gray-900 px-3 py-3">
                     <div class="flex items-center gap-2.5">
                       <Skeleton class="size-7 rounded-full shrink-0" />
                       <div class="space-y-1">
@@ -233,15 +233,15 @@
                 v-else
                 v-for="row in rows"
                 :key="row.employee_id || row.idx"
-                class="hover:bg-blue-50/40 dark:hover:bg-gray-800/40 transition-colors"
+                class="group hover:bg-[#F4F9F7] dark:hover:bg-gray-800/40 transition-colors"
               >
                 <!-- # Index -->
-                <td class="px-3 py-2.5 text-center font-mono text-ink-gray-4 dark:text-gray-500 text-[11px]">
+                <td class="sticky left-0 z-10 w-10 min-w-[40px] max-w-[40px] bg-surface-base dark:bg-gray-900 group-hover:bg-[#F4F9F7] dark:group-hover:bg-gray-800 px-3 py-2.5 text-center font-mono text-ink-gray-4 dark:text-gray-500 text-[11px] transition-colors">
                   {{ row.idx }}
                 </td>
 
                 <!-- Employee Info (Avatar + Name) -->
-                <td class="px-3 py-2.5">
+                <td class="sticky left-[40px] z-10 shadow-[1px_0_0_0_var(--outline-gray-2,#e5e7eb)] bg-surface-base dark:bg-gray-900 group-hover:bg-[#F4F9F7] dark:group-hover:bg-gray-800 min-w-[200px] max-w-[240px] px-3 py-2.5 transition-colors">
                   <div class="flex items-center gap-2.5 min-w-0">
                     <Avatar
                       :image="row.image"
@@ -265,8 +265,10 @@
                 <td
                   v-for="d in daysInView"
                   :key="d.date"
-                  class="px-1.5 py-2 text-center font-mono text-xs border-r border-outline-gray-1 dark:border-gray-800"
+                  class="px-1.5 py-2 text-center font-mono text-xs border-r border-outline-gray-1 dark:border-gray-800 cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-950/30 transition-colors"
                   :class="d.is_weekend ? 'bg-surface-gray-2/20 dark:bg-gray-800/20' : ''"
+                  :title="`View logs for ${formatShortDate(d.date)}`"
+                  @click="openDayLogs(row, d)"
                 >
                   <span
                     v-if="(row.daily_hours[d.date] || 0) > 0"
@@ -372,12 +374,104 @@
         </div>
       </div>
     </div>
+    <!-- Day Logs Dialog: opened by clicking a day cell -->
+    <Dialog v-model="dayLogsOpen" size="4xl">
+      <template #title>
+        <div class="flex items-center gap-2.5 min-w-0">
+          <Avatar
+            :image="dayLogsTarget?.row?.image"
+            :label="dayLogsTarget?.row?.employee_name"
+            size="md"
+            shape="circle"
+            class="shrink-0"
+          />
+          <div class="min-w-0">
+            <h3 class="text-sm font-semibold text-ink-gray-9 dark:text-white truncate">
+              {{ dayLogsTarget?.row?.employee_name }}
+            </h3>
+            <p class="text-xs text-ink-gray-5 dark:text-neutral-400">
+              {{ dayLogsTarget ? formatLongDate(dayLogsTarget.date) : '' }}
+            </p>
+          </div>
+        </div>
+      </template>
+      <template #default>
+        <div v-if="dayLogsLoading" class="space-y-2 py-2">
+          <Skeleton v-for="n in 3" :key="n" class="h-14 w-full rounded-lg" />
+        </div>
+
+        <div v-else-if="dayLogs.length === 0" class="flex flex-col items-center justify-center gap-2 py-10 text-ink-gray-5 dark:text-neutral-400">
+          <Clock class="size-8 text-ink-gray-3 stroke-1" />
+          <p class="text-sm font-medium">No timesheet logs for this day</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="ts in dayLogs"
+            :key="ts.name"
+            class="space-y-2"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span class="font-mono text-ink-gray-5 dark:text-neutral-400">{{ ts.name }}</span>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-[#468373] dark:text-emerald-400 font-semibold border border-[#468373]/30">
+                  {{ ts.status }}
+                </span>
+                <span class="font-bold text-ink-gray-9 dark:text-white">
+                  Total: {{ formatHoursVal(ts.total_hours) }}h
+                </span>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg border border-outline-gray-2 dark:border-neutral-800">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-7 dark:text-neutral-300 font-semibold uppercase tracking-wider text-[10px]">
+                    <th class="py-2 px-3 whitespace-nowrap">Time</th>
+                    <th class="py-2 px-3 text-right">Hrs</th>
+                    <th class="py-2 px-3">Project</th>
+                    <th class="py-2 px-3">Task</th>
+                    <th class="py-2 px-3">Activity</th>
+                    <th class="py-2 px-3 min-w-[180px]">Description</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-outline-gray-1 dark:divide-neutral-800 text-ink-gray-8 dark:text-neutral-200">
+                  <tr v-if="!ts.items || ts.items.length === 0">
+                    <td colspan="6" class="py-3 px-3 text-center text-ink-gray-5">No entries</td>
+                  </tr>
+                  <tr v-for="it in ts.items" :key="it.name" class="align-top">
+                    <td class="py-2 px-3 font-mono whitespace-nowrap">
+                      {{ formatTime(it.from_time) }} – {{ formatTime(it.to_time) }}
+                    </td>
+                    <td class="py-2 px-3 text-right font-mono font-bold text-[#468373] dark:text-emerald-400">
+                      {{ formatHoursVal(it.hrs) }}
+                    </td>
+                    <td class="py-2 px-3">{{ it.project || '—' }}</td>
+                    <td class="py-2 px-3">
+                      <div v-if="it.task" class="min-w-0">
+                        <div class="font-medium">{{ it.task_title || it.task }}</div>
+                        <div class="text-[10px] text-ink-gray-5 font-mono">
+                          {{ it.task }}<span v-if="it.task_status"> · {{ it.task_status }}</span>
+                        </div>
+                      </div>
+                      <span v-else>—</span>
+                    </td>
+                    <td class="py-2 px-3">{{ it.activity_type || '—' }}</td>
+                    <td class="py-2 px-3 whitespace-pre-line">{{ stripHtml(it.description) || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { Button, Avatar, Skeleton } from 'frappe-ui'
+import { ref, computed, onMounted, watch } from 'vue'
+import { Button, Avatar, Skeleton, Dialog } from 'frappe-ui'
 import {
   Clock,
   Calendar,
@@ -386,13 +480,22 @@ import {
   ChevronRight,
   Search,
 } from 'lucide-vue-next'
-import { fetchTimesheetMasterReport } from '@/data/api.js'
+import { fetchTimesheetMasterReport, fetchMemberTimesheets } from '@/data/api.js'
 
 const props = defineProps({
   embedded: {
     type: Boolean,
     default: false,
   },
+  team: {
+    type: String,
+    default: '',
+  },
+})
+
+watch(() => props.team, () => {
+  currentPage.value = 1
+  loadReportData()
 })
 
 const loading = ref(false)
@@ -591,6 +694,7 @@ async function loadReportData() {
       toDate: dateRange.value.end,
       viewType: viewType.value,
       search: searchQuery.value,
+      team: props.team,
       limit: pageSize,
       start: (currentPage.value - 1) * pageSize,
     })
@@ -605,6 +709,56 @@ async function loadReportData() {
   } finally {
     loading.value = false
   }
+}
+
+// --- Day Logs Popup ---
+const dayLogsOpen = ref(false)
+const dayLogsLoading = ref(false)
+const dayLogsTarget = ref(null)
+const dayLogs = ref([])
+let dayLogsRequestId = 0
+
+async function openDayLogs(row, day) {
+  const user = row.user_id || row.employee_id
+  dayLogsTarget.value = { row, date: day.date }
+  dayLogs.value = []
+  dayLogsOpen.value = true
+  if (!user) return
+
+  const requestId = ++dayLogsRequestId
+  dayLogsLoading.value = true
+  try {
+    const res = await fetchMemberTimesheets(user, day.date, day.date)
+    if (requestId === dayLogsRequestId) dayLogs.value = res || []
+  } catch (err) {
+    console.error('Failed to load day timesheet logs', err)
+  } finally {
+    if (requestId === dayLogsRequestId) dayLogsLoading.value = false
+  }
+}
+
+function formatLongDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso + 'T00:00:00')
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+// from_time / to_time may be a full datetime or a bare time string
+function formatTime(val) {
+  if (!val) return '--:--'
+  const m = String(val).match(/(\d{1,2}):(\d{2})/)
+  if (!m) return String(val)
+  let h = Number(m[1])
+  const suffix = h >= 12 ? 'PM' : 'AM'
+  h = h % 12 || 12
+  return `${h}:${m[2]} ${suffix}`
+}
+
+function stripHtml(html) {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return (div.textContent || '').trim()
 }
 
 function exportToCSV() {

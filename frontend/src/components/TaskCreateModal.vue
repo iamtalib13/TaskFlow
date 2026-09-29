@@ -396,15 +396,57 @@
 
               <!-- Pending From & Guided By -->
               <div class="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Pending From</label>
-                  <select
-                    v-model="form.pending_from"
-                    class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-100 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                <!-- Pending From -->
+                <div class="relative" ref="pendingFromRef">
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block font-medium text-ink-gray-6 dark:text-gray-300">Pending From</label>
+                    <button
+                      v-if="form.pending_from"
+                      type="button"
+                      tabindex="-1"
+                      class="text-[10px] text-ink-gray-4 dark:text-gray-400 hover:text-ink-gray-7 dark:hover:text-gray-200 transition-colors cursor-pointer"
+                      @click="clearPendingFrom"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div class="relative flex items-center">
+                    <input
+                      type="text"
+                      v-model="form.pending_from"
+                      placeholder="Select or type..."
+                      class="w-full bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 pr-7 text-xs text-ink-gray-8 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition"
+                      @focus="onPendingFromFocus"
+                      @keydown.esc="showPendingFromDropdown = false"
+                      @keydown.enter.prevent="showPendingFromDropdown = false"
+                    />
+                    <button
+                      type="button"
+                      tabindex="-1"
+                      class="absolute right-1.5 p-1 text-ink-gray-4 dark:text-gray-400 hover:text-ink-gray-7 dark:hover:text-gray-200 rounded transition cursor-pointer"
+                      @mousedown.prevent
+                      @click="togglePendingFromDropdown"
+                      title="Toggle options"
+                    >
+                      <ChevronDown class="size-3.5 transition-transform duration-200" :class="{ 'rotate-180': showPendingFromDropdown }" />
+                    </button>
+                  </div>
+                  <!-- Dropdown Menu -->
+                  <div
+                    v-if="showPendingFromDropdown"
+                    class="absolute left-0 top-full mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg shadow-xl z-50 py-1 text-xs"
                   >
-                    <option value="" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">Pending from...</option>
-                    <option v-for="v in pendingFromOptions" :key="v" :value="v" class="bg-surface-base text-ink-gray-8 dark:text-gray-100">{{ v }}</option>
-                  </select>
+                    <div
+                      v-for="opt in pendingFromOptions"
+                      :key="opt"
+                      class="px-2.5 py-1.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between text-ink-gray-8 dark:text-gray-100 transition-colors"
+                      :class="{ 'font-semibold text-[#417c7d] bg-gray-50 dark:bg-gray-700/50': form.pending_from === opt }"
+                      @mousedown.prevent="selectPendingFromOption(opt)"
+                    >
+                      <span>{{ opt }}</span>
+                      <Check v-if="form.pending_from === opt" class="size-3 text-[#417c7d]" />
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -470,7 +512,7 @@ import { MultiSelect, DatePicker, Combobox, Button, FormControl, toast } from 'f
 import dayjs from 'dayjs'
 import { saveTask, getErrorMessage, fetchTeamMembers, fetchTaskflowSettings } from '../data/api'
 import FrappeRichEditor from './FrappeRichEditor.vue'
-import { Calendar, Bug, Sparkles, CheckSquare, ChevronDown } from 'lucide-vue-next'
+import { Calendar, Bug, Sparkles, CheckSquare, ChevronDown, Check } from 'lucide-vue-next'
 
 export default {
   name: 'TaskCreateModal',
@@ -486,6 +528,7 @@ export default {
     Sparkles,
     CheckSquare,
     ChevronDown,
+    Check,
   },
   props: {
     modelValue: {
@@ -529,6 +572,7 @@ export default {
       localTeamMembers: [],
       taskTypes: ['Task', 'Bug', 'Customization Request'],
       pendingFromOptions: ['User', 'Team', 'Client', 'Management', 'External Partner', 'Vendor'],
+      showPendingFromDropdown: false,
       teamSearchQuery: '',
       projectSearchQuery: '',
       form: {
@@ -596,6 +640,10 @@ export default {
   },
   mounted() {
     this.loadTaskflowSettings()
+    document.addEventListener('click', this.handlePendingFromClickOutside)
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handlePendingFromClickOutside)
   },
   computed: {
     isStatusCompleted() {
@@ -738,6 +786,25 @@ export default {
         }
       } catch (e) {
         console.error('Failed to load Taskflow Settings in TaskCreateModal', e)
+      }
+    },
+    selectPendingFromOption(opt) {
+      this.form.pending_from = opt
+      this.showPendingFromDropdown = false
+    },
+    clearPendingFrom() {
+      this.form.pending_from = ''
+      this.showPendingFromDropdown = false
+    },
+    togglePendingFromDropdown() {
+      this.showPendingFromDropdown = !this.showPendingFromDropdown
+    },
+    onPendingFromFocus() {
+      this.showPendingFromDropdown = true
+    },
+    handlePendingFromClickOutside(e) {
+      if (this.$refs.pendingFromRef && !this.$refs.pendingFromRef.contains(e.target)) {
+        this.showPendingFromDropdown = false
       }
     },
     onProjectChange(val) {

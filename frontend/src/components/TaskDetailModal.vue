@@ -271,16 +271,56 @@
               <h2 class="text-xs font-semibold text-ink-gray-6">People &amp; Roles</h2>
 
               <div class="space-y-3.5">
-                <div class="space-y-1">
-                  <label class="text-[11px] font-medium text-ink-gray-5">Pending From</label>
-                  <Select
-                    v-model="form.pending_from"
-                    :options="pendingFromOptions"
-                    placeholder="Pending from..."
-                    size="sm"
-                    variant="subtle"
-                    class="w-full"
-                  />
+                <div class="space-y-1 relative" ref="pendingFromRef">
+                  <div class="flex items-center justify-between">
+                    <label class="text-[11px] font-medium text-ink-gray-5">Pending From</label>
+                    <button
+                      v-if="form.pending_from"
+                      type="button"
+                      tabindex="-1"
+                      class="text-[10px] text-ink-gray-4 hover:text-ink-gray-7 transition-colors cursor-pointer"
+                      @click="clearPendingFrom"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div class="relative flex items-center">
+                    <input
+                      type="text"
+                      v-model="form.pending_from"
+                      placeholder="Select or type..."
+                      class="w-full text-xs bg-surface-gray-2 hover:bg-surface-gray-3 focus:bg-surface-white border border-transparent focus:border-outline-gray-3 rounded-md px-2.5 py-1.5 pr-7 text-ink-gray-8 placeholder-ink-gray-4 outline-none transition"
+                      @focus="onPendingFromFocus"
+                      @keydown.esc="showPendingFromDropdown = false"
+                      @keydown.enter.prevent="showPendingFromDropdown = false"
+                    />
+                    <button
+                      type="button"
+                      tabindex="-1"
+                      class="absolute right-1 p-1 text-ink-gray-4 hover:text-ink-gray-7 rounded transition cursor-pointer"
+                      @mousedown.prevent
+                      @click="togglePendingFromDropdown"
+                      title="Toggle options"
+                    >
+                      <ChevronDown class="size-3.5 transition-transform duration-200" :class="{ 'rotate-180': showPendingFromDropdown }" />
+                    </button>
+                  </div>
+                  <!-- Dropdown Menu -->
+                  <div
+                    v-if="showPendingFromDropdown"
+                    class="absolute left-0 top-full mt-1 w-full max-h-52 overflow-y-auto bg-white dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg shadow-xl z-50 py-1 text-xs"
+                  >
+                    <div
+                      v-for="opt in pendingFromOptions"
+                      :key="opt"
+                      class="px-2.5 py-1.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between text-ink-gray-8 dark:text-gray-100 transition-colors"
+                      :class="{ 'font-semibold text-primary-600 bg-gray-50 dark:bg-gray-700/50': form.pending_from === opt }"
+                      @mousedown.prevent="selectPendingFromOption(opt)"
+                    >
+                      <span>{{ opt }}</span>
+                      <Check v-if="form.pending_from === opt" class="size-3 text-primary-600" />
+                    </div>
+                  </div>
                 </div>
 
                 <div class="space-y-1">
@@ -517,7 +557,7 @@
 
                   <!-- Upload Files Card -->
                   <label
-                    class="border border-dashed border-outline-gray-3 hover:border-teal-500 rounded-lg p-2.5 flex items-center justify-center gap-2 text-ink-gray-5 hover:text-teal-700 hover:bg-teal-50/30 cursor-pointer transition-all"
+                    class="relative border border-dashed border-outline-gray-3 hover:border-teal-500 rounded-lg p-2.5 flex items-center justify-center gap-2 text-ink-gray-5 hover:text-teal-700 hover:bg-teal-50/30 cursor-pointer transition-all"
                   >
                     <UploadCloud class="size-3.5 text-ink-gray-4" />
                     <span class="text-xs font-medium">+ Upload files</span>
@@ -660,14 +700,13 @@
                     :class="activeRightTab === 'comments' ? 'font-bold text-teal-700 border-b-2 border-teal-600' : 'font-medium text-ink-gray-4 hover:text-ink-gray-7 border-b-2 border-transparent'"
                     @click="activeRightTab = 'comments'"
                   >
-                    <span>Comments</span>
+                    <span>Chat</span>
                     <span
                       class="text-[10px] font-semibold px-1.5 py-0.2 rounded-full border"
                       :class="activeRightTab === 'comments' ? 'bg-teal-50 text-teal-700 border-teal-200/60' : 'bg-surface-gray-3 text-ink-gray-5 border-outline-gray-2'"
                     >
-                      {{ comments.length }}
+                      {{ chatCount }}
                     </span>
-                    <Loader2 v-if="loadingComments" class="size-2.5 animate-spin text-teal-600" />
                   </button>
 
                   <button
@@ -681,57 +720,16 @@
                 </div>
               </div>
 
-              <!-- Comments Feed -->
-              <div
-                v-if="activeRightTab === 'comments'"
-                ref="commentsContainer"
-                class="flex-1 p-4 overflow-y-auto space-y-3 min-h-0 text-xs"
-              >
-                <div v-if="loadingComments && comments.length === 0" class="py-6 text-center text-ink-gray-4">
-                  <Loader2 class="size-4 animate-spin text-teal-600 mx-auto mb-1" />
-                  <span class="text-xs">Loading comments...</span>
-                </div>
-                <div v-else-if="comments.length === 0" class="py-6 text-center text-ink-gray-4 select-none">
-                  <MessageSquare class="size-5 mx-auto text-slate-300 mb-1" />
-                  <p class="font-medium text-ink-gray-6 text-xs">No comments yet</p>
-                  <p class="text-[10px] text-ink-gray-4">Add a comment below to start discussion.</p>
-                </div>
-                <div
-                  v-else
-                  v-for="(cmt, idx) in comments"
-                  :key="cmt.id || idx"
-                  class="space-y-1.5 group"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-2 min-w-0">
-                      <div
-                        class="w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center shrink-0"
-                        :class="getAvatarColor(cmt.author)"
-                      >
-                        {{ getInitials(cmt.author) }}
-                      </div>
-                      <span class="text-xs font-semibold text-ink-gray-8 truncate">{{ cmt.author }}</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 text-[10px] text-ink-gray-4 shrink-0">
-                      <span>{{ cmt.time || 'Just now' }}</span>
-                      <button
-                        v-if="cmt.can_delete || isCurrentUser(cmt)"
-                        type="button"
-                        class="opacity-0 group-hover:opacity-100 transition hover:text-rose-600 p-0.5 cursor-pointer"
-                        title="Delete comment"
-                        @click="deleteComment(cmt.id, idx)"
-                      >
-                        <Trash2 class="size-2.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div class="bg-surface-base border border-outline-gray-2 rounded-lg p-2.5 text-xs text-ink-gray-7 shadow-xs leading-relaxed break-words prose prose-sm prose-slate select-text" v-html="formatCommentDisplay(cmt.text)">
-                  </div>
-                </div>
-              </div>
+              <!-- Chat (Telegram-style, Comment-backed). v-show keeps drafts while on Activity. -->
+              <TaskChat
+                v-show="activeRightTab === 'comments'"
+                :task-id="form.id || ''"
+                :members="allAvailableTeamMembers"
+                @count="chatCount = $event"
+              />
 
               <!-- Activity Tab Content -->
-              <div v-else class="flex-1 p-4 overflow-y-auto space-y-2.5 min-h-0 text-xs">
+              <div v-if="activeRightTab === 'activity'" class="flex-1 p-4 overflow-y-auto space-y-2.5 min-h-0 text-xs">
                 <div v-if="activityLog.length === 0" class="py-6 text-center text-ink-gray-4 select-none">
                   <Clock class="size-5 mx-auto text-slate-300 mb-1" />
                   <p class="font-medium text-ink-gray-6 text-xs">No activity logged yet</p>
@@ -750,15 +748,6 @@
                 </div>
               </div>
 
-              <!-- Sticky Comment Input Box -->
-              <div class="p-3 bg-surface-base border-t border-outline-gray-2 shrink-0">
-                <TaskCommentEditor
-                  :team-members="allAvailableTeamMembers"
-                  :current-user-initials="currentUserInitials"
-                  :is-submitting="submittingComment"
-                  @submit="addComment"
-                />
-              </div>
             </div>
         </aside>
       </main>
@@ -788,7 +777,7 @@ import {
 } from '../data/api'
 import { writeToClipboard } from '../utils/clipboard'
 import FrappeRichEditor from './FrappeRichEditor.vue'
-import TaskCommentEditor from './TaskCommentEditor.vue'
+import TaskChat from './TaskChat.vue'
 import {
   ArrowLeft,
   Copy,
@@ -816,6 +805,7 @@ import {
   CheckSquare,
   AtSign,
   X,
+  ChevronDown,
 } from 'lucide-vue-next'
 
 const DEFAULT_GUIDES = [
@@ -859,7 +849,7 @@ export default {
     Textarea,
     MultiSelect,
     FrappeRichEditor,
-    TaskCommentEditor,
+    TaskChat,
     ArrowLeft,
     Copy,
     Share2,
@@ -886,6 +876,7 @@ export default {
     CheckSquare,
     AtSign,
     X,
+    ChevronDown,
   },
   props: {
     modelValue: {
@@ -945,9 +936,11 @@ export default {
       loadingComments: false,
       submittingComment: false,
       activeRightTab: 'comments',
+      chatCount: 0,
       localTeamMembers: [],
       taskTypes: ['Task', 'Bug', 'Customization Request'],
-      pendingFromOptions: [],
+      pendingFromOptions: ['User', 'Team', 'Client', 'Management', 'External Partner', 'Vendor'],
+      showPendingFromDropdown: false,
       projectSearchQuery: '',
       form: {
         id: '',
@@ -1199,7 +1192,6 @@ export default {
           }
 
           if (t.id && t.id !== 'new') {
-            this.loadActualComments(t.id)
             this.loadActualAttachments(t.id)
           }
 
@@ -1244,11 +1236,32 @@ export default {
   },
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleKeyDown)
+    document.removeEventListener('click', this.handlePendingFromClickOutside)
   },
   mounted() {
     this.loadTaskflowSettings()
+    document.addEventListener('click', this.handlePendingFromClickOutside)
   },
   methods: {
+    selectPendingFromOption(opt) {
+      this.form.pending_from = opt
+      this.showPendingFromDropdown = false
+    },
+    clearPendingFrom() {
+      this.form.pending_from = ''
+      this.showPendingFromDropdown = false
+    },
+    togglePendingFromDropdown() {
+      this.showPendingFromDropdown = !this.showPendingFromDropdown
+    },
+    onPendingFromFocus() {
+      this.showPendingFromDropdown = true
+    },
+    handlePendingFromClickOutside(e) {
+      if (this.$refs.pendingFromRef && !this.$refs.pendingFromRef.contains(e.target)) {
+        this.showPendingFromDropdown = false
+      }
+    },
     formatCommentDisplay(text) {
       if (!text) return ''
       const parts = text.split(/(<[^>]*>)/g);

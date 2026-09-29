@@ -724,10 +724,14 @@ export async function fetchAllTimesheets(fromDate = '', toDate = '', user = '') 
   )
 }
 
-export async function fetchTimesheetMasterReport({ fromDate = '', toDate = '', viewType = 'Weekly', search = '' } = {}) {
+export async function fetchDashboardMemberOptions() {
+  return callFrappe('taskflow.taskflow.api.portal.get_dashboard_member_options', {}, 'POST')
+}
+
+export async function fetchTimesheetMasterReport({ fromDate = '', toDate = '', viewType = 'Weekly', search = '', team = '', limit = 50, start = 0 } = {}) {
   return callFrappe(
     'taskflow.taskflow.api.portal.get_timesheet_master_report',
-    { from_date: fromDate, to_date: toDate, view_type: viewType, search },
+    { from_date: fromDate, to_date: toDate, view_type: viewType, search, team, limit, start },
     'POST',
   )
 }
@@ -810,4 +814,43 @@ export async function fetchTaskflowSettings() {
     doctype: 'Taskflow Settings',
     name: 'Taskflow Settings'
   })
+}
+
+// --- Task chat (Comment-backed, Telegram-style) ---
+const CHAT_API = 'taskflow.taskflow.api.task_chat'
+
+export async function fetchChatMessages(taskId) {
+  if (!taskId) return []
+  return (await callFrappe(`${CHAT_API}.get_messages`, { task_id: taskId })) || []
+}
+
+// Multipart so files travel with the message in one request.
+export async function sendChatMessage(taskId, { content = '', replyTo = '', files = [] } = {}) {
+  const formData = new FormData()
+  formData.append('task_id', taskId)
+  formData.append('content', content)
+  if (replyTo) formData.append('reply_to', replyTo)
+  files.forEach((f) => formData.append('files', f, f.name))
+
+  const resp = await fetch(`/api/method/${CHAT_API}.send_message`, {
+    method: 'POST',
+    headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '', Accept: 'application/json' },
+    credentials: 'same-origin',
+    body: formData,
+  })
+  const json = await resp.json().catch(() => ({}))
+  if (!resp.ok) throw new Error(getErrorMessage(json, 'Failed to send message'))
+  return json.message
+}
+
+export async function editChatMessage(messageId, content) {
+  return callFrappe(`${CHAT_API}.edit_message`, { message_id: messageId, content }, 'POST')
+}
+
+export async function deleteChatMessage(messageId) {
+  return callFrappe(`${CHAT_API}.delete_message`, { message_id: messageId }, 'POST')
+}
+
+export async function toggleChatReaction(messageId, emoji) {
+  return callFrappe(`${CHAT_API}.toggle_reaction`, { message_id: messageId, emoji }, 'POST')
 }

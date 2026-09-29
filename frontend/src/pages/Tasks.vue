@@ -80,13 +80,14 @@ import CommonListView from '@/components/CommonListView.vue'
 import TaskDetailModal from '@/components/TaskDetailModal.vue'
 import TaskCreateModal from '@/components/TaskCreateModal.vue'
 import ProjectCreateModal from '@/components/ProjectCreateModal.vue'
+import MemberSearchSelect from '@/components/MemberSearchSelect.vue'
 import {
-  NumberCard,
   BarChart,
   DonutChart,
 } from 'frappe-ui/charts'
 import {
   fetchBootstrap,
+  fetchDashboardMemberOptions,
   saveTask,
   deleteTask,
   getErrorMessage,
@@ -425,52 +426,45 @@ function showToast(msg) {
 // already the Team section's dropdown (system-manager screen).
 const selectedTeams = ref([])
 
+// Teams the user is assigned to: teams they are a member / lead of, plus the
+// teams owning projects they are a member of (bootstrap sends exactly these).
 const taskTeamOptions = computed(() => {
   const set = new Set()
-  if (Array.isArray(tasks.value)) {
-    tasks.value.forEach((t) => {
-      if (t.team) set.add(t.team)
-    })
-  }
+  ;(teams.value || []).forEach((t) => {
+    if (t.name) set.add(t.name)
+  })
+  ;(selectedTeams.value || []).forEach((t) => set.add(t))
   return Array.from(set)
     .sort((a, b) => a.localeCompare(b))
     .map((t) => ({ value: t, label: t }))
 })
 
-// Multi-select project filter, narrowed by the team selection above.
+// Multi-select project filter: only projects the user can access (projects of
+// their teams + projects they are a member of), narrowed by the team selection.
 const selectedProjects = ref([])
 
 const projectOptions = computed(() => {
-  const teams = selectedTeams.value && selectedTeams.value.length > 0 ? selectedTeams.value : null
-  const set = new Set()
+  const chosenTeams = selectedTeams.value && selectedTeams.value.length > 0 ? selectedTeams.value : null
+  const map = new Map()
 
-  if (Array.isArray(tasks.value)) {
-    tasks.value.forEach((t) => {
-      if (!t.project) return
-      // With teams chosen, only offer projects those teams actually have work
-      // in; a project from another team would just yield an empty list.
-      if (teams && !(t.team && teams.includes(t.team))) return
-      set.add(t.project)
-    })
-  }
-
-  // Only with no team filter do we offer the whole project list, so projects
-  // that have no tasks yet stay selectable.
-  if (!teams && Array.isArray(projects.value)) {
-    projects.value.forEach((p) => {
-      const val = p.name || p.display_name
-      if (val) set.add(val)
-    })
-  }
+  ;(projects.value || []).forEach((p) => {
+    if (!p.name) return
+    if (chosenTeams && !chosenTeams.includes(p.team)) return
+    map.set(p.name, p.project_name || p.name)
+  })
 
   // Keep already-chosen projects listed even when they fall outside the current
-  // team selection, so their chip stays visible and removable instead of
-  // silently filtering the list to nothing.
-  if (Array.isArray(selectedProjects.value)) {
-    selectedProjects.value.forEach((p) => set.add(p))
-  }
+  // team selection, so their chip stays visible and removable.
+  ;(selectedProjects.value || []).forEach((name) => {
+    if (!map.has(name)) {
+      const p = (projects.value || []).find((x) => x.name === name)
+      map.set(name, p?.project_name || name)
+    }
+  })
 
-  return Array.from(set).map((p) => ({ value: p, label: p }))
+  return Array.from(map.entries())
+    .sort((a, b) => a[1].localeCompare(b[1]))
+    .map(([value, label]) => ({ value, label }))
 })
 
 // Modals
@@ -1326,64 +1320,44 @@ const dashboardTeamOptions = computed(() => {
   return [{ label: 'All Teams', value: '' }, ...list]
 })
 
+// Members added to a Taskflow Team or Taskflow Project member table only
+const dashboardMemberList = ref([])
+
+async function loadDashboardMembers() {
+  try {
+    dashboardMemberList.value = (await fetchDashboardMemberOptions()) || []
+  } catch (e) {
+    console.error('Failed to load dashboard members', e)
+  }
+}
+
+const toMemberOption = (m) => ({
+  label: m.label,
+  value: m.value,
+  image: m.image,
+  description: m.designation || (m.user && m.user !== m.value ? m.user : m.employee),
+})
+
 const dashboardMemberOptions = computed(() => {
-  const map = new Map()
-  const filterTeam = dashboardSelectedTeam.value
-  const userMap = getUserNameMap()
+  const team = dashboardSelectedTeam.value
+  return dashboardMemberList.value
+    .filter((m) => !team || (m.teams || []).includes(team))
+    .map(toMemberOption)
+})
 
-  const addMember = (id, label) => {
-    if (!id) return
-    const key = String(id).trim()
-    if (!key) return
-    const resolvedLabel = label || userMap.get(id) || id
-    const dedupeKey = resolvedLabel.toLowerCase().trim()
-    if (!map.has(dedupeKey)) {
-      map.set(dedupeKey, { label: resolvedLabel, value: id })
-    }
-  }
+const timesheetMemberOptions = computed(() => dashboardMemberList.value.map(toMemberOption))
 
-  // 1. Taskflow Team Members
-  if (Array.isArray(teamMembers.value)) {
-    teamMembers.value.forEach((m) => {
-      if (filterTeam && m.team !== filterTeam && m.parent !== filterTeam) return
-      const id = m.user || m.employee || m.name
-      const label = m.employee_name || (m.user ? userMap.get(m.user) : '') || (m.employee ? userMap.get(m.employee) : '') || id
-      addMember(id, label)
-    })
-  }
-
-  // 2. Taskflow Teams (Team Leads)
-  if (Array.isArray(teams.value)) {
-    teams.value.forEach((t) => {
-      const teamName = t.team_name || t.name
-      if (filterTeam && teamName !== filterTeam) return
-      if (t.team_lead) {
-        addMember(t.team_lead, t.team_lead_name)
-      }
-    })
-  }
-
-  // 3. Taskflow Projects (Project Leads & Project Team Members)
-  if (Array.isArray(projects.value)) {
-    projects.value.forEach((p) => {
-      if (filterTeam && p.team && p.team !== filterTeam) return
-
-      if (p.project_lead) {
-        addMember(p.project_lead, p.project_lead_name)
-      }
-
-      if (Array.isArray(p.project_team_members)) {
-        p.project_team_members.forEach((m) => {
-          const id = m.user || m.employee || m.name
-          const label = m.employee_name || (m.user ? userMap.get(m.user) : '') || (m.employee ? userMap.get(m.employee) : '') || id
-          addMember(id, label)
-        })
-      }
-    })
-  }
-
-  const list = Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
-  return [{ label: 'All Members', value: '' }, ...list]
+// Picker shows the chosen member; when viewing your own timesheet and you are
+// not a team member yourself, it stays empty (placeholder) instead of a raw id.
+const timesheetMemberPick = computed({
+  get: () => {
+    const v = selectedTimesheetUser.value
+    return timesheetMemberOptions.value.some((o) => o.value === v) ? v : ''
+  },
+  set: (val) => {
+    selectedTimesheetUser.value = val || currentUserEmail.value || ''
+    loadTimesheetCalendar(selectedTimesheetUser.value)
+  },
 })
 
 watch(dashboardSelectedTeam, () => {
@@ -1436,36 +1410,6 @@ const filteredDashboardTasks = computed(() => {
   }
 
   return list
-})
-
-const dashboardStats = computed(() => {
-  const all = filteredDashboardTasks.value || []
-  const today = new Date().toISOString().split('T')[0]
-  let open = 0
-  let inProgress = 0
-  let completed = 0
-  let overdue = 0
-
-  for (let i = 0; i < all.length; i++) {
-    const t = all[i]
-    if (t.status === 'Open') open++
-    else if (t.status === 'In Progress') inProgress++
-    else if (t.status === 'Completed') completed++
-
-    if (t.status !== 'Completed' && (t.due_date || t.due)) {
-      const due = String(t.due_date || t.due).split(' ')[0]
-      if (due && due < today) overdue++
-    }
-  }
-
-  return {
-    total: all.length,
-    open,
-    inProgress,
-    completed,
-    overdue,
-    completionRate: all.length > 0 ? Math.round((completed / all.length) * 100) : 0,
-  }
 })
 
 const dashboardStatusCols = computed(() => {
@@ -1581,7 +1525,7 @@ const selectedMemberInfo = computed(() => {
   return {
     value: dashboardSelectedMember.value,
     label,
-    image,
+    image: image || found?.image || '',
     email,
   }
 })
@@ -1677,123 +1621,17 @@ const dashboardUserProjectSummary = computed(() => {
   return { rows, grandTotal }
 })
 
-const dashboardKpiCards = computed(() => {
-  const stats = dashboardStats.value
-  const total = stats.total
-
-  // If a team member is selected, show user-centric KPI cards
-  if (dashboardSelectedMember.value) {
-    const userProjectsCount = selectedUserProjects.value.length
-    const pendingCount = (filteredDashboardTasks.value || []).filter(
-      (t) => t.status !== 'Completed' && t.status !== 'Cancelled'
-    ).length
-
-    return [
-      {
-        title: 'Active Projects',
-        value: userProjectsCount,
-        delta: userProjectsCount,
-        deltaCaption: 'projects involved',
-        sparkline: {
-          data: [1, Math.max(1, userProjectsCount), userProjectsCount],
-        },
-      },
-      {
-        title: 'Pending Tasks',
-        value: pendingCount,
-        delta: total ? Math.round((pendingCount / total) * 100) : 0,
-        deltaSuffix: '%',
-        deltaCaption: 'of assigned tasks',
-        sparkline: {
-          data: [1, Math.max(1, stats.open), Math.max(1, pendingCount)],
-          type: 'bar',
-        },
-      },
-      {
-        title: 'Total Assigned',
-        value: total,
-        delta: stats.inProgress,
-        deltaCaption: 'active in progress',
-        sparkline: {
-          data: [
-            Math.max(1, stats.open),
-            Math.max(1, stats.inProgress),
-            Math.max(1, stats.completed),
-          ],
-        },
-      },
-      {
-        title: 'Completed',
-        value: stats.completed,
-        delta: stats.completionRate,
-        deltaSuffix: '%',
-        deltaCaption: 'completion rate',
-        sparkline: {
-          data: [0, Math.floor(stats.completed / 2), Math.max(1, stats.completed)],
-        },
-      },
-      {
-        title: 'Overdue',
-        value: stats.overdue,
-        negativeIsBetter: true,
-        delta: stats.overdue > 0 ? -stats.overdue : 0,
-        deltaCaption: stats.overdue > 0 ? 'needs action' : 'on track',
-      },
-    ]
-  }
-
-  // Default overall / team view
-  return [
-    {
-      title: 'Total Tasks',
-      value: total,
-      delta: stats.inProgress,
-      deltaCaption: 'active in progress',
-      sparkline: {
-        data: [
-          Math.max(1, stats.open),
-          Math.max(1, stats.inProgress),
-          Math.max(1, stats.completed),
-        ],
-      },
-    },
-    {
-      title: 'In Progress',
-      value: stats.inProgress,
-      delta: total ? Math.round((stats.inProgress / total) * 100) : 0,
-      deltaSuffix: '%',
-      deltaCaption: 'of total tasks',
-      sparkline: {
-        data: [1, Math.max(1, stats.open), Math.max(1, stats.inProgress)],
-        type: 'bar',
-      },
-    },
-    {
-      title: 'Completed',
-      value: stats.completed,
-      delta: stats.completionRate,
-      deltaSuffix: '%',
-      deltaCaption: 'completion rate',
-      sparkline: {
-        data: [0, Math.floor(stats.completed / 2), Math.max(1, stats.completed)],
-      },
-    },
-    {
-      title: 'Open Backlog',
-      value: stats.open,
-      delta: total ? Math.round((stats.open / total) * 100) : 0,
-      deltaSuffix: '%',
-      deltaCaption: 'queued for work',
-    },
-    {
-      title: 'Overdue',
-      value: stats.overdue,
-      negativeIsBetter: true,
-      delta: stats.overdue > 0 ? -stats.overdue : 0,
-      deltaCaption: stats.overdue > 0 ? 'needs action' : 'on track',
-    },
-  ]
-})
+// Status colors follow the task badges: green = done, red = late, blue = new,
+// amber = active, purple = awaiting review, orange = paused, gray = dropped.
+const STATUS_CHART_COLORS = {
+  'Completed': '#16A34A',
+  'Overdue': '#DC2626',
+  'Open': '#2563EB',
+  'In Progress': '#F59E0B',
+  'Review': '#9333EA',
+  'On Hold': '#EA580C',
+  'Cancelled': '#6B7280',
+}
 
 const statusDonutChart = computed(() => {
   const data = []
@@ -1808,11 +1646,17 @@ const statusDonutChart = computed(() => {
     }
   }
 
+  // DonutChart sorts slices largest-first and assigns palette colors by that
+  // position, so sort the same way here to pin each status to its own color.
+  data.sort((a, b) => b.count - a.count)
+  const chartData = data.length > 0 ? data : [{ status: 'No Tasks', count: 1 }]
+
   return {
-    data: data.length > 0 ? data : [{ status: 'No Tasks', count: 1 }],
+    data: chartData,
     category: 'status',
     value: 'count',
     centerLabel: 'tasks',
+    palette: chartData.map((d) => STATUS_CHART_COLORS[d.status] || '#CBD5E1'),
     title: 'Task Status Mix',
     subtitle: dashboardSelectedMember.value
       ? `Status breakdown for ${selectedMemberLabel.value}`
@@ -1849,6 +1693,7 @@ const memberPendingBarChart = computed(() => {
       x: 'project',
       y: 'pending',
       yAxis: { title: 'Pending Tasks' },
+      seriesConfig: { pending: { label: 'Pending Tasks', color: '#468373', showDataLabels: true } },
       title: 'Pending Tasks by Project',
       subtitle: `Pending tasks assigned to ${memberName} across projects`,
     }
@@ -1901,6 +1746,7 @@ const memberPendingBarChart = computed(() => {
     x: 'member',
     y: 'pending',
     yAxis: { title: 'Pending Tasks' },
+    seriesConfig: { pending: { label: 'Pending Tasks', color: '#468373', showDataLabels: true } },
     title: 'Workload by Member',
     subtitle: 'Pending tasks assigned per team member',
   }
@@ -2303,30 +2149,6 @@ const confirmSubmitTsTarget = ref(null)
 const confirmSubmitTsLoading = ref(false)
 const timesheetViewMode = ref('Timesheet') // 'Timesheet' | 'Reports'
 
-const availableTimesheetMembers = computed(() => {
-  const list = []
-  const seen = new Set()
-  const me = (currentUserEmail.value || '').toLowerCase()
-  if (me) {
-    seen.add(me)
-  }
-  for (const m of (teamMembers.value || [])) {
-    const email = (m.user || m.email || '').toLowerCase()
-    if (email && !seen.has(email)) {
-      seen.add(email)
-      list.push(m)
-    }
-  }
-  for (const p of (people.value || [])) {
-    const email = (p.email || p.user || '').toLowerCase()
-    if (email && !seen.has(email)) {
-      seen.add(email)
-      list.push(p)
-    }
-  }
-  return list
-})
-
 // Permitted projects for timesheet logging (assigned to user as per portal permissions)
 const availableTimesheetProjects = computed(() => {
   return (projects.value || []).map((p) => ({
@@ -2410,7 +2232,9 @@ const selectedTsUserDisplayName = computed(() => {
   const found = [...(teamMembers.value || []), ...(people.value || [])].find((m) => {
     return (m.user || m.email || '').toLowerCase() === user
   })
-  return found?.employee_name || found?.name || found?.user || found?.email || selectedTimesheetUser.value
+  if (found) return found.employee_name || found.name || found.user || found.email
+  const member = dashboardMemberList.value.find((m) => String(m.value || '').toLowerCase() === user)
+  return member?.label || selectedTimesheetUser.value
 })
 
 const selectedTsUserImage = computed(() => {
@@ -2419,7 +2243,9 @@ const selectedTsUserImage = computed(() => {
   const found = [...(teamMembers.value || []), ...(people.value || [])].find((m) => {
     return (m.user || m.email || '').toLowerCase() === user
   })
-  return found?.user_image || ''
+  if (found?.user_image) return found.user_image
+  const member = dashboardMemberList.value.find((m) => String(m.value || '').toLowerCase() === user)
+  return member?.image || ''
 })
 
 const totalTsMonthlyHours = computed(() => {
@@ -2706,6 +2532,7 @@ async function loadData() {
       }
     }
     loadEmployees()
+    loadDashboardMembers()
     validateSection()
   } catch (e) {
     console.error('Failed to load tasks', e)
@@ -3619,12 +3446,10 @@ onUnmounted(() => {
               />
 
               <!-- Team Member Filter -->
-              <Select
+              <MemberSearchSelect
                 v-model="dashboardSelectedMember"
                 :options="dashboardMemberOptions"
-                size="sm"
-                class="w-44 sm:w-60 shrink-0 [&_button]:truncate"
-                placeholder="All Members"
+                class="w-48 sm:w-64 shrink-0"
               />
 
               <!-- Clear button -->
@@ -3646,6 +3471,28 @@ onUnmounted(() => {
           <!-- Task form primary controls (Task type / Status / Priority) teleport in here.
                Always rendered so the Teleport target exists before the form mounts. -->
           <div id="task-form-header-slot" class="flex items-center gap-1.5 sm:gap-2 shrink-0"></div>
+
+          <!-- Timesheet member filter (team / project members only) -->
+          <template v-if="activeSection === 'Timesheet' && timesheetViewMode === 'Timesheet'">
+            <div class="h-4 w-px bg-outline-gray-2 dark:bg-neutral-800 shrink-0"></div>
+            <MemberSearchSelect
+              v-model="timesheetMemberPick"
+              :options="timesheetMemberOptions"
+              class="w-48 sm:w-64 shrink-0"
+            />
+            <Button
+              v-if="timesheetMemberPick"
+              variant="ghost"
+              size="sm"
+              title="Back to my timesheet"
+              class="shrink-0 text-ink-gray-5 hover:text-red-500"
+              @click="timesheetMemberPick = ''"
+            >
+              <template #icon>
+                <XIcon class="size-3.5" />
+              </template>
+            </Button>
+          </template>
 
           <!-- Timesheet View Toggle: Timesheet | Reports -->
           <div
@@ -3793,7 +3640,7 @@ onUnmounted(() => {
                     <Badge
                       :label="`${(filteredDashboardTasks || []).filter(t => t.status !== 'Completed' && t.status !== 'Cancelled').length} Pending Tasks`"
                       variant="subtle"
-                      theme="orange"
+                      theme="teal"
                       size="sm"
                     />
                   </div>
@@ -3816,16 +3663,6 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- 1. NumberCards Grid (Frappe UI Charts NumberCard) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
-              <NumberCard
-                v-for="kpi in dashboardKpiCards"
-                :key="kpi.title"
-                v-bind="kpi"
-                class="shadow-xs dark:bg-neutral-900 dark:border-neutral-800"
-              />
-            </div>
-
             <!-- 2. Charts Row: Team Workload (BarChart) & Status Mix (DonutChart) -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <section class="lg:col-span-2 flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 px-4 py-3 h-80 shadow-xs">
@@ -3838,9 +3675,9 @@ onUnmounted(() => {
             </div>
 
             <!-- 3. Summary Tables: Team Status & Guided By Status (Side-by-side Grid) -->
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch">
               <!-- Table 1: Team Status Summary OR Project Status Summary (when member selected) -->
-              <section class="flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 shadow-xs overflow-hidden">
+              <section class="flex h-full min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 shadow-xs overflow-hidden">
                 <div class="px-4 py-3 bg-surface-base dark:bg-neutral-900 border-b border-outline-gray-2 dark:border-neutral-800 flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="p-1 rounded-md bg-teal-50 dark:bg-teal-950/50 text-[#468373] dark:text-emerald-400">
@@ -3862,7 +3699,7 @@ onUnmounted(() => {
                   />
                 </div>
 
-                <div class="overflow-x-auto max-h-[360px] overflow-y-auto">
+                <div class="flex-1 overflow-x-auto max-h-[360px] overflow-y-auto">
                   <table class="w-full text-left text-xs border-collapse">
                     <thead class="sticky top-0 z-10">
                       <tr class="bg-surface-gray-2 dark:bg-neutral-800 border-b border-outline-gray-2 dark:border-neutral-700 text-ink-gray-7 dark:text-neutral-300 font-semibold uppercase tracking-wider text-[11px]">
@@ -3932,10 +3769,10 @@ onUnmounted(() => {
               </section>
 
               <!-- Table 2: Guided By Status Summary -->
-              <section class="flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 shadow-xs overflow-hidden">
+              <section class="flex h-full min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 shadow-xs overflow-hidden">
                 <div class="px-4 py-3 bg-surface-base dark:bg-neutral-900 border-b border-outline-gray-2 dark:border-neutral-800 flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <div class="p-1 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                    <div class="p-1 rounded-md bg-teal-50 dark:bg-teal-950/50 text-[#468373] dark:text-emerald-400">
                       <UserCheck class="size-4" />
                     </div>
                     <div>
@@ -3950,7 +3787,7 @@ onUnmounted(() => {
                   />
                 </div>
 
-                <div class="overflow-x-auto max-h-[360px] overflow-y-auto">
+                <div class="flex-1 overflow-x-auto max-h-[360px] overflow-y-auto">
                   <table class="w-full text-left text-xs border-collapse">
                     <thead class="sticky top-0 z-10">
                       <tr class="bg-surface-gray-2 dark:bg-neutral-800 border-b border-outline-gray-2 dark:border-neutral-700 text-ink-gray-7 dark:text-neutral-300 font-semibold uppercase tracking-wider text-[11px]">
@@ -3973,7 +3810,7 @@ onUnmounted(() => {
                       >
                         <td class="py-2 px-3.5 font-medium text-ink-gray-9 dark:text-neutral-100">
                           <div class="flex items-center gap-1.5 min-w-0 max-w-[160px]">
-                            <span class="size-2 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span class="size-2 rounded-full bg-[#468373] dark:bg-emerald-400 shrink-0"></span>
                             <span class="truncate" :title="r.guide">{{ r.guide }}</span>
                           </div>
                         </td>
@@ -4016,7 +3853,7 @@ onUnmounted(() => {
             </div>
 
             <!-- 4. Timesheet Master Report Section (Dashboard bottom) -->
-            <TimesheetMasterReport :embedded="true" />
+            <TimesheetMasterReport :embedded="true" :team="dashboardSelectedTeam" />
           </div>
         </template>
 
@@ -4274,46 +4111,6 @@ onUnmounted(() => {
 
           <!-- Standard Timesheet Logging View -->
           <template v-else>
-            <div class="shrink-0 mb-3 flex items-center justify-between">
-              <div>
-                <h2 class="text-lg font-bold text-ink-gray-9">Timesheet</h2>
-                <p class="text-xs text-ink-gray-5">
-                  Log and track work hours
-                  <span v-if="selectedTsUserDisplayName" class="text-[#417c7d] font-semibold">
-                    — {{ selectedTsUserDisplayName }}
-                  </span>
-                </p>
-              </div>
-              <div class="flex items-center gap-2.5">
-                <div v-if="availableTimesheetMembers.length > 0" class="relative">
-                   <select
-                     v-model="selectedTimesheetUser"
-                     class="bg-surface-base border border-outline-gray-2 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-ink-gray-8 dark:text-gray-200 font-medium focus:ring-2 focus:ring-[#417c7d]/20 focus:border-[#417c7d] outline-none transition cursor-pointer"
-                     @change="loadTimesheetCalendar(selectedTimesheetUser)"
-                   >
-                    <option :value="currentUserEmail">
-                      {{ currentUserName ? `${currentUserName} (Me)` : 'My Timesheet' }}
-                    </option>
-                    <option
-                      v-for="m in availableTimesheetMembers"
-                      :key="m.user || m.email || m.employee"
-                      :value="m.user || m.email || m.employee"
-                    >
-                      {{ m.employee_name || m.name || m.user || m.email }}
-                    </option>
-                  </select>
-                </div>
-                <Button
-                  variant="solid"
-                  class="!bg-[#417c7d] hover:!bg-[#356667] !text-white"
-                  @click="openTimesheetForm(selectedTsDayDate || '')"
-                >
-                  <template #prefix><Plus class="size-3.5" /></template>
-                  <span>Log Hours</span>
-                </Button>
-              </div>
-            </div>
-
           <!-- 2 Columns Layout: Left (30%) Profile + Calendar | Right (70%) Activity Log from top -->
           <div class="flex-1 min-h-0 flex gap-3 overflow-hidden">
             <!-- Left Column (30%): Profile Card + Timesheet Calendar -->

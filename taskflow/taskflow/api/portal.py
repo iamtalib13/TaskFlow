@@ -197,29 +197,13 @@ def _get_user_profile() -> dict:
 def _get_visible_project_names() -> list[str]:
     """Return names of projects the current user can see.
 
-    A project is visible only when the user is listed in the project's own
-    team-members child table (project_team_members), matched by user id or
-    by their linked Employee.
+    Same rule as the Taskflow Project permission hooks: projects of every team
+    the user is a member (or lead) of, plus projects where the user is listed
+    in the project's own member table or is the project lead.
     """
-    user = frappe.session.user
-    if user == "Administrator":
-        return [row.name for row in frappe.get_all("Taskflow Project", fields=["name"])]
+    from taskflow.taskflow.service.project_access import get_user_accessible_projects
 
-    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
-
-    project_members = frappe.get_all(
-        "Taskflow Team Member",
-        filters={"parenttype": "Taskflow Project"},
-        fields=["parent", "user", "employee"],
-        ignore_permissions=True,
-    )
-
-    visible: set[str] = set()
-    for row in project_members:
-        if row.user == user or (employee and row.employee == employee):
-            visible.add(row.parent)
-
-    return sorted(visible)
+    return sorted(get_user_accessible_projects(frappe.session.user))
 
 
 def _get_accessible_teams() -> list[dict]:
@@ -2389,15 +2373,91 @@ def search_project_tasks(project: str = "", query: str = "", limit: int = 5) -> 
 
 
 @frappe.whitelist(methods=["GET", "POST"])
+def get_dashboard_member_options() -> list[dict]:
+    """Members for the dashboard member filter.
+
+    Only people added to a Taskflow Team or Taskflow Project member table the
+    current user can see are returned, one entry per person, tagged with every
+    team they belong to (directly, or through a project of that team).
+    """
+    _require_login()
+
+    team_names = [team["name"] for team in _get_accessible_teams()]
+    project_names = _get_visible_project_names()
+
+    project_team_map = {}
+    if project_names:
+        for row in frappe.get_all(
+            "Taskflow Project",
+            filters={"name": ["in", project_names]},
+            fields=["name", "team"],
+            ignore_permissions=True,
+        ):
+            project_team_map[row.name] = row.team
+
+    member_rows = []
+    if team_names:
+        member_rows += frappe.get_all(
+            "Taskflow Team Member",
+            filters={"parenttype": "Taskflow Team", "parent": ["in", team_names], "is_active": 1},
+            fields=["parent", "parenttype", "employee", "user"],
+            ignore_permissions=True,
+        )
+    if project_names:
+        member_rows += frappe.get_all(
+            "Taskflow Team Member",
+            filters={"parenttype": "Taskflow Project", "parent": ["in", project_names]},
+            fields=["parent", "parenttype", "employee", "user"],
+            ignore_permissions=True,
+        )
+
+    employee_ids = list({row.employee for row in member_rows if row.employee})
+    employee_map = {}
+    if employee_ids:
+        for emp in frappe.get_all(
+            "Employee",
+            filters={"name": ["in", employee_ids]},
+            fields=["name", "employee_name", "user_id", "image", "designation"],
+            ignore_permissions=True,
+        ):
+            employee_map[emp.name] = emp
+
+    members: dict[str, dict] = {}
+    for row in member_rows:
+        emp = employee_map.get(row.employee) or {}
+        user = row.user or emp.get("user_id") or ""
+        key = (user or row.employee or "").lower()
+        if not key:
+            continue
+
+        team = row.parent if row.parenttype == "Taskflow Team" else project_team_map.get(row.parent)
+        member = members.setdefault(key, {
+            "value": user or row.employee,
+            "label": emp.get("employee_name") or user or row.employee,
+            "employee": row.employee or "",
+            "user": user,
+            "image": emp.get("image") or None,
+            "designation": emp.get("designation") or "",
+            "teams": [],
+        })
+        if team and team not in member["teams"]:
+            member["teams"].append(team)
+
+    return sorted(members.values(), key=lambda m: (m["label"] or "").lower())
+
+
+@frappe.whitelist(methods=["GET", "POST"])
 def get_timesheet_master_report(
     from_date: str = "",
     to_date: str = "",
     view_type: str = "Weekly",
     search: str = "",
     limit: int = 50,
-    start: int = 0
+    start: int = 0,
+    team: str = ""
 ) -> dict:
     """Fetch aggregated timesheet data for Timesheet Master Report.
+    When `team` is given, only that team's members and team lead are included.
     Returns:
       - days: list of date strings and labels in the range
       - rows: list of employee aggregated metrics (employee, designation, user_image, daily_hours, weekly_total, monthly_total, weekly_pct, monthly_pct, status)
@@ -2458,31 +2518,46 @@ def get_timesheet_master_report(
     tf_emp_ids = set()
     tf_user_ids = set()
 
-    # Members from Taskflow Team Member child table
-    member_rows = frappe.get_all(
-        "Taskflow Team Member",
-        fields=["employee", "user"],
-    )
+    if team:
+        # Restrict to the selected team's members and its team lead
+        member_rows = frappe.get_all(
+            "Taskflow Team Member",
+            filters={"parenttype": "Taskflow Team", "parent": team},
+            fields=["employee", "user"],
+        )
+        team_rows = frappe.get_all(
+            "Taskflow Team",
+            filters={"name": team},
+            fields=["team_lead"],
+        )
+        project_rows = []
+    else:
+        # Members from Taskflow Team Member child table
+        member_rows = frappe.get_all(
+            "Taskflow Team Member",
+            fields=["employee", "user"],
+        )
+        # Leads from Taskflow Team
+        team_rows = frappe.get_all(
+            "Taskflow Team",
+            fields=["team_lead"],
+        )
+        # Leads from Taskflow Project
+        project_rows = frappe.get_all(
+            "Taskflow Project",
+            fields=["project_lead", "project_lead_user"],
+        )
+
     for m in member_rows:
         if m.get("employee"):
             tf_emp_ids.add(str(m["employee"]).strip())
         if m.get("user"):
             tf_user_ids.add(str(m["user"]).strip().lower())
 
-    # Leads from Taskflow Team
-    team_rows = frappe.get_all(
-        "Taskflow Team",
-        fields=["team_lead"],
-    )
     for t in team_rows:
         if t.get("team_lead"):
             tf_emp_ids.add(str(t["team_lead"]).strip())
 
-    # Leads from Taskflow Project
-    project_rows = frappe.get_all(
-        "Taskflow Project",
-        fields=["project_lead", "project_lead_user"],
-    )
     for p in project_rows:
         if p.get("project_lead"):
             tf_emp_ids.add(str(p["project_lead"]).strip())
