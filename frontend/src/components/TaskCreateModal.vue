@@ -157,6 +157,7 @@
                   label="Status"
                   placeholder="Select status"
                   :options="statusOptions"
+                  @change="onStatusChange"
                 >
                   <template #item-prefix="{ item }">
                     <span
@@ -312,6 +313,39 @@
                 </div>
               </div>
 
+              <!-- Completion Date (Shown when status is Completed) -->
+              <div v-if="form.status === 'Completed'">
+                <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Completion Date</label>
+                <DatePicker
+                  v-model="form.completed_on"
+                  format="DD-MM-YYYY"
+                  placeholder="DD-MM-YYYY"
+                  size="sm"
+                  variant="outline"
+                  class="w-full"
+                >
+                  <template #prefix>
+                    <Calendar class="size-3.5 text-gray-400 dark:text-gray-500" />
+                  </template>
+                  <template #actions="{ setDate, close }">
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, 0, 'day', close)"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      :class="rowCls"
+                      @click="applyQuickDate(setDate, -1, 'day', close)"
+                    >
+                      Yesterday
+                    </button>
+                  </template>
+                </DatePicker>
+              </div>
+
               <!-- Pending From & Guided By -->
               <div class="grid grid-cols-2 gap-2.5">
                 <div>
@@ -459,6 +493,7 @@ export default {
         priority: 'Medium',
         start_date: '',
         due_date: '',
+        completed_on: '',
         pending_from: '',
         guided_by: '',
         toll_id: '',
@@ -474,11 +509,10 @@ export default {
       if (val) {
         this.loadTaskflowSettings()
         this.errorMessage = ''
-        const defaultProject = this.projects[0]?.name || ''
-        const defaultTeam = this.projects[0]?.team || this.teams[0]?.name || ''
+        const defaultTeam = this.teams[0]?.name || ''
         this.form = {
           title: '',
-          project: defaultProject,
+          project: '',
           team: defaultTeam,
           task_type: 'Task',
           assignees: [],
@@ -487,6 +521,7 @@ export default {
           priority: 'Medium',
           start_date: '',
           due_date: '',
+          completed_on: '',
           pending_from: '',
           guided_by: '',
           toll_id: '',
@@ -501,6 +536,11 @@ export default {
     },
     'form.project'() {
       this.onProjectChange()
+    },
+    'form.status'(newStatus) {
+      if (newStatus === 'Completed') {
+        this.form.completed_on = dayjs().format('YYYY-MM-DD')
+      }
     },
   },
   mounted() {
@@ -596,6 +636,12 @@ export default {
     },
   },
   methods: {
+    onStatusChange(val) {
+      const statusVal = typeof val === 'object' ? (val?.value || '') : (val || this.form.status)
+      if (statusVal === 'Completed') {
+        this.form.completed_on = dayjs().format('YYYY-MM-DD')
+      }
+    },
     async loadTaskflowSettings() {
       try {
         const settings = await fetchTaskflowSettings()
@@ -663,7 +709,7 @@ export default {
         team: this.effectiveTeam || this.form.team || undefined,
         assignees: assigneeIds,
         assigned_to: assigneeIds[0] || '',
-        completed_on: this.form.status === 'Completed' ? dayjs().format('YYYY-MM-DD') : (this.form.completed_on || ''),
+        completed_on: this.form.status === 'Completed' ? (this.form.completed_on || dayjs().format('YYYY-MM-DD')) : '',
       }
       try {
         if (this.onCreate) {

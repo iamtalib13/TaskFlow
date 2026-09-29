@@ -2813,6 +2813,7 @@ async function onCreateTask(formData) {
     ticket_date: formData.ticket_date || '',
     ticket_raised_by: formData.ticket_raised_by || '',
     estimated_hours: 8,
+    completed_on: formData.status === 'Completed' ? (formData.completed_on || new Date().toISOString().split('T')[0]) : '',
     assignees: assigneeList,
   }
 
