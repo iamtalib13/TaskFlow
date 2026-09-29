@@ -119,7 +119,7 @@ const uploadFunction = async (file) => ({
 </script>
 
 <template>
-  <div class="w-full">
+  <div class="w-full flex-1 flex flex-col h-full min-h-0">
     <Editor
       :model-value="internalContent"
       @change="handleChange"
@@ -128,13 +128,13 @@ const uploadFunction = async (file) => ({
       :placeholder="placeholder"
     >
       <template #default>
-        <div class="overflow-hidden rounded-md border border-outline-gray-2 dark:border-gray-700 bg-surface-base flex flex-col flex-1" :class="editorClass">
+        <div class="overflow-hidden rounded-md border border-outline-gray-2 dark:border-gray-700 bg-surface-base flex flex-col flex-1 h-full min-h-0" :class="editorClass">
           <EditorBubbleMenu :items="bubbleToolbar" />
           <EditorFloatingMenu :items="toolbar" />
           <div class="border-b border-outline-gray-2 dark:border-gray-700 bg-surface-gray-2/80 dark:bg-gray-800 px-2 py-1.5 shrink-0">
             <EditorFixedMenu :items="toolbar" class="flex-wrap" />
           </div>
-          <EditorContent :class="[minHeight, 'px-5 py-4 text-ink-gray-8 dark:text-gray-100 focus:outline-none flex-1 overflow-y-auto']" />
+          <EditorContent :class="[minHeight, 'px-5 py-4 text-ink-gray-8 dark:text-gray-100 focus:outline-none flex-1 overflow-y-auto min-h-0']" />
         </div>
       </template>
     </Editor>

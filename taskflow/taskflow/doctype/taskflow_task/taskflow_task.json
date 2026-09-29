@@ -130,7 +130,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "\nOpen\nIn Progress\nReview\nOn Hold\nCompleted\nCancelled\nOverdue",
+   "options": "\nOpen\nIn Progress\nReview\nOn Hold\nCompleted\nOverdue",
    "reqd": 1
   },
   {

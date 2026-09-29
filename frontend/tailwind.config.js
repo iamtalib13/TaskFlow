@@ -1,4 +1,5 @@
 import frappePreset, { content as frappeContent } from 'frappe-ui/tailwind'
+import tailwindColors from 'tailwindcss/colors'
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -35,6 +36,8 @@ export default {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
+        emerald: tailwindColors.emerald,
+        rose: tailwindColors.rose,
         primary: {
           50: '#f0f7f7',
           100: '#dceeed',

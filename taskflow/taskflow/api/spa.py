@@ -392,7 +392,7 @@ def get_spa_bootstrap() -> dict:
 		],
 		"teams": teams_data,
 		"team_members": team_members,
-		"statuses": ["Open", "In Progress", "Review", "On Hold", "Completed", "Cancelled", "Overdue"],
+		"statuses": ["Open", "In Progress", "Review", "On Hold", "Completed", "Overdue"],
 		"priorities": ["Critical", "High", "Medium", "Low"],
 		"pending_from_options": pending_from_options,
 		"tasks": tasks,

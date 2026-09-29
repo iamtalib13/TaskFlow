@@ -123,7 +123,7 @@ const loading = ref(false)
 const tasks = ref([])
 const projects = ref([])
 const people = ref([])
-const statuses = ref(['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue'])
+const statuses = ref(['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Overdue'])
 const priorities = ref(['Critical', 'High', 'Medium', 'Low'])
 
 // Teams & Team Members state

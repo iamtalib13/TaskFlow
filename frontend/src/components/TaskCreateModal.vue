@@ -77,10 +77,10 @@
 
         <!-- Modal Body (Two-Column Layout) -->
         <div class="p-6 flex-1 overflow-hidden text-xs">
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <!-- Left Column (col-span-7): Task Title & Description (Scrolls independently) -->
-            <div class="lg:col-span-7 flex flex-col space-y-4 max-h-[72vh] overflow-y-auto pr-2">
-              <div>
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            <!-- Left Column (col-span-7): Task Title & Description (Matches right-side height) -->
+            <div class="lg:col-span-7 flex flex-col space-y-4 max-h-[72vh] overflow-y-auto pr-2 h-full">
+              <div class="shrink-0">
                 <label class="block font-semibold text-ink-gray-7 dark:text-gray-200 mb-1">
                   Task Title <span class="text-rose-500">*</span>
                 </label>
@@ -93,14 +93,14 @@
                 />
               </div>
 
-              <div class="flex-1 flex flex-col">
-                <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Description</label>
+              <div class="flex-1 flex flex-col min-h-0">
+                <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1 shrink-0">Description</label>
                 <FrappeRichEditor
                   v-model="form.description"
                   :people="people"
-                  min-height="min-h-[300px]"
+                  min-height="min-h-[160px]"
                   placeholder="Write details, acceptance criteria, or type / for blocks..."
-                  class="flex-1"
+                  class="flex-1 min-h-0 h-full"
                 />
               </div>
             </div>
@@ -207,6 +207,12 @@
                   :options="statusOptions"
                   @change="onStatusChange"
                 >
+                  <template #prefix>
+                    <span
+                      class="size-2 shrink-0 rounded-full"
+                      :class="getStatusDotClass(form.status)"
+                    />
+                  </template>
                   <template #item-prefix="{ item }">
                     <span
                       class="size-2 shrink-0 rounded-full"
@@ -224,6 +230,12 @@
                 placeholder="Select priority"
                 :options="priorityOptions"
               >
+                <template #prefix>
+                  <span
+                    class="size-2 shrink-0 rounded-full"
+                    :class="getPriorityDotClass(form.priority)"
+                  />
+                </template>
                 <template #item-prefix="{ item }">
                   <span
                     class="size-2 shrink-0 rounded-full"
@@ -431,10 +443,10 @@
                       <ChevronDown class="size-3.5 transition-transform duration-200" :class="{ 'rotate-180': showPendingFromDropdown }" />
                     </button>
                   </div>
-                  <!-- Dropdown Menu -->
+                  <!-- Dropdown Menu (Opens upwards to prevent clipping) -->
                   <div
                     v-if="showPendingFromDropdown"
-                    class="absolute left-0 top-full mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg shadow-xl z-50 py-1 text-xs"
+                    class="absolute left-0 bottom-full mb-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg shadow-xl z-50 py-1 text-xs"
                   >
                     <div
                       v-for="opt in pendingFromOptions"
@@ -553,7 +565,7 @@ export default {
     },
     statuses: {
       type: Array,
-      default: () => ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue'],
+      default: () => ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Overdue'],
     },
     priorities: {
       type: Array,
@@ -653,7 +665,9 @@ export default {
     // frappe-ui Select needs option objects; the plain string prop lists above
     // stay the single source of truth.
     statusOptions() {
-      return (this.statuses || []).map((s) => ({ label: s, value: s }))
+      return (this.statuses || [])
+        .filter((s) => s !== 'Cancelled')
+        .map((s) => ({ label: s, value: s }))
     },
     priorityOptions() {
       return (this.priorities || []).map((p) => ({ label: p, value: p }))
@@ -931,23 +945,27 @@ export default {
       return 'text-[#417c7d]'
     },
     getStatusDotClass(status) {
-      switch (status) {
-        case 'Completed':
-          return 'bg-emerald-500'
-        case 'Overdue':
-          return 'bg-rose-500'
-        case 'On Hold':
+      const val = typeof status === 'object' && status ? (status.value || status.label) : status
+      switch (val) {
+        case 'Open':
           return 'bg-blue-500'
         case 'In Progress':
-          return 'bg-indigo-500'
+          return 'bg-amber-500'
         case 'Review':
           return 'bg-purple-500'
+        case 'On Hold':
+          return 'bg-orange-500'
+        case 'Completed':
+          return 'bg-green-500'
+        case 'Overdue':
+          return 'bg-red-500'
         default:
-          return 'bg-slate-400'
+          return 'bg-blue-500'
       }
     },
     getPriorityDotClass(priority) {
-      switch (priority) {
+      const val = typeof priority === 'object' && priority ? (priority.value || priority.label) : priority
+      switch (val) {
         case 'Critical':
           return 'bg-rose-500'
         case 'High':
@@ -955,9 +973,9 @@ export default {
         case 'Medium':
           return 'bg-amber-400'
         case 'Low':
-          return 'bg-slate-400'
+          return 'bg-blue-400'
         default:
-          return 'bg-slate-400'
+          return 'bg-blue-400'
       }
     },
   },

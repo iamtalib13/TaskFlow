@@ -254,7 +254,6 @@ const TaskflowTaskUI = {
         <option value="Review" ${frm.doc.status === "Review" ? "selected" : ""}>Review</option>
         <option value="On Hold" ${frm.doc.status === "On Hold" ? "selected" : ""}>On Hold</option>
         <option value="Completed" ${frm.doc.status === "Completed" ? "selected" : ""}>Completed</option>
-        <option value="Cancelled" ${frm.doc.status === "Cancelled" ? "selected" : ""}>Cancelled</option>
         <option value="Overdue" ${frm.doc.status === "Overdue" ? "selected" : ""}>Overdue</option>
       </select>
     </div>

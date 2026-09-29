@@ -305,10 +305,10 @@
                       <ChevronDown class="size-3.5 transition-transform duration-200" :class="{ 'rotate-180': showPendingFromDropdown }" />
                     </button>
                   </div>
-                  <!-- Dropdown Menu -->
+                  <!-- Dropdown Menu (Opens upwards to prevent clipping) -->
                   <div
                     v-if="showPendingFromDropdown"
-                    class="absolute left-0 top-full mt-1 w-full max-h-52 overflow-y-auto bg-white dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg shadow-xl z-50 py-1 text-xs"
+                    class="absolute left-0 bottom-full mb-1 w-full max-h-52 overflow-y-auto bg-white dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg shadow-xl z-50 py-1 text-xs"
                   >
                     <div
                       v-for="opt in pendingFromOptions"
@@ -909,7 +909,7 @@ export default {
     },
     statuses: {
       type: Array,
-      default: () => ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue'],
+      default: () => ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Overdue'],
     },
     priorities: {
       type: Array,
@@ -982,7 +982,9 @@ export default {
     // frappe-ui Select wants option objects when a row needs more than a bare
     // label; the plain string lists are kept as the single source of truth.
     statusOptions() {
-      return this.statuses.map((s) => ({ label: s, value: s }))
+      return (this.statuses || [])
+        .filter((s) => s !== 'Cancelled')
+        .map((s) => ({ label: s, value: s }))
     },
     priorityOptions() {
       return this.priorities.map((p) => ({ label: p, value: p }))
@@ -1746,19 +1748,22 @@ export default {
       }
     },
     getStatusDotClass(status) {
-      switch (status) {
-        case 'Completed':
-          return 'bg-emerald-500'
-        case 'Overdue':
-          return 'bg-rose-500'
-        case 'On Hold':
+      const val = typeof status === 'object' && status ? (status.value || status.label) : status
+      switch (val) {
+        case 'Open':
           return 'bg-blue-500'
         case 'In Progress':
-          return 'bg-indigo-500'
+          return 'bg-amber-500'
         case 'Review':
           return 'bg-purple-500'
+        case 'On Hold':
+          return 'bg-orange-500'
+        case 'Completed':
+          return 'bg-green-500'
+        case 'Overdue':
+          return 'bg-red-500'
         default:
-          return 'bg-slate-400'
+          return 'bg-blue-500'
       }
     },
     getTaskTypeIcon(type) {
