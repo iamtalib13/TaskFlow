@@ -281,18 +281,22 @@
       <!-- Right: Load More Controls -->
       <div class="flex items-center gap-2">
         <template v-if="virtualScroll">
-          <!-- Virtual Scroll Indicator (Loads automatically on scroll) -->
-          <div
+          <!-- Virtual Scroll Indicator (Loads automatically on scroll or click) -->
+          <button
             v-if="hasMore"
-            class="inline-flex items-center gap-2 text-xs text-ink-gray-5 dark:text-gray-400 font-medium bg-surface-gray-2 dark:bg-gray-800/80 px-2.5 py-1 rounded-md"
+            type="button"
+            :disabled="loading || isLoadingMore"
+            class="inline-flex items-center gap-2 text-xs text-ink-gray-6 dark:text-gray-300 font-medium bg-surface-gray-2 dark:bg-gray-800 hover:bg-surface-gray-3 dark:hover:bg-gray-700/80 px-2.5 py-1 rounded-md transition-colors cursor-pointer disabled:opacity-60"
+            title="Click to load next 20 or scroll down"
+            @click="triggerLoadMore"
           >
-            <LoadingIndicator v-if="loading" class="size-3 text-ink-gray-6" />
-            <svg v-else class="size-3.5 text-ink-gray-5 animate-bounce" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <LoadingIndicator v-if="loading || isLoadingMore" class="size-3 text-ink-gray-6" />
+            <svg v-else class="size-3.5 text-ink-gray-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <polyline points="19 12 12 19 5 12"></polyline>
             </svg>
-            <span>Scroll for more ({{ remainingCount }} left)</span>
-          </div>
+            <span>{{ isLoadingMore ? 'Loading next 20...' : `Scroll for more (${remainingCount} left)` }}</span>
+          </button>
         </template>
         <template v-else>
           <!-- Manual Load More Button -->
@@ -429,6 +433,7 @@ export default {
     return {
       pageSizes: [20, 50, 100, 500],
       isScrolledHorizontally: false,
+      isLoadingMore: false,
       // Height of the label row, so the filter row can pin directly beneath it.
       // The default is the measured height (py-2 + text-[11px] + 1px border) and
       // is used until the observer reports, which avoids a one-frame jump.
@@ -438,7 +443,6 @@ export default {
   watch: {
     'rows.length'() {
       if (this.virtualScroll) {
-        this.checkAutoFill()
         this.setupVirtualScroll()
       }
     },
@@ -455,7 +459,6 @@ export default {
       this.headResizeObserver.observe(this.$refs.theadRef)
     }
     this.setupVirtualScroll()
-    this.checkAutoFill()
   },
   beforeUnmount() {
     if (this.headResizeObserver) {
@@ -632,35 +635,23 @@ export default {
       this.$emit('page-size-change', size)
     },
     handleScroll(e) {
-      this.isScrolledHorizontally = e.target.scrollLeft > 10
-      if (this.virtualScroll && this.hasMore && !this.loading) {
-        const { scrollTop, scrollHeight, clientHeight } = e.target
-        // When scrolled within 250px of bottom, trigger next batch
-        if (scrollHeight - scrollTop - clientHeight < 250) {
+      const target = e.target
+      this.isScrolledHorizontally = target.scrollLeft > 10
+      if (this.virtualScroll && this.hasMore && !this.loading && !this.isLoadingMore) {
+        const { scrollTop, scrollHeight, clientHeight } = target
+        // When scrolled within 100px of bottom and user has actually scrolled down
+        if (scrollTop > 10 && scrollHeight - scrollTop - clientHeight < 100) {
           this.triggerLoadMore()
         }
       }
     },
     triggerLoadMore() {
-      if (this._isTriggeringLoad || this.loading || !this.hasMore) return
-      this._isTriggeringLoad = true
+      if (this.isLoadingMore || this.loading || !this.hasMore) return
+      this.isLoadingMore = true
       this.$emit('load-more')
-      this.$nextTick(() => {
-        setTimeout(() => {
-          this._isTriggeringLoad = false
-        }, 150)
-      })
-    },
-    checkAutoFill() {
-      if (!this.virtualScroll || !this.hasMore || this.loading) return
-      this.$nextTick(() => {
-        const el = this.$refs.tableContainer
-        if (!el) return
-        // If initial 20 rows don't fill viewport or make it scrollable, load more
-        if (el.scrollHeight <= el.clientHeight + 60) {
-          this.triggerLoadMore()
-        }
-      })
+      setTimeout(() => {
+        this.isLoadingMore = false
+      }, 350)
     },
     setupVirtualScroll() {
       if (this.scrollObserver) {
@@ -675,12 +666,16 @@ export default {
           (entries) => {
             const entry = entries[0]
             if (entry && entry.isIntersecting) {
-              this.triggerLoadMore()
+              const el = this.$refs.tableContainer
+              // Strictly ensure user has actually scrolled down before triggering next batch
+              if (el && el.scrollTop > 10) {
+                this.triggerLoadMore()
+              }
             }
           },
           {
             root: this.$refs.tableContainer,
-            rootMargin: '200px',
+            rootMargin: '0px 0px 60px 0px',
             threshold: 0,
           }
         )

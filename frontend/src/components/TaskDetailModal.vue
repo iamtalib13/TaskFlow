@@ -66,13 +66,18 @@
       <Teleport to="#task-form-actions-slot">
         <div class="flex items-center gap-2 sm:gap-3 shrink-0">
           <!-- Save Status Indicator -->
-          <div class="flex items-center gap-1.5 text-[11px] font-normal">
+          <div
+            class="flex items-center gap-1.5 px-2 py-0.5 rounded-md transition-colors"
+            :class="isDirty && !saving ? 'bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60' : ''"
+          >
             <span
-              class="w-1.5 h-1.5 rounded-full"
-              :class="saving ? 'bg-amber-500 animate-pulse' : (isDirty ? 'bg-rose-500 animate-pulse' : 'bg-teal-600')"
+              class="size-2 rounded-full shrink-0"
+              :class="saving ? 'bg-amber-500 animate-pulse' : (isDirty ? 'bg-red-600 dark:bg-red-500 animate-pulse' : 'bg-teal-600')"
             ></span>
             <span
-              :class="saving ? 'text-ink-gray-4' : (isDirty ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-ink-gray-4')"
+              class="text-xs transition-colors"
+              :class="saving ? 'text-amber-600 dark:text-amber-400 font-medium' : (isDirty ? 'text-red-600 dark:text-red-500 font-bold' : 'text-ink-gray-4 font-normal')"
+              :style="isDirty && !saving ? 'color: #dc2626 !important; font-weight: 700;' : ''"
             >
               {{ saving ? 'Saving...' : (isDirty ? 'Please Save' : 'Saved') }}
             </span>
@@ -1654,6 +1659,7 @@ export default {
       this.$emit('close')
     },
     async save() {
+      if (this.saving) return
       if (!this.form.title || !this.form.title.trim()) {
         this.errorMessage = 'Task title is required'
         toast.error('Task title is required')

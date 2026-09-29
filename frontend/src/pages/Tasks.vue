@@ -636,7 +636,7 @@ function handleSortChange({ key, order }) {
   sortOrder.value = order
 }
 
-watch([statusTab, selectedProjects, selectedTeams, showAssignedToMe, columnFilters], () => {
+watch([statusTab, selectedProjects, selectedTeams, showAssignedToMe, columnFilters, () => tasks.value.length], () => {
   tasksDisplayLimit.value = 20
 }, { deep: true })
 
@@ -934,7 +934,8 @@ const paginatedTableTasks = computed(() => {
 })
 
 function handleLoadMore() {
-  tasksDisplayLimit.value += 20
+  if (tasksDisplayLimit.value >= visibleTasks.value.length) return
+  tasksDisplayLimit.value = Math.min(tasksDisplayLimit.value + 20, visibleTasks.value.length)
 }
 
 function handleLoadAll() {
@@ -4001,8 +4002,6 @@ onUnmounted(() => {
               :current-user="currentUserEmail"
               :on-save="onSaveTask"
               :on-delete="onDeleteTask"
-              @save="onSaveTask"
-              @delete="onDeleteTask"
               @close="activeTask = null"
             />
           </div>
@@ -5296,7 +5295,6 @@ onUnmounted(() => {
       :statuses="statuses"
       :priorities="priorities"
       :on-create="onCreateTask"
-      @create="onCreateTask"
     />
 
     <!-- Create Team Modal (Simple) -->
