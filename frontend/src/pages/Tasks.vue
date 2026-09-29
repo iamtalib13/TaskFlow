@@ -4011,6 +4011,11 @@ onUnmounted(() => {
                 </div>
               </section>
             </div>
+
+            <!-- 4. Timesheet Master Report Section (Dashboard bottom) -->
+            <section class="flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 shadow-xs overflow-hidden h-[740px]">
+              <TimesheetMasterReport />
+            </section>
           </div>
         </template>
 
