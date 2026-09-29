@@ -58,6 +58,7 @@ import {
   User,
   Settings,
   LogOut,
+  Home,
   Link as LinkIcon,
   Check,
   Copy,
@@ -79,6 +80,11 @@ import CommonListView from '@/components/CommonListView.vue'
 import TaskDetailModal from '@/components/TaskDetailModal.vue'
 import TaskCreateModal from '@/components/TaskCreateModal.vue'
 import ProjectCreateModal from '@/components/ProjectCreateModal.vue'
+import {
+  NumberCard,
+  BarChart,
+  DonutChart,
+} from 'frappe-ui/charts'
 import {
   fetchBootstrap,
   saveTask,
@@ -108,6 +114,7 @@ import TimesheetMasterReport from '@/components/TimesheetMasterReport.vue'
 import { SECTIONS, buildViewPath, cleanPath, parseView } from '@/utils/url'
 import { writeToClipboard } from '@/utils/clipboard'
 import { downloadCsv } from '@/utils/csv'
+import { downloadWorkbook, downloadXlsx } from '@/utils/excel'
 
 // --- State & Data ---
 const MAX_VISIBLE = 5
@@ -195,14 +202,42 @@ const onPopState = () => {
   syncURL(false)
 }
 
+function getInitialUserImage() {
+  if (typeof window !== 'undefined' && window.frappe) {
+    const user = window.frappe.session?.user
+    if (user && window.frappe.boot?.user_info?.[user]?.image) {
+      return window.frappe.boot.user_info[user].image
+    }
+    if (window.frappe.boot?.user?.image) {
+      return window.frappe.boot.user.image
+    }
+  }
+  return ''
+}
+
+function getInitialUserName() {
+  if (typeof window !== 'undefined' && window.frappe) {
+    const user = window.frappe.session?.user
+    if (user && window.frappe.boot?.user_info?.[user]?.fullname) {
+      return window.frappe.boot.user_info[user].fullname
+    }
+    if (window.frappe.boot?.user?.fullname) {
+      return window.frappe.boot.user.fullname
+    }
+  }
+  return ''
+}
+
 // User Profile Settings State
 const settingsTab = ref('profile')
 const firstName = ref('Talib')
 const lastName = ref('Sheikh')
 const bio = ref('Product & Engineering. Building high-performance task management.')
-const fullName = computed(() => `${firstName.value} ${lastName.value}`.trim())
-const userImage = 'https://avatars.githubusercontent.com/u/499550?v=4'
-const currentUserEmail = ref('')
+const currentUserEmail = ref(typeof window !== 'undefined' && window.frappe?.session?.user ? window.frappe.session.user : '')
+const currentUserName = ref(getInitialUserName())
+const fullName = computed(() => currentUserName.value || `${firstName.value} ${lastName.value}`.trim() || 'User')
+const userImage = ref(getInitialUserImage())
+const currentUserRole = computed(() => (isSystemManager.value ? 'Administrator' : 'Member'))
 
 // Active status tab filter
 const statusTab = ref('Pending')
@@ -293,6 +328,7 @@ const navItems = computed(() => {
   }
 
   return [
+    { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: '' },
     { id: 'Task', label: 'Task', icon: CheckSquare, badge: taskCount.length },
     { id: 'Timesheet', label: 'Timesheet', icon: Clock, badge: totalTsMonthlyHours.value ? `${totalTsMonthlyHours.value}h` : '' },
     { id: 'Project', label: 'Project', icon: FolderKanban, badge: projectsData.value.length },
@@ -335,15 +371,44 @@ const selectSection = (id) => {
   activeTask.value = null
 }
 
-// User Menu
+// Handle user logout from Frappe session
+async function handleLogout() {
+  try {
+    await fetch('/api/method/logout', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'X-Frappe-CSRF-Token': window.csrf_token || '',
+      },
+    })
+  } catch (e) {
+    // fallback
+  }
+  window.location.href = '/login'
+}
+
+// User Menu (Only Sahayog Home and Logout as requested)
 const userMenu = [
-  { label: 'My profile', icon: User },
   {
-    label: 'Settings',
-    icon: Settings,
-    onClick: () => (showSettings.value = true),
+    label: 'Sahayog Home',
+    icon: Home,
+    onClick: () => {
+      window.location.href = '/app/sahayog-home'
+    },
+    action: () => {
+      window.location.href = '/app/sahayog-home'
+    },
   },
-  { label: 'Log out', icon: LogOut },
+  {
+    label: 'Logout',
+    icon: LogOut,
+    onClick: () => {
+      handleLogout()
+    },
+    action: () => {
+      handleLogout()
+    },
+  },
 ]
 
 // Toast notification
@@ -876,69 +941,971 @@ function handleLoadAll() {
   tasksDisplayLimit.value = visibleTasks.value.length
 }
 
-// --- Task CSV report ---
+// --- Task Excel (.xlsx) report ---
 
-// Which task field feeds each table column. Keyed by the column `key` the
-// table already uses, so the report tracks the list: a hidden column leaves
-// the export too, and a new column is one entry here.
-const taskReportFields = {
-  id: (t) => t.id,
-  title: (t) => t.title,
-  project: (t) => t.project,
-  status: (t) => t.status,
-  team: (t) => t.team,
-  priority: (t) => t.priority,
-  // ";" not "," so a multi-assignee row cannot be read as extra columns
-  // before the escaping pass ever sees it.
-  assigned_to: (t) =>
-    (Array.isArray(t.assignees) ? t.assignees : [])
-      .map((a) => a?.name)
-      .filter(Boolean)
-      .join('; ') || t.assigned_to_name || '',
-  // The bootstrap payload calls this `due`, a just-saved task `due_date`.
-  // Accept both, or the column is blank for everything loaded on refresh.
-  due_date: (t) => (t.due_date || t.due ? formatDueDate(t.due_date || t.due) : ''),
-  // The raw timestamp, not the "3h ago" shown on screen: a report has to stay
-  // true after it is read, and Excel needs a value it can sort on.
-  modified: (t) => t.modified,
+const formatDateField = (val) => {
+  if (!val) return ''
+  const res = formatDueDate(val)
+  return res === '—' ? '' : res
 }
 
-const taskReportColumns = computed(() =>
-  tableColumns.filter((col) => col.visible !== false && taskReportFields[col.key])
-)
+function cleanHtmlText(val) {
+  if (!val) return ''
+  const str = String(val)
+  if (str.includes('<') && str.includes('>')) {
+    return str.replace(/<[^>]*>/g, '').trim()
+  }
+  return str
+}
+
+function getUserNameMap() {
+  const map = new Map()
+  for (const p of people.value || []) {
+    const name = p.name || p.full_name
+    if (p.email && name) map.set(p.email, name)
+    if (p.name && name) map.set(p.name, name)
+  }
+  for (const e of employees.value || []) {
+    const name = e.employee_name || e.name
+    if (e.user_id && name) map.set(e.user_id, name)
+    if (e.name && name) map.set(e.name, name)
+  }
+  for (const m of teamMembers.value || []) {
+    const name = m.employee_name || m.user_name || m.employee || m.user
+    if (m.user && name) map.set(m.user, name)
+    if (m.employee && name) map.set(m.employee, name)
+  }
+  return map
+}
+
+const taskReportFields = {
+  id: (t) => t.id || t.name || '',
+  title: (t) => t.title || t.task_title || '',
+  task_type: (t) => t.task_type || '',
+  project: (t) => t.project || '',
+  team: (t) => t.team || '',
+  status: (t) => t.status || '',
+  priority: (t) => t.priority || '',
+  assigned_to: (t, userMap) => {
+    if (Array.isArray(t.assignees) && t.assignees.length > 0) {
+      return t.assignees
+        .map((a) => a?.name || userMap?.get(a?.user_id) || a?.user_id)
+        .filter(Boolean)
+        .join('; ')
+    }
+    return t.assigned_to_name || (t.assigned_to ? (userMap?.get(t.assigned_to) || t.assigned_to) : '')
+  },
+  ticket_date: (t) => (t.ticket_date ? formatDateField(t.ticket_date) : ''),
+  ticket_id: (t) => t.ticket_id || '',
+  toll_id: (t) => t.toll_id || '',
+  ticket_raised_by: (t) => t.ticket_raised_by || '',
+  ticket_description: (t) => cleanHtmlText(t.ticket_description || ''),
+  description: (t) => cleanHtmlText(t.description || ''),
+  start_date: (t) => (t.start_date ? formatDateField(t.start_date) : ''),
+  due_date: (t) => (t.due_date || t.due ? formatDateField(t.due_date || t.due) : ''),
+  expected_resolution_date: (t) => (t.expected_resolution_date ? formatDateField(t.expected_resolution_date) : ''),
+  completed_on: (t) => (t.completed_on ? formatDateField(t.completed_on) : ''),
+  pending_with: (t) => t.pending_with || '',
+  pending_from: (t) => (t.pending_from ? formatDateField(t.pending_from) : ''),
+  guided_by: (t, userMap) => (t.guided_by ? (userMap?.get(t.guided_by) || t.guided_by) : ''),
+  responsible_person: (t, userMap) => (t.responsible_person ? (userMap?.get(t.responsible_person) || t.responsible_person) : ''),
+  estimated_hours: (t) => (t.estimated_hours != null && t.estimated_hours !== '' ? t.estimated_hours : ''),
+  creation: (t) => t.creation || '',
+  modified: (t) => t.modified || '',
+}
+
+const taskReportColumns = [
+  { key: 'id', label: 'Task ID' },
+  { key: 'title', label: 'Title' },
+  { key: 'task_type', label: 'Task Type' },
+  { key: 'project', label: 'Project' },
+  { key: 'team', label: 'Team' },
+  { key: 'status', label: 'Status' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'assigned_to', label: 'Assigned To' },
+  { key: 'ticket_date', label: 'Ticket Date' },
+  { key: 'ticket_id', label: 'Ticket ID' },
+  { key: 'toll_id', label: 'Toll ID' },
+  { key: 'ticket_raised_by', label: 'Ticket Raised By' },
+  { key: 'ticket_description', label: 'Ticket Description' },
+  { key: 'description', label: 'Description' },
+  { key: 'start_date', label: 'Start Date' },
+  { key: 'due_date', label: 'Due Date' },
+  { key: 'expected_resolution_date', label: 'Expected Resolution Date' },
+  { key: 'completed_on', label: 'Completed On' },
+  { key: 'pending_with', label: 'Pending With' },
+  { key: 'pending_from', label: 'Pending From' },
+  { key: 'guided_by', label: 'Guided By' },
+  { key: 'responsible_person', label: 'Responsible Person' },
+  { key: 'estimated_hours', label: 'Estimated Hours' },
+  { key: 'creation', label: 'Created On' },
+  { key: 'modified', label: 'Modified On' },
+]
 
 const canDownloadTaskReport = computed(() => tasks.value.length > 0)
+const downloadReportDialogOpen = ref(false)
+const reportTeamFilter = ref('')
+const reportProjectFilter = ref('')
+
+const reportTeamOptions = computed(() => {
+  const map = new Map()
+  if (Array.isArray(teams.value)) {
+    teams.value.forEach((t) => {
+      const val = t.name || t
+      if (val) map.set(val, t.team_name || val)
+    })
+  }
+  if (Array.isArray(tasks.value)) {
+    tasks.value.forEach((t) => {
+      if (t.team && !map.has(t.team)) {
+        map.set(t.team, t.team)
+      }
+    })
+  }
+  const opts = Array.from(map.entries())
+    .map(([val, label]) => ({ label, value: val }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+
+  return [{ label: 'All Teams', value: '' }, ...opts]
+})
+
+const reportProjectOptions = computed(() => {
+  const map = new Map()
+  const team = reportTeamFilter.value
+
+  if (Array.isArray(projects.value)) {
+    projects.value.forEach((p) => {
+      if (team && p.team && p.team !== team) return
+      const val = p.name || p.project_name
+      if (val) map.set(val, p.project_name || val)
+    })
+  }
+  if (Array.isArray(tasks.value)) {
+    tasks.value.forEach((t) => {
+      if (!t.project) return
+      if (team && t.team !== team) return
+      if (!map.has(t.project)) {
+        map.set(t.project, t.project)
+      }
+    })
+  }
+
+  const opts = Array.from(map.entries())
+    .map(([val, label]) => ({ label, value: val }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+
+  return [{ label: 'All Projects', value: '' }, ...opts]
+})
+
+watch(reportTeamFilter, () => {
+  if (reportProjectFilter.value) {
+    const valid = reportProjectOptions.value.some((p) => p.value === reportProjectFilter.value)
+    if (!valid) {
+      reportProjectFilter.value = ''
+    }
+  }
+})
+
+function openDownloadReportDialog() {
+  reportTeamFilter.value = (selectedTeams.value && selectedTeams.value.length === 1) ? selectedTeams.value[0] : ''
+  reportProjectFilter.value = (selectedProjects.value && selectedProjects.value.length === 1) ? selectedProjects.value[0] : ''
+  downloadReportDialogOpen.value = true
+}
 
 function downloadTaskReport() {
-  const columns = taskReportColumns.value
-  // The report is the whole permission-scoped set, not the filtered list:
-  // `tasks` is everything the bootstrap returned for this user (every status,
-  // every project and team they can see), while `visibleTasks` is narrowed by
-  // the status tab, the team/project selects and the column filters. A report
-  // has to be complete, so the screen's filters are deliberately not applied.
-  const rows = tasks.value
+  const columns = taskReportColumns
+  const team = reportTeamFilter.value
+  const project = reportProjectFilter.value
 
-  if (!columns.length || !rows.length) {
-    toast.error('No tasks to export')
+  // Superfast filter without unnecessary copies
+  const allTasks = tasks.value || []
+  const rows = []
+  for (let i = 0; i < allTasks.length; i++) {
+    const t = allTasks[i]
+    if (team && t.team !== team) continue
+    if (project && t.project !== project) continue
+    rows.push(t)
+  }
+
+  if (!rows.length) {
+    toast.error('No tasks match the selected filters')
     return
+  }
+
+  // Pre-index user map once for O(1) lookups
+  const userMap = getUserNameMap()
+
+  // Collect distinct statuses present in the data in logical order
+  const standardStatuses = ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue']
+  const foundStatuses = new Set()
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].status) foundStatuses.add(rows[i].status)
+  }
+  const statusCols = [
+    ...standardStatuses.filter((s) => foundStatuses.has(s)),
+    ...Array.from(foundStatuses).filter((s) => !standardStatuses.includes(s)).sort((a, b) => a.localeCompare(b)),
+  ]
+  if (statusCols.length === 0) statusCols.push('Open', 'In Progress', 'Completed')
+
+  // --- Build Dashboard Sheet Data ---
+  const teamSummaryMap = new Map()
+  const guideMap = new Map()
+  const teamTasksMap = new Map()
+
+  for (let i = 0; i < rows.length; i++) {
+    const t = rows[i]
+    const tTeam = t.team || 'General'
+    const tGuide = (t.guided_by ? (userMap.get(t.guided_by) || t.guided_by) : '') || 'Unassigned'
+    const tStatus = t.status || 'Open'
+
+    // Accumulate Team status counts
+    if (!teamSummaryMap.has(tTeam)) teamSummaryMap.set(tTeam, { total: 0 })
+    const tm = teamSummaryMap.get(tTeam)
+    tm[tStatus] = (tm[tStatus] || 0) + 1
+    tm.total += 1
+
+    // Accumulate Guided By status counts
+    if (!guideMap.has(tGuide)) guideMap.set(tGuide, { total: 0 })
+    const gm = guideMap.get(tGuide)
+    gm[tStatus] = (gm[tStatus] || 0) + 1
+    gm.total += 1
+
+    // Group tasks by team for team tabs
+    if (!teamTasksMap.has(tTeam)) teamTasksMap.set(tTeam, [])
+    teamTasksMap.get(tTeam).push(t)
+  }
+
+  const dashboardAoa = []
+
+  // Section 1: Team-wise Status Summary
+  dashboardAoa.push(['Team Status Summary', 'Status'])
+  dashboardAoa.push(['Team', ...statusCols, 'Grand Total'])
+
+  const teamTotals = {}
+  statusCols.forEach((s) => { teamTotals[s] = 0 })
+  let teamOverallTotal = 0
+
+  const sortedTeams = Array.from(teamSummaryMap.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  for (const [tName, counts] of sortedTeams) {
+    const row = [tName]
+    for (const s of statusCols) {
+      const cnt = counts[s] || 0
+      row.push(cnt > 0 ? cnt : '')
+      teamTotals[s] += cnt
+    }
+    row.push(counts.total)
+    teamOverallTotal += counts.total
+    dashboardAoa.push(row)
+  }
+
+  const teamTotalRow = ['Grand Total']
+  for (const s of statusCols) {
+    teamTotalRow.push(teamTotals[s] || '')
+  }
+  teamTotalRow.push(teamOverallTotal)
+  dashboardAoa.push(teamTotalRow)
+
+  // Empty spacer row between summary tables
+  dashboardAoa.push([])
+
+  // Section 2: Guided By Status Summary (matching the reference ODS format)
+  dashboardAoa.push(['Count of status', 'Status'])
+  dashboardAoa.push(['Guided By', ...statusCols, 'Grand Total'])
+
+  const guideTotals = {}
+  statusCols.forEach((s) => { guideTotals[s] = 0 })
+  let guideOverallTotal = 0
+
+  const sortedGuides = Array.from(guideMap.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  for (const [gName, counts] of sortedGuides) {
+    const row = [gName]
+    for (const s of statusCols) {
+      const cnt = counts[s] || 0
+      row.push(cnt > 0 ? cnt : '')
+      guideTotals[s] += cnt
+    }
+    row.push(counts.total)
+    guideOverallTotal += counts.total
+    dashboardAoa.push(row)
+  }
+
+  const guideTotalRow = ['Grand Total']
+  for (const s of statusCols) {
+    guideTotalRow.push(guideTotals[s] || '')
+  }
+  guideTotalRow.push(guideOverallTotal)
+  dashboardAoa.push(guideTotalRow)
+
+  // --- Prepare Sheets Array ---
+  const sheets = []
+
+  // 1st Tab: Dashboard
+  sheets.push({
+    name: 'Dashboard',
+    aoa: dashboardAoa,
+    headerHeight: 26,
+    rowHeight: 22,
+  })
+
+  // 2nd..Nth Tabs: Team-wise tabs
+  const teamHeaders = ['Sr.No', ...columns.map((c) => c.label)]
+  const numCols = columns.length
+  const usedSheetNames = new Set(['dashboard'])
+
+  for (const [tName, tTasks] of Array.from(teamTasksMap.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+    let cleanSheetName = tName.replace(/[\\/?*[\]:]/g, '_').trim().slice(0, 31) || 'Team'
+    let uniqueName = cleanSheetName
+    let counter = 1
+    while (usedSheetNames.has(uniqueName.toLowerCase())) {
+      const suffix = `_${counter}`
+      uniqueName = `${cleanSheetName.slice(0, 31 - suffix.length)}${suffix}`
+      counter++
+    }
+    usedSheetNames.add(uniqueName.toLowerCase())
+
+    const tRows = new Array(tTasks.length)
+    for (let i = 0; i < tTasks.length; i++) {
+      const t = tTasks[i]
+      const row = new Array(numCols + 1)
+      row[0] = i + 1 // Sr.No
+      for (let j = 0; j < numCols; j++) {
+        const fn = taskReportFields[columns[j].key]
+        row[j + 1] = fn ? fn(t, userMap) : ''
+      }
+      tRows[i] = row
+    }
+
+    sheets.push({
+      name: uniqueName,
+      headers: teamHeaders,
+      rows: tRows,
+      headerHeight: 26,
+      rowHeight: 22,
+    })
   }
 
   const d = new Date()
   const pad = (n) => String(n).padStart(2, '0')
   const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`
 
-  const ok = downloadCsv(
-    `Task_Report_${stamp}.csv`,
-    columns.map((c) => c.label),
-    rows.map((t) => columns.map((c) => taskReportFields[c.key](t)))
-  )
+  try {
+    const ok = downloadWorkbook(`Daily_Working_Status_${stamp}.xlsx`, sheets, {
+      rowHeight: 22,
+      headerHeight: 26,
+    })
 
-  if (ok) {
-    toast.success(`Exported ${rows.length} ${rows.length === 1 ? 'task' : 'tasks'} to CSV`)
-  } else {
-    toast.error('Could not generate the CSV file')
+    if (ok) {
+      toast.success(`Exported ${rows.length} ${rows.length === 1 ? 'task' : 'tasks'} across ${sheets.length} tabs (.xlsx)`)
+      downloadReportDialogOpen.value = false
+    }
+  } catch (err) {
+    console.error('Error generating Excel workbook:', err)
+    toast.error('Could not generate the Excel file')
   }
 }
+
+// --- Dashboard Filters & Quick Analytics State ---
+const dashboardSelectedTeam = ref('')
+const dashboardSelectedMember = ref('')
+
+const dashboardTeamOptions = computed(() => {
+  const set = new Set()
+  if (Array.isArray(teams.value)) {
+    teams.value.forEach((t) => {
+      const name = t.team_name || t.name
+      if (name) set.add(name)
+    })
+  }
+  if (Array.isArray(tasks.value)) {
+    tasks.value.forEach((t) => {
+      if (t.team) set.add(t.team)
+    })
+  }
+  const list = Array.from(set).sort((a, b) => a.localeCompare(b)).map((t) => ({ label: t, value: t }))
+  return [{ label: 'All Teams', value: '' }, ...list]
+})
+
+const dashboardMemberOptions = computed(() => {
+  const map = new Map()
+  const filterTeam = dashboardSelectedTeam.value
+  const userMap = getUserNameMap()
+
+  const addMember = (id, label) => {
+    if (!id) return
+    const key = String(id).trim()
+    if (!key) return
+    const resolvedLabel = label || userMap.get(id) || id
+    const dedupeKey = resolvedLabel.toLowerCase().trim()
+    if (!map.has(dedupeKey)) {
+      map.set(dedupeKey, { label: resolvedLabel, value: id })
+    }
+  }
+
+  // 1. Taskflow Team Members
+  if (Array.isArray(teamMembers.value)) {
+    teamMembers.value.forEach((m) => {
+      if (filterTeam && m.team !== filterTeam && m.parent !== filterTeam) return
+      const id = m.user || m.employee || m.name
+      const label = m.employee_name || (m.user ? userMap.get(m.user) : '') || (m.employee ? userMap.get(m.employee) : '') || id
+      addMember(id, label)
+    })
+  }
+
+  // 2. Taskflow Teams (Team Leads)
+  if (Array.isArray(teams.value)) {
+    teams.value.forEach((t) => {
+      const teamName = t.team_name || t.name
+      if (filterTeam && teamName !== filterTeam) return
+      if (t.team_lead) {
+        addMember(t.team_lead, t.team_lead_name)
+      }
+    })
+  }
+
+  // 3. Taskflow Projects (Project Leads & Project Team Members)
+  if (Array.isArray(projects.value)) {
+    projects.value.forEach((p) => {
+      if (filterTeam && p.team && p.team !== filterTeam) return
+
+      if (p.project_lead) {
+        addMember(p.project_lead, p.project_lead_name)
+      }
+
+      if (Array.isArray(p.project_team_members)) {
+        p.project_team_members.forEach((m) => {
+          const id = m.user || m.employee || m.name
+          const label = m.employee_name || (m.user ? userMap.get(m.user) : '') || (m.employee ? userMap.get(m.employee) : '') || id
+          addMember(id, label)
+        })
+      }
+    })
+  }
+
+  const list = Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
+  return [{ label: 'All Members', value: '' }, ...list]
+})
+
+watch(dashboardSelectedTeam, () => {
+  if (dashboardSelectedMember.value) {
+    const exists = dashboardMemberOptions.value.some((m) => m.value === dashboardSelectedMember.value)
+    if (!exists) {
+      dashboardSelectedMember.value = ''
+    }
+  }
+})
+
+const filteredDashboardTasks = computed(() => {
+  let list = tasks.value || []
+
+  if (dashboardSelectedTeam.value) {
+    const team = dashboardSelectedTeam.value
+    list = list.filter((t) => t.team === team)
+  }
+
+  if (dashboardSelectedMember.value) {
+    const member = String(dashboardSelectedMember.value).toLowerCase()
+    const memberLabel = (selectedMemberLabel.value || '').toLowerCase()
+    list = list.filter((t) => {
+      if (Array.isArray(t.assignees)) {
+        const hasAssignee = t.assignees.some((a) => {
+          const uid = String(typeof a === 'string' ? a : a.user_id || a.email || a.name || '').toLowerCase()
+          const uname = String(typeof a === 'object' ? a.employee_name || a.full_name || a.name || '' : '').toLowerCase()
+          return (uid && (uid === member || uid === memberLabel)) || (uname && (uname === member || uname === memberLabel))
+        })
+        if (hasAssignee) return true
+      }
+      if (t.assigned_to) {
+        const val = String(t.assigned_to).toLowerCase()
+        if (val === member || val === memberLabel) return true
+      }
+      if (t.assigned_to_name) {
+        const val = String(t.assigned_to_name).toLowerCase()
+        if (val === member || val === memberLabel) return true
+      }
+      if (t.guided_by) {
+        const val = String(t.guided_by).toLowerCase()
+        if (val === member || val === memberLabel) return true
+      }
+      if (t.owner) {
+        const val = String(t.owner).toLowerCase()
+        if (val === member || val === memberLabel) return true
+      }
+      return false
+    })
+  }
+
+  return list
+})
+
+const dashboardStats = computed(() => {
+  const all = filteredDashboardTasks.value || []
+  const today = new Date().toISOString().split('T')[0]
+  let open = 0
+  let inProgress = 0
+  let completed = 0
+  let overdue = 0
+
+  for (let i = 0; i < all.length; i++) {
+    const t = all[i]
+    if (t.status === 'Open') open++
+    else if (t.status === 'In Progress') inProgress++
+    else if (t.status === 'Completed') completed++
+
+    if (t.status !== 'Completed' && (t.due_date || t.due)) {
+      const due = String(t.due_date || t.due).split(' ')[0]
+      if (due && due < today) overdue++
+    }
+  }
+
+  return {
+    total: all.length,
+    open,
+    inProgress,
+    completed,
+    overdue,
+    completionRate: all.length > 0 ? Math.round((completed / all.length) * 100) : 0,
+  }
+})
+
+const dashboardStatusCols = computed(() => {
+  const standard = ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue']
+  const found = new Set()
+  const all = filteredDashboardTasks.value || []
+  for (let i = 0; i < all.length; i++) {
+    if (all[i].status) found.add(all[i].status)
+  }
+  const cols = [
+    ...standard.filter((s) => found.has(s)),
+    ...Array.from(found).filter((s) => !standard.includes(s)).sort((a, b) => a.localeCompare(b)),
+  ]
+  return cols.length > 0 ? cols : standard
+})
+
+const dashboardTeamSummary = computed(() => {
+  const all = filteredDashboardTasks.value || []
+  const map = new Map()
+  const cols = dashboardStatusCols.value
+
+  for (let i = 0; i < all.length; i++) {
+    const t = all[i]
+    const teamName = t.team || 'General'
+    const status = t.status || 'Open'
+    if (!map.has(teamName)) {
+      map.set(teamName, { team: teamName, counts: {}, total: 0 })
+    }
+    const item = map.get(teamName)
+    item.counts[status] = (item.counts[status] || 0) + 1
+    item.total++
+  }
+
+  const rows = Array.from(map.values()).sort((a, b) => a.team.localeCompare(b.team))
+  const grandTotal = { team: 'Grand Total', counts: {}, total: 0 }
+  cols.forEach((s) => { grandTotal.counts[s] = 0 })
+
+  for (const r of rows) {
+    for (const s of cols) {
+      grandTotal.counts[s] += (r.counts[s] || 0)
+    }
+    grandTotal.total += r.total
+  }
+
+  return { rows, grandTotal }
+})
+
+const dashboardGuideSummary = computed(() => {
+  const all = filteredDashboardTasks.value || []
+  const userMap = getUserNameMap()
+  const map = new Map()
+  const cols = dashboardStatusCols.value
+
+  for (let i = 0; i < all.length; i++) {
+    const t = all[i]
+    const guideName = (t.guided_by ? (userMap.get(t.guided_by) || t.guided_by) : '') || 'Unassigned'
+    const status = t.status || 'Open'
+    if (!map.has(guideName)) {
+      map.set(guideName, { guide: guideName, counts: {}, total: 0 })
+    }
+    const item = map.get(guideName)
+    item.counts[status] = (item.counts[status] || 0) + 1
+    item.total++
+  }
+
+  const rows = Array.from(map.values()).sort((a, b) => a.guide.localeCompare(b.guide))
+  const grandTotal = { guide: 'Grand Total', counts: {}, total: 0 }
+  cols.forEach((s) => { grandTotal.counts[s] = 0 })
+
+  for (const r of rows) {
+    for (const s of cols) {
+      grandTotal.counts[s] += (r.counts[s] || 0)
+    }
+    grandTotal.total += r.total
+  }
+
+  return { rows, grandTotal }
+})
+
+const selectedMemberInfo = computed(() => {
+  if (!dashboardSelectedMember.value) return null
+  const memberVal = String(dashboardSelectedMember.value).toLowerCase()
+  const found = dashboardMemberOptions.value.find(
+    (m) => m.value && String(m.value).toLowerCase() === memberVal
+  )
+  const label = found ? found.label : dashboardSelectedMember.value
+
+  let image = ''
+  let email = ''
+  if (Array.isArray(employees.value)) {
+    const emp = employees.value.find(
+      (e) => (e.name && String(e.name).toLowerCase() === memberVal) ||
+             (e.user_id && String(e.user_id).toLowerCase() === memberVal) ||
+             (e.employee_name && String(e.employee_name).toLowerCase() === memberVal)
+    )
+    if (emp) {
+      image = emp.user_image || emp.image || ''
+      email = emp.user_id || emp.name || ''
+    }
+  }
+  if (!image && Array.isArray(people.value)) {
+    const p = people.value.find(
+      (u) => (u.name && String(u.name).toLowerCase() === memberVal) ||
+             (u.email && String(u.email).toLowerCase() === memberVal) ||
+             (u.employee_name && String(u.employee_name).toLowerCase() === memberVal)
+    )
+    if (p) {
+      image = p.image || ''
+      email = email || p.email || p.name || ''
+    }
+  }
+
+  return {
+    value: dashboardSelectedMember.value,
+    label,
+    image,
+    email,
+  }
+})
+
+const selectedMemberLabel = computed(() => {
+  return selectedMemberInfo.value ? selectedMemberInfo.value.label : ''
+})
+
+const selectedUserProjects = computed(() => {
+  if (!dashboardSelectedMember.value) return []
+  const memberVal = String(dashboardSelectedMember.value).toLowerCase()
+  const projectSet = new Set()
+
+  // 1. Projects where user has tasks (from filteredDashboardTasks)
+  const tasksList = filteredDashboardTasks.value || []
+  for (let i = 0; i < tasksList.length; i++) {
+    if (tasksList[i].project) {
+      projectSet.add(tasksList[i].project)
+    }
+  }
+
+  // 2. Projects where user is a team member, lead, or member_id
+  const allProjects = projects.value || []
+  for (let i = 0; i < allProjects.length; i++) {
+    const p = allProjects[i]
+    const pName = p.name || p.project_name
+    if (!pName) continue
+
+    if (p.project_lead && String(p.project_lead).toLowerCase() === memberVal) {
+      projectSet.add(pName)
+      continue
+    }
+
+    if (Array.isArray(p.project_team_members)) {
+      const isMember = p.project_team_members.some((m) => {
+        const emp = (m.employee || '').toLowerCase()
+        const usr = (m.user || '').toLowerCase()
+        return emp === memberVal || usr === memberVal
+      })
+      if (isMember) {
+        projectSet.add(pName)
+        continue
+      }
+    }
+  }
+
+  return Array.from(projectSet).sort((a, b) => a.localeCompare(b))
+})
+
+const dashboardUserProjectSummary = computed(() => {
+  const all = filteredDashboardTasks.value || []
+  const map = new Map()
+  const cols = dashboardStatusCols.value
+
+  for (let i = 0; i < all.length; i++) {
+    const t = all[i]
+    const projName = t.project || 'No Project'
+    const status = t.status || 'Open'
+    if (!map.has(projName)) {
+      map.set(projName, { project: projName, counts: {}, total: 0, pending: 0 })
+    }
+    const item = map.get(projName)
+    item.counts[status] = (item.counts[status] || 0) + 1
+    item.total++
+    if (status !== 'Completed' && status !== 'Cancelled') {
+      item.pending++
+    }
+  }
+
+  // Also include any projects from selectedUserProjects that have 0 tasks in this filter
+  const userProjects = selectedUserProjects.value
+  for (let i = 0; i < userProjects.length; i++) {
+    const pName = userProjects[i]
+    if (!map.has(pName)) {
+      const emptyRow = { project: pName, counts: {}, total: 0, pending: 0 }
+      cols.forEach((s) => { emptyRow.counts[s] = 0 })
+      map.set(pName, emptyRow)
+    }
+  }
+
+  const rows = Array.from(map.values()).sort((a, b) => b.pending - a.pending || a.project.localeCompare(b.project))
+  const grandTotal = { project: 'Grand Total', counts: {}, total: 0, pending: 0 }
+  cols.forEach((s) => { grandTotal.counts[s] = 0 })
+
+  for (const r of rows) {
+    for (const s of cols) {
+      grandTotal.counts[s] += (r.counts[s] || 0)
+    }
+    grandTotal.total += r.total
+    grandTotal.pending += r.pending
+  }
+
+  return { rows, grandTotal }
+})
+
+const dashboardKpiCards = computed(() => {
+  const stats = dashboardStats.value
+  const total = stats.total
+
+  // If a team member is selected, show user-centric KPI cards
+  if (dashboardSelectedMember.value) {
+    const userProjectsCount = selectedUserProjects.value.length
+    const pendingCount = (filteredDashboardTasks.value || []).filter(
+      (t) => t.status !== 'Completed' && t.status !== 'Cancelled'
+    ).length
+
+    return [
+      {
+        title: 'Active Projects',
+        value: userProjectsCount,
+        delta: userProjectsCount,
+        deltaCaption: 'projects involved',
+        sparkline: {
+          data: [1, Math.max(1, userProjectsCount), userProjectsCount],
+        },
+      },
+      {
+        title: 'Pending Tasks',
+        value: pendingCount,
+        delta: total ? Math.round((pendingCount / total) * 100) : 0,
+        deltaSuffix: '%',
+        deltaCaption: 'of assigned tasks',
+        sparkline: {
+          data: [1, Math.max(1, stats.open), Math.max(1, pendingCount)],
+          type: 'bar',
+        },
+      },
+      {
+        title: 'Total Assigned',
+        value: total,
+        delta: stats.inProgress,
+        deltaCaption: 'active in progress',
+        sparkline: {
+          data: [
+            Math.max(1, stats.open),
+            Math.max(1, stats.inProgress),
+            Math.max(1, stats.completed),
+          ],
+        },
+      },
+      {
+        title: 'Completed',
+        value: stats.completed,
+        delta: stats.completionRate,
+        deltaSuffix: '%',
+        deltaCaption: 'completion rate',
+        sparkline: {
+          data: [0, Math.floor(stats.completed / 2), Math.max(1, stats.completed)],
+        },
+      },
+      {
+        title: 'Overdue',
+        value: stats.overdue,
+        negativeIsBetter: true,
+        delta: stats.overdue > 0 ? -stats.overdue : 0,
+        deltaCaption: stats.overdue > 0 ? 'needs action' : 'on track',
+      },
+    ]
+  }
+
+  // Default overall / team view
+  return [
+    {
+      title: 'Total Tasks',
+      value: total,
+      delta: stats.inProgress,
+      deltaCaption: 'active in progress',
+      sparkline: {
+        data: [
+          Math.max(1, stats.open),
+          Math.max(1, stats.inProgress),
+          Math.max(1, stats.completed),
+        ],
+      },
+    },
+    {
+      title: 'In Progress',
+      value: stats.inProgress,
+      delta: total ? Math.round((stats.inProgress / total) * 100) : 0,
+      deltaSuffix: '%',
+      deltaCaption: 'of total tasks',
+      sparkline: {
+        data: [1, Math.max(1, stats.open), Math.max(1, stats.inProgress)],
+        type: 'bar',
+      },
+    },
+    {
+      title: 'Completed',
+      value: stats.completed,
+      delta: stats.completionRate,
+      deltaSuffix: '%',
+      deltaCaption: 'completion rate',
+      sparkline: {
+        data: [0, Math.floor(stats.completed / 2), Math.max(1, stats.completed)],
+      },
+    },
+    {
+      title: 'Open Backlog',
+      value: stats.open,
+      delta: total ? Math.round((stats.open / total) * 100) : 0,
+      deltaSuffix: '%',
+      deltaCaption: 'queued for work',
+    },
+    {
+      title: 'Overdue',
+      value: stats.overdue,
+      negativeIsBetter: true,
+      delta: stats.overdue > 0 ? -stats.overdue : 0,
+      deltaCaption: stats.overdue > 0 ? 'needs action' : 'on track',
+    },
+  ]
+})
+
+const statusDonutChart = computed(() => {
+  const data = []
+  const summarySource = dashboardSelectedMember.value
+    ? dashboardUserProjectSummary.value
+    : dashboardTeamSummary.value
+
+  for (const s of dashboardStatusCols.value) {
+    const count = summarySource.grandTotal.counts[s] || 0
+    if (count > 0) {
+      data.push({ status: s, count })
+    }
+  }
+
+  return {
+    data: data.length > 0 ? data : [{ status: 'No Tasks', count: 1 }],
+    category: 'status',
+    value: 'count',
+    centerLabel: 'tasks',
+    title: 'Task Status Mix',
+    subtitle: dashboardSelectedMember.value
+      ? `Status breakdown for ${selectedMemberLabel.value}`
+      : 'Current status distribution',
+  }
+})
+
+const memberPendingBarChart = computed(() => {
+  const all = filteredDashboardTasks.value || []
+  const userMap = getUserNameMap()
+
+  // If a member is selected, show pending tasks grouped by Project!
+  if (dashboardSelectedMember.value) {
+    const projMap = new Map()
+    for (let i = 0; i < all.length; i++) {
+      const t = all[i]
+      const status = t.status || 'Open'
+      if (status === 'Completed' || status === 'Cancelled') continue
+      const pName = t.project || 'No Project'
+      projMap.set(pName, (projMap.get(pName) || 0) + 1)
+    }
+
+    const sorted = Array.from(projMap.entries())
+      .map(([project, pending]) => ({ project, pending }))
+      .sort((a, b) => b.pending - a.pending)
+
+    const chartData = sorted.length > 0
+      ? sorted.slice(0, 15)
+      : [{ project: 'No Pending Tasks', pending: 0 }]
+
+    const memberName = selectedMemberLabel.value || dashboardSelectedMember.value
+    return {
+      data: chartData,
+      x: 'project',
+      y: 'pending',
+      yAxis: { title: 'Pending Tasks' },
+      title: 'Pending Tasks by Project',
+      subtitle: `Pending tasks assigned to ${memberName} across projects`,
+    }
+  }
+
+  // Otherwise, show workload by member across the team/all
+  const map = new Map()
+
+  for (let i = 0; i < all.length; i++) {
+    const t = all[i]
+    const status = t.status || 'Open'
+    // Pending tasks: anything not Completed and not Cancelled
+    if (status === 'Completed' || status === 'Cancelled') continue
+
+    let matched = false
+    if (Array.isArray(t.assignees) && t.assignees.length > 0) {
+      t.assignees.forEach((a) => {
+        const id = typeof a === 'string' ? a : a.user_id || a.email || a.name
+        const name = typeof a === 'string' ? a : a.name || a.full_name || (userMap.get(id) || id)
+        if (name) {
+          map.set(name, (map.get(name) || 0) + 1)
+          matched = true
+        }
+      })
+    }
+    if (!matched && t.assigned_to) {
+      const name = t.assigned_to_name || userMap.get(t.assigned_to) || t.assigned_to
+      map.set(name, (map.get(name) || 0) + 1)
+      matched = true
+    }
+    if (!matched && t.guided_by) {
+      const name = userMap.get(t.guided_by) || t.guided_by
+      map.set(name, (map.get(name) || 0) + 1)
+      matched = true
+    }
+    if (!matched) {
+      map.set('Unassigned', (map.get('Unassigned') || 0) + 1)
+    }
+  }
+
+  // Sort by pending tasks descending, show top members
+  const sorted = Array.from(map.entries())
+    .map(([member, pending]) => ({ member, pending }))
+    .sort((a, b) => b.pending - a.pending)
+
+  const chartData = sorted.length > 0 ? sorted.slice(0, 15) : [{ member: 'No Pending Tasks', pending: 0 }]
+
+  return {
+    data: chartData,
+    x: 'member',
+    y: 'pending',
+    yAxis: { title: 'Pending Tasks' },
+    title: 'Workload by Member',
+    subtitle: 'Pending tasks assigned per team member',
+  }
+})
+
+const teamBarChart = computed(() => memberPendingBarChart.value)
 
 // --- 2. Project List View State & Columns ---
 const selectedProjectTeamFilter = ref('')
@@ -1330,7 +2297,6 @@ const timesheetFormItems = ref([])
 const timesheetFormStatus = ref('Draft')
 const timesheetFormSaving = ref(false)
 const selectedTsEditingEntry = ref(null)
-const currentUserName = ref('')
 const confirmSubmitTsDialogOpen = ref(false)
 const confirmSubmitTsTarget = ref(null)
 const confirmSubmitTsLoading = ref(false)
@@ -1725,6 +2691,12 @@ async function loadData() {
       currentUserEmail.value = data.me.email || ''
       currentUserName.value = data.me.name || ''
       isSystemManager.value = data.me.is_system_manager || false
+      if (data.me.image) {
+        userImage.value = data.me.image
+      } else if (!userImage.value) {
+        const p = (data.people || []).find((x) => x.email === data.me.email || x.name === data.me.name)
+        if (p?.image) userImage.value = p.image
+      }
       if (!selectedTimesheetUser.value) {
         selectedTimesheetUser.value = data.me.email || ''
       }
@@ -2576,7 +3548,7 @@ onUnmounted(() => {
                   />
                   <div v-if="!isSidebarCollapsed" class="flex-1 min-w-0">
                     <p class="text-xs font-semibold text-ink-gray-9 dark:text-white truncate">{{ fullName }}</p>
-                    <p class="text-[11px] text-ink-gray-5 dark:text-neutral-400 truncate">Administrator</p>
+                    <p class="text-[11px] text-ink-gray-5 dark:text-neutral-400 truncate">{{ currentUserRole }}</p>
                   </div>
                   <ChevronUp
                     v-if="!isSidebarCollapsed"
@@ -2591,9 +3563,9 @@ onUnmounted(() => {
 
       <!-- Pinned Page Header -->
       <PageHeader class="border-b border-outline-gray-2 bg-surface-base">
-        <div class="flex items-center gap-3 flex-1 min-w-0">
+        <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
           <!-- Breadcrumbs for current section -->
-          <Breadcrumbs :items="currentBreadcrumbs">
+          <Breadcrumbs :items="currentBreadcrumbs" class="shrink-0">
             <template #suffix="{ item }">
               <Copy
                 v-if="item.copyable"
@@ -2602,6 +3574,45 @@ onUnmounted(() => {
               />
             </template>
           </Breadcrumbs>
+
+          <!-- Dashboard Filters: Team & Member Filter inline with Breadcrumb -->
+          <template v-if="activeSection === 'Dashboard'">
+            <div class="h-4 w-px bg-outline-gray-2 dark:bg-neutral-800 shrink-0"></div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <!-- Team Filter -->
+              <Select
+                v-model="dashboardSelectedTeam"
+                :options="dashboardTeamOptions"
+                size="sm"
+                class="w-36 sm:w-44 shrink-0"
+                placeholder="All Teams"
+              />
+
+              <!-- Team Member Filter -->
+              <Select
+                v-model="dashboardSelectedMember"
+                :options="dashboardMemberOptions"
+                size="sm"
+                class="w-48 sm:w-56 shrink-0"
+                placeholder="All Members"
+              />
+
+              <!-- Clear button -->
+              <Button
+                v-if="dashboardSelectedTeam || dashboardSelectedMember"
+                variant="ghost"
+                size="sm"
+                title="Clear filters"
+                class="shrink-0 text-ink-gray-5 hover:text-red-500"
+                @click="dashboardSelectedTeam = ''; dashboardSelectedMember = ''"
+              >
+                <template #icon>
+                  <XIcon class="size-3.5" />
+                </template>
+              </Button>
+            </div>
+          </template>
 
           <!-- Task form primary controls (Task type / Status / Priority) teleport in here.
                Always rendered so the Teleport target exists before the form mounts. -->
@@ -2631,18 +3642,37 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 shrink-0">
           <!-- Page Loading Indicator -->
-          <div v-if="loading" class="flex items-center gap-2 px-2 py-1 rounded bg-surface-gray-2 dark:bg-gray-800 text-ink-gray-5 dark:text-gray-400 text-xs font-medium">
+          <div v-if="loading" class="flex items-center gap-2 px-2 py-1 rounded bg-surface-gray-2 dark:bg-gray-800 text-ink-gray-5 dark:text-gray-400 text-xs font-medium shrink-0">
             <LoadingIndicator :scale="75" />
             <span class="hidden sm:inline text-[11px]">Updating...</span>
           </div>
+
+          <!-- Download Report: opens dialog with Team & Project filters -->
+          <Button
+            v-if="(activeSection === 'Task' || activeSection === 'Dashboard') && !detailModalOpen"
+            variant="ghost"
+            size="sm"
+            label="Download Report"
+            :disabled="!canDownloadTaskReport"
+            :title="canDownloadTaskReport
+              ? 'Download task report with filters'
+              : 'No tasks available to export'"
+            class="shrink-0"
+            @click="openDownloadReportDialog"
+          >
+            <template #prefix>
+              <Download class="size-4 text-ink-gray-7" />
+            </template>
+          </Button>
 
           <!-- Refresh Button -->
           <Button
             variant="ghost"
             title="Refresh"
             :loading="loading"
+            class="shrink-0"
             @click="loadData"
           >
             <template #icon>
@@ -2650,25 +3680,6 @@ onUnmounted(() => {
                 class="size-4 text-ink-gray-7 hover:text-gray-950 transition-colors"
                 :class="{ 'animate-spin': loading }"
               />
-            </template>
-          </Button>
-
-          <!-- Download Report: exports every task the user can see, all statuses
-               included. The status tab, team/project selects and column filters
-               narrow the list on screen but are deliberately not applied here. -->
-          <Button
-            v-if="activeSection === 'Task' && !detailModalOpen"
-            variant="ghost"
-            size="sm"
-            label="Download Report"
-            :disabled="!canDownloadTaskReport"
-            :title="canDownloadTaskReport
-              ? `Download all ${tasks.length} tasks as CSV`
-              : 'No tasks available to export'"
-            @click="downloadTaskReport"
-          >
-            <template #prefix>
-              <Download class="size-4 text-ink-gray-7" />
             </template>
           </Button>
 
@@ -2713,8 +3724,269 @@ onUnmounted(() => {
         class="w-full flex-1 min-h-0 flex flex-col overflow-hidden"
         :class="detailModalOpen ? '' : 'px-3 pt-2 pb-2'"
       >
+        <!-- 0. DASHBOARD VIEW (Frappe UI native components & dark theme) -->
+        <template v-if="activeSection === 'Dashboard'">
+          <div class="flex-1 min-h-0 flex flex-col overflow-y-auto px-1 py-1 space-y-5">
+            <!-- Member Profile Info Banner (visible when a specific team member is selected) -->
+            <div
+              v-if="dashboardSelectedMember"
+              class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl border border-[#468373]/30 dark:border-emerald-800/40 bg-[#F4F9F7] dark:bg-emerald-950/20 text-ink-gray-9 dark:text-neutral-100"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <Avatar
+                  :image="selectedMemberInfo?.image"
+                  :label="selectedMemberInfo?.label || dashboardSelectedMember"
+                  size="xl"
+                  shape="circle"
+                  class="shrink-0 ring-2 ring-[#468373]/40"
+                />
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h2 class="text-sm sm:text-base font-bold text-ink-gray-9 dark:text-white truncate">
+                      {{ selectedMemberInfo?.label || dashboardSelectedMember }}
+                    </h2>
+                    <Badge
+                      v-if="selectedMemberInfo?.email && selectedMemberInfo.email !== selectedMemberInfo.label"
+                      :label="selectedMemberInfo.email"
+                      variant="subtle"
+                      theme="gray"
+                      size="sm"
+                    />
+                    <Badge
+                      :label="`${selectedUserProjects.length} Projects`"
+                      variant="solid"
+                      theme="teal"
+                      size="sm"
+                    />
+                    <Badge
+                      :label="`${(filteredDashboardTasks || []).filter(t => t.status !== 'Completed' && t.status !== 'Cancelled').length} Pending Tasks`"
+                      variant="subtle"
+                      theme="orange"
+                      size="sm"
+                    />
+                  </div>
+                  <p class="text-xs text-ink-gray-6 dark:text-neutral-400 mt-0.5">
+                    Member dashboard: active project engagements, workload distribution, and assigned pending deliverables.
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="Clear Member Filter"
+                  @click="dashboardSelectedMember = ''"
+                >
+                  <template #prefix>
+                    <XIcon class="size-3.5 text-ink-gray-5 mr-1" />
+                  </template>
+                </Button>
+              </div>
+            </div>
+
+            <!-- 1. NumberCards Grid (Frappe UI Charts NumberCard) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
+              <NumberCard
+                v-for="kpi in dashboardKpiCards"
+                :key="kpi.title"
+                v-bind="kpi"
+                class="shadow-xs dark:bg-neutral-900 dark:border-neutral-800"
+              />
+            </div>
+
+            <!-- 2. Charts Row: Team Workload (BarChart) & Status Mix (DonutChart) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <section class="lg:col-span-2 flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 px-4 py-3 h-80 shadow-xs">
+                <BarChart v-bind="teamBarChart" />
+              </section>
+
+              <section class="flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 px-4 py-3 h-80 shadow-xs">
+                <DonutChart v-bind="statusDonutChart" />
+              </section>
+            </div>
+
+            <!-- 3. Summary Tables: Team Status & Guided By Status (Side-by-side Grid) -->
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+              <!-- Table 1: Team Status Summary OR Project Status Summary (when member selected) -->
+              <section class="flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 shadow-xs overflow-hidden">
+                <div class="px-4 py-3 bg-surface-base dark:bg-neutral-900 border-b border-outline-gray-2 dark:border-neutral-800 flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="p-1 rounded-md bg-teal-50 dark:bg-teal-950/50 text-[#468373] dark:text-emerald-400">
+                      <component :is="dashboardSelectedMember ? Folder : Users" class="size-4" />
+                    </div>
+                    <div>
+                      <h3 class="text-xs sm:text-sm font-semibold text-ink-gray-9 dark:text-neutral-100">
+                        {{ dashboardSelectedMember ? 'Project Status Summary' : 'Team Status Summary' }}
+                      </h3>
+                      <p class="text-[11px] text-ink-gray-5 dark:text-neutral-400">
+                        {{ dashboardSelectedMember ? `Task distribution across projects for ${selectedMemberLabel}` : 'Work distribution across project teams' }}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge
+                    :label="dashboardSelectedMember ? `${dashboardUserProjectSummary.rows.length} Projects` : `${dashboardTeamSummary.rows.length} Teams`"
+                    variant="subtle"
+                    theme="teal"
+                  />
+                </div>
+
+                <div class="overflow-x-auto max-h-[360px] overflow-y-auto">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead class="sticky top-0 z-10">
+                      <tr class="bg-surface-gray-2 dark:bg-neutral-800 border-b border-outline-gray-2 dark:border-neutral-700 text-ink-gray-7 dark:text-neutral-300 font-semibold uppercase tracking-wider text-[11px]">
+                        <th class="py-2.5 px-3.5 text-left min-w-[120px]">
+                          {{ dashboardSelectedMember ? 'Project' : 'Team' }}
+                        </th>
+                        <th
+                          v-for="s in dashboardStatusCols"
+                          :key="s"
+                          class="py-2.5 px-2 text-center min-w-[55px]"
+                        >
+                          {{ s }}
+                        </th>
+                        <th class="py-2.5 px-3.5 text-right font-bold min-w-[75px]">Grand Total</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-outline-gray-1 dark:divide-neutral-800/80 text-ink-gray-8 dark:text-neutral-200">
+                      <tr
+                        v-for="r in (dashboardSelectedMember ? dashboardUserProjectSummary.rows : dashboardTeamSummary.rows)"
+                        :key="dashboardSelectedMember ? r.project : r.team"
+                        class="hover:bg-surface-gray-1/70 dark:hover:bg-neutral-800/40 transition-colors"
+                      >
+                        <td class="py-2 px-3.5 font-medium text-ink-gray-9 dark:text-neutral-100">
+                          <div class="flex items-center gap-1.5 min-w-0 max-w-[170px]">
+                            <Folder v-if="dashboardSelectedMember" class="size-3.5 text-[#468373] dark:text-emerald-400 shrink-0" />
+                            <span v-else class="size-2 rounded-full bg-[#468373] dark:bg-emerald-400 shrink-0"></span>
+                            <span class="truncate" :title="dashboardSelectedMember ? r.project : r.team">
+                              {{ dashboardSelectedMember ? r.project : r.team }}
+                            </span>
+                          </div>
+                        </td>
+                        <td
+                          v-for="s in dashboardStatusCols"
+                          :key="s"
+                          class="py-2 px-2 text-center"
+                        >
+                          <span
+                            v-if="r.counts[s]"
+                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md font-semibold text-[11px] bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-8 dark:text-neutral-200"
+                          >
+                            {{ r.counts[s] }}
+                          </span>
+                          <span v-else class="text-ink-gray-4 dark:text-neutral-600">—</span>
+                        </td>
+                        <td class="py-2 px-3.5 text-right font-bold text-ink-gray-9 dark:text-white">
+                          {{ r.total }}
+                        </td>
+                      </tr>
+                    </tbody>
+                    <tfoot class="sticky bottom-0 z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+                      <tr class="bg-[#E8F2EF] dark:bg-neutral-800 font-bold border-t-2 border-[#468373] dark:border-emerald-500 text-ink-gray-9 dark:text-white text-xs">
+                        <td class="py-2.5 px-3.5 uppercase tracking-wider text-[#1D4036] dark:text-emerald-400">Grand Total</td>
+                        <td
+                          v-for="s in dashboardStatusCols"
+                          :key="s"
+                          class="py-2.5 px-2 text-center text-[#1D4036] dark:text-emerald-400 font-bold"
+                        >
+                          {{ (dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.counts[s] : dashboardTeamSummary.grandTotal.counts[s]) || '—' }}
+                        </td>
+                        <td class="py-2.5 px-3.5 text-right text-[#1D4036] dark:text-emerald-400 font-extrabold text-sm">
+                          {{ dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.total : dashboardTeamSummary.grandTotal.total }}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </section>
+
+              <!-- Table 2: Guided By Status Summary -->
+              <section class="flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 shadow-xs overflow-hidden">
+                <div class="px-4 py-3 bg-surface-base dark:bg-neutral-900 border-b border-outline-gray-2 dark:border-neutral-800 flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="p-1 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                      <UserCheck class="size-4" />
+                    </div>
+                    <div>
+                      <h3 class="text-xs sm:text-sm font-semibold text-ink-gray-9 dark:text-neutral-100">Guided By Status Summary</h3>
+                      <p class="text-[11px] text-ink-gray-5 dark:text-neutral-400">Task distribution by assigned mentor/guide</p>
+                    </div>
+                  </div>
+                  <Badge
+                    :label="`${dashboardGuideSummary.rows.length} Guides`"
+                    variant="subtle"
+                    theme="teal"
+                  />
+                </div>
+
+                <div class="overflow-x-auto max-h-[360px] overflow-y-auto">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead class="sticky top-0 z-10">
+                      <tr class="bg-surface-gray-2 dark:bg-neutral-800 border-b border-outline-gray-2 dark:border-neutral-700 text-ink-gray-7 dark:text-neutral-300 font-semibold uppercase tracking-wider text-[11px]">
+                        <th class="py-2.5 px-3.5 text-left min-w-[130px]">Guided By</th>
+                        <th
+                          v-for="s in dashboardStatusCols"
+                          :key="s"
+                          class="py-2.5 px-2 text-center min-w-[55px]"
+                        >
+                          {{ s }}
+                        </th>
+                        <th class="py-2.5 px-3.5 text-right font-bold min-w-[75px]">Grand Total</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-outline-gray-1 dark:divide-neutral-800/80 text-ink-gray-8 dark:text-neutral-200">
+                      <tr
+                        v-for="r in dashboardGuideSummary.rows"
+                        :key="r.guide"
+                        class="hover:bg-surface-gray-1/70 dark:hover:bg-neutral-800/40 transition-colors"
+                      >
+                        <td class="py-2 px-3.5 font-medium text-ink-gray-9 dark:text-neutral-100">
+                          <div class="flex items-center gap-1.5 min-w-0 max-w-[160px]">
+                            <span class="size-2 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span class="truncate" :title="r.guide">{{ r.guide }}</span>
+                          </div>
+                        </td>
+                        <td
+                          v-for="s in dashboardStatusCols"
+                          :key="s"
+                          class="py-2 px-2 text-center"
+                        >
+                          <span
+                            v-if="r.counts[s]"
+                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md font-semibold text-[11px] bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-8 dark:text-neutral-200"
+                          >
+                            {{ r.counts[s] }}
+                          </span>
+                          <span v-else class="text-ink-gray-4 dark:text-neutral-600">—</span>
+                        </td>
+                        <td class="py-2 px-3.5 text-right font-bold text-ink-gray-9 dark:text-white">
+                          {{ r.total }}
+                        </td>
+                      </tr>
+                    </tbody>
+                    <tfoot class="sticky bottom-0 z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+                      <tr class="bg-[#E8F2EF] dark:bg-neutral-800 font-bold border-t-2 border-[#468373] dark:border-emerald-500 text-ink-gray-9 dark:text-white text-xs">
+                        <td class="py-2.5 px-3.5 uppercase tracking-wider text-[#1D4036] dark:text-emerald-400">Grand Total</td>
+                        <td
+                          v-for="s in dashboardStatusCols"
+                          :key="s"
+                          class="py-2.5 px-2 text-center text-[#1D4036] dark:text-emerald-400 font-bold"
+                        >
+                          {{ dashboardGuideSummary.grandTotal.counts[s] || '—' }}
+                        </td>
+                        <td class="py-2.5 px-3.5 text-right text-[#1D4036] dark:text-emerald-400 font-extrabold text-sm">
+                          {{ dashboardGuideSummary.grandTotal.total }}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+        </template>
+
         <!-- 1. TASK VIEW -->
-        <template v-if="activeSection === 'Task'">
+        <template v-else-if="activeSection === 'Task'">
           <!-- Task Form: replaces the list (filter bar + table) while a task is open -->
           <div v-if="detailModalOpen" class="flex-1 min-h-0 flex flex-col overflow-hidden">
             <TaskDetailModal
@@ -2777,6 +4049,7 @@ onUnmounted(() => {
               :sort-order="sortOrder"
               :pagination="paginationInfo"
               :row-class="getTaskRowClass"
+              :virtual-scroll="true"
               @row-click="openDetail"
               @sort-change="handleSortChange"
               @load-more="handleLoadMore"
@@ -4474,6 +5747,41 @@ onUnmounted(() => {
         <p class="text-ink-gray-5 dark:text-gray-400">
           Total Hours: <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ confirmSubmitTsTarget?.total_hours }}h</span>. Once submitted, the timesheet will be locked and cannot be edited.
         </p>
+      </div>
+    </Dialog>
+
+    <!-- Download Task Report Dialog (Frappe-UI Dialog with Team & Project filters) -->
+    <Dialog
+      v-model="downloadReportDialogOpen"
+      title="Download Task Report"
+      size="sm"
+      :actions="[
+        {
+          label: 'Export',
+          theme: 'gray',
+          variant: 'solid',
+          onClick: downloadTaskReport,
+        },
+        {
+          label: 'Cancel',
+          variant: 'subtle',
+          onClick: () => { downloadReportDialogOpen = false },
+        },
+      ]"
+    >
+      <div class="space-y-4 py-2">
+        <FormControl
+          v-model="reportTeamFilter"
+          type="select"
+          label="Team"
+          :options="reportTeamOptions"
+        />
+        <FormControl
+          v-model="reportProjectFilter"
+          type="select"
+          label="Project"
+          :options="reportProjectOptions"
+        />
       </div>
     </Dialog>
                 </div>

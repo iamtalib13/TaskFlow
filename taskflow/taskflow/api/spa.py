@@ -31,6 +31,10 @@ def get_spa_bootstrap() -> dict:
 		["name", "full_name", "user_image"],
 		as_dict=True,
 	) or {"name": current_user, "full_name": current_user, "user_image": ""}
+	if not user_info.get("user_image"):
+		emp_image = frappe.db.get_value("Employee", {"user_id": current_user}, "image")
+		if emp_image:
+			user_info["user_image"] = emp_image
 
 	# All active projects accessible to user
 	has_archived = frappe.db.has_column("Taskflow Project", "is_archived")

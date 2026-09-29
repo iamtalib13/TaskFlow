@@ -246,6 +246,14 @@
               </slot>
             </td>
           </tr>
+          <!-- Sentinel row for IntersectionObserver virtual/infinite scroll -->
+          <tr
+            v-if="virtualScroll && hasMore"
+            ref="sentinelRef"
+            class="h-1 opacity-0 pointer-events-none"
+          >
+            <td :colspan="visibleColumns.length + (selectable ? 1 : 0)"></td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -272,32 +280,48 @@
 
       <!-- Right: Load More Controls -->
       <div class="flex items-center gap-2">
-        <!-- Load More Button -->
-        <button
-          v-if="hasMore"
-          type="button"
-          :disabled="loading"
-          class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 text-xs font-semibold shadow-xs hover:shadow transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          @click="$emit('load-more')"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <polyline points="19 12 12 19 5 12"></polyline>
-          </svg>
-          <span>Load More ({{ nextBatchCount }} remaining)</span>
-        </button>
+        <template v-if="virtualScroll">
+          <!-- Virtual Scroll Indicator (Loads automatically on scroll) -->
+          <div
+            v-if="hasMore"
+            class="inline-flex items-center gap-2 text-xs text-ink-gray-5 dark:text-gray-400 font-medium bg-surface-gray-2 dark:bg-gray-800/80 px-2.5 py-1 rounded-md"
+          >
+            <LoadingIndicator v-if="loading" class="size-3 text-ink-gray-6" />
+            <svg v-else class="size-3.5 text-ink-gray-5 animate-bounce" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>
+            <span>Scroll for more ({{ remainingCount }} left)</span>
+          </div>
+        </template>
+        <template v-else>
+          <!-- Manual Load More Button -->
+          <button
+            v-if="hasMore"
+            type="button"
+            :disabled="loading"
+            class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 text-xs font-semibold shadow-xs hover:shadow transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            @click="$emit('load-more')"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>
+            <span>Load More ({{ nextBatchCount }} remaining)</span>
+          </button>
 
-        <!-- Load All Button (if more than 1 batch remaining) -->
-        <button
-          v-if="hasMore && remainingCount > nextBatchCount"
-          type="button"
-          :disabled="loading"
-          class="px-2.5 py-1.5 rounded-lg border border-outline-gray-2 dark:border-gray-700 hover:bg-surface-gray-3 dark:hover:bg-gray-800 text-ink-gray-7 dark:text-gray-300 text-xs font-medium transition cursor-pointer"
-          title="Load all remaining records"
-          @click="$emit('load-all')"
-        >
-          Load all
-        </button>
+          <!-- Load All Button (if more than 1 batch remaining) -->
+          <button
+            v-if="hasMore && remainingCount > nextBatchCount"
+            type="button"
+            :disabled="loading"
+            class="px-2.5 py-1.5 rounded-lg border border-outline-gray-2 dark:border-gray-700 hover:bg-surface-gray-3 dark:hover:bg-gray-800 text-ink-gray-7 dark:text-gray-300 text-xs font-medium transition cursor-pointer"
+            title="Load all remaining records"
+            @click="$emit('load-all')"
+          >
+            Load all
+          </button>
+        </template>
 
         <!-- All Loaded Badge -->
         <span
@@ -387,6 +411,10 @@ export default {
       type: String,
       default: 'tasks',
     },
+    virtualScroll: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: [
     'update:selectedRows',
@@ -407,6 +435,17 @@ export default {
       headHeight: 33,
     }
   },
+  watch: {
+    'rows.length'() {
+      if (this.virtualScroll) {
+        this.checkAutoFill()
+        this.setupVirtualScroll()
+      }
+    },
+    virtualScroll() {
+      this.setupVirtualScroll()
+    },
+  },
   mounted() {
     this.measureHeadHeight()
     if (typeof ResizeObserver !== 'undefined' && this.$refs.theadRef) {
@@ -415,11 +454,27 @@ export default {
       this.headResizeObserver = new ResizeObserver(this.measureHeadHeight)
       this.headResizeObserver.observe(this.$refs.theadRef)
     }
+    this.setupVirtualScroll()
+    this.checkAutoFill()
+  },
+  beforeUnmount() {
+    if (this.headResizeObserver) {
+      this.headResizeObserver.disconnect()
+      this.headResizeObserver = null
+    }
+    if (this.scrollObserver) {
+      this.scrollObserver.disconnect()
+      this.scrollObserver = null
+    }
   },
   beforeDestroy() {
     if (this.headResizeObserver) {
       this.headResizeObserver.disconnect()
       this.headResizeObserver = null
+    }
+    if (this.scrollObserver) {
+      this.scrollObserver.disconnect()
+      this.scrollObserver = null
     }
   },
   computed: {
@@ -578,6 +633,59 @@ export default {
     },
     handleScroll(e) {
       this.isScrolledHorizontally = e.target.scrollLeft > 10
+      if (this.virtualScroll && this.hasMore && !this.loading) {
+        const { scrollTop, scrollHeight, clientHeight } = e.target
+        // When scrolled within 250px of bottom, trigger next batch
+        if (scrollHeight - scrollTop - clientHeight < 250) {
+          this.triggerLoadMore()
+        }
+      }
+    },
+    triggerLoadMore() {
+      if (this._isTriggeringLoad || this.loading || !this.hasMore) return
+      this._isTriggeringLoad = true
+      this.$emit('load-more')
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this._isTriggeringLoad = false
+        }, 150)
+      })
+    },
+    checkAutoFill() {
+      if (!this.virtualScroll || !this.hasMore || this.loading) return
+      this.$nextTick(() => {
+        const el = this.$refs.tableContainer
+        if (!el) return
+        // If initial 20 rows don't fill viewport or make it scrollable, load more
+        if (el.scrollHeight <= el.clientHeight + 60) {
+          this.triggerLoadMore()
+        }
+      })
+    },
+    setupVirtualScroll() {
+      if (this.scrollObserver) {
+        this.scrollObserver.disconnect()
+        this.scrollObserver = null
+      }
+      if (!this.virtualScroll || typeof IntersectionObserver === 'undefined') return
+      this.$nextTick(() => {
+        const target = this.$refs.sentinelRef
+        if (!target) return
+        this.scrollObserver = new IntersectionObserver(
+          (entries) => {
+            const entry = entries[0]
+            if (entry && entry.isIntersecting) {
+              this.triggerLoadMore()
+            }
+          },
+          {
+            root: this.$refs.tableContainer,
+            rootMargin: '200px',
+            threshold: 0,
+          }
+        )
+        this.scrollObserver.observe(target)
+      })
     },
   },
 }

@@ -14,11 +14,12 @@
 // never keep a trailing slash (which used to produce `/taskflow//task/<id>`)
 // and a rewrite can never accumulate stray slashes.
 
-export const SECTIONS = ['Task', 'Timesheet', 'Project', 'Team']
+export const SECTIONS = ['Dashboard', 'Task', 'Timesheet', 'Project', 'Team']
 
 // URL segment -> section id. `task` maps to the task form/list, so it is both
 // a section path and the form prefix.
 const SEGMENT_TO_SECTION = {
+  dashboard: 'Dashboard',
   task: 'Task',
   timesheet: 'Timesheet',
   project: 'Project',
@@ -27,6 +28,7 @@ const SEGMENT_TO_SECTION = {
 
 // Section id -> URL segment. Task owns the bare base, keeping the list URL short.
 const SECTION_TO_SEGMENT = {
+  Dashboard: 'dashboard',
   Task: '',
   Timesheet: 'timesheet',
   Project: 'project',
