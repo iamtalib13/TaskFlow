@@ -525,10 +525,16 @@ def save_task(payload: str = None, **kwargs) -> dict:
 	if is_new:
 		target_project = _extract_str(data.get("project")) or None
 		target_team = _extract_str(data.get("team")) or None
-		if target_project and frappe.db.exists("Taskflow Project", target_project):
+
+		if not target_team:
+			frappe.throw(_("Team is required to create a task"))
+		if not target_project:
+			frappe.throw(_("Project is required to create a task"))
+
+		if frappe.db.exists("Taskflow Project", target_project):
 			if not can_write_project(current_user, target_project):
 				frappe.throw(_("Not permitted to create task in project {0}").format(target_project), frappe.PermissionError)
-		elif target_team and frappe.db.exists("Taskflow Team", target_team):
+		elif frappe.db.exists("Taskflow Team", target_team):
 			if not can_write_team(current_user, target_team):
 				frappe.throw(_("Not permitted to create task in team {0}").format(target_team), frappe.PermissionError)
 		elif not _has_global_access(current_user):

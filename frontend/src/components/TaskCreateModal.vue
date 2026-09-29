@@ -37,7 +37,7 @@
               type="submit"
               size="sm"
               :loading="creating"
-              :disabled="!form.title.trim() || creating"
+              :disabled="!form.title.trim() || !selectedTeamValue || !selectedProjectValue || creating"
             >
               Create Task
             </Button>
@@ -110,7 +110,9 @@
               <!-- Team Selection -->
               <div>
                 <div class="flex items-center justify-between mb-1">
-                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300">Team</label>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300">
+                    Team <span class="text-rose-500">*</span>
+                  </label>
                   <button
                     v-if="selectedTeamValue"
                     type="button"
@@ -141,7 +143,9 @@
               <!-- Project (Searchable Combobox filtered by Team) -->
               <div>
                 <div class="flex items-center justify-between mb-1">
-                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300">Project</label>
+                  <label class="block font-medium text-ink-gray-6 dark:text-gray-300">
+                    Project <span class="text-rose-500">*</span>
+                  </label>
                   <button
                     v-if="selectedProjectValue"
                     type="button"
@@ -801,10 +805,20 @@ export default {
         toast.error('Task Title is required')
         return
       }
+      const projVal = this.selectedProjectValue
+      const teamVal = this.effectiveTeam || this.selectedTeamValue
+      if (!teamVal) {
+        this.errorMessage = 'Team is required'
+        toast.error('Team is required')
+        return
+      }
+      if (!projVal) {
+        this.errorMessage = 'Project is required'
+        toast.error('Project is required')
+        return
+      }
       this.creating = true
       this.errorMessage = ''
-      const projVal = this.selectedProjectValue
-      const teamVal = this.effectiveTeam
       const statusVal = typeof this.form.status === 'object' && this.form.status ? (this.form.status.value || this.form.status.label || '') : (this.form.status || 'Open')
       const priorityVal = typeof this.form.priority === 'object' && this.form.priority ? (this.form.priority.value || this.form.priority.label || '') : (this.form.priority || 'Medium')
       const taskTypeVal = typeof this.form.task_type === 'object' && this.form.task_type ? (this.form.task_type.value || this.form.task_type.label || '') : (this.form.task_type || 'Task')

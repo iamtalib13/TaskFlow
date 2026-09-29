@@ -2798,6 +2798,16 @@ async function onCreateTask(formData) {
   const taskTypeVal = getVal(formData.task_type) || 'Task'
   const projVal = getVal(formData.project)
   const teamVal = getVal(formData.team)
+  if (!teamVal) {
+    const msg = 'Team is required'
+    toast.error(msg)
+    throw new Error(msg)
+  }
+  if (!projVal) {
+    const msg = 'Project is required'
+    toast.error(msg)
+    throw new Error(msg)
+  }
   const guidedByVal = getVal(formData.guided_by)
   const assigneeList = Array.isArray(formData.assignees) && formData.assignees.length > 0
     ? formData.assignees.map((a) => (typeof a === 'object' ? (a.value || a.user_id || a.user || a.email) : a)).filter(Boolean)
