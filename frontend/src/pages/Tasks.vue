@@ -3614,7 +3614,7 @@ onUnmounted(() => {
                 v-model="dashboardSelectedTeam"
                 :options="dashboardTeamOptions"
                 size="sm"
-                class="w-36 sm:w-44 shrink-0"
+                class="w-36 sm:w-44 shrink-0 [&_button]:truncate"
                 placeholder="All Teams"
               />
 
@@ -3623,7 +3623,7 @@ onUnmounted(() => {
                 v-model="dashboardSelectedMember"
                 :options="dashboardMemberOptions"
                 size="sm"
-                class="w-48 sm:w-56 shrink-0"
+                class="w-44 sm:w-60 shrink-0 [&_button]:truncate"
                 placeholder="All Members"
               />
 
@@ -3750,12 +3750,15 @@ onUnmounted(() => {
            column dividers floated away from the page edges and started 8px
            below the header, so they never met the header's bottom border. -->
       <div
-        class="w-full flex-1 min-h-0 flex flex-col overflow-hidden"
-        :class="detailModalOpen ? '' : 'px-3 pt-2 pb-2'"
+        class="w-full flex-1 min-h-0 flex flex-col"
+        :class="[
+          detailModalOpen ? '' : 'px-3 pt-2 pb-8',
+          activeSection === 'Dashboard' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'
+        ]"
       >
         <!-- 0. DASHBOARD VIEW (Frappe UI native components & dark theme) -->
         <template v-if="activeSection === 'Dashboard'">
-          <div class="flex-1 min-h-0 flex flex-col overflow-y-auto px-1 py-1 space-y-5">
+          <div class="w-full flex flex-col space-y-5 pb-8">
             <!-- Member Profile Info Banner (visible when a specific team member is selected) -->
             <div
               v-if="dashboardSelectedMember"
@@ -4013,9 +4016,7 @@ onUnmounted(() => {
             </div>
 
             <!-- 4. Timesheet Master Report Section (Dashboard bottom) -->
-            <section class="flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 shadow-xs overflow-hidden h-[740px]">
-              <TimesheetMasterReport />
-            </section>
+            <TimesheetMasterReport :embedded="true" />
           </div>
         </template>
 

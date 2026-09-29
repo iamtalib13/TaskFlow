@@ -1,64 +1,94 @@
 <template>
-  <div class="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#f8fafc] dark:bg-gray-950 text-ink-gray-9 dark:text-gray-100">
+  <div
+    :class="[
+      embedded
+        ? 'w-full rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 shadow-xs overflow-hidden flex flex-col'
+        : 'flex-1 min-h-0 flex flex-col overflow-hidden bg-[#f8fafc] dark:bg-gray-950 text-ink-gray-9 dark:text-gray-100'
+    ]"
+  >
     <!-- Header Controls Banner -->
-    <div class="shrink-0 px-6 py-4 bg-white dark:bg-gray-900 border-b border-outline-gray-2 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4">
+    <div
+      :class="[
+        embedded
+          ? 'px-4 py-3 bg-surface-base dark:bg-neutral-900 border-b border-outline-gray-2 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-3'
+          : 'shrink-0 px-6 py-4 bg-white dark:bg-gray-900 border-b border-outline-gray-2 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4'
+      ]"
+    >
       <!-- Title & Subtitle with Clock Badge -->
-      <div class="flex items-center gap-3.5">
-        <div class="size-11 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-xs shrink-0">
-          <Clock class="size-5 stroke-[2.2]" />
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <div
+          :class="[
+            embedded
+              ? 'p-1 rounded-md bg-teal-50 dark:bg-teal-950/50 text-[#468373] dark:text-emerald-400'
+              : 'size-11 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-xs shrink-0'
+          ]"
+        >
+          <Clock :class="embedded ? 'size-4' : 'size-5 stroke-[2.2]'" />
         </div>
         <div>
-          <h2 class="text-xl font-bold tracking-tight text-ink-gray-9 dark:text-white leading-tight">
+          <h2
+            :class="[
+              embedded
+                ? 'text-xs sm:text-sm font-semibold text-ink-gray-9 dark:text-neutral-100'
+                : 'text-xl font-bold tracking-tight text-ink-gray-9 dark:text-white leading-tight'
+            ]"
+          >
             Timesheet Master Report
           </h2>
-          <p class="text-xs text-ink-gray-5 dark:text-gray-400 mt-0.5">
+          <p
+            :class="[
+              embedded
+                ? 'text-[11px] text-ink-gray-5 dark:text-neutral-400'
+                : 'text-xs text-ink-gray-5 dark:text-gray-400 mt-0.5'
+            ]"
+          >
             Track and monitor employee time spent on tasks and projects
           </p>
         </div>
       </div>
 
       <!-- Action & Filter Bar -->
-      <div class="flex items-center gap-3 flex-wrap">
+      <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
         <!-- Search Input -->
         <div class="relative flex items-center">
           <Search class="size-3.5 text-ink-gray-4 absolute left-3 pointer-events-none" />
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Search employees, designations..."
-            class="pl-8.5 pr-3 py-1.5 text-xs bg-surface-base dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-56 text-ink-gray-8 dark:text-gray-200 transition"
+            placeholder="Search employees..."
+            class="pl-8.5 pr-3 py-1.5 text-xs bg-surface-base dark:bg-neutral-800 border border-outline-gray-2 dark:border-neutral-700 rounded-lg outline-none focus:ring-2 focus:ring-[#468373]/20 focus:border-[#468373] w-48 sm:w-56 text-ink-gray-8 dark:text-neutral-200 transition"
             @input="onSearchInput"
           />
         </div>
 
         <!-- Date Range Filter Picker / Indicator -->
-        <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-surface-base dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg text-xs font-medium text-ink-gray-7 dark:text-gray-300 shadow-xs">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-surface-base dark:bg-neutral-800 border border-outline-gray-2 dark:border-neutral-700 rounded-lg text-xs font-medium text-ink-gray-7 dark:text-neutral-300 shadow-xs">
           <Calendar class="size-3.5 text-ink-gray-4" />
           <span>{{ dateRangeDisplay }}</span>
         </div>
 
         <!-- View Mode Segmented Controls: Daily | Weekly | Monthly -->
-        <div class="inline-flex p-1 bg-surface-gray-2 dark:bg-gray-800 rounded-lg border border-outline-gray-2 dark:border-gray-700 text-xs font-semibold">
+        <div class="inline-flex p-1 bg-surface-gray-2 dark:bg-neutral-800 rounded-lg border border-outline-gray-2 dark:border-neutral-700 text-xs font-semibold">
           <button
             type="button"
-            class="px-3 py-1 rounded-md transition-colors cursor-pointer"
-            :class="viewType === 'Daily' ? 'bg-blue-600 text-white shadow-xs' : 'text-ink-gray-6 dark:text-gray-400 hover:text-ink-gray-9 dark:hover:text-white'"
+            class="px-2.5 sm:px-3 py-1 rounded-md transition-colors cursor-pointer"
+            :class="viewType === 'Daily' ? (embedded ? 'bg-[#468373] text-white shadow-xs' : 'bg-blue-600 text-white shadow-xs') : 'text-ink-gray-6 dark:text-neutral-400 hover:text-ink-gray-9 dark:hover:text-white'"
             @click="changeViewType('Daily')"
           >
             Daily
           </button>
           <button
             type="button"
-            class="px-3 py-1 rounded-md transition-colors cursor-pointer"
-            :class="viewType === 'Weekly' ? 'bg-blue-600 text-white shadow-xs' : 'text-ink-gray-6 dark:text-gray-400 hover:text-ink-gray-9 dark:hover:text-white'"
+            class="px-2.5 sm:px-3 py-1 rounded-md transition-colors cursor-pointer"
+            :class="viewType === 'Weekly' ? (embedded ? 'bg-[#468373] text-white shadow-xs' : 'bg-blue-600 text-white shadow-xs') : 'text-ink-gray-6 dark:text-neutral-400 hover:text-ink-gray-9 dark:hover:text-white'"
             @click="changeViewType('Weekly')"
           >
             Weekly
           </button>
           <button
             type="button"
-            class="px-3 py-1 rounded-md transition-colors cursor-pointer"
-            :class="viewType === 'Monthly' ? 'bg-blue-600 text-white shadow-xs' : 'text-ink-gray-6 dark:text-gray-400 hover:text-ink-gray-9 dark:hover:text-white'"
+            class="px-2.5 sm:px-3 py-1 rounded-md transition-colors cursor-pointer"
+            :class="viewType === 'Monthly' ? (embedded ? 'bg-[#468373] text-white shadow-xs' : 'bg-blue-600 text-white shadow-xs') : 'text-ink-gray-6 dark:text-neutral-400 hover:text-ink-gray-9 dark:hover:text-white'"
             @click="changeViewType('Monthly')"
           >
             Monthly
@@ -79,10 +109,10 @@
     </div>
 
     <!-- Main Table Container -->
-    <div class="flex-1 min-h-0 overflow-auto p-4 sm:p-6">
-      <div class="bg-white dark:bg-gray-900 border border-outline-gray-2 dark:border-gray-800 rounded-xl shadow-xs overflow-hidden flex flex-col">
+    <div :class="embedded ? 'w-full overflow-hidden flex flex-col' : 'flex-1 min-h-0 overflow-auto p-4 sm:p-6'">
+      <div :class="embedded ? 'w-full overflow-hidden flex flex-col' : 'bg-white dark:bg-gray-900 border border-outline-gray-2 dark:border-gray-800 rounded-xl shadow-xs overflow-hidden flex flex-col'">
         <!-- Table Scroll Area -->
-        <div class="overflow-x-auto min-h-[400px]">
+        <div class="overflow-x-auto" :class="embedded ? 'max-h-[500px] overflow-y-auto' : 'min-h-[400px]'">
           <table class="w-full text-left border-collapse">
             <!-- Table Header -->
             <thead>
@@ -357,6 +387,13 @@ import {
   Search,
 } from 'lucide-vue-next'
 import { fetchTimesheetMasterReport } from '@/data/api.js'
+
+const props = defineProps({
+  embedded: {
+    type: Boolean,
+    default: false,
+  },
+})
 
 const loading = ref(false)
 const viewType = ref('Weekly') // 'Daily' | 'Weekly' | 'Monthly'
