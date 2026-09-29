@@ -663,6 +663,7 @@ export default {
         team: this.effectiveTeam || this.form.team || undefined,
         assignees: assigneeIds,
         assigned_to: assigneeIds[0] || '',
+        completed_on: this.form.status === 'Completed' ? dayjs().format('YYYY-MM-DD') : (this.form.completed_on || ''),
       }
       try {
         if (this.onCreate) {

@@ -99,6 +99,7 @@
             side="bottom"
             :disabled="saving || deleting"
             class="w-[8.5rem] shrink-0"
+            @update:model-value="onStatusChange"
           >
             <template #prefix>
               <span
@@ -929,6 +930,7 @@ export default {
       saving: false,
       deleting: false,
       errorMessage: '',
+      isInitializing: false,
       loadingComments: false,
       submittingComment: false,
       activeRightTab: 'comments',
@@ -1132,6 +1134,7 @@ export default {
       immediate: true,
       handler(t) {
         if (t) {
+          this.isInitializing = true
           let assigneesList = []
           if (Array.isArray(t.assignees)) {
             assigneesList = t.assignees.map((a) => (typeof a === 'object' ? (a.user_id || a.value || a.email || a.name) : a)).filter(Boolean)
@@ -1192,8 +1195,18 @@ export default {
           if (matchedTeam) {
             this.loadTeamMembersForTeam(matchedTeam)
           }
+
+          this.$nextTick(() => {
+            this.isInitializing = false
+          })
         }
       },
+    },
+    'form.status'(newStatus, oldStatus) {
+      if (this.isInitializing) return
+      if (newStatus === 'Completed' && oldStatus && oldStatus !== 'Completed') {
+        this.form.completed_on = dayjs().format('YYYY-MM-DD')
+      }
     },
     modelValue(val) {
       if (val) {
@@ -1332,6 +1345,11 @@ export default {
     removeAssignee(assignee) {
       const targetVal = this.getAssigneeValue(assignee)
       this.form.assignees = this.form.assignees.filter((a) => this.getAssigneeValue(a) !== targetVal)
+    },
+    onStatusChange(val) {
+      if (val === 'Completed') {
+        this.form.completed_on = dayjs().format('YYYY-MM-DD')
+      }
     },
     normalizeDate(val) {
       if (!val) return ''
