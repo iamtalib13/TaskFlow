@@ -1228,7 +1228,9 @@ export default {
     },
     'form.status'(newStatus, oldStatus) {
       if (this.isInitializing) return
-      if (newStatus === 'Completed' && oldStatus && oldStatus !== 'Completed') {
+      const sNew = typeof newStatus === 'object' && newStatus ? (newStatus.value || newStatus.label) : newStatus
+      const sOld = typeof oldStatus === 'object' && oldStatus ? (oldStatus.value || oldStatus.label) : oldStatus
+      if (sNew === 'Completed' && sOld && sOld !== 'Completed') {
         this.form.completed_on = dayjs().format('YYYY-MM-DD')
       }
     },
@@ -1371,7 +1373,8 @@ export default {
       this.form.assignees = this.form.assignees.filter((a) => this.getAssigneeValue(a) !== targetVal)
     },
     onStatusChange(val) {
-      if (val === 'Completed') {
+      const statusVal = typeof val === 'object' && val ? (val.value || val.label) : val
+      if (statusVal === 'Completed') {
         this.form.completed_on = dayjs().format('YYYY-MM-DD')
       }
     },

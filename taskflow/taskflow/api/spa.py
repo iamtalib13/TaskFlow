@@ -484,6 +484,12 @@ def delete_project(name: str = None, **kwargs) -> dict:
 	frappe.delete_doc("Taskflow Project", project_name, ignore_permissions=True)
 	return {"status": "ok", "deleted": project_name}
 
+def _extract_str(val):
+	if isinstance(val, dict):
+		return val.get("value") or val.get("label") or ""
+	return str(val).strip() if val is not None else ""
+
+
 def _normalize_date(val):
 	if not val:
 		return None
@@ -517,8 +523,8 @@ def save_task(payload: str = None, **kwargs) -> dict:
 	is_new = not task_id or task_id == "new"
 
 	if is_new:
-		target_project = data.get("project")
-		target_team = data.get("team")
+		target_project = _extract_str(data.get("project")) or None
+		target_team = _extract_str(data.get("team")) or None
 		if target_project and frappe.db.exists("Taskflow Project", target_project):
 			if not can_write_project(current_user, target_project):
 				frappe.throw(_("Not permitted to create task in project {0}").format(target_project), frappe.PermissionError)
@@ -538,10 +544,11 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		if not title:
 			frappe.throw(_("Task Title is required"))
 		doc.task_title = title
-		doc.project = data.get("project") or None
-		doc.status = data.get("status") or "Open"
-		doc.priority = data.get("priority") or "Medium"
-		doc.task_type = data.get("task_type") or (data.get("labels")[0] if data.get("labels") else "Task")
+		doc.project = target_project
+		doc.status = _extract_str(data.get("status")) or "Open"
+		doc.priority = _extract_str(data.get("priority")) or "Medium"
+		raw_task_type = data.get("task_type") or (data.get("labels")[0] if data.get("labels") else "Task")
+		doc.task_type = _extract_str(raw_task_type) or "Task"
 		doc.due_date = _normalize_date(data.get("due") or data.get("due_date"))
 		doc.description = data.get("description") or ""
 	else:
@@ -552,22 +559,22 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		if "title" in data or "task_title" in data:
 			doc.task_title = data.get("title") or data.get("task_title")
 		if "project" in data:
-			doc.project = data.get("project") or None
+			doc.project = _extract_str(data.get("project")) or None
 		if "status" in data:
-			doc.status = data.get("status")
+			doc.status = _extract_str(data.get("status")) or doc.status
 		if "priority" in data:
-			doc.priority = data.get("priority")
+			doc.priority = _extract_str(data.get("priority")) or doc.priority
 		if "task_type" in data:
-			doc.task_type = data.get("task_type")
+			doc.task_type = _extract_str(data.get("task_type")) or doc.task_type
 		elif "labels" in data and data.get("labels"):
-			doc.task_type = data.get("labels")[0]
+			doc.task_type = _extract_str(data.get("labels")[0])
 		if "due" in data or "due_date" in data:
 			doc.due_date = _normalize_date(data.get("due") or data.get("due_date"))
 		if "description" in data:
 			doc.description = data.get("description")
 
 	# Ensure valid team is assigned (mandatory for non-admin permission rules)
-	candidate_team = data.get("team")
+	candidate_team = _extract_str(data.get("team")) or None
 	if candidate_team and not frappe.db.exists("Taskflow Team", candidate_team):
 		candidate_team = None
 
@@ -601,12 +608,21 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		"ticket_raised_by",
 		"ticket_description",
 	]
-	date_fields = {"start_date", "due_date", "ticket_date", "expected_resolution_date", "completed_on"}
+	date_fields = {"start_date", "due_date", "ticket_date", "expected_resolution_date"}
 	for f in direct_fields:
 		if f in data:
 			val = data[f]
 			if f == "estimated_hours":
 				val = float(val or 0)
+			elif f == "completed_on":
+				if val:
+					try:
+						from frappe.utils import get_datetime
+						val = get_datetime(val)
+					except Exception:
+						val = _normalize_date(val)
+				else:
+					val = None
 			elif f in date_fields:
 				val = _normalize_date(val)
 			elif f == "guided_by" and val:
@@ -631,6 +647,9 @@ def save_task(payload: str = None, **kwargs) -> dict:
 			elif not val:
 				val = None
 			doc.set(f, val)
+
+	if doc.status == "Completed" and not doc.completed_on:
+		doc.completed_on = frappe.utils.now_datetime()
 
 	# Update multiple user assignment in table_gqbl
 	if "assignees" in data:

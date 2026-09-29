@@ -358,7 +358,7 @@
               </div>
 
               <!-- Completion Date (Shown when status is Completed) -->
-              <div v-if="form.status === 'Completed'">
+              <div v-if="isStatusCompleted">
                 <label class="block font-medium text-ink-gray-6 dark:text-gray-300 mb-1">Completion Date</label>
                 <DatePicker
                   v-model="form.completed_on"
@@ -584,7 +584,8 @@ export default {
       this.onProjectChange()
     },
     'form.status'(newStatus) {
-      if (newStatus === 'Completed') {
+      const s = typeof newStatus === 'object' && newStatus ? (newStatus.value || newStatus.label) : newStatus
+      if (s === 'Completed' && !this.form.completed_on) {
         this.form.completed_on = dayjs().format('YYYY-MM-DD')
       }
     },
@@ -593,6 +594,10 @@ export default {
     this.loadTaskflowSettings()
   },
   computed: {
+    isStatusCompleted() {
+      const s = typeof this.form.status === 'object' && this.form.status ? (this.form.status.value || this.form.status.label) : this.form.status
+      return s === 'Completed'
+    },
     // frappe-ui Select needs option objects; the plain string prop lists above
     // stay the single source of truth.
     statusOptions() {
@@ -711,9 +716,11 @@ export default {
   },
   methods: {
     onStatusChange(val) {
-      const statusVal = typeof val === 'object' ? (val?.value || '') : (val || this.form.status)
+      const statusVal = typeof val === 'object' && val ? (val.value || val.label || '') : (val || this.form.status)
       if (statusVal === 'Completed') {
-        this.form.completed_on = dayjs().format('YYYY-MM-DD')
+        if (!this.form.completed_on) {
+          this.form.completed_on = dayjs().format('YYYY-MM-DD')
+        }
       }
     },
     async loadTaskflowSettings() {
@@ -798,16 +805,22 @@ export default {
       this.errorMessage = ''
       const projVal = this.selectedProjectValue
       const teamVal = this.effectiveTeam
+      const statusVal = typeof this.form.status === 'object' && this.form.status ? (this.form.status.value || this.form.status.label || '') : (this.form.status || 'Open')
+      const priorityVal = typeof this.form.priority === 'object' && this.form.priority ? (this.form.priority.value || this.form.priority.label || '') : (this.form.priority || 'Medium')
+      const taskTypeVal = typeof this.form.task_type === 'object' && this.form.task_type ? (this.form.task_type.value || this.form.task_type.label || '') : (this.form.task_type || 'Task')
       const assigneeIds = (this.form.assignees || []).map((a) => (typeof a === 'object' ? (a.value || a.user_id || a.user || a.email) : a)).filter(Boolean)
       const guidedByVal = typeof this.form.guided_by === 'object' ? (this.form.guided_by.value || '') : (this.form.guided_by || '')
       const payload = {
         ...this.form,
+        status: statusVal,
+        priority: priorityVal,
+        task_type: taskTypeVal,
         project: projVal,
         guided_by: guidedByVal,
         team: teamVal || undefined,
         assignees: assigneeIds,
         assigned_to: assigneeIds[0] || '',
-        completed_on: this.form.status === 'Completed' ? (this.form.completed_on || dayjs().format('YYYY-MM-DD')) : '',
+        completed_on: statusVal === 'Completed' ? (this.form.completed_on || dayjs().format('YYYY-MM-DD')) : '',
       }
       try {
         if (this.onCreate) {

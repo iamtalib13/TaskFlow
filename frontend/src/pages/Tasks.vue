@@ -2792,18 +2792,29 @@ async function onSaveTask(updatedTask) {
 }
 
 async function onCreateTask(formData) {
+  const getVal = (v) => (typeof v === 'object' && v ? (v.value || v.label || '') : (v || ''))
+  const statusVal = getVal(formData.status) || 'Open'
+  const priorityVal = getVal(formData.priority) || 'Medium'
+  const taskTypeVal = getVal(formData.task_type) || 'Task'
+  const projVal = getVal(formData.project)
+  const teamVal = getVal(formData.team)
+  const guidedByVal = getVal(formData.guided_by)
   const assigneeList = Array.isArray(formData.assignees) && formData.assignees.length > 0
     ? formData.assignees.map((a) => (typeof a === 'object' ? (a.value || a.user_id || a.user || a.email) : a)).filter(Boolean)
     : (formData.assigned_to ? [formData.assigned_to] : [])
-  const guidedByVal = typeof formData.guided_by === 'object' ? (formData.guided_by.value || '') : (formData.guided_by || '')
+
+  const completedOnVal = statusVal === 'Completed'
+    ? (formData.completed_on || new Date().toISOString().split('T')[0])
+    : ''
+
   const newTask = {
     ...formData,
     title: formData.title,
-    project: formData.project || '',
-    team: formData.team || '',
-    status: formData.status || 'Open',
-    priority: formData.priority || 'Medium',
-    task_type: formData.task_type || 'Task',
+    project: projVal,
+    team: teamVal,
+    status: statusVal,
+    priority: priorityVal,
+    task_type: taskTypeVal,
     description: formData.description || '',
     start_date: formData.start_date || '',
     due_date: formData.due_date || '',
@@ -2813,7 +2824,7 @@ async function onCreateTask(formData) {
     ticket_date: formData.ticket_date || '',
     ticket_raised_by: formData.ticket_raised_by || '',
     estimated_hours: 8,
-    completed_on: formData.status === 'Completed' ? (formData.completed_on || new Date().toISOString().split('T')[0]) : '',
+    completed_on: completedOnVal,
     assignees: assigneeList,
   }
 
@@ -2824,15 +2835,16 @@ async function onCreateTask(formData) {
         ...result,
         id: result.id,
         title: result.title || formData.title,
-        project: result.project || formData.project || '',
-        team: result.team || formData.team || '',
-        status: result.status || 'Open',
-        priority: result.priority || 'Medium',
-        task_type: result.task_type || formData.task_type || 'Task',
+        project: result.project || projVal,
+        team: result.team || teamVal,
+        status: result.status || statusVal,
+        priority: result.priority || priorityVal,
+        task_type: result.task_type || taskTypeVal,
         assignees: result.assignees || assigneeList,
         reporter: fullName.value,
         start_date: result.start_date || formData.start_date || '',
         due_date: result.due || formData.due_date || '',
+        completed_on: result.completed_on || completedOnVal,
         pending_from: result.pending_from || formData.pending_from || '',
         guided_by: result.guided_by || guidedByVal || '',
         toll_id: result.toll_id || formData.toll_id || '',
@@ -2848,6 +2860,11 @@ async function onCreateTask(formData) {
         modified_pretty: 'Just now',
       }
       tasks.value.unshift(savedTask)
+
+      if (statusVal === 'Completed' && statusTab.value === 'Pending') {
+        statusTab.value = 'Completed'
+      }
+
       toast.success('Task created successfully')
       return savedTask
     }
