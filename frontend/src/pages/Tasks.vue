@@ -3972,7 +3972,7 @@ onUnmounted(() => {
             >
               <!-- Per-column header filters (search-style, matching the header search bar) -->
               <template #header-id>
-                <div class="mt-1 w-full" @click.stop>
+                <div class="w-full" @click.stop>
                   <TextInput v-model="columnFilters.id" type="search" size="xs" class="w-full" placeholder="ID" aria-label="Filter by ID">
                     <template #prefix>
                       <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
@@ -3981,7 +3981,7 @@ onUnmounted(() => {
                 </div>
               </template>
               <template #header-title>
-                <div class="mt-1 w-full" @click.stop>
+                <div class="w-full" @click.stop>
                   <TextInput v-model="columnFilters.title" type="search" size="xs" class="w-full" placeholder="Task" aria-label="Filter by task title">
                     <template #prefix>
                       <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
@@ -3990,7 +3990,7 @@ onUnmounted(() => {
                 </div>
               </template>
               <template #header-project>
-                <div class="mt-1 w-full" @click.stop>
+                <div class="w-full" @click.stop>
                   <TextInput v-model="columnFilters.project" type="search" size="xs" class="w-full" placeholder="Project" aria-label="Filter by project">
                     <template #prefix>
                       <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
@@ -3999,7 +3999,7 @@ onUnmounted(() => {
                 </div>
               </template>
               <template #header-status>
-                <div class="mt-1 w-full" @click.stop>
+                <div class="w-full" @click.stop>
                   <TextInput v-model="columnFilters.status" type="search" size="xs" class="w-full" placeholder="Status" aria-label="Filter by status">
                     <template #prefix>
                       <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
@@ -4008,7 +4008,7 @@ onUnmounted(() => {
                 </div>
               </template>
               <template #header-team>
-                <div class="mt-1 w-full" @click.stop>
+                <div class="w-full" @click.stop>
                   <TextInput v-model="columnFilters.team" type="search" size="xs" class="w-full" placeholder="Team" aria-label="Filter by team">
                     <template #prefix>
                       <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
@@ -4017,7 +4017,7 @@ onUnmounted(() => {
                 </div>
               </template>
               <template #header-priority>
-                <div class="mt-1 w-full" @click.stop>
+                <div class="w-full" @click.stop>
                   <TextInput v-model="columnFilters.priority" type="search" size="xs" class="w-full" placeholder="Priority" aria-label="Filter by priority">
                     <template #prefix>
                       <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
@@ -4026,7 +4026,7 @@ onUnmounted(() => {
                 </div>
               </template>
               <template #header-assigned_to>
-                <div class="mt-1 w-full" @click.stop>
+                <div class="w-full" @click.stop>
                   <TextInput v-model="columnFilters.assigned_to" type="search" size="xs" class="w-full" placeholder="Assigned" aria-label="Filter by assigned to">
                     <template #prefix>
                       <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
@@ -4035,7 +4035,7 @@ onUnmounted(() => {
                 </div>
               </template>
               <template #header-modified>
-                <div class="mt-1 w-full" @click.stop>
+                <div class="w-full" @click.stop>
                   <TextInput v-model="columnFilters.modified" type="search" size="xs" class="w-full" placeholder="Modified" aria-label="Filter by modified">
                     <template #prefix>
                       <Search class="size-3 text-ink-gray-5" aria-hidden="true" />

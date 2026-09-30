@@ -76,50 +76,40 @@
             </th>
           </tr>
 
-        </thead>
-
-        <!-- Column filter row. Kept in its own <tbody> rather than in <thead>,
-             but pinned directly under the label row so both stay visible while
-             the data scrolls.
-
-             Gated on an explicit prop, not on "does a header-* slot exist": the
-             Project and Team tables have columns called `team` and `modified`,
-             the same keys as the Task table's filter slots, so slot sniffing
-             gave them a phantom, empty filter row.
-
-             Each cell is sticky on both axes when the column is. The background
-             has to be on the cell itself: a sticky cell escapes the row's
-             background box and would let the scrolled rows show through. -->
-        <tbody
-          v-if="showFilterRow"
-          class="border-b border-outline-gray-1 dark:border-gray-800/80"
-        >
-          <tr>
-            <td
+          <!-- Row 2: Column Filter Row inside the same sticky thead (seamless, zero gap) -->
+          <tr
+            v-if="showFilterRow"
+            class="border-t border-outline-gray-2/60 dark:border-gray-800 bg-surface-gray-2 dark:bg-gray-900 text-ink-gray-7 dark:text-gray-300 normal-case font-normal text-xs"
+          >
+            <th
               v-if="selectable"
-              :style="{ top: headHeight + 'px' }"
+              scope="col"
               :class="[
-                'sticky z-20 bg-surface-base w-9 px-2 py-1.5',
-                isCheckboxSticky ? 'left-0' : '',
+                'w-9 px-2 py-1.5 text-center bg-surface-gray-2 dark:bg-gray-900 border-r border-outline-gray-2/60 dark:border-gray-800',
+                isCheckboxSticky ? 'sticky left-0 z-40' : '',
               ]"
-            ></td>
-            <td
+            ></th>
+            <th
               v-for="col in visibleColumns"
               :key="'filter-' + col.key"
+              scope="col"
               :style="{
                 width: col.width || 'auto',
                 minWidth: col.minWidth || '80px',
                 maxWidth: col.maxWidth || (col.width && col.width !== 'auto' ? col.width : 'none'),
-                top: headHeight + 'px',
+                left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
-              class="sticky z-20 bg-surface-base px-2 py-1.5"
+              :class="[
+                'px-2 py-1 font-normal bg-surface-gray-2 dark:bg-gray-900',
+                col.sticky ? 'sticky z-40 border-r border-outline-gray-2/70 dark:border-gray-800' : '',
+              ]"
             >
               <div class="w-full" @click.stop>
                 <slot :name="'header-' + col.key" :col="col" />
               </div>
-            </td>
+            </th>
           </tr>
-        </tbody>
+        </thead>
 
         <!-- Table Body -->
         <tbody class="divide-y divide-gray-100 dark:divide-gray-800/80 bg-surface-base">
