@@ -36,6 +36,8 @@ export default {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
+        neutral: tailwindColors.neutral,
+        zinc: tailwindColors.zinc,
         emerald: tailwindColors.emerald,
         rose: tailwindColors.rose,
         primary: {

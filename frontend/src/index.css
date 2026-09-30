@@ -271,3 +271,12 @@ span[data-type="tag"] {
   color: #737373 !important;
 }
 
+/* Dark theme taskform chat panel */
+.dark .task-chat-root,
+[data-theme="dark"] .task-chat-root,
+.dark [data-task-chat],
+[data-theme="dark"] [data-task-chat] {
+  background-color: #121212 !important;
+  color: #e5e5e5 !important;
+}
+

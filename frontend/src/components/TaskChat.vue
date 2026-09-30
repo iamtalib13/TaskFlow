@@ -1,6 +1,7 @@
 <template>
   <div
-    class="relative flex-1 min-h-0 flex flex-col bg-[#F3F6F5] dark:bg-neutral-950"
+    data-task-chat
+    class="task-chat-root relative flex-1 min-h-0 flex flex-col bg-[#F3F6F5] dark:bg-[#121212]"
     @dragover.prevent="dragActive = true"
     @dragleave.self="dragActive = false"
     @drop.prevent="onDrop"
@@ -15,19 +16,19 @@
 
     <!-- Messages -->
     <div ref="scroller" class="flex-1 min-h-0 overflow-y-auto px-3 py-3" @scroll="onScroll">
-      <div v-if="!canChat" class="h-full flex flex-col items-center justify-center text-center text-ink-gray-5 select-none">
-        <MessageSquare class="size-6 text-ink-gray-3 mb-1.5" />
-        <p class="text-xs font-medium">Save the task to start the chat</p>
+      <div v-if="!canChat" class="h-full flex flex-col items-center justify-center text-center text-ink-gray-5 dark:text-neutral-400 select-none">
+        <MessageSquare class="size-6 text-ink-gray-3 dark:text-neutral-600 mb-1.5" />
+        <p class="text-xs font-medium dark:text-neutral-300">Save the task to start the chat</p>
       </div>
 
       <div v-else-if="loading && messages.length === 0" class="py-8 flex justify-center">
         <Loader2 class="size-4 animate-spin text-[#468373]" />
       </div>
 
-      <div v-else-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center text-ink-gray-5 select-none">
-        <MessageSquare class="size-6 text-ink-gray-3 mb-1.5" />
-        <p class="text-xs font-medium">No messages yet</p>
-        <p class="text-[11px] text-ink-gray-4">Say hi, share a file, or @mention a teammate.</p>
+      <div v-else-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center text-ink-gray-5 dark:text-neutral-400 select-none">
+        <MessageSquare class="size-6 text-ink-gray-3 dark:text-neutral-600 mb-1.5" />
+        <p class="text-xs font-medium dark:text-neutral-200">No messages yet</p>
+        <p class="text-[11px] text-ink-gray-4 dark:text-neutral-400">Say hi, share a file, or @mention a teammate.</p>
       </div>
 
       <template v-else>
