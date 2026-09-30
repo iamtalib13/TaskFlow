@@ -2530,7 +2530,11 @@ async function loadData() {
         loadTimesheetCalendar(selectedTimesheetUser.value)
       }
     }
-    loadDashboardMembers()
+    if (data.dashboard_members && data.dashboard_members.length > 0) {
+      dashboardMemberList.value = data.dashboard_members
+    } else {
+      loadDashboardMembers()
+    }
     validateSection()
   } catch (e) {
     console.error('Failed to load tasks', e)
@@ -3267,10 +3271,6 @@ onMounted(async () => {
   syncURL(false)
   await loadData()
   openTaskFromURL()
-  if (isSystemManager.value) {
-    loadTeams()
-  }
-  loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
 })
 
 function handleGlobalKeydown(e) {

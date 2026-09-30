@@ -5,6 +5,7 @@ from frappe import _
 
 from taskflow.taskflow.service.team_hierarchy import (
 	get_accessible_teams,
+	get_user_team_memberships,
 	can_write_team,
 	_has_global_access,
 )
@@ -25,34 +26,115 @@ def _require_login():
 def get_spa_bootstrap() -> dict:
 	_require_login()
 	current_user = frappe.session.user
+	is_admin = _has_global_access(current_user)
+
 	user_info = frappe.db.get_value(
 		"User",
 		current_user,
 		["name", "full_name", "user_image"],
 		as_dict=True,
 	) or {"name": current_user, "full_name": current_user, "user_image": ""}
-	if not user_info.get("user_image"):
-		emp_image = frappe.db.get_value("Employee", {"user_id": current_user}, "image")
-		if emp_image:
-			user_info["user_image"] = emp_image
 
-	# All active projects accessible to user
+	user_emp = frappe.db.get_value("Employee", {"user_id": current_user}, ["name", "image"], as_dict=True)
+	if not user_info.get("user_image") and user_emp and user_emp.get("image"):
+		user_info["user_image"] = user_emp.get("image")
+	user_emp_name = user_emp.get("name") if user_emp else None
+
+	# 1. Accessible Teams & Writable Teams
+	if is_admin:
+		teams_data_raw = frappe.get_all(
+			"Taskflow Team",
+			filters={"is_active": 1},
+			fields=["name", "team_name", "team_lead", "is_active"],
+			order_by="team_name asc",
+		)
+		accessible_teams = [tm["name"] for tm in teams_data_raw]
+		writable_teams = set(accessible_teams)
+	else:
+		accessible_teams = list(get_accessible_teams(current_user))
+		teams_filter = {"name": ["in", accessible_teams], "is_active": 1} if accessible_teams else {"name": "__missing__"}
+		teams_data_raw = frappe.get_all(
+			"Taskflow Team",
+			filters=teams_filter,
+			fields=["name", "team_name", "team_lead", "is_active"],
+			order_by="team_name asc",
+		)
+		writable_teams = set()
+		if user_emp_name:
+			for tm in teams_data_raw:
+				if tm.get("team_lead") == user_emp_name:
+					writable_teams.add(tm["name"])
+		user_memberships = get_user_team_memberships(current_user)
+		for m in user_memberships:
+			if getattr(m, "write", 1) in (1, True, "1"):
+				writable_teams.add(m.team)
+
+	teams_data = [
+		{
+			"name": tm["name"],
+			"team_name": tm["team_name"],
+			"team_lead": tm.get("team_lead"),
+			"is_active": tm.get("is_active"),
+			"can_write": is_admin or (tm["name"] in writable_teams),
+		}
+		for tm in teams_data_raw
+	]
+
+	# 2. Accessible Projects & Members
 	has_archived = frappe.db.has_column("Taskflow Project", "is_archived")
 	project_filters = {"is_archived": 0} if has_archived else {}
-	
-	accessible_project_names = get_user_accessible_projects(current_user)
-	if not _has_global_access(current_user):
-		if accessible_project_names:
-			project_filters["name"] = ["in", list(accessible_project_names)]
-		else:
-			project_filters["name"] = ""
+
+	if not is_admin:
+		accessible_project_names = get_user_accessible_projects(current_user)
+		project_filters["name"] = ["in", list(accessible_project_names)] if accessible_project_names else "__missing__"
 
 	projects = frappe.get_all(
 		"Taskflow Project",
-		fields=["name", "project_name", "status", "priority", "team", "project_lead", "completion_percent", "start_date", "end_date", "parent_project", "modified", "creation"],
+		fields=[
+			"name",
+			"project_name",
+			"status",
+			"priority",
+			"team",
+			"project_lead",
+			"project_lead_user",
+			"completion_percent",
+			"start_date",
+			"end_date",
+			"parent_project",
+			"modified",
+			"creation",
+		],
 		filters=project_filters,
 		order_by="modified desc",
-	) if (_has_global_access(current_user) or accessible_project_names) else []
+	)
+
+	proj_names = [p["name"] for p in projects]
+	proj_members_map = {}
+	if proj_names:
+		pm_raw = frappe.get_all(
+			"Taskflow Team Member",
+			filters={"parent": ["in", proj_names], "parenttype": "Taskflow Project", "parentfield": "project_team_members"},
+			fields=["parent", "employee", "user", "read", "write", "team_role", "access_level", "is_active"],
+		)
+		for pm in pm_raw:
+			proj_members_map.setdefault(pm["parent"], []).append(pm)
+
+	if is_admin:
+		writable_projects = set(proj_names)
+	else:
+		writable_projects = set()
+		for p in projects:
+			p_name = p["name"]
+			if (user_emp_name and p.get("project_lead") == user_emp_name) or p.get("project_lead_user") == current_user:
+				writable_projects.add(p_name)
+			elif p.get("team") and p["team"] in writable_teams:
+				writable_projects.add(p_name)
+			else:
+				for r in proj_members_map.get(p_name, []):
+					if (r.get("user") == current_user or (user_emp_name and r.get("employee") == user_emp_name)) and getattr(r, "write", 1) in (1, True, "1"):
+						writable_projects.add(p_name)
+						break
 
 	lead_ids = list({p["project_lead"] for p in projects if p.get("project_lead")})
 	lead_map = {}
@@ -68,18 +150,7 @@ def get_spa_bootstrap() -> dict:
 			if e.get("user_id"):
 				lead_map[e["user_id"]] = info
 
-	proj_names = [p["name"] for p in projects]
-	proj_members_map = {}
-	if proj_names:
-		pm_raw = frappe.get_all(
-			"Taskflow Team Member",
-			filters={"parent": ["in", proj_names], "parenttype": "Taskflow Project", "parentfield": "project_team_members"},
-			fields=["parent", "employee", "user", "read", "write", "team_role", "access_level", "is_active"],
-		)
-		for pm in pm_raw:
-			proj_members_map.setdefault(pm["parent"], []).append(pm)
-
-	# Active system users for assignment
+	# 3. Active system users for assignment
 	users = frappe.get_all(
 		"User",
 		filters={"enabled": 1, "user_type": "System User"},
@@ -87,16 +158,12 @@ def get_spa_bootstrap() -> dict:
 		order_by="full_name asc",
 		limit=200,
 	)
-	user_map = {u["name"]: u for u in users}
 
-	# Fetch tasks accessible to user
-	accessible_task_names = get_user_accessible_tasks(current_user)
+	# 4. Fetch tasks accessible to user
 	task_filters = {}
-	if not _has_global_access(current_user):
-		if accessible_task_names:
-			task_filters["name"] = ["in", list(accessible_task_names)]
-		else:
-			task_filters["name"] = ""
+	if not is_admin:
+		accessible_task_names = get_user_accessible_tasks(current_user)
+		task_filters["name"] = ["in", list(accessible_task_names)] if accessible_task_names else "__missing__"
 
 	tasks_raw = frappe.get_all(
 		"Taskflow Task",
@@ -129,10 +196,9 @@ def get_spa_bootstrap() -> dict:
 		],
 		filters=task_filters,
 		order_by="modified desc",
-		limit=500,
-	) if (_has_global_access(current_user) or accessible_task_names) else []
+		limit=300,
+	)
 
-	# Fetch all child assignments from table_gqbl in one batch query
 	task_names = [t["name"] for t in tasks_raw]
 	assignments = []
 	if task_names:
@@ -142,7 +208,6 @@ def get_spa_bootstrap() -> dict:
 			fields=["parent", "user_id", "employee_name"],
 		)
 
-	# Fetch user images for all assignees in one batch
 	all_user_ids = list({a["user_id"] for a in assignments if a.get("user_id")})
 	user_image_map = {}
 	if all_user_ids:
@@ -156,73 +221,6 @@ def get_spa_bootstrap() -> dict:
 	assignment_map = {}
 	for a in assignments:
 		assignment_map.setdefault(a["parent"], []).append(a)
-
-	# Fetch comments
-	comments_raw = []
-	if task_names:
-		comments_raw = frappe.get_all(
-			"Comment",
-			filters={
-				"reference_doctype": "Taskflow Task",
-				"reference_name": ["in", task_names],
-				"comment_type": "Comment",
-			},
-			fields=["name", "reference_name", "comment_by", "content", "creation", "owner"],
-			order_by="creation asc",
-		)
-
-	comments_map = {}
-	for c in comments_raw:
-		u_detail = user_map.get(c["comment_by"], {})
-		comments_map.setdefault(c["reference_name"], []).append({
-			"id": c["name"],
-			"author": u_detail.get("full_name") or c["comment_by"],
-			"author_email": c["comment_by"],
-			"time": frappe.utils.pretty_date(c["creation"]),
-			"creation": str(c["creation"]),
-			"text": frappe.utils.strip_html(c["content"]) if c["content"] else "",
-			"can_delete": (c.get("owner") == current_user or current_user == "Administrator"),
-			"can_edit": (c.get("owner") == current_user or current_user == "Administrator"),
-			"is_current_user": (c["comment_by"] == current_user or c.get("owner") == current_user),
-		})
-
-	# Fetch attachments
-	attachments_raw = []
-	if task_names:
-		attachments_raw = frappe.get_all(
-			"File",
-			filters={
-				"attached_to_doctype": "Taskflow Task",
-				"attached_to_name": ["in", task_names],
-			},
-			fields=["name", "file_name", "file_url", "file_size", "attached_to_name"],
-			order_by="creation desc",
-		)
-
-	attachments_map = {}
-	for f in attachments_raw:
-		f_size = f.get("file_size") or 0
-		if f_size > 1024 * 1024:
-			size_str = f"{round(f_size / (1024 * 1024), 1)} MB"
-		elif f_size > 1024:
-			size_str = f"{round(f_size / 1024)} KB"
-		elif f_size > 0:
-			size_str = f"{f_size} B"
-		else:
-			size_str = ""
-
-		fname = f.get("file_name") or f["name"]
-		ext = fname.split(".")[-1].lower() if "." in fname else ""
-		ftype = "Image" if ext in ["png", "jpg", "jpeg", "gif", "svg", "webp"] else ("PDF" if ext == "pdf" else "Document")
-
-		attachments_map.setdefault(f["attached_to_name"], []).append({
-			"id": f["name"],
-			"name": fname,
-			"file_url": f.get("file_url") or "",
-			"url": f.get("file_url") or "",
-			"size": size_str,
-			"type": ftype,
-		})
 
 	tasks = []
 	for t in tasks_raw:
@@ -238,6 +236,18 @@ def get_spa_bootstrap() -> dict:
 				"name": u_info.get("full_name") or row.get("employee_name") or uid,
 				"image": u_info.get("user_image") or "",
 			})
+
+		if is_admin:
+			can_write = True
+		else:
+			can_write = (
+				t.get("owner") == current_user
+				or t.get("assigned_by") == current_user
+				or t.get("guided_by") == current_user
+				or (user_emp_name and t.get("assigned_to") == user_emp_name)
+				or (t.get("project") and t["project"] in writable_projects)
+				or (t.get("team") and t["team"] in writable_teams)
+			)
 
 		tasks.append({
 			"id": t["name"],
@@ -256,8 +266,8 @@ def get_spa_bootstrap() -> dict:
 			"modified": str(t["modified"]) if t.get("modified") else "",
 			"modified_pretty": frappe.utils.pretty_date(t["modified"]) if t.get("modified") else "",
 			"description": t.get("description") or "",
-			"comments": comments_map.get(t["name"], []),
-			"attachments": attachments_map.get(t["name"], []),
+			"comments": [],
+			"attachments": [],
 			"pending_with": t.get("pending_with") or "",
 			"pending_from": str(t["pending_from"]) if t.get("pending_from") else "",
 			"guided_by": t.get("guided_by") or "",
@@ -271,47 +281,21 @@ def get_spa_bootstrap() -> dict:
 			"ticket_id": t.get("ticket_id") or "",
 			"ticket_raised_by": t.get("ticket_raised_by") or "",
 			"ticket_description": t.get("ticket_description") or "",
-			"can_write": can_write_task(current_user, t["name"]),
+			"can_write": can_write,
 		})
 
-	# Accessible teams and team members
-	accessible_teams = list(get_accessible_teams(current_user))
-	teams_filter = {}
-	if not _has_global_access(current_user):
-		if accessible_teams:
-			teams_filter["name"] = ["in", accessible_teams]
-		else:
-			teams_filter["name"] = ""
-
-	teams_data_raw = frappe.get_all(
-		"Taskflow Team",
-		filters=teams_filter,
-		fields=["name", "team_name", "team_lead", "is_active"],
-		order_by="team_name asc",
-	) if (_has_global_access(current_user) or accessible_teams) else []
-
-	teams_data = [
-		{
-			"name": tm["name"],
-			"team_name": tm["team_name"],
-			"team_lead": tm.get("team_lead"),
-			"is_active": tm.get("is_active"),
-			"can_write": can_write_team(current_user, tm["name"]),
-		}
-		for tm in teams_data_raw
-	]
-
+	# 5. Team Members and Dashboard Members aggregation
 	team_members_filter = {"is_active": 1}
-	if not _has_global_access(current_user) and accessible_teams:
-		team_members_filter["parent"] = ["in", accessible_teams]
+	if not is_admin:
+		team_members_filter["parent"] = ["in", accessible_teams] if accessible_teams else {"parent": "__missing__"}
 
 	team_members_raw = frappe.get_all(
 		"Taskflow Team Member",
 		filters=team_members_filter,
 		fields=["name", "parent as team", "employee", "user", "read", "write", "team_role", "access_level", "is_active"],
-	) if (_has_global_access(current_user) or accessible_teams) else []
+	)
 
-	emp_ids = [m["employee"] for m in team_members_raw if m.get("employee")]
+	emp_ids = list({m["employee"] for m in team_members_raw if m.get("employee")})
 	emp_map = {}
 	if emp_ids:
 		emps = frappe.get_all(
@@ -322,14 +306,17 @@ def get_spa_bootstrap() -> dict:
 		emp_map = {e["name"]: e for e in emps}
 
 	team_members = []
+	dashboard_members_dict = {}
 	for m in team_members_raw:
 		e_info = emp_map.get(m["employee"], {})
+		u_id = m.get("user") or e_info.get("user_id") or ""
+		emp_name = e_info.get("employee_name") or m["employee"]
 		team_members.append({
 			"name": m["name"],
 			"team": m["team"],
 			"employee": m["employee"],
-			"user": m.get("user") or e_info.get("user_id") or "",
-			"employee_name": e_info.get("employee_name") or m["employee"],
+			"user": u_id,
+			"employee_name": emp_name,
 			"user_image": e_info.get("image") or "",
 			"designation": e_info.get("designation") or "",
 			"department": e_info.get("department") or "",
@@ -339,6 +326,22 @@ def get_spa_bootstrap() -> dict:
 			"access_level": m.get("access_level") or "Operate",
 			"is_active": m.get("is_active", 1),
 		})
+
+		key = (u_id or m["employee"] or "").lower()
+		if key:
+			dm = dashboard_members_dict.setdefault(key, {
+				"value": u_id or m["employee"],
+				"label": emp_name or u_id or m["employee"],
+				"employee": m["employee"] or "",
+				"user": u_id,
+				"image": e_info.get("image") or None,
+				"designation": e_info.get("designation") or "",
+				"teams": [],
+			})
+			if m["team"] and m["team"] not in dm["teams"]:
+				dm["teams"].append(m["team"])
+
+	dashboard_members = sorted(dashboard_members_dict.values(), key=lambda x: (x["label"] or "").lower())
 
 	# Taskflow Settings
 	pending_from_options = []
@@ -356,7 +359,7 @@ def get_spa_bootstrap() -> dict:
 			"email": user_info.get("name"),
 			"name": user_info.get("full_name") or user_info.get("name"),
 			"image": user_info.get("user_image") or "",
-			"is_admin": _has_global_access(current_user),
+			"is_admin": is_admin,
 			"is_system_manager": "System Manager" in frappe.get_roles(current_user),
 		},
 		"projects": [
@@ -378,7 +381,7 @@ def get_spa_bootstrap() -> dict:
 				"modified": str(p.get("modified")) if p.get("modified") else "",
 				"modified_pretty": frappe.utils.pretty_date(p["modified"]) if p.get("modified") else "",
 				"icon": "lucide-folder",
-				"can_write": can_write_project(current_user, p["name"]),
+				"can_write": is_admin or (p["name"] in writable_projects),
 			}
 			for p in projects
 		],
@@ -392,6 +395,7 @@ def get_spa_bootstrap() -> dict:
 		],
 		"teams": teams_data,
 		"team_members": team_members,
+		"dashboard_members": dashboard_members,
 		"statuses": ["Open", "In Progress", "Review", "On Hold", "Completed", "Overdue"],
 		"priorities": ["Critical", "High", "Medium", "Low"],
 		"pending_from_options": pending_from_options,

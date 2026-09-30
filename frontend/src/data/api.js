@@ -291,7 +291,7 @@ export function getErrorMessage(error, defaultMsg = 'An unexpected error occurre
 export async function fetchBootstrap() {
   try {
     const res = await frappeCall('taskflow.taskflow.api.spa.get_spa_bootstrap')
-    if (res && res.tasks && res.tasks.length > 0) {
+    if (res && (res.tasks !== undefined || res.projects !== undefined || res.me !== undefined)) {
       return res
     }
   } catch (e) {
@@ -303,7 +303,7 @@ export async function fetchBootstrap() {
       const res = await window.frappe.call({
         method: 'taskflow.taskflow.api.spa.get_spa_bootstrap',
       })
-      if (res && res.message && res.message.tasks && res.message.tasks.length > 0) {
+      if (res && res.message && (res.message.tasks !== undefined || res.message.projects !== undefined || res.message.me !== undefined)) {
         return res.message
       }
     } catch (e) {
@@ -322,7 +322,7 @@ export async function fetchBootstrap() {
     })
     if (resp.ok) {
       const data = await resp.json()
-      if (data && data.message && data.message.tasks && data.message.tasks.length > 0) {
+      if (data && data.message && (data.message.tasks !== undefined || data.message.projects !== undefined || data.message.me !== undefined)) {
         return data.message
       }
     }
