@@ -196,17 +196,25 @@ def get_spa_bootstrap() -> dict:
 		],
 		filters=task_filters,
 		order_by="modified desc",
-		limit=300,
 	)
 
 	task_names = [t["name"] for t in tasks_raw]
 	assignments = []
 	if task_names:
-		assignments = frappe.get_all(
-			"Task Assignment",
-			filters={"parent": ["in", task_names], "parenttype": "Taskflow Task", "parentfield": "table_gqbl"},
-			fields=["parent", "user_id", "employee_name"],
-		)
+		if len(task_names) > 500:
+			all_assignments = frappe.get_all(
+				"Task Assignment",
+				filters={"parenttype": "Taskflow Task", "parentfield": "table_gqbl"},
+				fields=["parent", "user_id", "employee_name"],
+			)
+			task_names_set = set(task_names)
+			assignments = [a for a in all_assignments if a.get("parent") in task_names_set]
+		else:
+			assignments = frappe.get_all(
+				"Task Assignment",
+				filters={"parent": ["in", task_names], "parenttype": "Taskflow Task", "parentfield": "table_gqbl"},
+				fields=["parent", "user_id", "employee_name"],
+			)
 
 	all_user_ids = list({a["user_id"] for a in assignments if a.get("user_id")})
 	user_image_map = {}
