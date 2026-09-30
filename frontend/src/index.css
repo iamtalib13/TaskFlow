@@ -256,3 +256,18 @@ span[data-type="tag"] {
   color: #e11d48 !important;
 }
 
+/* Dark theme taskform chat box */
+.dark .chat-editor,
+[data-theme="dark"] .chat-editor,
+.dark .chat-editor .ProseMirror,
+[data-theme="dark"] .chat-editor .ProseMirror {
+  color: #f5f5f5 !important;
+  caret-color: #f5f5f5 !important;
+  background-color: transparent !important;
+}
+
+.dark .chat-editor .ProseMirror p.is-editor-empty::before,
+[data-theme="dark"] .chat-editor .ProseMirror p.is-editor-empty::before {
+  color: #737373 !important;
+}
+

@@ -5,7 +5,7 @@
     aria-labelledby="task-title-input"
   >
     <div
-      class="bg-surface-base w-full h-full min-h-0 flex flex-col overflow-hidden"
+      class="bg-surface-base dark:bg-neutral-900 w-full h-full min-h-0 flex flex-col overflow-hidden"
     >
       <!-- Task primary controls: rendered into the Tasks page header (#task-form-header-slot)
            so they sit on the same bar as the breadcrumb, without exposing the form state. -->
@@ -687,23 +687,23 @@
              border per divider, owned by the left-hand panel. -->
         <aside
           aria-label="Task Comments and Activity"
-          class="w-full lg:w-[380px] xl:w-[410px] bg-surface-base border-t lg:border-t-0 border-outline-gray-2 flex flex-col shrink-0 h-full overflow-hidden"
+          class="w-full lg:w-[380px] xl:w-[410px] bg-surface-base dark:bg-neutral-900 border-t lg:border-t-0 border-outline-gray-2 dark:border-neutral-800 flex flex-col shrink-0 h-full overflow-hidden"
         >
             <!-- Comments & Activity Audit (chat) -->
-            <div class="flex-1 flex flex-col min-h-0 bg-surface-gray-2/80">
+            <div class="flex-1 flex flex-col min-h-0 bg-surface-gray-2/80 dark:bg-neutral-950">
               <!-- Tabs Header -->
-              <div class="px-4 sm:px-5 pt-3 pb-2 bg-surface-base border-b border-outline-gray-2 flex items-center justify-between shrink-0 select-none">
+              <div class="px-4 sm:px-5 pt-3 pb-2 bg-surface-base dark:bg-neutral-900 border-b border-outline-gray-2 dark:border-neutral-800 flex items-center justify-between shrink-0 select-none">
                 <div class="flex items-center space-x-4">
                   <button
                     type="button"
                     class="text-xs pb-2 -mb-2 flex items-center gap-1.5 cursor-pointer transition"
-                    :class="activeRightTab === 'comments' ? 'font-bold text-teal-700 border-b-2 border-teal-600' : 'font-medium text-ink-gray-4 hover:text-ink-gray-7 border-b-2 border-transparent'"
+                    :class="activeRightTab === 'comments' ? 'font-bold text-teal-700 dark:text-emerald-400 border-b-2 border-teal-600 dark:border-emerald-500' : 'font-medium text-ink-gray-4 dark:text-neutral-400 hover:text-ink-gray-7 dark:hover:text-neutral-200 border-b-2 border-transparent'"
                     @click="activeRightTab = 'comments'"
                   >
                     <span>Chat</span>
                     <span
                       class="text-[10px] font-semibold px-1.5 py-0.2 rounded-full border"
-                      :class="activeRightTab === 'comments' ? 'bg-teal-50 text-teal-700 border-teal-200/60' : 'bg-surface-gray-3 text-ink-gray-5 border-outline-gray-2'"
+                      :class="activeRightTab === 'comments' ? 'bg-teal-50 dark:bg-emerald-950/60 text-teal-700 dark:text-emerald-300 border-teal-200/60 dark:border-emerald-800/60' : 'bg-surface-gray-3 dark:bg-neutral-800 text-ink-gray-5 dark:text-neutral-400 border-outline-gray-2 dark:border-neutral-700'"
                     >
                       {{ chatCount }}
                     </span>
@@ -712,7 +712,7 @@
                   <button
                     type="button"
                     class="text-xs pb-2 -mb-2 flex items-center gap-1.5 cursor-pointer transition"
-                    :class="activeRightTab === 'activity' ? 'font-bold text-teal-700 border-b-2 border-teal-600' : 'font-medium text-ink-gray-4 hover:text-ink-gray-7 border-b-2 border-transparent'"
+                    :class="activeRightTab === 'activity' ? 'font-bold text-teal-700 dark:text-emerald-400 border-b-2 border-teal-600 dark:border-emerald-500' : 'font-medium text-ink-gray-4 dark:text-neutral-400 hover:text-ink-gray-7 dark:hover:text-neutral-200 border-b-2 border-transparent'"
                     @click="activeRightTab = 'activity'"
                   >
                     <span>Activity Audit</span>

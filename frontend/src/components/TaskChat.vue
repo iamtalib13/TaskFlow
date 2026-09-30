@@ -246,7 +246,7 @@
         <button
           v-if="!editing"
           type="button"
-          class="size-8 shrink-0 rounded-full flex items-center justify-center text-ink-gray-5 hover:text-[#468373] hover:bg-surface-gray-2 transition-colors"
+          class="size-8 shrink-0 rounded-full flex items-center justify-center text-ink-gray-5 dark:text-neutral-400 hover:text-[#468373] dark:hover:text-emerald-400 hover:bg-surface-gray-2 dark:hover:bg-neutral-800 transition-colors"
           title="Attach files"
           @click="$refs.fileInput.click()"
         >
@@ -262,7 +262,7 @@
           class="min-w-0 flex-1"
         >
           <template #default>
-            <div class="min-w-0 flex-1 rounded-2xl bg-surface-gray-2 dark:bg-neutral-800 focus-within:ring-1 focus-within:ring-[#468373]/40 transition" @keydown.esc="cancelCompose">
+            <div class="min-w-0 flex-1 rounded-2xl bg-surface-gray-2 dark:bg-neutral-800 border border-transparent dark:border-neutral-700/60 focus-within:ring-1 focus-within:ring-[#468373]/40 transition" @keydown.esc="cancelCompose">
               <EditorContent class="chat-editor max-h-32 min-h-[32px] overflow-y-auto px-3 py-1.5 text-xs text-ink-gray-9 dark:text-neutral-100" />
             </div>
           </template>
@@ -280,7 +280,7 @@
           <SendHorizontal v-else class="size-4" />
         </button>
       </div>
-      <p class="mt-1 pl-10 text-[10px] text-ink-gray-4 select-none">Enter to send · Shift+Enter for a new line</p>
+      <p class="mt-1 pl-10 text-[10px] text-ink-gray-4 dark:text-neutral-500 select-none">Enter to send · Shift+Enter for a new line</p>
     </div>
   </div>
 </template>
@@ -776,5 +776,18 @@ onBeforeUnmount(() => {
 }
 .chat-editor :deep(p) {
   margin: 0;
+}
+.chat-editor :deep(.ProseMirror) {
+  outline: none;
+  background: transparent !important;
+}
+:global(.dark) .chat-editor :deep(.ProseMirror),
+:global([data-theme="dark"]) .chat-editor :deep(.ProseMirror) {
+  color: #f5f5f5 !important;
+  caret-color: #f5f5f5 !important;
+}
+:global(.dark) .chat-editor :deep(.ProseMirror p.is-editor-empty::before),
+:global([data-theme="dark"]) .chat-editor :deep(.ProseMirror p.is-editor-empty::before) {
+  color: #737373 !important;
 }
 </style>
