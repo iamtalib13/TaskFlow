@@ -97,7 +97,6 @@ import {
   updateTeam,
   deleteTeam,
   deleteProject,
-  fetchEmployees,
   addTeamMember,
   updateTeamMember,
   removeTeamMemberRecord,
@@ -2531,7 +2530,6 @@ async function loadData() {
         loadTimesheetCalendar(selectedTimesheetUser.value)
       }
     }
-    loadEmployees()
     loadDashboardMembers()
     validateSection()
   } catch (e) {
@@ -2565,14 +2563,6 @@ async function loadTeams() {
   }
 }
 
-// Load employees for member selection
-async function loadEmployees() {
-  try {
-    employees.value = await fetchEmployees()
-  } catch (e) {
-    console.error('Failed to load employees', e)
-  }
-}
 
 function openDetail(task) {
   activeTask.value = task
@@ -2739,12 +2729,6 @@ function toggleStar(row) {
 // --- Team CRUD State & Functions ---
 const teamRoleOptions = ['Team Lead', 'Project Manager', 'Team Member', 'Viewer', 'Auditor', 'Coordinator']
 
-const employeeOptions = computed(() => {
-  return (employees.value || []).map((emp) => ({
-    value: emp.name,
-    label: emp.employee_name || emp.name,
-  }))
-})
 
 const teamOptions = computed(() => {
   return (teams.value || []).map((t) => ({
@@ -2762,7 +2746,6 @@ const newTeamName = ref('')
 
 function openEditProject(project) {
   projectToEdit.value = project
-  loadEmployees()
   editProjectModalOpen.value = true
 }
 
@@ -2843,14 +2826,50 @@ function setTeamMode(mode) {
 
 const filteredEmployees = computed(() => {
   const q = (empSearch.value || '').toLowerCase().trim()
-  let list = employees.value || []
+  const seen = new Set()
+  const list = []
+
+  for (const m of teamMembers.value || []) {
+    const id = m.employee || m.user
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    list.push({
+      name: id,
+      employee_name: m.employee_name || id,
+      designation: m.designation || m.team_role || '',
+      department: m.department || '',
+      user_id: m.user || '',
+      user_image: m.user_image || '',
+    })
+  }
+
+  for (const p of people.value || []) {
+    const id = p.email || p.name
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    list.push({
+      name: id,
+      employee_name: p.name || id,
+      designation: 'User',
+      department: '',
+      user_id: p.email || id,
+      user_image: p.image || '',
+    })
+  }
+
+  for (const emp of employees.value || []) {
+    if (!emp.name || seen.has(emp.name)) continue
+    seen.add(emp.name)
+    list.push(emp)
+  }
+
   if (q) {
-    list = list.filter((emp) => {
+    return list.filter((emp) => {
       const name = (emp.employee_name || emp.name || '').toLowerCase()
       const desig = (emp.designation || '').toLowerCase()
       const dept = (emp.department || '').toLowerCase()
       return name.includes(q) || desig.includes(q) || dept.includes(q)
-    })
+    }).slice(0, 20)
   }
   return list.slice(0, 20)
 })
@@ -2888,7 +2907,12 @@ const memberFormValid = computed(() => !memberErrors.value.target && !memberErro
 
 const selectedEmployee = computed(() => {
   if (!memberForm.employee) return null
-  return (employees.value || []).find((emp) => emp.name === memberForm.employee) || null
+  const id = memberForm.employee
+  const tm = (teamMembers.value || []).find((m) => m.employee === id || m.user === id)
+  if (tm) return tm
+  const p = (people.value || []).find((u) => u.email === id || u.name === id)
+  if (p) return p
+  return (employees.value || []).find((emp) => emp.name === id) || null
 })
 
 const accessLevelOptions = [
@@ -2908,7 +2932,30 @@ const memberModalMode = ref('add') // 'add' | 'edit'
 const selectedEmployeeId = ref('')
 const selectedEmployeeDoc = computed(() => {
   if (!selectedEmployeeId.value) return null
-  return (employees.value || []).find((e) => e.name === selectedEmployeeId.value) || null
+  const id = selectedEmployeeId.value
+  const tm = (teamMembers.value || []).find((m) => m.employee === id || m.user === id)
+  if (tm) {
+    return {
+      name: id,
+      employee_name: tm.employee_name || id,
+      designation: tm.designation || tm.team_role || 'Member',
+      department: tm.department || '',
+      user_id: tm.user || '',
+      user_image: tm.user_image || '',
+    }
+  }
+  const p = (people.value || []).find((u) => u.email === id || u.name === id)
+  if (p) {
+    return {
+      name: id,
+      employee_name: p.name || id,
+      designation: 'User',
+      department: '',
+      user_id: p.email || id,
+      user_image: p.image || '',
+    }
+  }
+  return (employees.value || []).find((e) => e.name === id) || null
 })
 
 // Columns state for the modal
@@ -3014,7 +3061,6 @@ function openAddMember() {
   }
 
   memberModalOpen.value = true
-  loadEmployees()
 }
 
 // Select employee in add mode and load existing assignments if any
@@ -3224,7 +3270,6 @@ onMounted(async () => {
   if (isSystemManager.value) {
     loadTeams()
   }
-  loadEmployees()
   loadTimesheetCalendar(selectedTimesheetUser.value || currentUserEmail.value)
 })
 
@@ -3578,7 +3623,7 @@ onUnmounted(() => {
             variant="solid"
             theme="gray"
             label="Create Project"
-            @click="loadEmployees(); createProjectModalOpen = true"
+            @click="createProjectModalOpen = true"
           >
             <template #prefix>
               <Plus class="size-4 mr-0.5" />
@@ -5533,6 +5578,8 @@ onUnmounted(() => {
     <ProjectCreateModal
       v-model="createProjectModalOpen"
       :teams="teams"
+      :team-members="teamMembers"
+      :people="people"
       :employees="employees"
       :projects="projects"
       @create="loadData"
@@ -5540,6 +5587,8 @@ onUnmounted(() => {
     <ProjectCreateModal
       v-model="editProjectModalOpen"
       :teams="teams"
+      :team-members="teamMembers"
+      :people="people"
       :employees="employees"
       :projects="projects"
       :editProject="projectToEdit"

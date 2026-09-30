@@ -552,10 +552,9 @@ export async function deleteTeam(name) {
   )
 }
 
-// Fetch employees for member selection
+// Fetch employees (disabled: Taskflow strictly uses team members and users)
 export async function fetchEmployees() {
-  const data = await callFrappe('taskflow.taskflow.api.portal.get_employees')
-  return Array.isArray(data) ? data : data ? data.employees || [] : []
+  return []
 }
 
 // Add a member to a team or project

@@ -287,6 +287,8 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   teams: { type: Array, default: () => [] },
   employees: { type: Array, default: () => [] },
+  teamMembers: { type: Array, default: () => [] },
+  people: { type: Array, default: () => [] },
   projects: { type: Array, default: () => [] },
   editProject: { type: Object, default: null },
 })
@@ -338,12 +340,50 @@ const roleOptions = [
 ]
 
 const teamOptions = computed(() => props.teams.map(t => ({ label: t.name || t, value: t.name || t })))
-const employeeOptions = computed(() => props.employees.map(e => ({
-  label: e.employee_name || e.name,
-  value: e.name,
-  description: e.name,
-  image: e.user_image || '',
-})))
+const employeeOptions = computed(() => {
+  const map = new Map()
+  const selectedTeamName = form.value.team
+  const members = Array.isArray(props.teamMembers) ? props.teamMembers : []
+  members.forEach((m) => {
+    if (!selectedTeamName || m.team === selectedTeamName || m.parent === selectedTeamName) {
+      const val = m.employee || m.user || m.name
+      if (val && !map.has(val)) {
+        map.set(val, {
+          label: m.employee_name || m.user_name || m.user || val,
+          value: val,
+          description: m.designation || m.user || m.employee || '',
+          image: m.user_image || '',
+        })
+      }
+    }
+  })
+
+  const peopleList = Array.isArray(props.people) ? props.people : []
+  peopleList.forEach((p) => {
+    const val = p.email || p.name
+    if (val && !map.has(val)) {
+      map.set(val, {
+        label: p.name || val,
+        value: val,
+        description: p.email || '',
+        image: p.image || '',
+      })
+    }
+  })
+
+  if (map.size === 0 && Array.isArray(props.employees)) {
+    props.employees.forEach((e) => {
+      map.set(e.name, {
+        label: e.employee_name || e.name,
+        value: e.name,
+        description: e.designation || e.name,
+        image: e.user_image || '',
+      })
+    })
+  }
+
+  return Array.from(map.values())
+})
 
 function matchTokens(text, query) {
   if (!query) return true

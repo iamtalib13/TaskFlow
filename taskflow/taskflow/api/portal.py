@@ -679,26 +679,36 @@ def get_project_workspace(project: str, start: int = 0, page_length: int = 20) -
     }
 
 
-@frappe.whitelist()
-def get_employees() -> dict:
-    """Return list of active employees for selection."""
-    _require_login()
-    
-    employees = frappe.get_all(
-        "Employee",
-        filters={"status": "Active"},
-        fields=["name", "employee_name", "designation", "department", "user_id"],
-        order_by="employee_name asc"
-    )
+def _can_manage_any_team_or_project(user: str) -> bool:
+    if not user or user == "Guest":
+        return False
+    user_roles = set(frappe.get_roles(user))
+    if {"System Manager", "Taskflow Admin", "Projects Manager"} & user_roles:
+        return True
 
-    for emp in employees:
-        emp["user_image"] = ""
-        if emp.get("user_id"):
-            user_image = frappe.db.get_value("User", emp["user_id"], "user_image")
-            if user_image:
-                emp["user_image"] = user_image
-    
-    return {"employees": employees}
+    user_emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
+    if user_emp:
+        if frappe.db.exists("Taskflow Team", {"team_lead": user_emp}):
+            return True
+        if frappe.db.exists("Taskflow Project", {"project_lead": user_emp}):
+            return True
+
+    if frappe.db.exists("Taskflow Project", {"project_lead_user": user}):
+        return True
+
+    from taskflow.taskflow.service.team_hierarchy import get_user_team_memberships
+    for m in get_user_team_memberships(user):
+        if getattr(m, "write", 0) in (1, True, "1") or getattr(m, "access_level", "") in ("Manage", "Admin"):
+            return True
+
+    return False
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_employees(query: str = "", limit: int = 50) -> dict:
+    """Disabled: Taskflow relies strictly on Taskflow Team Members and Users."""
+    _require_login()
+    return {"employees": []}
 
 
 @frappe.whitelist(methods=["POST"])

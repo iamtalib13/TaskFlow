@@ -68,7 +68,7 @@
   },
   {
    "fieldname": "task_title",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Task Title",
@@ -354,7 +354,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-29 13:12:55.547845",
+ "modified": "2026-09-30 12:33:40.379167",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Task",
