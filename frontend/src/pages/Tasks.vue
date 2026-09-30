@@ -3476,6 +3476,38 @@ onUnmounted(() => {
             </template>
           </Breadcrumbs>
 
+          <!-- Task List Filters: Select Team & Select Project inline with Task Breadcrumb -->
+          <template v-if="activeSection === 'Task' && !detailModalOpen">
+            <div class="h-4 w-px bg-outline-gray-2 dark:bg-neutral-800 shrink-0"></div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <MultiSelect
+                v-model="selectedTeams"
+                :options="taskTeamOptions"
+                placeholder="Select Team"
+                class="w-40 sm:w-48 shrink-0"
+              />
+              <MultiSelect
+                v-model="selectedProjects"
+                :options="projectOptions"
+                placeholder="Select Project"
+                class="w-48 sm:w-60 shrink-0"
+              />
+              <Button
+                v-if="selectedTeams.length || selectedProjects.length"
+                variant="ghost"
+                size="sm"
+                title="Clear filters"
+                class="shrink-0 text-ink-gray-5 hover:text-red-500"
+                @click="selectedTeams = []; selectedProjects = []"
+              >
+                <template #icon>
+                  <XIcon class="size-3.5" />
+                </template>
+              </Button>
+            </div>
+          </template>
+
           <!-- Dashboard Filters: Team & Member Filter inline with Breadcrumb -->
           <template v-if="activeSection === 'Dashboard'">
             <div class="h-4 w-px bg-outline-gray-2 dark:bg-neutral-800 shrink-0"></div>
@@ -3936,19 +3968,7 @@ onUnmounted(() => {
               />
             </div>
             <div class="flex items-center gap-3 text-xs font-medium text-ink-gray-6">
-              <MultiSelect
-                v-model="selectedTeams"
-                :options="taskTeamOptions"
-                placeholder="Select Team"
-                class="w-48"
-              />
-              <MultiSelect
-                v-model="selectedProjects"
-                :options="projectOptions"
-                placeholder="Select Project"
-                class="w-64"
-              />
-              <span class="whitespace-nowrap">{{ visibleTasks.length }} tasks</span>
+              <span class="whitespace-nowrap font-medium text-ink-gray-5 dark:text-gray-400">{{ visibleTasks.length }} tasks</span>
             </div>
           </div>
 
