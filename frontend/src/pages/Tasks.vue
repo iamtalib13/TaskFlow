@@ -3323,8 +3323,8 @@ onUnmounted(() => {
             <div
               class="flex items-center gap-2.5 overflow-hidden justify-center w-full"
             >
-              <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black dark:bg-white text-white dark:text-gray-950 font-bold text-xs shadow-xs select-none">
-                TF
+              <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black dark:bg-white text-white dark:text-gray-950 font-bold text-sm shadow-xs select-none">
+                T
               </div>
               <div v-if="!isSidebarCollapsed" class="flex flex-col truncate transition-opacity">
                 <span class="text-sm font-bold tracking-tight text-ink-gray-9 dark:text-white leading-tight">Taskflow</span>
