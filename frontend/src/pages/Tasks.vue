@@ -1759,8 +1759,9 @@ const projectStatusTab = ref('All')
 const selectedProjectKeys = ref([])
 const projectTableColumns = [
   { key: 'sr_no', label: 'SR', width: '42px', minWidth: '36px', align: 'center', sortable: false, visible: true },
-  { key: 'name', label: 'PROJECT', width: '180px', minWidth: '130px', sortable: true, visible: true },
+  { key: 'name', label: 'PROJECT', width: 'auto', minWidth: '180px', sortable: true, visible: true },
   { key: 'parent_project', label: 'PARENT PROJECT', width: '130px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'status', label: 'STATUS', width: '105px', minWidth: '90px', sortable: true, visible: true },
   { key: 'team', label: 'TEAM', width: '110px', minWidth: '90px', sortable: true, visible: true },
   { key: 'lead', label: 'LEAD', width: '130px', minWidth: '100px', sortable: true, visible: true },
   { key: 'start_date', label: 'START DATE', width: '95px', minWidth: '85px', sortable: true, visible: true },
@@ -1994,7 +1995,7 @@ const filteredProjectsData = computed(() => {
 
 const projectSortField = ref('modified')
 const projectSortDirection = ref('desc')
-const projectsDisplayLimit = ref(20)
+const projectsDisplayLimit = ref(50)
 
 function handleProjectSortChange({ key, order }) {
   projectSortField.value = key
@@ -2002,7 +2003,7 @@ function handleProjectSortChange({ key, order }) {
 }
 
 watch([selectedProjectTeamFilter, selectedProjectMemberFilter, projectStatusTab], () => {
-  projectsDisplayLimit.value = 20
+  projectsDisplayLimit.value = 50
 })
 
 const sortedProjects = computed(() => {
@@ -2023,11 +2024,12 @@ const paginatedProjects = computed(() => {
 const projectPaginationInfo = computed(() => ({
   loaded: paginatedProjects.value.length,
   total: sortedProjects.value.length,
-  step: 20,
+  step: 50,
 }))
 
 function handleProjectLoadMore() {
-  projectsDisplayLimit.value += 20
+  if (projectsDisplayLimit.value >= sortedProjects.value.length) return
+  projectsDisplayLimit.value = Math.min(projectsDisplayLimit.value + 50, sortedProjects.value.length)
 }
 
 function handleProjectLoadAll() {
@@ -4590,6 +4592,7 @@ onUnmounted(() => {
               :sort-order="projectSortDirection"
               :pagination="projectPaginationInfo"
               :selectable="false"
+              :virtual-scroll="true"
               :row-key="'id'"
               :item-label="'projects'"
               :row-class="getProjectRowClass"
