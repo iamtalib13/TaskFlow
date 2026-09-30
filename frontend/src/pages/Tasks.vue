@@ -568,17 +568,17 @@ const getAssignee = (email) => {
   }
 }
 
-// Table View Columns (clean list view: ID, TASK, PROJECT, STATUS, PRIORITY, ASSIGNED TO, DUE DATE, MODIFIED)
+// Table View Columns (clean dynamic list view: ID, TASK, PROJECT, TEAM, STATUS, PRIORITY, ASSIGNED TO, DUE DATE, MODIFIED)
 const tableColumns = [
-  { key: 'id', label: 'ID', width: '110px', minWidth: '95px', sortable: true, visible: true },
-  { key: 'title', label: 'TASK', width: '150px', minWidth: '120px', sortable: true, visible: true },
-  { key: 'project', label: 'PROJECT', width: '140px', minWidth: '120px', sortable: true, visible: true },
-  { key: 'status', label: 'STATUS', width: '120px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'team', label: 'TEAM', width: '150px', minWidth: '120px', sortable: true, visible: true },
-  { key: 'priority', label: 'PRIORITY', width: '100px', minWidth: '90px', sortable: true, visible: true },
-  { key: 'assigned_to', label: 'ASSIGNED TO', width: '160px', minWidth: '140px', sortable: true, visible: true },
-  { key: 'due_date', label: 'DUE DATE', width: '110px', minWidth: '100px', sortable: true, visible: true },
-  { key: 'modified', label: 'MODIFIED', width: '120px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'id', label: 'ID', width: '105px', minWidth: '95px', sortable: true, visible: true },
+  { key: 'title', label: 'TASK', width: 'auto', minWidth: '220px', sortable: true, visible: true },
+  { key: 'project', label: 'PROJECT', width: '160px', minWidth: '130px', sortable: true, visible: true },
+  { key: 'team', label: 'TEAM', width: '140px', minWidth: '110px', sortable: true, visible: true },
+  { key: 'status', label: 'STATUS', width: '130px', minWidth: '110px', sortable: true, visible: true },
+  { key: 'priority', label: 'PRIORITY', width: '100px', minWidth: '85px', align: 'center', sortable: true, visible: true },
+  { key: 'assigned_to', label: 'ASSIGNED TO', width: '160px', minWidth: '130px', sortable: true, visible: true },
+  { key: 'due_date', label: 'DUE DATE', width: '115px', minWidth: '100px', align: 'center', sortable: true, visible: true },
+  { key: 'modified', label: 'MODIFIED', width: '120px', minWidth: '105px', align: 'right', sortable: true, visible: true },
 ]
 
 // Per-column header filters (client-side, combined with the existing filters)
@@ -620,7 +620,7 @@ function modifiedSearchText(t) {
 }
 
 const selectedRowKeys = ref([])
-const tasksDisplayLimit = ref(20)
+const tasksDisplayLimit = ref(50)
 const sortKey = ref('modified')
 const sortOrder = ref('desc')
 
@@ -630,7 +630,7 @@ function handleSortChange({ key, order }) {
 }
 
 watch([statusTab, selectedProjects, selectedTeams, showAssignedToMe, columnFilters, () => tasks.value.length], () => {
-  tasksDisplayLimit.value = 20
+  tasksDisplayLimit.value = 50
 }, { deep: true })
 
 function formatDueDate(dateVal) {
@@ -919,7 +919,7 @@ const visibleTasks = computed(() => {
 const paginationInfo = computed(() => ({
   loaded: paginatedTableTasks.value.length,
   total: visibleTasks.value.length,
-  step: 20,
+  step: 50,
 }))
 
 const paginatedTableTasks = computed(() => {
@@ -928,7 +928,7 @@ const paginatedTableTasks = computed(() => {
 
 function handleLoadMore() {
   if (tasksDisplayLimit.value >= visibleTasks.value.length) return
-  tasksDisplayLimit.value = Math.min(tasksDisplayLimit.value + 20, visibleTasks.value.length)
+  tasksDisplayLimit.value = Math.min(tasksDisplayLimit.value + 50, visibleTasks.value.length)
 }
 
 function handleLoadAll() {
@@ -3644,7 +3644,7 @@ onUnmounted(() => {
       <div
         class="w-full flex-1 min-h-0 flex flex-col"
         :class="[
-          detailModalOpen ? '' : 'px-3 pt-2 pb-8',
+          detailModalOpen ? '' : (activeSection === 'Dashboard' ? 'px-3 pt-2 pb-8' : 'px-3 pt-1.5 pb-2'),
           activeSection === 'Dashboard' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'
         ]"
       >
@@ -4058,8 +4058,8 @@ onUnmounted(() => {
               </template>
 
               <template #cell-title="{ row }">
-                <div class="flex items-center gap-1.5 min-w-0 max-w-[150px]">
-                  <span class="text-xs font-medium text-ink-gray-9 dark:text-gray-100 truncate" :title="row.title">{{ row.title }}</span>
+                <div class="flex items-center gap-1.5 min-w-0 w-full">
+                  <span class="text-xs font-medium text-ink-gray-9 dark:text-gray-100 truncate flex-1" :title="row.title">{{ row.title }}</span>
                   <span
                     v-if="row.badge"
                     class="shrink-0 px-1 py-0.5 text-[9px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded"
@@ -4070,7 +4070,7 @@ onUnmounted(() => {
               </template>
 
               <template #cell-project="{ row }">
-                <span class="text-xs font-medium text-ink-gray-7 dark:text-gray-300 truncate block max-w-[140px]" :title="row.project">
+                <span class="text-xs font-medium text-ink-gray-7 dark:text-gray-300 truncate block w-full" :title="row.project">
                   {{ row.project }}
                 </span>
               </template>

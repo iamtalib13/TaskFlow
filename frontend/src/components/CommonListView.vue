@@ -42,7 +42,7 @@
               :style="{
                 width: col.width || 'auto',
                 minWidth: col.minWidth || '80px',
-                maxWidth: col.width || 'none',
+                maxWidth: col.maxWidth || (col.width && col.width !== 'auto' ? col.width : 'none'),
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
@@ -109,7 +109,7 @@
               :style="{
                 width: col.width || 'auto',
                 minWidth: col.minWidth || '80px',
-                maxWidth: col.width || 'none',
+                maxWidth: col.maxWidth || (col.width && col.width !== 'auto' ? col.width : 'none'),
                 top: headHeight + 'px',
               }"
               class="sticky z-20 bg-surface-base px-2 py-1.5"
@@ -220,7 +220,7 @@
               :style="{
                 width: col.width || 'auto',
                 minWidth: col.minWidth || '80px',
-                maxWidth: col.width || 'none',
+                maxWidth: col.maxWidth || (col.width && col.width !== 'auto' ? col.width : 'none'),
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
@@ -287,7 +287,7 @@
             type="button"
             :disabled="loading || isLoadingMore"
             class="inline-flex items-center gap-2 text-xs text-ink-gray-6 dark:text-gray-300 font-medium bg-surface-gray-2 dark:bg-gray-800 hover:bg-surface-gray-3 dark:hover:bg-gray-700/80 px-2.5 py-1 rounded-md transition-colors cursor-pointer disabled:opacity-60"
-            title="Click to load next 20 or scroll down"
+            :title="`Click to load next ${stepCount} or scroll down`"
             @click="triggerLoadMore"
           >
             <LoadingIndicator v-if="loading || isLoadingMore" class="size-3 text-ink-gray-6" />
@@ -295,7 +295,7 @@
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <polyline points="19 12 12 19 5 12"></polyline>
             </svg>
-            <span>{{ isLoadingMore ? 'Loading next 20...' : `Scroll for more (${remainingCount} left)` }}</span>
+            <span>{{ isLoadingMore ? `Loading next ${stepCount}...` : `Scroll for more (${remainingCount} left)` }}</span>
           </button>
         </template>
         <template v-else>
