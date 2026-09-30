@@ -4272,12 +4272,12 @@ onUnmounted(() => {
                   <Button
                     v-if="selectedTsDayDate"
                     variant="solid"
+                    theme="gray"
                     size="sm"
-                    class="bg-[#417c7d] hover:bg-[#356667] text-white text-xs font-semibold"
+                    label="Add Entry"
                     @click="openTimesheetForm(selectedTsDayDate)"
                   >
                     <template #prefix><Plus class="size-3.5" /></template>
-                    <span>Add Entry</span>
                   </Button>
                 </div>
               </div>
