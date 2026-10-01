@@ -967,15 +967,15 @@ export default {
       const val = typeof priority === 'object' && priority ? (priority.value || priority.label) : priority
       switch (val) {
         case 'Critical':
-          return 'bg-rose-500'
+          return 'bg-red-600'
         case 'High':
-          return 'bg-orange-500'
+          return 'bg-orange-600'
         case 'Medium':
-          return 'bg-amber-400'
+          return 'bg-blue-600'
         case 'Low':
-          return 'bg-blue-400'
+          return 'bg-green-600'
         default:
-          return 'bg-blue-400'
+          return 'bg-blue-600'
       }
     },
   },

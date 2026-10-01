@@ -104,3 +104,67 @@ export function buildViewPath(section, taskId, currentPath) {
   const segment = SECTION_TO_SEGMENT[section]
   return (segment ? `${base}/${segment}` : base) || '/'
 }
+
+/**
+ * Extract array of project filters from URL search query.
+ * Supports ?project=PROJ-1,PROJ-2 or ?project=PROJ-1 or ?projects=...
+ * @param {string} search window.location.search or query string
+ * @returns {string[]}
+ */
+export function getProjectsFromSearch(search) {
+  try {
+    const params = new URLSearchParams(search || '')
+    const val = params.get('project') || params.get('projects') || ''
+    if (val) {
+      return val.split(',').map((p) => decodeURIComponent(p.trim())).filter(Boolean)
+    }
+    const all = params.getAll('project')
+    if (all && all.length > 1) {
+      return all.map((p) => decodeURIComponent(p.trim())).filter(Boolean)
+    }
+  } catch {}
+  return []
+}
+
+/**
+ * Extract array of team filters from URL search query.
+ * Supports ?team=Team-A,Team-B or ?team=Team-A or ?teams=...
+ * @param {string} search window.location.search or query string
+ * @returns {string[]}
+ */
+export function getTeamsFromSearch(search) {
+  try {
+    const params = new URLSearchParams(search || '')
+    const val = params.get('team') || params.get('teams') || ''
+    if (val) {
+      return val.split(',').map((t) => decodeURIComponent(t.trim())).filter(Boolean)
+    }
+    const all = params.getAll('team')
+    if (all && all.length > 1) {
+      return all.map((t) => decodeURIComponent(t.trim())).filter(Boolean)
+    }
+  } catch {}
+  return []
+}
+
+/**
+ * Extract array of member filters from URL search query.
+ * Supports ?member=user1,user2 or ?member=user1 or ?members=... or ?assignee=...
+ * @param {string} search window.location.search or query string
+ * @returns {string[]}
+ */
+export function getMembersFromSearch(search) {
+  try {
+    const params = new URLSearchParams(search || '')
+    const val = params.get('member') || params.get('members') || params.get('assignee') || ''
+    if (val) {
+      return val.split(',').map((m) => decodeURIComponent(m.trim())).filter(Boolean)
+    }
+    const all = params.getAll('member')
+    if (all && all.length > 1) {
+      return all.map((m) => decodeURIComponent(m.trim())).filter(Boolean)
+    }
+  } catch {}
+  return []
+}
+

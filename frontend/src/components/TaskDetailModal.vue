@@ -52,10 +52,10 @@
             class="w-[7.5rem] shrink-0 hidden sm:inline-flex"
           >
             <template #prefix>
-              <Flag class="size-2.5 shrink-0 text-blue-600" />
+              <Flag class="size-2.5 shrink-0" :class="getPriorityFlagClass(form.priority)" />
             </template>
-            <template #item-prefix>
-              <Flag class="size-2.5 shrink-0 text-blue-600" />
+            <template #item-prefix="{ item }">
+              <Flag class="size-2.5 shrink-0" :class="getPriorityFlagClass(item.value)" />
             </template>
           </Select>
         </div>
@@ -1775,6 +1775,21 @@ export default {
       if (type === 'Bug') return 'text-rose-600'
       if (type === 'Customization Request') return 'text-purple-600'
       return 'text-teal-700'
+    },
+    getPriorityFlagClass(priority) {
+      const val = typeof priority === 'object' && priority ? (priority.value || priority.label) : priority
+      switch (val) {
+        case 'Critical':
+          return 'text-red-600'
+        case 'High':
+          return 'text-orange-600'
+        case 'Medium':
+          return 'text-blue-600'
+        case 'Low':
+          return 'text-green-600'
+        default:
+          return 'text-blue-600'
+      }
     },
   },
 }

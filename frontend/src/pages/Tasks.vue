@@ -74,6 +74,8 @@ import {
   X as XIcon,
   Trash2,
   Send,
+  Bug,
+  Sparkles,
 } from 'lucide-vue-next'
 
 import CommonListView from '@/components/CommonListView.vue'
@@ -111,7 +113,7 @@ import {
 import TimesheetCalendar from '@/components/TimesheetCalendar.vue'
 import TimesheetEntryModal from '@/components/TimesheetEntryModal.vue'
 import TimesheetMasterReport from '@/components/TimesheetMasterReport.vue'
-import { SECTIONS, buildViewPath, cleanPath, parseView } from '@/utils/url'
+import { SECTIONS, buildViewPath, cleanPath, parseView, getProjectsFromSearch, getTeamsFromSearch, getMembersFromSearch } from '@/utils/url'
 import { writeToClipboard } from '@/utils/clipboard'
 import { downloadCsv } from '@/utils/csv'
 import { downloadWorkbook, downloadXlsx } from '@/utils/excel'
@@ -131,6 +133,23 @@ const teams = ref([])
 const teamMembers = ref([])
 const employees = ref([])
 const teamLoading = ref(false)
+const dashboardMemberList = ref([])
+
+async function loadDashboardMembers() {
+  try {
+    dashboardMemberList.value = (await fetchDashboardMemberOptions()) || []
+  } catch (e) {
+    console.error('Failed to load dashboard members', e)
+  }
+}
+
+const toMemberOption = (m) => ({
+  label: m.label,
+  value: m.value,
+  image: m.image,
+  description: m.designation || (m.user && m.user !== m.value ? m.user : m.employee),
+})
+
 const selectedTeam = ref(null)
 const selectedProject = ref(null)
 const allTeamsSelected = computed(() => !selectedTeam.value)
@@ -198,6 +217,25 @@ const onPopState = () => {
   }
   validateSection()
   openTaskFromURL()
+
+  const urlProjects = getProjectsFromSearch(window.location.search)
+  const currentProjs = (selectedProjects.value || []).map((p) => (typeof p === 'object' && p ? (p.value || p.name || p.label) : p))
+  if (JSON.stringify(urlProjects) !== JSON.stringify(currentProjs)) {
+    selectedProjects.value = urlProjects
+  }
+
+  const urlTeams = getTeamsFromSearch(window.location.search)
+  const currentTeams = (selectedTeams.value || []).map((t) => (typeof t === 'object' && t ? (t.value || t.name || t.label) : t))
+  if (JSON.stringify(urlTeams) !== JSON.stringify(currentTeams)) {
+    selectedTeams.value = urlTeams
+  }
+
+  const urlMembers = getMembersFromSearch(window.location.search)
+  const currentMembers = (selectedMembers.value || []).map((m) => (typeof m === 'object' && m ? (m.value || m.name || m.label) : m))
+  if (JSON.stringify(urlMembers) !== JSON.stringify(currentMembers)) {
+    selectedMembers.value = urlMembers
+  }
+
   // Normalise the entry URL without adding a history entry
   syncURL(false)
 }
@@ -315,6 +353,67 @@ function isAssignedToCurrentUser(t) {
   return false
 }
 
+function isAssignedToSelectedMembers(t) {
+  if (!selectedMembers.value || selectedMembers.value.length === 0) return true
+  if (!t) return false
+
+  const memberKeys = selectedMembers.value.map((m) => {
+    const val = typeof m === 'object' && m ? (m.value || m.user || m.email || m.name) : m
+    return String(val || '').toLowerCase().trim()
+  }).filter(Boolean)
+
+  if (memberKeys.length === 0) return true
+
+  const memberSet = new Set(memberKeys)
+  ;(taskMemberOptions.value || []).forEach((o) => {
+    if (memberSet.has(String(o.value || '').toLowerCase().trim())) {
+      if (o.label) memberSet.add(String(o.label).toLowerCase().trim())
+    }
+  })
+
+  // 1. Check _assign
+  if (Array.isArray(t._assign) && t._assign.length > 0) {
+    if (t._assign.some((u) => memberSet.has(String(u).toLowerCase().trim()))) return true
+  }
+
+  // 2. Check assignees
+  if (Array.isArray(t.assignees) && t.assignees.length > 0) {
+    const matched = t.assignees.some((a) => {
+      if (!a) return false
+      if (typeof a === 'string') {
+        return memberSet.has(a.toLowerCase().trim())
+      }
+      if (typeof a === 'object') {
+        const u = (a.user || a.user_id || a.email || a.name || '').toLowerCase().trim()
+        const l = (a.label || a.employee_name || a.full_name || a.name || '').toLowerCase().trim()
+        return (u && memberSet.has(u)) || (l && memberSet.has(l))
+      }
+      return false
+    })
+    if (matched) return true
+  }
+
+  // 3. Check table_gqbl
+  if (Array.isArray(t.table_gqbl) && t.table_gqbl.length > 0) {
+    const matched = t.table_gqbl.some((r) => {
+      if (!r) return false
+      const uid = (r.user_id || r.email || '').toLowerCase().trim()
+      const uname = (r.employee_name || '').toLowerCase().trim()
+      return (uid && memberSet.has(uid)) || (uname && memberSet.has(uname))
+    })
+    if (matched) return true
+  }
+
+  // 4. Check assigned_to / assigned_to_user / assigned_to_name
+  const assignedVals = [t.assigned_to, t.assigned_to_user, t.assigned_to_name]
+    .filter(Boolean)
+    .flatMap((v) => String(v).split(','))
+    .map((v) => v.toLowerCase().trim())
+  if (assignedVals.some((v) => memberSet.has(v))) return true
+
+  return false
+}
+
 const navItems = computed(() => {
   let taskCount = tasks.value
   if (showAssignedToMe.value) {
@@ -325,6 +424,9 @@ const navItems = computed(() => {
   }
   if (selectedTeams.value && selectedTeams.value.length > 0) {
     taskCount = taskCount.filter((t) => t.team && selectedTeams.value.includes(t.team))
+  }
+  if (selectedMembers.value && selectedMembers.value.length > 0) {
+    taskCount = taskCount.filter(isAssignedToSelectedMembers)
   }
 
   return [
@@ -423,7 +525,7 @@ function showToast(msg) {
 
 // Multi-select team filter. Named taskTeamOptions because `teamOptions` is
 // already the Team section's dropdown (system-manager screen).
-const selectedTeams = ref([])
+const selectedTeams = ref(typeof window !== 'undefined' ? getTeamsFromSearch(window.location.search) : [])
 
 // Teams the user is assigned to: teams they are a member / lead of, plus the
 // teams owning projects they are a member of (bootstrap sends exactly these).
@@ -440,7 +542,7 @@ const taskTeamOptions = computed(() => {
 
 // Multi-select project filter: only projects the user can access (projects of
 // their teams + projects they are a member of), narrowed by the team selection.
-const selectedProjects = ref([])
+const selectedProjects = ref(typeof window !== 'undefined' ? getProjectsFromSearch(window.location.search) : [])
 
 const projectOptions = computed(() => {
   const chosenTeams = selectedTeams.value && selectedTeams.value.length > 0 ? selectedTeams.value : null
@@ -466,6 +568,55 @@ const projectOptions = computed(() => {
     .map(([value, label]) => ({ value, label }))
 })
 
+// Multi-select member filter: members available to the user, narrowed by team if selected
+const selectedMembers = ref(typeof window !== 'undefined' ? getMembersFromSearch(window.location.search) : [])
+
+const taskMemberOptions = computed(() => {
+  const chosenTeams = selectedTeams.value && selectedTeams.value.length > 0 ? selectedTeams.value : null
+
+  let list = dashboardMemberList.value || []
+  if (chosenTeams) {
+    list = list.filter((m) => {
+      if (!m.teams || m.teams.length === 0) return false
+      return m.teams.some((t) => chosenTeams.includes(t))
+    })
+  }
+
+  const map = new Map()
+  list.forEach((m) => {
+    const opt = toMemberOption(m)
+    map.set(opt.value, opt)
+  })
+
+  // Fallback to people.value if dashboardMemberList isn't populated yet
+  if (map.size === 0 && people.value && people.value.length > 0) {
+    people.value.forEach((p) => {
+      const val = p.email || p.user || p.name
+      const label = p.name || p.full_name || p.email
+      if (val && !map.has(val)) {
+        map.set(val, { label, value: val, image: p.image })
+      }
+    })
+  }
+
+  // Keep already-chosen members listed even when they fall outside the current
+  // team selection, so their chip stays visible and removable.
+  ;(selectedMembers.value || []).forEach((item) => {
+    const key = typeof item === 'object' && item ? (item.value || item.name) : item
+    if (key && !map.has(key)) {
+      const found = (dashboardMemberList.value || []).find((m) => m.value === key || m.user === key)
+      if (found) {
+        map.set(key, toMemberOption(found))
+      } else {
+        const p = (people.value || []).find((x) => x.email === key || x.name === key)
+        map.set(key, { label: p?.name || key, value: key, image: p?.image })
+      }
+    }
+  })
+
+  return Array.from(map.values()).sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+})
+
 // Modals
 const detailModalOpen = ref(false)
 const activeTask = ref(null)
@@ -480,12 +631,54 @@ const syncURL = (push = false) => {
     const url = new URL(window.location.href)
     const taskId = detailModalOpen.value && activeTask.value ? activeTask.value.id : ''
     const nextPath = buildViewPath(taskId ? 'Task' : activeSection.value, taskId, url.pathname)
-    const changed = nextPath !== cleanPath(url.pathname)
+    const pathChanged = nextPath !== cleanPath(url.pathname)
     url.pathname = nextPath
-    url.search = '' // clean Frappe-style URL, no query string
-    window.history[changed && push ? 'pushState' : 'replaceState'](null, '', url.toString())
+
+    // Maintain project, team, and member filters in query params so page refresh / sharing preserves them
+    const currentParams = new URLSearchParams(url.search)
+    currentParams.delete('projects')
+    currentParams.delete('teams')
+    currentParams.delete('members')
+    currentParams.delete('assignee')
+
+    const projList = (selectedProjects.value || [])
+      .map((p) => (typeof p === 'object' && p ? (p.value || p.name || p.label) : p))
+      .filter(Boolean)
+    if (projList.length > 0) {
+      currentParams.set('project', projList.join(','))
+    } else {
+      currentParams.delete('project')
+    }
+
+    const teamList = (selectedTeams.value || [])
+      .map((t) => (typeof t === 'object' && t ? (t.value || t.name || t.label) : t))
+      .filter(Boolean)
+    if (teamList.length > 0) {
+      currentParams.set('team', teamList.join(','))
+    } else {
+      currentParams.delete('team')
+    }
+
+    const memberList = (selectedMembers.value || [])
+      .map((m) => (typeof m === 'object' && m ? (m.value || m.name || m.label) : m))
+      .filter(Boolean)
+    if (memberList.length > 0) {
+      currentParams.set('member', memberList.join(','))
+    } else {
+      currentParams.delete('member')
+    }
+
+    const newSearch = currentParams.toString()
+    url.search = newSearch ? `?${newSearch}` : ''
+
+    const isUrlChanged = pathChanged || (window.location.search !== url.search)
+    window.history[isUrlChanged && push ? 'pushState' : 'replaceState'](null, '', url.toString())
   } catch {}
 }
+
+watch([selectedProjects, selectedTeams, selectedMembers], () => {
+  syncURL(false)
+}, { deep: true })
 
 // Deep link: <base>/task/<task_id> reopens that task's form on load/refresh.
 //
@@ -568,9 +761,41 @@ const getAssignee = (email) => {
   }
 }
 
-// Table View Columns (clean dynamic list view: ID, TASK, PROJECT, TEAM, STATUS, PRIORITY, ASSIGNED TO, DUE DATE, MODIFIED)
+function formatTaskTypeShort(type) {
+  if (!type) return 'Task'
+  if (type === 'Customization Request') return 'CR'
+  return type
+}
+
+function getTaskTypeBadgeClass(type) {
+  switch (type) {
+    case 'Bug':
+      return 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/60'
+    case 'Customization Request':
+      return 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/60'
+    default:
+      return 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border-teal-200 dark:border-teal-800/60'
+  }
+}
+
+function getTaskTypeIcon(type) {
+  if (type === 'Bug') return Bug
+  if (type === 'Customization Request') return Sparkles
+  return CheckSquare
+}
+
+function matchesTaskType(needle, value) {
+  if (!needle || !String(needle).trim()) return true
+  const n = String(needle).trim().toLowerCase()
+  const v = String(value || 'Task').trim().toLowerCase()
+  if (n === 'cr' && v === 'customization request') return true
+  return v.includes(n) || (v === 'customization request' && 'cr'.includes(n))
+}
+
+// Table View Columns (clean dynamic list view: ID, TYPE, TASK, PROJECT, TEAM, STATUS, PRIORITY, ASSIGNED TO, DUE DATE, MODIFIED)
 const tableColumns = [
   { key: 'id', label: 'ID', width: '105px', minWidth: '95px', sortable: true, visible: true },
+  { key: 'task_type', label: 'TYPE', width: '85px', minWidth: '70px', align: 'center', sortable: true, visible: true },
   { key: 'title', label: 'TASK', width: 'auto', minWidth: '220px', sortable: true, visible: true },
   { key: 'project', label: 'PROJECT', width: '160px', minWidth: '130px', sortable: true, visible: true },
   { key: 'team', label: 'TEAM', width: '140px', minWidth: '110px', sortable: true, visible: true },
@@ -586,6 +811,7 @@ const tableColumns = [
 // unfiltered on purpose.
 const columnFilters = ref({
   id: '',
+  task_type: '',
   title: '',
   project: '',
   status: '',
@@ -629,7 +855,7 @@ function handleSortChange({ key, order }) {
   sortOrder.value = order
 }
 
-watch([statusTab, selectedProjects, selectedTeams, showAssignedToMe, columnFilters, () => tasks.value.length], () => {
+watch([statusTab, selectedProjects, selectedTeams, selectedMembers, showAssignedToMe, columnFilters, () => tasks.value.length], () => {
   tasksDisplayLimit.value = 50
 }, { deep: true })
 
@@ -660,10 +886,11 @@ function formatDueDate(dateVal) {
 }
 
 function isTaskOverdue(row) {
-  if (!row?.due_date) return false
+  const d = row?.due_date || row?.due
+  if (!d) return false
   if (['Completed', 'Cancelled'].includes(row.status)) return false
   const today = new Date().toISOString().split('T')[0]
-  let isoDate = String(row.due_date).trim().split(' ')[0]
+  let isoDate = String(d).trim().split(' ')[0]
   const parts = isoDate.split('-')
   if (parts.length === 3 && parts[2].length === 4) {
     isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
@@ -811,11 +1038,11 @@ const getPriorityTextClass = (priority) => {
     case 'Critical':
       return 'text-red-600 dark:text-red-400 font-bold'
     case 'High':
-      return 'text-orange-500 dark:text-orange-400 font-semibold'
+      return 'text-orange-600 dark:text-orange-400 font-semibold'
     case 'Medium':
-      return 'text-amber-500 dark:text-amber-400 font-medium'
+      return 'text-blue-600 dark:text-blue-400 font-medium'
     case 'Low':
-      return 'text-blue-500 dark:text-blue-400 font-medium'
+      return 'text-green-600 dark:text-green-400 font-medium'
     default:
       return 'text-gray-500 dark:text-gray-400 font-normal'
   }
@@ -848,6 +1075,9 @@ const statusOptions = computed(() => {
   if (selectedTeams.value && selectedTeams.value.length > 0) {
     baseTasks = baseTasks.filter((t) => t.team && selectedTeams.value.includes(t.team))
   }
+  if (selectedMembers.value && selectedMembers.value.length > 0) {
+    baseTasks = baseTasks.filter(isAssignedToSelectedMembers)
+  }
 
   baseTasks.forEach((t) => {
     const s = t.status || 'Open'
@@ -879,6 +1109,9 @@ const visibleTasks = computed(() => {
   if (selectedTeams.value && selectedTeams.value.length > 0) {
     list = list.filter((t) => t.team && selectedTeams.value.includes(t.team))
   }
+  if (selectedMembers.value && selectedMembers.value.length > 0) {
+    list = list.filter(isAssignedToSelectedMembers)
+  }
 
   const group = STATUS_GROUPS[statusTab.value]
   if (group) {
@@ -890,6 +1123,7 @@ const visibleTasks = computed(() => {
     const cf = columnFilters.value
     list = list.filter((t) => {
       if (!matchesText(cf.id, t.id)) return false
+      if (cf.task_type && !matchesTaskType(cf.task_type, t.task_type)) return false
       if (!matchesText(cf.title, t.title)) return false
       if (!matchesText(cf.project, t.project)) return false
       if (!matchesText(cf.status, t.status)) return false
@@ -905,6 +1139,10 @@ const visibleTasks = computed(() => {
     list.sort((a, b) => {
       let valA = a[sortKey.value] ?? ''
       let valB = b[sortKey.value] ?? ''
+      if (sortKey.value === 'due_date') {
+        valA = a.due_date || a.due || ''
+        valB = b.due_date || b.due || ''
+      }
       if (typeof valA === 'string') valA = valA.toLowerCase()
       if (typeof valB === 'string') valB = valB.toLowerCase()
       if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1
@@ -1317,24 +1555,6 @@ const dashboardTeamOptions = computed(() => {
   }
   const list = Array.from(set).sort((a, b) => a.localeCompare(b)).map((t) => ({ label: t, value: t }))
   return [{ label: 'All Teams', value: '' }, ...list]
-})
-
-// Members added to a Taskflow Team or Taskflow Project member table only
-const dashboardMemberList = ref([])
-
-async function loadDashboardMembers() {
-  try {
-    dashboardMemberList.value = (await fetchDashboardMemberOptions()) || []
-  } catch (e) {
-    console.error('Failed to load dashboard members', e)
-  }
-}
-
-const toMemberOption = (m) => ({
-  label: m.label,
-  value: m.value,
-  image: m.image,
-  description: m.designation || (m.user && m.user !== m.value ? m.user : m.employee),
 })
 
 const dashboardMemberOptions = computed(() => {
@@ -2504,8 +2724,22 @@ async function loadData() {
   loading.value = true
   try {
     const data = await fetchBootstrap()
-    tasks.value = data.tasks || []
+    tasks.value = (data.tasks || []).map((t) => {
+      const d = t.due_date || t.due || ''
+      t.due_date = d
+      t.due = d
+      return t
+    })
     projects.value = data.projects || []
+    if (selectedProjects.value && selectedProjects.value.length > 0 && projects.value && projects.value.length > 0) {
+      selectedProjects.value = selectedProjects.value.map((item) => {
+        const val = typeof item === 'object' && item ? (item.value || item.name || item.label) : item
+        const found = projects.value.find(
+          (p) => p.name === val || p.project_name?.toLowerCase() === val?.toLowerCase() || p.title?.toLowerCase() === val?.toLowerCase()
+        )
+        return found ? found.name : val
+      })
+    }
     people.value = data.people || []
     if (data.teams && data.teams.length > 0) {
       teams.value = data.teams
@@ -2535,7 +2769,19 @@ async function loadData() {
     if (data.dashboard_members && data.dashboard_members.length > 0) {
       dashboardMemberList.value = data.dashboard_members
     } else {
-      loadDashboardMembers()
+      await loadDashboardMembers()
+    }
+    if (selectedMembers.value && selectedMembers.value.length > 0) {
+      const allMembers = dashboardMemberList.value.length > 0 ? dashboardMemberList.value : (people.value || [])
+      if (allMembers.length > 0) {
+        selectedMembers.value = selectedMembers.value.map((item) => {
+          const val = typeof item === 'object' && item ? (item.value || item.name || item.label) : item
+          const found = allMembers.find(
+            (m) => m.value === val || m.user === val || m.email === val || m.label?.toLowerCase() === val?.toLowerCase() || m.name?.toLowerCase() === val?.toLowerCase()
+          )
+          return found ? (found.value || found.user || found.email || found.name) : val
+        })
+      }
     }
     validateSection()
   } catch (e) {
@@ -3495,13 +3741,29 @@ onUnmounted(() => {
                 placeholder="Select Project"
                 class="w-48 sm:w-60 shrink-0"
               />
+              <MultiSelect
+                v-model="selectedMembers"
+                :options="taskMemberOptions"
+                placeholder="Select Member"
+                class="w-44 sm:w-56 shrink-0"
+              >
+                <template #item-prefix="{ item }">
+                  <Avatar :image="item.image" :label="item.label" size="xs" shape="circle" />
+                </template>
+                <template #item-label="{ item }">
+                  <div class="min-w-0">
+                    <div class="truncate text-xs font-medium text-ink-gray-9 dark:text-gray-100">{{ item.label }}</div>
+                    <div v-if="item.description" class="truncate text-[11px] text-ink-gray-5 dark:text-gray-400">{{ item.description }}</div>
+                  </div>
+                </template>
+              </MultiSelect>
               <Button
-                v-if="selectedTeams.length || selectedProjects.length"
+                v-if="selectedTeams.length || selectedProjects.length || selectedMembers.length"
                 variant="ghost"
                 size="sm"
                 title="Clear filters"
                 class="shrink-0 text-ink-gray-5 hover:text-red-500"
-                @click="selectedTeams = []; selectedProjects = []"
+                @click="selectedTeams = []; selectedProjects = []; selectedMembers = []"
               >
                 <template #icon>
                   <XIcon class="size-3.5" />
@@ -4002,6 +4264,15 @@ onUnmounted(() => {
                   </TextInput>
                 </div>
               </template>
+              <template #header-task_type>
+                <div class="w-full" @click.stop>
+                  <TextInput v-model="columnFilters.task_type" type="search" size="xs" class="w-full" placeholder="Type" aria-label="Filter by task type">
+                    <template #prefix>
+                      <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
+                    </template>
+                  </TextInput>
+                </div>
+              </template>
               <template #header-title>
                 <div class="w-full" @click.stop>
                   <TextInput v-model="columnFilters.title" type="search" size="xs" class="w-full" placeholder="Task" aria-label="Filter by task title">
@@ -4079,6 +4350,17 @@ onUnmounted(() => {
                 </span>
               </template>
 
+              <template #cell-task_type="{ row }">
+                <span
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold border select-none"
+                  :class="getTaskTypeBadgeClass(row.task_type)"
+                  :title="row.task_type || 'Task'"
+                >
+                  <component :is="getTaskTypeIcon(row.task_type)" class="size-3 shrink-0" />
+                  {{ formatTaskTypeShort(row.task_type) }}
+                </span>
+              </template>
+
               <template #cell-title="{ row }">
                 <div class="flex items-center gap-1.5 min-w-0 w-full">
                   <span class="text-xs font-medium text-ink-gray-9 dark:text-gray-100 truncate flex-1" :title="row.title">{{ row.title }}</span>
@@ -4144,12 +4426,12 @@ onUnmounted(() => {
 
               <template #cell-due_date="{ row }">
                 <span
-                  v-if="row.due_date"
+                  v-if="row.due_date || row.due"
                   class="font-mono text-xs"
                   :class="isTaskOverdue(row) ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-ink-gray-6 dark:text-gray-400'"
                   :title="isTaskOverdue(row) ? 'Task is overdue' : ''"
                 >
-                  {{ formatDueDate(row.due_date) }}
+                  {{ formatDueDate(row.due_date || row.due) }}
                 </span>
                 <span v-else class="text-ink-gray-4 dark:text-gray-500">—</span>
               </template>
