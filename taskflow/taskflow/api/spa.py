@@ -69,11 +69,22 @@ def get_spa_bootstrap() -> dict:
 			if getattr(m, "write", 1) in (1, True, "1"):
 				writable_teams.add(m.team)
 
+	lead_emp_ids = list({tm["team_lead"] for tm in teams_data_raw if tm.get("team_lead")})
+	lead_user_map = {}
+	if lead_emp_ids:
+		lead_emps = frappe.get_all(
+			"Employee",
+			filters={"name": ["in", lead_emp_ids]},
+			fields=["name", "user_id"],
+		)
+		lead_user_map = {e["name"]: e.get("user_id") for e in lead_emps if e.get("user_id")}
+
 	teams_data = [
 		{
 			"name": tm["name"],
 			"team_name": tm["team_name"],
 			"team_lead": tm.get("team_lead"),
+			"team_lead_user": lead_user_map.get(tm.get("team_lead")) or "",
 			"is_active": tm.get("is_active"),
 			"can_write": is_admin or (tm["name"] in writable_teams),
 		}

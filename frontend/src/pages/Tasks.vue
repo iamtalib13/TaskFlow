@@ -298,7 +298,7 @@ function getInitialAssignedToMe() {
       console.warn('Failed to read assigned_to_me from localStorage', e)
     }
   }
-  return true
+  return false
 }
 
 const showAssignedToMe = ref(getInitialAssignedToMe())
@@ -1715,15 +1715,18 @@ const dashboardTeamSummary = computed(() => {
     const teamName = t.team || 'General'
     const status = t.status || 'Open'
     if (!map.has(teamName)) {
-      map.set(teamName, { team: teamName, counts: {}, total: 0 })
+      map.set(teamName, { team: teamName, counts: {}, total: 0, pending: 0 })
     }
     const item = map.get(teamName)
     item.counts[status] = (item.counts[status] || 0) + 1
     item.total++
+    if (status !== 'Completed' && status !== 'Cancelled') {
+      item.pending++
+    }
   }
 
   const rows = Array.from(map.values()).sort((a, b) => a.team.localeCompare(b.team))
-  const grandTotal = { team: 'Grand Total', counts: {}, total: 0 }
+  const grandTotal = { team: 'Grand Total', counts: {}, total: 0, pending: 0 }
   cols.forEach((s) => { grandTotal.counts[s] = 0 })
 
   for (const r of rows) {
@@ -1731,6 +1734,7 @@ const dashboardTeamSummary = computed(() => {
       grandTotal.counts[s] += (r.counts[s] || 0)
     }
     grandTotal.total += r.total
+    grandTotal.pending += r.pending
   }
 
   return { rows, grandTotal }
@@ -1747,15 +1751,18 @@ const dashboardGuideSummary = computed(() => {
     const guideName = (t.guided_by ? (userMap.get(t.guided_by) || t.guided_by) : '') || 'Unassigned'
     const status = t.status || 'Open'
     if (!map.has(guideName)) {
-      map.set(guideName, { guide: guideName, counts: {}, total: 0 })
+      map.set(guideName, { guide: guideName, counts: {}, total: 0, pending: 0 })
     }
     const item = map.get(guideName)
     item.counts[status] = (item.counts[status] || 0) + 1
     item.total++
+    if (status !== 'Completed' && status !== 'Cancelled') {
+      item.pending++
+    }
   }
 
   const rows = Array.from(map.values()).sort((a, b) => a.guide.localeCompare(b.guide))
-  const grandTotal = { guide: 'Grand Total', counts: {}, total: 0 }
+  const grandTotal = { guide: 'Grand Total', counts: {}, total: 0, pending: 0 }
   cols.forEach((s) => { grandTotal.counts[s] = 0 })
 
   for (const r of rows) {
@@ -1763,9 +1770,35 @@ const dashboardGuideSummary = computed(() => {
       grandTotal.counts[s] += (r.counts[s] || 0)
     }
     grandTotal.total += r.total
+    grandTotal.pending += r.pending
   }
 
   return { rows, grandTotal }
+})
+
+const dashboardStatusStats = computed(() => {
+  const all = filteredDashboardTasks.value || []
+  let pending = 0
+  let completed = 0
+  for (let i = 0; i < all.length; i++) {
+    const s = all[i].status || 'Open'
+    if (s === 'Completed') {
+      completed++
+    } else if (s !== 'Cancelled') {
+      pending++
+    }
+  }
+  const total = pending + completed
+  const pendingPct = total > 0 ? Math.round((pending / total) * 100) : 0
+  const completedPct = total > 0 ? Math.round((completed / total) * 100) : 0
+
+  return {
+    pending,
+    completed,
+    total,
+    pendingPct,
+    completedPct,
+  }
 })
 
 const selectedMemberInfo = computed(() => {
@@ -1904,6 +1937,7 @@ const dashboardUserProjectSummary = computed(() => {
 // amber = active, purple = awaiting review, orange = paused, gray = dropped.
 const STATUS_CHART_COLORS = {
   'Completed': '#16A34A',
+  'Pending': '#F59E0B',
   'Overdue': '#DC2626',
   'Open': '#2563EB',
   'In Progress': '#F59E0B',
@@ -1913,16 +1947,13 @@ const STATUS_CHART_COLORS = {
 }
 
 const statusDonutChart = computed(() => {
+  const stats = dashboardStatusStats.value
   const data = []
-  const summarySource = dashboardSelectedMember.value
-    ? dashboardUserProjectSummary.value
-    : dashboardTeamSummary.value
-
-  for (const s of dashboardStatusCols.value) {
-    const count = summarySource.grandTotal.counts[s] || 0
-    if (count > 0) {
-      data.push({ status: s, count })
-    }
+  if (stats.pending > 0) {
+    data.push({ status: 'Pending', count: stats.pending })
+  }
+  if (stats.completed > 0) {
+    data.push({ status: 'Completed', count: stats.completed })
   }
 
   // DonutChart sorts slices largest-first and assigns palette colors by that
@@ -1934,12 +1965,12 @@ const statusDonutChart = computed(() => {
     data: chartData,
     category: 'status',
     value: 'count',
-    centerLabel: 'tasks',
+    centerLabel: 'Total Tasks',
     palette: chartData.map((d) => STATUS_CHART_COLORS[d.status] || '#CBD5E1'),
-    title: 'Task Status Mix',
+    title: 'Task Status',
     subtitle: dashboardSelectedMember.value
-      ? `Status breakdown for ${selectedMemberLabel.value}`
-      : 'Current status distribution',
+      ? `Pending vs Completed for ${selectedMemberLabel.value}`
+      : 'Pending vs Completed distribution',
   }
 })
 
@@ -3560,11 +3591,13 @@ function selectAllProjects() {
 
 onMounted(async () => {
   const theme = localStorage.getItem('taskflow-theme')
-  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  if (theme === 'dark') {
     isDark.value = true
     document.documentElement.setAttribute('data-theme', 'dark')
     document.documentElement.classList.add('dark')
   } else {
+    isDark.value = false
+    document.documentElement.removeAttribute('data-theme')
     document.documentElement.classList.remove('dark')
   }
 
@@ -4071,7 +4104,56 @@ onUnmounted(() => {
               </section>
 
               <section class="flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 px-4 py-3 h-80 shadow-xs">
-                <DonutChart v-bind="statusDonutChart" />
+                <div class="flex-1 min-h-0 relative">
+                  <DonutChart v-bind="statusDonutChart" class="status-donut-chart h-full w-full">
+                    <template #center="{ value, label, percent }">
+                      <template v-if="dashboardStatusStats.total > 0">
+                        <div class="truncate text-center text-xl sm:text-2xl font-bold tabular-nums text-ink-gray-9 dark:text-neutral-100">
+                          {{ value }}
+                        </div>
+                        <div class="flex items-center justify-center gap-1 text-xs text-ink-gray-5 dark:text-neutral-400">
+                          <span class="truncate font-medium">{{ label }}</span>
+                          <span v-if="percent" class="tabular-nums font-semibold shrink-0">({{ percent }})</span>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <div class="truncate text-center text-xl sm:text-2xl font-bold tabular-nums text-ink-gray-4 dark:text-neutral-500">
+                          0
+                        </div>
+                        <div class="text-xs text-ink-gray-4 dark:text-neutral-500 font-medium">
+                          No Tasks
+                        </div>
+                      </template>
+                    </template>
+                  </DonutChart>
+                </div>
+
+                <!-- Status Count Footer (Niche proper count labels) -->
+                <div class="pt-2.5 mt-auto border-t border-outline-gray-1 dark:border-neutral-800/80 flex items-center justify-around gap-2 text-xs">
+                  <div class="flex items-center gap-1.5 sm:gap-2">
+                    <span class="size-2.5 rounded-full bg-amber-500 shrink-0 shadow-xs" />
+                    <span class="text-ink-gray-6 dark:text-neutral-400 font-medium">Pending:</span>
+                    <span class="font-bold tabular-nums text-ink-gray-9 dark:text-neutral-100 text-xs sm:text-sm">
+                      {{ dashboardStatusStats.pending }}
+                    </span>
+                    <span class="text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
+                      {{ dashboardStatusStats.pendingPct }}%
+                    </span>
+                  </div>
+
+                  <div class="h-4 w-px bg-outline-gray-2 dark:bg-neutral-800" />
+
+                  <div class="flex items-center gap-1.5 sm:gap-2">
+                    <span class="size-2.5 rounded-full bg-emerald-600 shrink-0 shadow-xs" />
+                    <span class="text-ink-gray-6 dark:text-neutral-400 font-medium">Completed:</span>
+                    <span class="font-bold tabular-nums text-ink-gray-9 dark:text-neutral-100 text-xs sm:text-sm">
+                      {{ dashboardStatusStats.completed }}
+                    </span>
+                    <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                      {{ dashboardStatusStats.completedPct }}%
+                    </span>
+                  </div>
+                </div>
               </section>
             </div>
 
@@ -5556,10 +5638,14 @@ onUnmounted(() => {
       v-model="createModalOpen"
       :projects="projects"
       :teams="teams"
+      :default-team="selectedTeams && selectedTeams.length === 1 ? selectedTeams[0] : ''"
+      :default-project="selectedProjects && selectedProjects.length === 1 ? selectedProjects[0] : ''"
       :people="people"
       :team-members="teamMembers"
       :statuses="statuses"
       :priorities="priorities"
+      :current-user="currentUserEmail"
+      :current-user-name="currentUserName"
       :on-create="onCreateTask"
     />
 
@@ -6058,6 +6144,10 @@ onUnmounted(() => {
 
 
 <style scoped>
+:deep(.status-donut-chart [data-slot="chart-legend"]) {
+  display: none !important;
+}
+
 .toast-enter-active,
 .toast-leave-active {
   transition: all 0.3s ease;

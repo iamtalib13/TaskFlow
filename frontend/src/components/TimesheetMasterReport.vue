@@ -152,12 +152,9 @@
                 </th>
 
                 <!-- Monthly Total Header Group -->
-                <th colspan="2" class="min-w-[160px] px-3 py-2 text-center border-r border-outline-gray-2 dark:border-gray-800 bg-surface-gray-1/40 dark:bg-gray-800/30">
+                <th colspan="2" class="min-w-[160px] px-3 py-2 text-center bg-surface-gray-1/40 dark:bg-gray-800/30">
                   Monthly Total
                 </th>
-
-                <!-- Status Header -->
-                <th class="w-28 px-3 py-2 text-center">Status</th>
               </tr>
 
               <!-- Sub-header Row for Days, Hours & % -->
@@ -184,10 +181,7 @@
 
                 <!-- Monthly Sub-headers -->
                 <th class="px-2 py-1.5 text-right w-14 border-r border-outline-gray-1 dark:border-gray-800">Hours</th>
-                <th class="px-2 py-1.5 text-left w-24 border-r border-outline-gray-2 dark:border-gray-800">%</th>
-
-                <!-- Empty space below Status -->
-                <th class="px-3 py-1.5"></th>
+                <th class="px-2 py-1.5 text-left w-24">%</th>
               </tr>
             </thead>
 
@@ -213,13 +207,12 @@
                   <td class="px-2 py-3"><Skeleton class="h-2 w-16 rounded-full" /></td>
                   <td class="px-2 py-3 text-right"><Skeleton class="h-3.5 w-8 ml-auto" /></td>
                   <td class="px-2 py-3"><Skeleton class="h-2 w-16 rounded-full" /></td>
-                  <td class="px-3 py-3 text-center"><Skeleton class="h-5 w-16 mx-auto rounded-full" /></td>
                 </tr>
               </template>
 
               <!-- Empty State -->
               <tr v-else-if="rows.length === 0">
-                <td :colspan="7 + daysInView.length" class="text-center py-12 text-ink-gray-5 dark:text-gray-400">
+                <td :colspan="6 + daysInView.length" class="text-center py-12 text-ink-gray-5 dark:text-gray-400">
                   <div class="flex flex-col items-center justify-center gap-2">
                     <Clock class="size-8 text-ink-gray-3 stroke-1" />
                     <p class="font-medium text-sm">No employee timesheet records found for this period</p>
@@ -312,7 +305,7 @@
                 </td>
 
                 <!-- Monthly % Progress Bar -->
-                <td class="px-2.5 py-2.5 border-r border-outline-gray-2 dark:border-gray-800">
+                <td class="px-2.5 py-2.5">
                   <div class="flex items-center gap-2">
                     <div class="flex-1 h-2.5 bg-gray-200/80 dark:bg-gray-700/80 rounded-full overflow-hidden min-w-[55px] p-[1px] shadow-inner">
                       <div
@@ -329,17 +322,6 @@
                       {{ row.monthly_pct }}%
                     </span>
                   </div>
-                </td>
-
-                <!-- Status Badge (On Track / Pending / At Risk) -->
-                <td class="px-3 py-2.5 text-center">
-                  <span
-                    class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
-                    :class="getStatusClass(row.status)"
-                  >
-                    <span class="size-1.5 rounded-full shrink-0" :class="getStatusDotClass(row.status)" />
-                    {{ row.status }}
-                  </span>
                 </td>
               </tr>
             </tbody>
@@ -765,7 +747,7 @@ function exportToCSV() {
   if (!rows.value || rows.value.length === 0) return
 
   const dayCols = daysInView.value.map((d) => d.date)
-  const headers = ['#', 'Employee', 'Employee ID', ...dayCols, 'Weekly Total', 'Weekly %', 'Monthly Total', 'Monthly %', 'Status']
+  const headers = ['#', 'Employee', 'Employee ID', ...dayCols, 'Weekly Total', 'Weekly %', 'Monthly Total', 'Monthly %']
 
   const csvRows = [headers.join(',')]
 
@@ -780,7 +762,6 @@ function exportToCSV() {
       `${r.weekly_pct}%`,
       r.monthly_total.toFixed(1),
       `${r.monthly_pct}%`,
-      `"${r.status}"`,
     ]
     csvRows.push(rowData.join(','))
   }
