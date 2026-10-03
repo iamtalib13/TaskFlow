@@ -279,6 +279,11 @@ const currentUserRole = computed(() => (isSystemManager.value ? 'Administrator' 
 
 // Active status tab filter
 const statusTab = ref('Pending')
+watch(statusTab, () => {
+  if (columnFilters.value.status) {
+    columnFilters.value.status = ''
+  }
+})
 
 const STORAGE_KEY_ASSIGNED_TO_ME = 'taskflow_assigned_to_me'
 
@@ -1093,6 +1098,61 @@ const statusOptions = computed(() => {
     { label: `Completed (${counts.Completed})`, value: 'Completed' },
   ]
 })
+
+// Bifurcation of pending statuses with respective counts for header display
+const pendingStatusBreakdown = computed(() => {
+  let baseTasks = tasks.value
+
+  if (showAssignedToMe.value) {
+    baseTasks = baseTasks.filter(isAssignedToCurrentUser)
+  }
+  if (selectedProjects.value && selectedProjects.value.length > 0) {
+    baseTasks = baseTasks.filter((t) => selectedProjects.value.includes(t.project))
+  }
+  if (selectedTeams.value && selectedTeams.value.length > 0) {
+    baseTasks = baseTasks.filter((t) => t.team && selectedTeams.value.includes(t.team))
+  }
+  if (selectedMembers.value && selectedMembers.value.length > 0) {
+    baseTasks = baseTasks.filter(isAssignedToSelectedMembers)
+  }
+
+  const counts = {
+    'Open': 0,
+    'In Progress': 0,
+    'Review': 0,
+    'On Hold': 0,
+    'Overdue': 0,
+  }
+
+  baseTasks.forEach((t) => {
+    const s = t.status || 'Open'
+    if (counts[s] !== undefined) {
+      counts[s]++
+    }
+  })
+
+  const pendingThemeMap = {
+    'Open': 'blue',
+    'In Progress': 'amber',
+    'Review': 'violet',
+    'On Hold': 'gray',
+    'Overdue': 'red',
+  }
+
+  return STATUS_GROUPS.Pending.map((status) => ({
+    status,
+    count: counts[status] || 0,
+    theme: pendingThemeMap[status] || 'gray',
+  }))
+})
+
+function toggleStatusFilter(status) {
+  if (columnFilters.value.status === status) {
+    columnFilters.value.status = ''
+  } else {
+    columnFilters.value.status = status
+  }
+}
 
 // Filtered tasks based on status tab, project filter, search query, and sort
 const visibleTasks = computed(() => {
@@ -4231,8 +4291,33 @@ onUnmounted(() => {
                 :options="statusOptions"
               />
             </div>
-            <div class="flex items-center gap-3 text-xs font-medium text-ink-gray-6">
-              <span class="whitespace-nowrap font-medium text-ink-gray-5 dark:text-gray-400">{{ visibleTasks.length }} tasks</span>
+            <div class="flex items-center gap-1.5 flex-wrap justify-end">
+              <template v-if="statusTab === 'Pending'">
+                <Badge
+                  v-for="item in pendingStatusBreakdown"
+                  :key="item.status"
+                  :variant="columnFilters.status === item.status ? 'solid' : 'outline'"
+                  :theme="item.theme"
+                  size="md"
+                  class="cursor-pointer transition-all select-none hover:opacity-80"
+                  :title="columnFilters.status === item.status ? `Clear ${item.status} filter` : `Filter by ${item.status}`"
+                  @click="toggleStatusFilter(item.status)"
+                >
+                  <span>{{ item.status }}</span>
+                  <span class="ml-1 font-semibold">{{ item.count }}</span>
+                </Badge>
+              </template>
+              <template v-else>
+                <Badge
+                  variant="outline"
+                  theme="green"
+                  size="md"
+                  class="select-none"
+                >
+                  <span>Completed</span>
+                  <span class="ml-1 font-semibold">{{ visibleTasks.length }}</span>
+                </Badge>
+              </template>
             </div>
           </div>
 
