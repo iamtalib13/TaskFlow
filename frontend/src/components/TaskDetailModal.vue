@@ -212,6 +212,36 @@
                   </Combobox>
                 </div>
 
+                <!-- Task Created By -->
+                <div class="space-y-1">
+                  <label class="text-[11px] font-medium text-ink-gray-5">Task Created By</label>
+                  <div
+                    class="flex items-center gap-2 rounded-md border border-outline-gray-2 bg-surface-base px-2 py-1.5 select-none"
+                  >
+                    <div
+                      v-if="taskCreator"
+                      class="size-5 shrink-0 rounded-full text-white text-[9px] font-semibold flex items-center justify-center"
+                      :class="getAvatarColor(taskCreator)"
+                    >
+                      {{ getInitials(taskCreator) }}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="truncate text-xs font-medium"
+                        :class="taskCreator ? 'text-ink-gray-8' : 'text-ink-gray-4'"
+                      >
+                        {{ taskCreator || '—' }}
+                      </p>
+                      <p
+                        v-if="taskCreatorEmail && taskCreatorEmail !== taskCreator"
+                        class="truncate text-[10px] text-ink-gray-4"
+                      >
+                        {{ taskCreatorEmail }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Assigned To -->
                 <div class="space-y-1.5">
                   <div class="flex items-center justify-between">
@@ -953,6 +983,7 @@ export default {
         team: '',
         assignees: [],
         assigned_to: '',
+        owner: '',
         reporter: '',
         pending_with: '',
         pending_from: '',
@@ -1134,6 +1165,14 @@ export default {
       }
       return 'Created recently'
     },
+    taskCreator() {
+      const ownerVal = this.form.owner || (this.task && (this.task.owner || this.task.reporter)) || ''
+      if (!ownerVal) return ''
+      return this.getAssigneeName(ownerVal) || ownerVal
+    },
+    taskCreatorEmail() {
+      return this.form.owner || (this.task && (this.task.owner || this.task.reporter)) || ''
+    },
   },
   watch: {
     task: {
@@ -1163,6 +1202,7 @@ export default {
             team: matchedTeam || '',
             assignees: assigneesList,
             assigned_to: t.assigned_to || '',
+            owner: t.owner || '',
             reporter: t.reporter || t.owner || '',
             pending_with: t.pending_with || '',
             pending_from: t.pending_from || '',
