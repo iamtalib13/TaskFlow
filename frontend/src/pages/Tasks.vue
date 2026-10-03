@@ -2930,6 +2930,9 @@ async function onSaveTask(updatedTask) {
   const now = new Date()
   updatedTask.modified = now.toISOString()
   updatedTask.modified_pretty = 'Just now'
+  if ('due_date' in updatedTask) {
+    updatedTask.due = updatedTask.due_date || ''
+  }
   const idx = tasks.value.findIndex((t) => t.id === updatedTask.id)
   if (idx !== -1) {
     tasks.value.splice(idx, 1, updatedTask)
@@ -2940,6 +2943,9 @@ async function onSaveTask(updatedTask) {
       const freshIdx = tasks.value.findIndex((t) => t.id === updatedTask.id)
       if (freshIdx !== -1) {
         tasks.value.splice(freshIdx, 1, { ...tasks.value[freshIdx], ...res })
+      }
+      if (activeTask.value && activeTask.value.id === res.id) {
+        activeTask.value = { ...activeTask.value, ...res }
       }
     }
     toast.success('Task saved successfully')

@@ -718,6 +718,7 @@ export default {
   },
   mounted() {
     this.loadTaskflowSettings()
+    window.addEventListener('keydown', this.handleKeyDown, true)
     document.addEventListener('click', this.handlePendingFromClickOutside)
     if (this.modelValue) {
       if (!this.form.project) {
@@ -755,6 +756,7 @@ export default {
     }
   },
   beforeUnmount() {
+    window.removeEventListener('keydown', this.handleKeyDown, true)
     document.removeEventListener('click', this.handlePendingFromClickOutside)
   },
   computed: {
@@ -1117,9 +1119,27 @@ export default {
     },
     applyQuickDate(setDate, amount, unit, close) {
       const d = amount === 0 ? dayjs() : dayjs().add(amount, unit)
-      setDate(d)
+      if (typeof setDate === 'function') {
+        setDate(d)
+      }
+      this.form.due_date = d.format('YYYY-MM-DD')
       if (typeof close === 'function') {
         close()
+      }
+    },
+    handleKeyDown(e) {
+      if (!this.modelValue) return
+      if (e.key === 'Escape') {
+        this.close()
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+          document.activeElement.blur()
+        }
+        this.$nextTick(() => {
+          this.submit()
+        })
       }
     },
     close() {
@@ -1156,8 +1176,15 @@ export default {
       const priorityVal = typeof this.form.priority === 'object' && this.form.priority ? (this.form.priority.value || this.form.priority.label || '') : (this.form.priority || 'Medium')
       const taskTypeVal = typeof this.form.task_type === 'object' && this.form.task_type ? (this.form.task_type.value || this.form.task_type.label || '') : (this.form.task_type || 'Task')
       const assigneeIds = (this.form.assignees || []).map((a) => (typeof a === 'object' ? (a.value || a.user_id || a.user || a.email) : a)).filter(Boolean)
+      const dueDateVal = this.form.due_date ? dayjs(this.form.due_date).format('YYYY-MM-DD') : ''
+      const startDateVal = this.form.start_date ? dayjs(this.form.start_date).format('YYYY-MM-DD') : ''
+      const ticketDateVal = this.form.ticket_date ? dayjs(this.form.ticket_date).format('YYYY-MM-DD') : ''
       const payload = {
         ...this.form,
+        start_date: startDateVal,
+        due: dueDateVal,
+        due_date: dueDateVal,
+        ticket_date: ticketDateVal,
         status: statusVal,
         priority: priorityVal,
         task_type: taskTypeVal,

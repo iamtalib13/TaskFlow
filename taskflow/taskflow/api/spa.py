@@ -578,8 +578,8 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		doc.status = _extract_str(data.get("status")) or "Open"
 		doc.priority = _extract_str(data.get("priority")) or "Medium"
 		raw_task_type = data.get("task_type") or (data.get("labels")[0] if data.get("labels") else "Task")
-		doc.task_type = _extract_str(raw_task_type) or "Task"
-		doc.due_date = _normalize_date(data.get("due") or data.get("due_date"))
+		raw_due = data.get("due_date") if "due_date" in data else data.get("due")
+		doc.due_date = _normalize_date(raw_due)
 		doc.description = data.get("description") or ""
 	else:
 		if not can_write_task(current_user, task_id):
@@ -598,8 +598,10 @@ def save_task(payload: str = None, **kwargs) -> dict:
 			doc.task_type = _extract_str(data.get("task_type")) or doc.task_type
 		elif "labels" in data and data.get("labels"):
 			doc.task_type = _extract_str(data.get("labels")[0])
-		if "due" in data or "due_date" in data:
-			doc.due_date = _normalize_date(data.get("due") or data.get("due_date"))
+		if "due_date" in data:
+			doc.due_date = _normalize_date(data.get("due_date"))
+		elif "due" in data:
+			doc.due_date = _normalize_date(data.get("due"))
 		if "description" in data:
 			doc.description = data.get("description")
 

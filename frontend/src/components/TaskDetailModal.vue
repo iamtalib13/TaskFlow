@@ -1268,20 +1268,26 @@ export default {
         this.form.completed_on = dayjs().format('YYYY-MM-DD')
       }
     },
-    modelValue(val) {
-      if (val) {
-        window.addEventListener('keydown', this.handleKeyDown)
-      } else {
-        window.removeEventListener('keydown', this.handleKeyDown)
-      }
+    modelValue: {
+      immediate: true,
+      handler(val) {
+        if (val) {
+          window.addEventListener('keydown', this.handleKeyDown, true)
+        } else {
+          window.removeEventListener('keydown', this.handleKeyDown, true)
+        }
+      },
     },
   },
   beforeUnmount() {
-    window.removeEventListener('keydown', this.handleKeyDown)
+    window.removeEventListener('keydown', this.handleKeyDown, true)
     document.removeEventListener('click', this.handlePendingFromClickOutside)
   },
   mounted() {
     this.loadTaskflowSettings()
+    if (this.modelValue) {
+      window.addEventListener('keydown', this.handleKeyDown, true)
+    }
     document.addEventListener('click', this.handlePendingFromClickOutside)
   },
   methods: {
@@ -1444,7 +1450,10 @@ export default {
     },
     applyQuickDate(setDate, amount, unit, close) {
       const d = amount === 0 ? dayjs() : dayjs().add(amount, unit)
-      setDate(d)
+      if (typeof setDate === 'function') {
+        setDate(d)
+      }
+      this.form.due_date = d.format('YYYY-MM-DD')
       if (typeof close === 'function') {
         close()
       }
@@ -1707,9 +1716,15 @@ export default {
     handleKeyDown(e) {
       if (e.key === 'Escape') {
         this.close()
-      } else if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
         e.preventDefault()
-        this.save()
+        e.stopPropagation()
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+          document.activeElement.blur()
+        }
+        this.$nextTick(() => {
+          this.save()
+        })
       }
     },
     close() {
@@ -1726,10 +1741,34 @@ export default {
       this.saving = true
       this.errorMessage = ''
       const assigneeIds = (this.form.assignees || []).map((a) => this.getAssigneeValue(a)).filter(Boolean)
+      const normalizedDueDate = this.normalizeDate(this.form.due_date)
+      const getVal = (v) => (typeof v === 'object' && v ? (v.value || v.label || '') : (v || ''))
+      const statusVal = getVal(this.form.status) || 'Open'
       const updated = {
         ...this.task,
         ...this.form,
         id: this.form.id || this.task?.id,
+        title: this.form.title.trim(),
+        status: statusVal,
+        priority: getVal(this.form.priority) || 'Medium',
+        task_type: getVal(this.form.task_type) || 'Task',
+        project: getVal(this.form.project),
+        guided_by: getVal(this.form.guided_by),
+        due: normalizedDueDate,
+        due_date: normalizedDueDate,
+        start_date: this.normalizeDate(this.form.start_date),
+        expected_resolution_date: this.normalizeDate(this.form.expected_resolution_date),
+        completed_on: statusVal === 'Completed'
+          ? (this.normalizeDate(this.form.completed_on) || dayjs().format('YYYY-MM-DD'))
+          : '',
+        ticket_date: this.normalizeDate(this.form.ticket_date),
+        ticket_id: this.form.ticket_id || '',
+        ticket_raised_by: this.form.ticket_raised_by || '',
+        toll_id: this.form.toll_id || '',
+        ticket_description: this.form.ticket_description || '',
+        description: this.form.description || '',
+        pending_from: this.form.pending_from || '',
+        pending_with: this.form.pending_with || '',
         team: this.effectiveTeam || this.form.team || this.task?.team || '',
         assignees: assigneeIds,
         assigned_to: assigneeIds.map((id) => this.getAssigneeName(id)).join(', '),
@@ -1749,8 +1788,19 @@ export default {
           this.$emit('save', res || updated)
           toast.success('Task saved successfully')
         }
-        if (res && res.id && !this.form.id) {
-          this.form.id = res.id
+        if (res && res.id) {
+          if (!this.form.id) this.form.id = res.id
+          if (res.due_date || res.due) this.form.due_date = this.normalizeDate(res.due_date || res.due)
+          if (res.start_date !== undefined) this.form.start_date = this.normalizeDate(res.start_date)
+          if (res.expected_resolution_date !== undefined) this.form.expected_resolution_date = this.normalizeDate(res.expected_resolution_date)
+          if (res.completed_on !== undefined) this.form.completed_on = this.normalizeDate(res.completed_on)
+          if (res.ticket_date !== undefined) this.form.ticket_date = this.normalizeDate(res.ticket_date)
+          if (res.status) this.form.status = res.status
+          if (res.priority) this.form.priority = res.priority
+          if (res.task_type) this.form.task_type = res.task_type
+          if (res.project !== undefined) this.form.project = res.project
+          if (res.guided_by !== undefined) this.form.guided_by = res.guided_by
+          if (res.pending_from !== undefined) this.form.pending_from = res.pending_from || ''
         }
         this.initialSnapshot = JSON.stringify(this.form)
         this.isDirty = false
