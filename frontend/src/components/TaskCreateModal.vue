@@ -181,6 +181,40 @@
                   </p>
                 </div>
 
+                <!-- 2b. Parent Project -->
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block font-medium text-ink-gray-6 dark:text-gray-300">
+                      Parent Project
+                    </label>
+                    <button
+                      v-if="selectedParentProjectValue"
+                      type="button"
+                      class="text-[11px] text-ink-gray-5 hover:text-ink-gray-8 dark:hover:text-gray-200 transition-colors cursor-pointer"
+                      @click="clearParentProject"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <Combobox
+                    v-model="form.parent_project"
+                    v-model:query="parentProjectSearchQuery"
+                    :options="parentProjectOptions"
+                    :filterable="false"
+                    placeholder="Search and select parent project..."
+                    size="sm"
+                    class="w-full"
+                  >
+                    <template #item-label="{ item }">
+                      <div class="min-w-0 flex-1 py-0.5">
+                        <div class="truncate font-semibold text-xs text-ink-gray-9 dark:text-gray-100">
+                          {{ item.label }}
+                        </div>
+                      </div>
+                    </template>
+                  </Combobox>
+                </div>
+
                 <!-- 3. Task Type -->
                 <div>
                   <FormControl
@@ -608,10 +642,12 @@ export default {
       showPendingFromDropdown: false,
       teamSearchQuery: '',
       projectSearchQuery: '',
+      parentProjectSearchQuery: '',
       form: {
         title: '',
         team: '',
         project: '',
+        parent_project: '',
         task_type: 'Task',
         assignees: [],
         assigned_to: '',
@@ -637,6 +673,7 @@ export default {
         this.errorMessage = ''
         this.teamSearchQuery = ''
         this.projectSearchQuery = ''
+        this.parentProjectSearchQuery = ''
         const defaultProject = this.getDefaultProject()
         const defaultTeam = this.getDefaultTeam(defaultProject)
         const defaultAssignee = this.getDefaultAssignee()
@@ -645,6 +682,7 @@ export default {
           title: '',
           team: defaultTeam || '',
           project: defaultProject || '',
+          parent_project: '',
           task_type: 'Task',
           assignees: defaultAssignee ? [defaultAssignee] : [],
           assigned_to: defaultAssignee || '',
@@ -786,6 +824,10 @@ export default {
       if (!this.form.project) return ''
       return typeof this.form.project === 'object' ? (this.form.project.value || this.form.project.label || '') : this.form.project
     },
+    selectedParentProjectValue() {
+      if (!this.form.parent_project) return ''
+      return typeof this.form.parent_project === 'object' ? (this.form.parent_project.value || this.form.parent_project.label || '') : this.form.parent_project
+    },
     selectedGuidedByValue() {
       if (!this.form.guided_by) return ''
       return typeof this.form.guided_by === 'object' ? (this.form.guided_by.value || '') : this.form.guided_by
@@ -807,6 +849,12 @@ export default {
       const q = (this.projectSearchQuery || '').trim().toLowerCase()
       let list = this.projects || []
       const currentTeam = this.selectedTeamValue
+      const parentProj = this.selectedParentProjectValue
+
+      // Filter by selected Parent Project — sirf sub-projects dikhao
+      if (parentProj) {
+        list = list.filter((p) => p.parent_project === parentProj)
+      }
 
       // Filter by selected Team
       if (currentTeam) {
@@ -834,6 +882,33 @@ export default {
             label: p.display_name || p.title || p.project_name || p.name,
             value: p.name,
             team: p.team || '',
+          })
+        }
+      }
+      return opts
+    },
+    parentProjectOptions() {
+      const q = (this.parentProjectSearchQuery || '').trim().toLowerCase()
+      // Sirf wahi projects dikhao jo group=1 hain (yani parent/group projects hain)
+      let list = (this.projects || []).filter((p) => p.group === 1 || p.group === '1' || p.group === true)
+      if (q) {
+        list = list.filter((p) => {
+          const name = (p.name || '').toLowerCase()
+          const title = (p.title || p.project_name || p.display_name || '').toLowerCase()
+          return name.includes(q) || title.includes(q)
+        })
+      }
+      const opts = list.map((p) => ({
+        label: p.display_name || p.title || p.project_name || p.name,
+        value: p.name,
+      }))
+      const currVal = this.selectedParentProjectValue
+      if (currVal && !opts.some((o) => o.value === currVal)) {
+        const p = (this.projects || []).find((x) => x.name === currVal)
+        if (p) {
+          opts.unshift({
+            label: p.display_name || p.title || p.project_name || p.name,
+            value: p.name,
           })
         }
       }
@@ -1097,6 +1172,10 @@ export default {
       } catch (e) {}
       this.onProjectChange('')
     },
+    clearParentProject() {
+      this.form.parent_project = ''
+      this.parentProjectSearchQuery = ''
+    },
     async loadTeamMembersForTeam(team) {
       if (!team) return
       const hasMembers = this.allAvailableTeamMembers.some((m) => m.team === team)
@@ -1179,8 +1258,9 @@ export default {
       const dueDateVal = this.form.due_date ? dayjs(this.form.due_date).format('YYYY-MM-DD') : ''
       const startDateVal = this.form.start_date ? dayjs(this.form.start_date).format('YYYY-MM-DD') : ''
       const ticketDateVal = this.form.ticket_date ? dayjs(this.form.ticket_date).format('YYYY-MM-DD') : ''
+      const { parent_project: _parentProject, ...formWithoutParent } = this.form
       const payload = {
-        ...this.form,
+        ...formWithoutParent,
         start_date: startDateVal,
         due: dueDateVal,
         due_date: dueDateVal,

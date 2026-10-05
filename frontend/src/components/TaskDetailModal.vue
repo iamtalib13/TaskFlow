@@ -212,6 +212,39 @@
                   </Combobox>
                 </div>
 
+                <!-- Parent Project -->
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <label class="text-[11px] font-medium text-ink-gray-5">Parent Project</label>
+                    <button
+                      v-if="form.parent_project"
+                      type="button"
+                      class="text-[11px] font-medium text-ink-gray-4 hover:text-ink-gray-7 transition-colors cursor-pointer"
+                      @click="form.parent_project = ''"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <Combobox
+                    v-model="form.parent_project"
+                    v-model:query="parentProjectSearchQuery"
+                    :options="parentProjectOptions"
+                    :filterable="false"
+                    placeholder="Search and select parent project..."
+                    size="sm"
+                    variant="subtle"
+                    class="w-full"
+                  >
+                    <template #item-label="{ item }">
+                      <div class="min-w-0 flex-1 py-0.5">
+                        <div class="truncate font-medium text-xs text-ink-gray-8 dark:text-gray-100">
+                          {{ item.label }}
+                        </div>
+                      </div>
+                    </template>
+                  </Combobox>
+                </div>
+
                 <!-- Task Created By -->
                 <div class="space-y-1">
                   <label class="text-[11px] font-medium text-ink-gray-5">Task Created By</label>
@@ -972,6 +1005,7 @@ export default {
       pendingFromOptions: ['User', 'Team', 'Client', 'Management', 'External Partner', 'Vendor'],
       showPendingFromDropdown: false,
       projectSearchQuery: '',
+      parentProjectSearchQuery: '',
       form: {
         id: '',
         title: '',
@@ -980,6 +1014,7 @@ export default {
         priority: 'Medium',
         task_type: 'Task',
         project: '',
+        parent_project: '',
         team: '',
         assignees: [],
         assigned_to: '',
@@ -1063,6 +1098,15 @@ export default {
     projectOptions() {
       const q = (this.projectSearchQuery || '').trim().toLowerCase()
       let list = this.projects || []
+      const parentProj = typeof this.form.parent_project === 'object' && this.form.parent_project
+        ? (this.form.parent_project.value || this.form.parent_project.label || '')
+        : this.form.parent_project
+
+      // Filter by selected Parent Project — sirf sub-projects dikhao
+      if (parentProj) {
+        list = list.filter((p) => p.parent_project === parentProj)
+      }
+
       if (q) {
         list = list.filter((p) => {
           const name = (p.name || '').toLowerCase()
@@ -1076,6 +1120,34 @@ export default {
         value: p.name,
         team: p.team || '',
       }))
+    },
+    parentProjectOptions() {
+      const q = (this.parentProjectSearchQuery || '').trim().toLowerCase()
+      let list = this.projects || []
+      if (q) {
+        list = list.filter((p) => {
+          const name = (p.name || '').toLowerCase()
+          const title = (p.title || p.project_name || p.display_name || '').toLowerCase()
+          return name.includes(q) || title.includes(q)
+        })
+      }
+      const opts = list.slice(0, 5).map((p) => ({
+        label: p.display_name || p.title || p.project_name || p.name,
+        value: p.name,
+      }))
+      const currVal = typeof this.form.parent_project === 'object' && this.form.parent_project
+        ? (this.form.parent_project.value || this.form.parent_project.label || '')
+        : this.form.parent_project
+      if (currVal && !opts.some((o) => o.value === currVal)) {
+        const p = (this.projects || []).find((x) => x.name === currVal)
+        if (p) {
+          opts.unshift({
+            label: p.display_name || p.title || p.project_name || p.name,
+            value: p.name,
+          })
+        }
+      }
+      return opts
     },
     effectiveTeam() {
       if (this.form.team) return this.form.team
@@ -1199,6 +1271,7 @@ export default {
             priority: t.priority || 'Medium',
             task_type: t.task_type || (Array.isArray(t.labels) && t.labels[0]) || 'Task',
             project: t.project || '',
+            parent_project: t.parent_project || '',
             team: matchedTeam || '',
             assignees: assigneesList,
             assigned_to: t.assigned_to || '',
@@ -1744,9 +1817,10 @@ export default {
       const normalizedDueDate = this.normalizeDate(this.form.due_date)
       const getVal = (v) => (typeof v === 'object' && v ? (v.value || v.label || '') : (v || ''))
       const statusVal = getVal(this.form.status) || 'Open'
+      const { parent_project: _parentProject, ...formWithoutParent } = this.form
       const updated = {
         ...this.task,
-        ...this.form,
+        ...formWithoutParent,
         id: this.form.id || this.task?.id,
         title: this.form.title.trim(),
         status: statusVal,

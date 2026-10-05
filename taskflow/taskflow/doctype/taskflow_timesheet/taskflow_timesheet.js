@@ -211,7 +211,7 @@ const TimesheetCalculation = {
 		const row = frappe.get_doc(cdt, cdn);
 		if (row.from_time && row.to_time) {
 			const diff = frappe.datetime.get_diff(row.to_time, row.from_time);
-			const hours = diff / 3600;
+			const hours = flt(diff / 3600, 2);
 			frappe.model.set_value(cdt, cdn, "hrs", hours).then(() => {
 				this.calculate_total_hours(frm);
 				TimesheetUI.update_summary(frm);
@@ -224,7 +224,7 @@ const TimesheetCalculation = {
 		(frm.doc.table_pfiw || []).forEach((row) => {
 			total += parseFloat(row.hrs) || 0;
 		});
-		frm.set_value("total_working_hours", total);
+		frm.set_value("total_working_hours", flt(total, 2));
 	},
 };
 

@@ -198,39 +198,80 @@
           </div>
         </div>
 
-        <!-- Div 3: Child Projects / Tree Structure (Span 3 / Bottom Right) -->
-        <div class="div3 col-span-3 space-y-3 bg-surface-gray-1 p-4 rounded-xl border border-outline-gray-2 flex flex-col min-h-[260px]">
+        <!-- Div 3: Sub-Projects / Child Projects (Span 3 / Bottom Right) -->
+        <div class="div3 col-span-3 space-y-3 bg-surface-gray-1 dark:bg-gray-900/50 p-4 rounded-xl border border-outline-gray-2 dark:border-gray-800 flex flex-col min-h-[300px]">
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-gray-7">
+            <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-gray-7 dark:text-gray-300">
               <GitFork class="size-3.5 text-blue-600" />
-              <span>Linked Child Projects</span>
+              <span>Sub-Projects</span>
             </div>
-            <button
-              v-if="form.child_projects.length > 0"
-              type="button"
-              class="text-[11px] text-rose-600 hover:underline font-medium cursor-pointer"
-              @click="form.child_projects = []"
-            >
-              Clear Children
-            </button>
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-medium text-ink-gray-5 dark:text-gray-400">
+                {{ totalSubProjectsCount }} sub-project{{ totalSubProjectsCount !== 1 ? 's' : '' }}
+              </span>
+              <button
+                v-if="form.child_projects.length > 0 || stagedSubProjects.length > 0"
+                type="button"
+                class="text-[11px] text-rose-600 hover:underline font-medium cursor-pointer"
+                @click="clearAllSubProjects"
+              >
+                Clear All
+              </button>
+            </div>
           </div>
 
-          <!-- Current Selected Children Status Card -->
-          <div class="p-2 rounded-lg border border-outline-gray-2 bg-surface-base text-xs flex items-center justify-between shadow-xs">
-            <span class="text-ink-gray-5 font-medium">Sub-Projects Linked:</span>
-            <span class="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-              {{ form.child_projects.length }} project{{ form.child_projects.length !== 1 ? 's' : '' }}
-            </span>
+          <!-- Quick Create Sub-Project Card with Inherited Settings -->
+          <div class="p-3 bg-surface-base dark:bg-gray-800/80 rounded-lg border border-outline-gray-2 dark:border-gray-700 shadow-xs space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-ink-gray-8 dark:text-gray-200">Create Sub-Project</span>
+              <span class="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">
+                Same settings as parent
+              </span>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <input
+                v-model="newSubProjectName"
+                type="text"
+                placeholder="Sub-project name (e.g. Mobile App)..."
+                class="flex-1 min-w-0 text-xs px-2.5 py-1.5 rounded-md border border-outline-gray-2 dark:border-gray-700 bg-surface-base dark:bg-gray-900 text-ink-gray-9 dark:text-gray-100 placeholder:text-ink-gray-4 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                @keydown.enter.prevent="addSubProjectWithSameSettings"
+              />
+              <Button
+                type="button"
+                variant="solid"
+                size="sm"
+                :disabled="!newSubProjectName.trim()"
+                :loading="creatingSubProject"
+                @click.prevent="addSubProjectWithSameSettings"
+              >
+                <template #prefix><Plus class="size-3.5" /></template>
+                Add
+              </Button>
+            </div>
+
+            <!-- Inherited Settings Summary -->
+            <div class="text-[10px] text-ink-gray-5 dark:text-gray-400 flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-0.5">
+              <span>Inherits:</span>
+              <span class="font-medium text-ink-gray-7 dark:text-gray-300">{{ form?.team || 'No team yet' }}</span>
+              <span>•</span>
+              <span class="font-medium text-ink-gray-7 dark:text-gray-300">{{ form?.priority }} priority</span>
+              <span>•</span>
+              <span class="font-medium text-ink-gray-7 dark:text-gray-300">{{ form?.project_lead || 'No lead' }}</span>
+              <span>•</span>
+              <span class="font-medium text-ink-gray-7 dark:text-gray-300">{{ form?.project_team_members?.length || 0 }} member(s)</span>
+            </div>
           </div>
 
-          <!-- Add Child Project Combobox Searcher -->
+          <!-- Add Existing Child Project Combobox Searcher -->
           <div class="space-y-1">
+            <label class="text-[11px] font-medium text-ink-gray-6 dark:text-gray-400">Or link an existing project:</label>
             <Combobox
               :modelValue="selectedAddChild"
               v-model:query="childProjectQuery"
               :options="availableChildProjectOptions"
               :filterable="false"
-              placeholder="+ Add child project..."
+              placeholder="+ Search and link existing project..."
               size="sm"
               class="w-full"
               @update:modelValue="addChildProject"
@@ -248,22 +289,30 @@
           </div>
 
           <!-- Linked Tree Container -->
-          <div class="flex-1 rounded-lg border border-outline-gray-2 bg-surface-base p-2 overflow-y-auto max-h-[190px]">
-            <div v-if="projectTreeNodes.length === 0" class="py-6 text-center text-xs text-ink-gray-4">
-              No child projects linked yet.<br/>Use the search above to add child projects.
+          <div class="flex-1 rounded-lg border border-outline-gray-2 dark:border-gray-800 bg-surface-base dark:bg-gray-900/60 p-2 overflow-y-auto max-h-[180px]">
+            <div v-if="projectTreeNodes.length === 0" class="py-6 text-center text-xs text-ink-gray-4 dark:text-gray-500">
+              No sub-projects added yet.<br/>Type a name above to create one with the same settings.
             </div>
             <Tree v-else :nodes="projectTreeNodes" node-key="value" guides="connectors">
               <template #item-prefix>
                 <Folder class="size-3.5 text-blue-500 shrink-0" />
               </template>
               <template #item-label="{ node }">
-                <span class="text-xs font-medium text-ink-gray-9 truncate">{{ node.label }}</span>
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="text-xs font-medium text-ink-gray-9 dark:text-gray-100 truncate">{{ node.label }}</span>
+                  <span
+                    v-if="node.is_staged"
+                    class="text-[9px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800 shrink-0"
+                  >
+                    New
+                  </span>
+                </div>
               </template>
               <template #item-suffix="{ node }">
                 <button
                   type="button"
                   class="text-ink-gray-4 hover:text-rose-600 transition p-0.5 rounded cursor-pointer"
-                  title="Remove child project"
+                  title="Remove sub-project"
                   @click.stop="removeChildProject(node.value)"
                 >
                   <X class="size-3.5" />
@@ -313,11 +362,21 @@ const defaultForm = () => ({
 
 const form = ref(defaultForm())
 
+const extractVal = (v) => {
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'object') {
+    const val = v.value !== undefined ? v.value : v.label
+    return val !== undefined && val !== null ? String(val).trim() : ''
+  }
+  const s = String(v).trim()
+  return (s.toLowerCase() === 'none' || s.toLowerCase() === 'null') ? '' : s
+}
+
 const errors = computed(() => {
   if (!submitted.value) return {}
   const e = {}
-  if (!form.value.project_name.trim()) e.project_name = 'Project name is required.'
-  if (!form.value.team) e.team = 'Team is required.'
+  if (!extractVal(form.value.project_name)) e.project_name = 'Project name is required.'
+  if (!extractVal(form.value.team)) e.team = 'Team is required.'
   return e
 })
 
@@ -413,9 +472,82 @@ const leadQuery = ref('')
 const filteredEmployeeOptions = computed(() => getFilteredEmployeeOptions(leadQuery.value, form.value.project_lead))
 const projectOptions = computed(() => props.projects.map(p => ({ label: p.project_name || p.name, value: p.name })))
 
-// --- Child Projects Search & Tree ---
+// --- Sub-Projects (Creation with Inherited Settings & Linking) ---
 const childProjectQuery = ref('')
 const selectedAddChild = ref(null)
+const stagedSubProjects = ref([])
+const newSubProjectName = ref('')
+
+const totalSubProjectsCount = computed(() => {
+  return (form.value.child_projects ? form.value.child_projects.length : 0) + stagedSubProjects.value.length
+})
+
+const creatingSubProject = ref(false)
+
+async function addSubProjectWithSameSettings() {
+  const name = newSubProjectName.value.trim()
+  if (!name || creatingSubProject.value) return
+
+  const pTeam = extractVal(form.value.team)
+  if (!pTeam) {
+    toast.error('Please select a Team for the project first.')
+    return
+  }
+
+  // Check if sub-project with this name is already staged or linked
+  const isDuplicateStaged = stagedSubProjects.value.some(s => s.project_name.toLowerCase() === name.toLowerCase())
+  const isDuplicateExisting = (props.projects || []).some(
+    p => (p.project_name || p.name || '').toLowerCase() === name.toLowerCase() && form.value.child_projects.includes(p.name || p.project_name)
+  )
+
+  if (isDuplicateStaged || isDuplicateExisting) {
+    toast.error(`A sub-project named "${name}" is already added.`)
+    return
+  }
+
+  const subData = {
+    project_name: name,
+    team: pTeam,
+    priority: extractVal(form.value.priority) || 'Medium',
+    project_lead: extractVal(form.value.project_lead) || undefined,
+    start_date: form.value.start_date || undefined,
+    end_date: form.value.end_date || undefined,
+    project_team_members: form.value.project_team_members
+      .filter(r => extractVal(r.employee))
+      .map(r => ({ ...r, employee: extractVal(r.employee) })),
+  }
+
+  // Editing an existing project: the parent already exists, so create the sub-project right away
+  if (props.editProject) {
+    const parentId = props.editProject.raw_name || props.editProject.id || props.editProject.name
+    creatingSubProject.value = true
+    try {
+      const res = await saveProject({ doctype: 'Taskflow Project', status: 'Draft', ...subData, parent_project: parentId })
+      const created = res?.name || res?.message?.name
+      // Keep it linked so the parent's Update does not unlink it
+      if (created && !form.value.child_projects.includes(created)) {
+        form.value.child_projects.push(created)
+      }
+      newSubProjectName.value = ''
+      toast.success(`Sub-project "${name}" created!`)
+      emit('create', res)
+    } catch (err) {
+      toast.error(err.message || 'Failed to create sub-project')
+    } finally {
+      creatingSubProject.value = false
+    }
+    return
+  }
+
+  // New project: the parent does not exist yet, so stage it and create it together on Create
+  stagedSubProjects.value.push({
+    temp_id: `temp_sub_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+    ...subData,
+  })
+
+  newSubProjectName.value = ''
+  toast.info(`Sub-project "${name}" will be created when you click Create.`)
+}
 
 const availableChildProjectOptions = computed(() => {
   const currentId = props.editProject ? (props.editProject.raw_name || props.editProject.id || props.editProject.name) : null
@@ -449,16 +581,24 @@ function addChildProject(val) {
 
 function removeChildProject(projId) {
   if (!projId) return
+  const sIdx = stagedSubProjects.value.findIndex(s => s.temp_id === projId)
+  if (sIdx > -1) {
+    stagedSubProjects.value.splice(sIdx, 1)
+    return
+  }
   const idx = form.value.child_projects.indexOf(projId)
   if (idx > -1) {
     form.value.child_projects.splice(idx, 1)
   }
 }
 
-const projectTreeNodes = computed(() => {
-  if (!form.value.child_projects || form.value.child_projects.length === 0) return []
+function clearAllSubProjects() {
+  form.value.child_projects = []
+  stagedSubProjects.value = []
+}
 
-  const linkedIds = new Set(form.value.child_projects)
+const projectTreeNodes = computed(() => {
+  const linkedIds = new Set(form.value.child_projects || [])
   const allProjects = props.projects || []
 
   const map = {}
@@ -471,6 +611,7 @@ const projectTreeNodes = computed(() => {
         name: id,
         label: p.project_name || p.name,
         value: id,
+        is_staged: false,
         expanded: true,
         children: [],
       }
@@ -487,6 +628,17 @@ const projectTreeNodes = computed(() => {
         roots.push(map[id])
       }
     }
+  })
+
+  stagedSubProjects.value.forEach(s => {
+    roots.push({
+      name: s.temp_id,
+      label: s.project_name,
+      value: s.temp_id,
+      is_staged: true,
+      expanded: true,
+      children: [],
+    })
   })
 
   return roots
@@ -508,6 +660,8 @@ onBeforeUnmount(() => {
 
 function fillForm(project) {
   if (!project) return
+  stagedSubProjects.value = []
+  newSubProjectName.value = ''
   const pId = project.raw_name || project.id || project.name
   const existingChildren = (props.projects || [])
     .filter(p => p.parent_project === pId || (project.raw_name && p.parent_project === project.raw_name) || (project.name && p.parent_project === project.name))
@@ -536,19 +690,25 @@ function fillForm(project) {
   }
 }
 
-watch(() => props.modelValue, (val) => {
-  if (val) {
-    submitted.value = false
-    leadQuery.value = ''
-    childProjectQuery.value = ''
-    selectedAddChild.value = null
-    if (props.editProject) {
-      fillForm(props.editProject)
-    } else {
-      form.value = defaultForm()
+watch(
+  () => [props.modelValue, props.editProject],
+  ([val, editProj]) => {
+    if (val) {
+      submitted.value = false
+      leadQuery.value = ''
+      childProjectQuery.value = ''
+      selectedAddChild.value = null
+      stagedSubProjects.value = []
+      newSubProjectName.value = ''
+      if (editProj) {
+        fillForm(editProj)
+      } else {
+        form.value = defaultForm()
+      }
     }
-  }
-})
+  },
+  { immediate: true },
+)
 
 function addMember() {
   form.value.project_team_members.push({
@@ -563,6 +723,8 @@ function addMember() {
 }
 
 function close() {
+  if (stagedSubProjects.value.length > 0 && !confirm('Sub-projects you added are not saved yet. Discard them?')) return
+  stagedSubProjects.value = []
   emit('update:modelValue', false)
 }
 
@@ -570,20 +732,48 @@ async function submit() {
   submitted.value = true
   if (!isValid.value) return
 
+  const pName = extractVal(form.value.project_name)
+  const pTeam = extractVal(form.value.team)
+  const pPriority = extractVal(form.value.priority) || 'Medium'
+  const pLead = extractVal(form.value.project_lead)
+  const pParent = extractVal(form.value.parent_project)
+
+  if (!pName) {
+    toast.error('Project Name is required.')
+    return
+  }
+  if (!pTeam) {
+    toast.error('Team is required.')
+    return
+  }
+
   saving.value = true
   try {
     const doc = {
       doctype: 'Taskflow Project',
-      project_name: form.value.project_name,
-      team: form.value.team,
+      project_name: pName,
+      team: pTeam,
       status: 'Draft',
-      priority: form.value.priority,
-      project_lead: form.value.project_lead || undefined,
+      priority: pPriority,
+      project_lead: pLead || undefined,
       start_date: form.value.start_date || undefined,
       end_date: form.value.end_date || undefined,
-      parent_project: form.value.parent_project || undefined,
+      parent_project: pParent || undefined,
       child_projects: form.value.child_projects,
-      project_team_members: form.value.project_team_members.filter(r => r.employee),
+      new_sub_projects: stagedSubProjects.value.map(s => ({
+        project_name: extractVal(s.project_name),
+        team: pTeam,
+        priority: pPriority,
+        project_lead: pLead || undefined,
+        start_date: form.value.start_date || undefined,
+        end_date: form.value.end_date || undefined,
+        project_team_members: form.value.project_team_members
+          .filter(r => extractVal(r.employee))
+          .map(r => ({ ...r, employee: extractVal(r.employee) })),
+      })),
+      project_team_members: form.value.project_team_members
+        .filter(r => extractVal(r.employee))
+        .map(r => ({ ...r, employee: extractVal(r.employee) })),
     }
 
     if (props.editProject) {
@@ -591,7 +781,13 @@ async function submit() {
     }
 
     const res = await saveProject(doc)
-    toast.success(props.editProject ? 'Project updated!' : 'Project created!')
+    const numSub = stagedSubProjects.value.length
+    if (numSub > 0) {
+      toast.success(props.editProject ? `Project updated with ${numSub} sub-project(s)!` : `Project created with ${numSub} sub-project(s)!`)
+    } else {
+      toast.success(props.editProject ? 'Project updated!' : 'Project created!')
+    }
+    stagedSubProjects.value = []
     emit(props.editProject ? 'update' : 'create', res.message)
     close()
   } catch (err) {

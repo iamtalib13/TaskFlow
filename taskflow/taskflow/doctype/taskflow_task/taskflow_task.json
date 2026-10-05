@@ -10,8 +10,8 @@
   "task_details_tab",
   "task_identity_section",
   "task_title",
-  "project",
-  "task_identity_column",
+   "project",
+   "task_identity_column",
   "team",
   "parent_task",
   "department",
@@ -74,15 +74,15 @@
    "label": "Task Title",
    "reqd": 1
   },
-  {
-   "fieldname": "project",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Project",
-   "options": "Taskflow Project"
-  },
-  {
+   {
+    "fieldname": "project",
+    "fieldtype": "Link",
+    "in_list_view": 1,
+    "in_standard_filter": 1,
+    "label": "Project",
+    "options": "Taskflow Project"
+   },
+   {
    "fieldname": "task_identity_column",
    "fieldtype": "Column Break"
   },

@@ -46,7 +46,7 @@
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
-                'px-3 py-2 whitespace-nowrap select-none',
+                dense ? 'px-1.5 py-2 whitespace-nowrap select-none' : 'px-3 py-2 whitespace-nowrap select-none',
                 col.sticky ? 'sticky z-40 bg-surface-gray-2 dark:bg-gray-900 border-r border-outline-gray-2/70 dark:border-gray-800' : '',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
               ]"
@@ -100,7 +100,7 @@
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
-                'px-2 py-1 font-normal bg-surface-gray-2 dark:bg-gray-900',
+                dense ? 'px-1 py-1 font-normal bg-surface-gray-2 dark:bg-gray-900' : 'px-2 py-1 font-normal bg-surface-gray-2 dark:bg-gray-900',
                 col.sticky ? 'sticky z-40 border-r border-outline-gray-2/70 dark:border-gray-800' : '',
               ]"
             >
@@ -214,7 +214,8 @@
                 left: col.sticky ? col.stickyLeft || '48px' : 'auto',
               }"
               :class="[
-                'px-3 py-2 whitespace-nowrap text-ink-gray-7 dark:text-gray-200 text-xs transition-colors truncate',
+                dense ? 'px-1.5 py-2' : 'px-3 py-2',
+                'whitespace-nowrap text-ink-gray-7 dark:text-gray-200 text-xs transition-colors truncate',
                 col.sticky ? 'sticky z-20 border-r border-outline-gray-1 dark:border-gray-800 font-medium' : '',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
                 isRowSelected(row)
@@ -406,6 +407,11 @@ export default {
       default: 'tasks',
     },
     virtualScroll: {
+      type: Boolean,
+      default: false,
+    },
+    // Tighter horizontal cell padding for wide tables with many columns
+    dense: {
       type: Boolean,
       default: false,
     },

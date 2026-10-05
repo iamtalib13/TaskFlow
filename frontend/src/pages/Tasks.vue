@@ -1,6 +1,7 @@
 <script setup>
 
 import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue'
+import dayjs from 'dayjs'
 import {
   Avatar,
   Badge,
@@ -117,6 +118,7 @@ import { SECTIONS, buildViewPath, cleanPath, parseView, getProjectsFromSearch, g
 import { writeToClipboard } from '@/utils/clipboard'
 import { downloadCsv } from '@/utils/csv'
 import { downloadWorkbook, downloadXlsx } from '@/utils/excel'
+import { formatHours } from '@/utils/formatters'
 
 // --- State & Data ---
 const MAX_VISIBLE = 5
@@ -799,16 +801,18 @@ function matchesTaskType(needle, value) {
 
 // Table View Columns (clean dynamic list view: ID, TYPE, TASK, PROJECT, TEAM, STATUS, PRIORITY, ASSIGNED TO, DUE DATE, MODIFIED)
 const tableColumns = [
-  { key: 'id', label: 'ID', width: '105px', minWidth: '95px', sortable: true, visible: true },
-  { key: 'task_type', label: 'TYPE', width: '85px', minWidth: '70px', align: 'center', sortable: true, visible: true },
+  { key: 'id', label: 'ID', width: '90px', minWidth: '80px', sortable: true, visible: true },
+  { key: 'task_type', label: 'TYPE', width: '70px', minWidth: '60px', align: 'center', sortable: true, visible: true },
   { key: 'title', label: 'TASK', width: 'auto', minWidth: '220px', sortable: true, visible: true },
-  { key: 'project', label: 'PROJECT', width: '160px', minWidth: '130px', sortable: true, visible: true },
-  { key: 'team', label: 'TEAM', width: '140px', minWidth: '110px', sortable: true, visible: true },
-  { key: 'status', label: 'STATUS', width: '130px', minWidth: '110px', sortable: true, visible: true },
-  { key: 'priority', label: 'PRIORITY', width: '100px', minWidth: '85px', align: 'center', sortable: true, visible: true },
-  { key: 'assigned_to', label: 'ASSIGNED TO', width: '160px', minWidth: '130px', sortable: true, visible: true },
-  { key: 'due_date', label: 'DUE DATE', width: '115px', minWidth: '100px', align: 'center', sortable: true, visible: true },
-  { key: 'modified', label: 'MODIFIED', width: '120px', minWidth: '105px', align: 'right', sortable: true, visible: true },
+  { key: 'project', label: 'PROJECT', width: '140px', minWidth: '110px', sortable: true, visible: true },
+  { key: 'team', label: 'TEAM', width: '95px', minWidth: '85px', sortable: true, visible: true },
+  { key: 'status', label: 'STATUS', width: '100px', minWidth: '90px', sortable: true, visible: true },
+  { key: 'priority', label: 'PRIORITY', width: '65px', minWidth: '60px', sortable: true, visible: true },
+  { key: 'assigned_to', label: 'ASSIGNED TO', width: '140px', minWidth: '115px', sortable: true, visible: true },
+  { key: 'start_date', label: 'START DATE', width: '95px', minWidth: '85px', align: 'center', sortable: true, visible: true },
+  { key: 'due_date', label: 'DUE DATE', width: '95px', minWidth: '85px', align: 'center', sortable: true, visible: true },
+  { key: 'age', label: 'AGE (DAYS)', width: '80px', minWidth: '70px', align: 'center', sortable: true, visible: true },
+  { key: 'modified', label: 'MODIFIED', width: '100px', minWidth: '90px', align: 'right', sortable: true, visible: true },
 ]
 
 // Per-column header filters (client-side, combined with the existing filters)
@@ -823,6 +827,9 @@ const columnFilters = ref({
   team: '',
   priority: '',
   assigned_to: '',
+  start_date: '',
+  due_date: '',
+  age: '',
   modified: '',
 })
 
@@ -848,6 +855,34 @@ function assigneeText(t) {
 // nothing.
 function modifiedSearchText(t) {
   return [t.modified_pretty, formatPrettyDate(t), t.modified].filter(Boolean).join(' ')
+}
+
+// Age in whole days since creation, computed client-side so it stays correct
+// for freshly created tasks and long-open tabs. Falls back to the server value.
+function getTaskAgeDays(t) {
+  if (t.creation) {
+    const created = new Date(String(t.creation).replace(' ', 'T'))
+    if (!isNaN(created)) {
+      const today = new Date()
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      const startOfCreated = new Date(created.getFullYear(), created.getMonth(), created.getDate())
+      return Math.max(0, Math.round((startOfToday - startOfCreated) / 86400000))
+    }
+  }
+  const age = parseInt(t.age, 10)
+  return isNaN(age) ? null : age
+}
+
+function taskAgeText(t) {
+  return [getTaskAgeDays(t), t.creation].filter((v) => v !== null && v !== '' && v !== undefined).join(' ')
+}
+
+function getAgeClass(row) {
+  const age = getTaskAgeDays(row)
+  if (age === null || age < 0) return 'text-ink-gray-4 dark:text-gray-500'
+  if (age > 30) return 'text-rose-600 dark:text-rose-400 font-bold'
+  if (age > 14) return 'text-amber-600 dark:text-amber-400'
+  return 'text-ink-gray-6 dark:text-gray-400'
 }
 
 const selectedRowKeys = ref([])
@@ -1190,6 +1225,9 @@ const visibleTasks = computed(() => {
       if (!matchesText(cf.team, t.team)) return false
       if (!matchesText(cf.priority, t.priority)) return false
       if (!matchesText(cf.assigned_to, assigneeText(t))) return false
+      if (!matchesText(cf.start_date, t.start_date)) return false
+      if (!matchesText(cf.due_date, t.due_date)) return false
+      if (!matchesText(cf.age, taskAgeText(t))) return false
       if (!matchesText(cf.modified, modifiedSearchText(t))) return false
       return true
     })
@@ -1202,6 +1240,10 @@ const visibleTasks = computed(() => {
       if (sortKey.value === 'due_date') {
         valA = a.due_date || a.due || ''
         valB = b.due_date || b.due || ''
+      }
+      if (sortKey.value === 'age') {
+        valA = getTaskAgeDays(a) ?? -1
+        valB = getTaskAgeDays(b) ?? -1
       }
       if (typeof valA === 'string') valA = valA.toLowerCase()
       if (typeof valB === 'string') valB = valB.toLowerCase()
@@ -1295,6 +1337,7 @@ const taskReportFields = {
   description: (t) => cleanHtmlText(t.description || ''),
   start_date: (t) => (t.start_date ? formatDateField(t.start_date) : ''),
   due_date: (t) => (t.due_date || t.due ? formatDateField(t.due_date || t.due) : ''),
+  age: (t) => getTaskAgeDays(t) ?? '',
   expected_resolution_date: (t) => (t.expected_resolution_date ? formatDateField(t.expected_resolution_date) : ''),
   completed_on: (t) => (t.completed_on ? formatDateField(t.completed_on) : ''),
   pending_with: (t) => t.pending_with || '',
@@ -2425,7 +2468,8 @@ const selectedTsDayFlatItems = computed(() => {
 })
 
 const selectedTsDayTotalHours = computed(() => {
-  return (selectedTsDayEntries.value || []).reduce((sum, ts) => sum + (Number(ts.total_hours) || 0), 0)
+  const sum = (selectedTsDayEntries.value || []).reduce((acc, ts) => acc + (Number(ts.total_hours) || 0), 0)
+  return Math.round((sum + Number.EPSILON) * 100) / 100
 })
 
 function formatTime12h(timeStr) {
@@ -2554,7 +2598,8 @@ const selectedTsUserImage = computed(() => {
 })
 
 const totalTsMonthlyHours = computed(() => {
-  return timesheetCalendarEvents.value.reduce((sum, ev) => sum + (Number(ev._hours) || 0), 0)
+  const sum = timesheetCalendarEvents.value.reduce((acc, ev) => acc + (Number(ev._hours) || 0), 0)
+  return Math.round((sum + Number.EPSILON) * 100) / 100
 })
 
 const tsWorkingDaysCount = computed(() => {
@@ -2562,8 +2607,8 @@ const tsWorkingDaysCount = computed(() => {
 })
 
 const tsAvgHoursPerDay = computed(() => {
-  if (!tsWorkingDaysCount.value) return '0.0'
-  return (totalTsMonthlyHours.value / tsWorkingDaysCount.value).toFixed(1)
+  if (!tsWorkingDaysCount.value) return '0.00'
+  return (totalTsMonthlyHours.value / tsWorkingDaysCount.value).toFixed(2)
 })
 
 async function loadTimesheetCalendar(user) {
@@ -2605,7 +2650,7 @@ async function loadTimesheetCalendar(user) {
 
     const mapped = (data || []).map((ts) => ({
       id: ts.name,
-      title: `${ts.total_hours}h logged`,
+      title: `${formatHours(ts.total_hours)}h logged`,
       fromDate: ts.date,
       toDate: ts.date,
       fromTime: '00:00',
@@ -4417,6 +4462,7 @@ onUnmounted(() => {
               :pagination="paginationInfo"
               :row-class="getTaskRowClass"
               :virtual-scroll="true"
+              dense
               @row-click="openDetail"
               @sort-change="handleSortChange"
               @load-more="handleLoadMore"
@@ -4592,6 +4638,12 @@ onUnmounted(() => {
                 <span v-else class="text-ink-gray-4 dark:text-gray-500 italic text-sm">Unassigned</span>
               </template>
 
+              <template #cell-start_date="{ row }">
+                <span class="font-mono text-xs text-ink-gray-6 dark:text-gray-400">
+                  {{ formatDueDate(row.start_date) }}
+                </span>
+              </template>
+
               <template #cell-due_date="{ row }">
                 <span
                   v-if="row.due_date || row.due"
@@ -4602,6 +4654,16 @@ onUnmounted(() => {
                   {{ formatDueDate(row.due_date || row.due) }}
                 </span>
                 <span v-else class="text-ink-gray-4 dark:text-gray-500">—</span>
+              </template>
+
+              <template #cell-age="{ row }">
+                <span
+                  class="text-xs font-medium"
+                  :class="getAgeClass(row)"
+                  :title="row.creation ? `Created: ${row.creation}` : ''"
+                >
+                  {{ getTaskAgeDays(row) ?? '—' }}
+                </span>
               </template>
 
               <template #cell-modified="{ row }">
@@ -4669,7 +4731,7 @@ onUnmounted(() => {
                   </template>
                   <template v-else>
                     <div class="text-center">
-                      <p class="text-sm font-bold text-emerald-600 dark:text-emerald-400 leading-none">{{ totalTsMonthlyHours }}h</p>
+                      <p class="text-sm font-bold text-emerald-600 dark:text-emerald-400 leading-none">{{ formatHours(totalTsMonthlyHours) }}h</p>
                       <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Logged</p>
                     </div>
                     <div class="text-center">
@@ -4793,7 +4855,7 @@ onUnmounted(() => {
                       <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-surface-base dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-md shadow-xs text-xs">
                         <span class="font-bold text-ink-gray-9 dark:text-gray-100">{{ ts.name }}</span>
                         <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">{{ ts.status }}</Badge>
-                        <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ ts.total_hours }}h</span>
+                        <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ formatHours(ts.total_hours) }}h</span>
                         <div v-if="ts.status !== 'Submitted'" class="flex items-center gap-0.5 ml-1 pl-1 border-l border-outline-gray-2 dark:border-gray-700">
                           <button
                             type="button"
@@ -4920,7 +4982,7 @@ onUnmounted(() => {
                         <!-- Duration -->
                         <ListCell class="justify-end">
                           <span class="text-xs font-bold text-ink-gray-9 dark:text-gray-100">
-                            {{ item.hrs ? Number(item.hrs).toFixed(1) + 'h' : '—' }}
+                            {{ item.hrs ? formatHours(item.hrs) + 'h' : '—' }}
                           </span>
                         </ListCell>
 
@@ -4948,7 +5010,7 @@ onUnmounted(() => {
                   <div class="flex items-center gap-3">
                     <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 rounded-lg">
                       <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">Day Total:</span>
-                      <span class="text-sm font-bold text-emerald-800 dark:text-emerald-200">{{ selectedTsDayTotalHours.toFixed(1) }} hrs</span>
+                      <span class="text-sm font-bold text-emerald-800 dark:text-emerald-200">{{ formatHours(selectedTsDayTotalHours) }} hrs</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-base dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg">
                       <span class="text-xs font-medium text-ink-gray-6 dark:text-gray-400">Total Entries:</span>
@@ -6120,7 +6182,7 @@ onUnmounted(() => {
           <span class="font-bold text-ink-gray-9 dark:text-white">{{ confirmSubmitTsTarget?.name }}</span>?
         </p>
         <p class="text-ink-gray-5 dark:text-gray-400">
-          Total Hours: <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ confirmSubmitTsTarget?.total_hours }}h</span>. Once submitted, the timesheet will be locked and cannot be edited.
+          Total Hours: <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ formatHours(confirmSubmitTsTarget?.total_hours) }}h</span>. Once submitted, the timesheet will be locked and cannot be edited.
         </p>
       </div>
     </Dialog>

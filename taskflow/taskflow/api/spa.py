@@ -113,6 +113,7 @@ def get_spa_bootstrap() -> dict:
 			"start_date",
 			"end_date",
 			"parent_project",
+			"group",
 			"modified",
 			"creation",
 		],
@@ -282,7 +283,7 @@ def get_spa_bootstrap() -> dict:
 			"due": str(t["due_date"]) if t.get("due_date") else "",
 			"due_date": str(t["due_date"]) if t.get("due_date") else "",
 			"creation": str(t["creation"]) if t.get("creation") else "",
-			"age": frappe.utils.pretty_date(t["creation"]) if t.get("creation") else "",
+			"age": str(frappe.utils.date_diff(frappe.utils.today(), t["creation"])) if t.get("creation") else "",
 			"modified": str(t["modified"]) if t.get("modified") else "",
 			"modified_pretty": frappe.utils.pretty_date(t["modified"]) if t.get("modified") else "",
 			"description": t.get("description") or "",
@@ -397,6 +398,7 @@ def get_spa_bootstrap() -> dict:
 				"start_date": str(p.get("start_date")) if p.get("start_date") else "",
 				"end_date": str(p.get("end_date")) if p.get("end_date") else "",
 				"parent_project": p.get("parent_project") or "",
+				"group": 1 if p.get("group") else 0,
 				"project_team_members": proj_members_map.get(p["name"], []),
 				"modified": str(p.get("modified")) if p.get("modified") else "",
 				"modified_pretty": frappe.utils.pretty_date(p["modified"]) if p.get("modified") else "",
@@ -431,6 +433,20 @@ def _parse_date(val):
 	except Exception:
 		return None
 
+def _extract_link(val):
+	if isinstance(val, dict):
+		v = val.get("value")
+		if v is not None and str(v).strip() != "":
+			val = v
+		else:
+			return None
+	if val is None:
+		return None
+	val_str = str(val).strip()
+	if not val_str or val_str.lower() in ("none", "null", "undefined", "—", "-"):
+		return None
+	return val_str
+
 @frappe.whitelist(methods=["POST"])
 @frappe.whitelist()
 def save_project(payload: str = None, **kwargs) -> dict:
@@ -443,45 +459,81 @@ def save_project(payload: str = None, **kwargs) -> dict:
 
 	existing_name = data.get("name")
 
+	child_projects_data = data.pop("child_projects", None) if isinstance(data, dict) else kwargs.get("child_projects")
+	new_sub_projects_data = data.pop("new_sub_projects", None) if isinstance(data, dict) else kwargs.get("new_sub_projects")
+
+	# Clean & normalize inputs
+	project_name = _extract_str(data.get("project_name"))
+	candidate_team = _extract_link(data.get("team"))
+	priority = _extract_str(data.get("priority")) or "Medium"
+	status = _extract_str(data.get("status")) or "Draft"
+	project_lead = _extract_link(data.get("project_lead"))
+	parent_project = _extract_link(data.get("parent_project"))
+	start_date = _parse_date(data.get("start_date"))
+	end_date = _parse_date(data.get("end_date"))
+
 	if existing_name and frappe.db.exists("Taskflow Project", existing_name):
 		if not can_write_project(current_user, existing_name):
 			frappe.throw(_("Not permitted to update project {0}").format(existing_name), frappe.PermissionError)
 		doc = frappe.get_doc("Taskflow Project", existing_name)
-		if "project_name" in data:
-			doc.project_name = data["project_name"]
-		if "team" in data:
-			doc.team = data["team"]
-		if "status" in data:
-			doc.status = data["status"]
-		if "priority" in data:
-			doc.priority = data["priority"]
-		if "project_lead" in data:
-			doc.project_lead = data["project_lead"]
-		if "start_date" in data:
-			doc.start_date = _parse_date(data["start_date"])
-		if "end_date" in data:
-			doc.end_date = _parse_date(data["end_date"])
-		if "parent_project" in data:
-			doc.parent_project = data["parent_project"]
+		if project_name:
+			doc.project_name = project_name
+		if candidate_team:
+			doc.team = candidate_team
+		doc.status = status
+		doc.priority = priority
+		doc.project_lead = project_lead
+		doc.parent_project = parent_project
+		doc.start_date = start_date
+		doc.end_date = end_date
 		if "project_team_members" in data:
 			doc.project_team_members = []
-			for m in data["project_team_members"]:
-				doc.append("project_team_members", m)
+			for m in (data.get("project_team_members") or []):
+				emp = _extract_link(m.get("employee")) if isinstance(m, dict) else _extract_link(m)
+				if emp:
+					doc.append("project_team_members", {
+						"employee": emp,
+						"user": m.get("user") if isinstance(m, dict) else None,
+						"read": m.get("read", 1) if isinstance(m, dict) else 1,
+						"write": m.get("write", 1) if isinstance(m, dict) else 1,
+						"team_role": m.get("team_role", "Team Member") if isinstance(m, dict) else "Team Member",
+						"access_level": m.get("access_level", "Operate") if isinstance(m, dict) else "Operate",
+						"is_active": m.get("is_active", 1) if isinstance(m, dict) else 1,
+					})
 		doc.save(ignore_permissions=True)
 	else:
-		candidate_team = data.get("team")
-		if candidate_team and not can_write_team(current_user, candidate_team) and not _has_global_access(current_user):
+		if not project_name:
+			frappe.throw(_("Project Name is required"))
+		if not candidate_team:
+			frappe.throw(_("Team is required"))
+		if not can_write_team(current_user, candidate_team) and not _has_global_access(current_user):
 			frappe.throw(_("Not permitted to create project under team {0}").format(candidate_team), frappe.PermissionError)
 		doc = frappe.new_doc("Taskflow Project")
-		if "start_date" in data:
-			data["start_date"] = _parse_date(data["start_date"])
-		if "end_date" in data:
-			data["end_date"] = _parse_date(data["end_date"])
-		doc.update(data)
+		doc.project_name = project_name
+		doc.team = candidate_team
+		doc.status = status
+		doc.priority = priority
+		doc.project_lead = project_lead
+		doc.parent_project = parent_project
+		doc.start_date = start_date
+		doc.end_date = end_date
+		if "project_team_members" in data:
+			for m in (data.get("project_team_members") or []):
+				emp = _extract_link(m.get("employee")) if isinstance(m, dict) else _extract_link(m)
+				if emp:
+					doc.append("project_team_members", {
+						"employee": emp,
+						"user": m.get("user") if isinstance(m, dict) else None,
+						"read": m.get("read", 1) if isinstance(m, dict) else 1,
+						"write": m.get("write", 1) if isinstance(m, dict) else 1,
+						"team_role": m.get("team_role", "Team Member") if isinstance(m, dict) else "Team Member",
+						"access_level": m.get("access_level", "Operate") if isinstance(m, dict) else "Operate",
+						"is_active": m.get("is_active", 1) if isinstance(m, dict) else 1,
+					})
 		doc.save(ignore_permissions=True)
 
-	if "child_projects" in data and doc.name:
-		selected_children = set(data.get("child_projects") or [])
+	if child_projects_data is not None and doc.name:
+		selected_children = set(child_projects_data or [])
 		curr_children = frappe.get_all("Taskflow Project", filters={"parent_project": doc.name}, pluck="name")
 		for child_name in curr_children:
 			if child_name not in selected_children:
@@ -489,6 +541,69 @@ def save_project(payload: str = None, **kwargs) -> dict:
 		for child_name in selected_children:
 			if child_name and child_name != doc.name and frappe.db.exists("Taskflow Project", child_name):
 				frappe.db.set_value("Taskflow Project", child_name, "parent_project", doc.name)
+
+	if new_sub_projects_data and doc.name:
+		for sub in new_sub_projects_data:
+			sub_name = _extract_str(sub.get("project_name")) if isinstance(sub, dict) else ""
+			if not sub_name:
+				continue
+			sub_team = _extract_link(sub.get("team")) or doc.team
+			sub_lead = _extract_link(sub.get("project_lead")) or doc.project_lead
+			sub_priority = _extract_str(sub.get("priority")) or doc.priority or "Medium"
+			sub_status = _extract_str(sub.get("status")) or "Draft"
+
+			sub_doc = frappe.new_doc("Taskflow Project")
+			sub_doc.project_name = sub_name
+			sub_doc.parent_project = doc.name
+			sub_doc.team = sub_team
+			sub_doc.priority = sub_priority
+			sub_doc.status = sub_status
+			sub_doc.project_lead = sub_lead
+			if sub.get("start_date") or doc.start_date:
+				sub_doc.start_date = _parse_date(sub.get("start_date") or doc.start_date)
+			if sub.get("end_date") or doc.end_date:
+				sub_doc.end_date = _parse_date(sub.get("end_date") or doc.end_date)
+
+			members_to_copy = sub.get("project_team_members")
+			if members_to_copy is None and getattr(doc, "project_team_members", None):
+				members_to_copy = [m.as_dict() for m in doc.project_team_members]
+
+			if members_to_copy:
+				for m in members_to_copy:
+					emp = _extract_link(m.get("employee")) if isinstance(m, dict) else _extract_link(m)
+					if emp:
+						sub_doc.append("project_team_members", {
+							"employee": emp,
+							"user": m.get("user") if isinstance(m, dict) else None,
+							"read": m.get("read", 1) if isinstance(m, dict) else 1,
+							"write": m.get("write", 1) if isinstance(m, dict) else 1,
+							"team_role": m.get("team_role", "Team Member") if isinstance(m, dict) else "Team Member",
+							"access_level": m.get("access_level", "Operate") if isinstance(m, dict) else "Operate",
+							"is_active": m.get("is_active", 1) if isinstance(m, dict) else 1,
+						})
+			sub_doc.save(ignore_permissions=True)
+
+	# Auto-set group=1 on any project that has become a parent (i.e. has sub-projects linked to it)
+	# Collect all parent IDs that were affected in this call
+	_parent_ids_to_mark = set()
+
+	# 1. The current doc has a parent_project — mark that parent
+	if parent_project and frappe.db.exists("Taskflow Project", parent_project):
+		_parent_ids_to_mark.add(parent_project)
+
+	# 2. Child projects were linked to the current doc — the current doc is now a parent
+	if child_projects_data:
+		_parent_ids_to_mark.add(doc.name)
+
+	# 3. New sub-projects were created under the current doc — the current doc is now a parent
+	if new_sub_projects_data:
+		_parent_ids_to_mark.add(doc.name)
+
+	for _pid in _parent_ids_to_mark:
+		if _pid and frappe.db.exists("Taskflow Project", _pid):
+			current_group = frappe.db.get_value("Taskflow Project", _pid, "group")
+			if not current_group:
+				frappe.db.set_value("Taskflow Project", _pid, "group", 1, update_modified=False)
 
 	res = doc.as_dict()
 	res["modified"] = str(doc.modified) if getattr(doc, "modified", None) else ""
@@ -750,7 +865,7 @@ def save_task(payload: str = None, **kwargs) -> dict:
 		"due": str(doc.due_date) if doc.due_date else "",
 		"due_date": str(doc.due_date) if doc.due_date else "",
 		"creation": str(doc.creation) if getattr(doc, "creation", None) else "",
-		"age": frappe.utils.pretty_date(doc.creation) if getattr(doc, "creation", None) else "Just now",
+		"age": str(frappe.utils.date_diff(frappe.utils.today(), doc.creation)) if getattr(doc, "creation", None) else "",
 		"modified": str(doc.modified) if getattr(doc, "modified", None) else "",
 		"modified_pretty": frappe.utils.pretty_date(doc.modified) if getattr(doc, "modified", None) else "Just now",
 		"description": doc.description or "",

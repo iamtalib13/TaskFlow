@@ -270,13 +270,13 @@
                     {{ formatHoursVal(row.daily_hours[d.date]) }}
                   </span>
                   <span v-else class="hours-zero-text">
-                    0.0
+                    0.00
                   </span>
                 </td>
 
                 <!-- Weekly Total Hours -->
                 <td class="px-2 py-2.5 text-right font-mono border-r border-outline-gray-1 dark:border-gray-800" :class="row.weekly_total > 0 ? 'hours-total-active' : 'text-ink-gray-4 dark:text-gray-500'">
-                  {{ row.weekly_total.toFixed(1) }}
+                  {{ formatHoursVal(row.weekly_total) }}
                 </td>
 
                 <!-- Weekly % Progress Bar -->
@@ -301,7 +301,7 @@
 
                 <!-- Monthly Total Hours -->
                 <td class="px-2 py-2.5 text-right font-mono border-r border-outline-gray-1 dark:border-gray-800" :class="row.monthly_total > 0 ? 'hours-total-active' : 'text-ink-gray-4 dark:text-gray-500'">
-                  {{ row.monthly_total.toFixed(1) }}
+                  {{ formatHoursVal(row.monthly_total) }}
                 </td>
 
                 <!-- Monthly % Progress Bar -->
@@ -587,8 +587,10 @@ function formatShortDate(iso) {
 }
 
 function formatHoursVal(val) {
-  if (val === undefined || val === null || val === 0) return '0.0'
-  return Number(val).toFixed(1)
+  if (val === undefined || val === null || val === '') return '0.00'
+  const n = Number(val)
+  if (isNaN(n) || n === 0) return '0.00'
+  return n.toFixed(2)
 }
 
 function getProgressColorClass(pct) {
@@ -752,15 +754,15 @@ function exportToCSV() {
   const csvRows = [headers.join(',')]
 
   for (const r of rows.value) {
-    const dayVals = dayCols.map((d) => (r.daily_hours[d] || 0).toFixed(1))
+    const dayVals = dayCols.map((d) => (r.daily_hours[d] || 0).toFixed(2))
     const rowData = [
       r.idx,
       `"${r.employee_name}"`,
       `"${r.employee_id}"`,
       ...dayVals,
-      r.weekly_total.toFixed(1),
+      r.weekly_total.toFixed(2),
       `${r.weekly_pct}%`,
-      r.monthly_total.toFixed(1),
+      r.monthly_total.toFixed(2),
       `${r.monthly_pct}%`,
     ]
     csvRows.push(rowData.join(','))

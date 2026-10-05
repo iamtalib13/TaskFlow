@@ -21,7 +21,7 @@ class TaskflowTimesheet(Document):
 		total = 0
 		for item in self.get("table_pfiw", []):
 			total += flt(item.hrs)
-		self.total_working_hours = total
+		self.total_working_hours = round(flt(total), 2)
 
 	def autoname(self):
 		user = frappe.get_cached_value("User", self.user, "full_name") or self.user

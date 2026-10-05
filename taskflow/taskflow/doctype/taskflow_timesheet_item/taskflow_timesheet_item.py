@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import get_datetime, time_diff_in_seconds
+from frappe.utils import get_datetime, time_diff_in_seconds, flt
 
 
 class TaskflowTimesheetItem(Document):
@@ -16,5 +16,5 @@ class TaskflowTimesheetItem(Document):
 		if self.from_time and self.to_time:
 			from_dt = get_datetime(self.from_time)
 			to_dt = get_datetime(self.to_time)
-			self.hrs = time_diff_in_seconds(to_dt, from_dt) / 3600
+			self.hrs = round(flt(time_diff_in_seconds(to_dt, from_dt) / 3600), 2)
 			frappe.logger().debug(f"Calculated hours: {self.hrs}")

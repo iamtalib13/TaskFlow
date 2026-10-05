@@ -27,6 +27,7 @@
   "expected_hours",
   "is_template",
   "is_archived",
+  "group",
   "project_team_members_section",
   "project_team_members",
   "project_description_section",
@@ -182,11 +183,17 @@
    "fieldname": "_attachment",
    "fieldtype": "Attach",
    "label": "Attachment"
+  },
+  {
+   "default": "0",
+   "fieldname": "group",
+   "fieldtype": "Check",
+   "label": "Group"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-05 13:58:09.044880",
+ "modified": "2026-10-05 16:10:45.358102",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Project",

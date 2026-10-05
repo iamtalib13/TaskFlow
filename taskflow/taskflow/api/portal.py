@@ -2223,6 +2223,8 @@ def get_member_timesheets(user: str, from_date: str = "", to_date: str = "") -> 
             t_info = task_info_map.get(item.get("task"))
             item["task_title"] = t_info.get("task_title") if t_info else ""
             item["task_status"] = t_info.get("status") if t_info else ""
+            if item.get("hrs") is not None:
+                item["hrs"] = round(flt(item.get("hrs") or 0), 2)
             items_map.setdefault(item["parent"], []).append(item)
 
     result = []
@@ -2231,7 +2233,7 @@ def get_member_timesheets(user: str, from_date: str = "", to_date: str = "") -> 
             "name": ts.name,
             "user": ts.user,
             "date": str(ts.timesheet_date),
-            "total_hours": ts.total_working_hours or 0,
+            "total_hours": round(flt(ts.total_working_hours or 0), 2),
             "status": ts.status,
             "items": items_map.get(ts.name, []),
         })
@@ -2259,6 +2261,9 @@ def get_all_timesheets(from_date: str = "", to_date: str = "", user: str = "") -
         fields=["name", "user", "employee_name", "timesheet_date", "total_working_hours", "status"],
         order_by="timesheet_date desc",
     )
+    for ts in timesheets:
+        if ts.get("total_working_hours") is not None:
+            ts["total_working_hours"] = round(flt(ts.get("total_working_hours") or 0), 2)
     return timesheets
 
 
@@ -2298,7 +2303,7 @@ def save_timesheet(date: str, items: list[dict] = None, status: str = "Draft") -
         ts.insert(ignore_permissions=True)
 
     frappe.db.commit()
-    return {"name": ts.name, "total_hours": ts.total_working_hours, "status": ts.status}
+    return {"name": ts.name, "total_hours": round(flt(ts.total_working_hours or 0), 2), "status": ts.status}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -2518,10 +2523,10 @@ def get_timesheet_master_report(
         if u:
             users_with_timesheets.add(u)
         d_str = str(ts.get("timesheet_date"))
-        hrs = flt(ts.get("total_working_hours") or 0)
+        hrs = round(flt(ts.get("total_working_hours") or 0), 2)
         
-        user_day_hours.setdefault(u, {})[d_str] = user_day_hours.setdefault(u, {}).get(d_str, 0) + hrs
-        user_total_period_hours[u] = user_total_period_hours.get(u, 0) + hrs
+        user_day_hours.setdefault(u, {})[d_str] = round(user_day_hours.setdefault(u, {}).get(d_str, 0) + hrs, 2)
+        user_total_period_hours[u] = round(user_total_period_hours.get(u, 0) + hrs, 2)
 
     # 2. Fetch all employees associated with Taskflow Teams or Projects (member or lead)
     # Collect employee IDs and user IDs from Taskflow Team Member, Team Lead, and Project Lead

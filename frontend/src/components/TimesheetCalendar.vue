@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { Button, Skeleton } from 'frappe-ui'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { formatHours } from '@/utils/formatters'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -57,7 +58,10 @@ const hoursMap = computed(() => {
     const date = ev.fromDate || ev.date
     if (!date) continue
     if (!map[date]) map[date] = 0
-    map[date] += ev._hours || ev.total_hours || 0
+    map[date] += Number(ev._hours || ev.total_hours || 0)
+  }
+  for (const k in map) {
+    map[k] = Math.round((map[k] + Number.EPSILON) * 100) / 100
   }
   return map
 })
@@ -102,12 +106,13 @@ const weeklyTotals = computed(() => {
     for (const cell of week) {
       total += hoursMap.value[cell.key] || 0
     }
-    return total
+    return Math.round((total + Number.EPSILON) * 100) / 100
   })
 })
 
 const totalMonthlyHours = computed(() => {
-  return Object.values(hoursMap.value).reduce((a, b) => a + b, 0)
+  const sum = Object.values(hoursMap.value).reduce((a, b) => a + b, 0)
+  return Math.round((sum + Number.EPSILON) * 100) / 100
 })
 
 const workingDaysCount = computed(() => {
@@ -115,8 +120,8 @@ const workingDaysCount = computed(() => {
 })
 
 const avgHoursPerDay = computed(() => {
-  if (!workingDaysCount.value) return 0
-  return (totalMonthlyHours.value / workingDaysCount.value).toFixed(1)
+  if (!workingDaysCount.value) return '0.00'
+  return (totalMonthlyHours.value / workingDaysCount.value).toFixed(2)
 })
 
 function isToday(key) {
@@ -289,7 +294,7 @@ function getDayNumberClass(cell, dayOfWeek) {
                     'bg-red-100 dark:bg-red-900/40 text-red-500 dark:text-red-400': !hoursMap[cell.key],
                   }"
                 >
-                  {{ hoursMap[cell.key].toFixed(1) }}h
+                  {{ formatHours(hoursMap[cell.key]) }}h
                 </span>
               </div>
 
@@ -317,7 +322,7 @@ function getDayNumberClass(cell, dayOfWeek) {
               class="text-[11px] font-bold"
               :class="weeklyTotals[wIdx] > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-400 dark:text-red-500'"
             >
-              {{ weeklyTotals[wIdx].toFixed(1) }}h
+              {{ formatHours(weeklyTotals[wIdx]) }}h
             </span>
           </div>
         </div>
