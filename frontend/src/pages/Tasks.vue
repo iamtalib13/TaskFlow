@@ -1867,7 +1867,8 @@ const selectedUserProjects = computed(() => {
     if (!pName) continue
 
     if (p.project_lead && String(p.project_lead).toLowerCase() === memberVal) {
-      projectSet.add(pName)
+      if (p.name) projectSet.add(p.name)
+      if (p.project_name) projectSet.add(p.project_name)
       continue
     }
 
@@ -1878,7 +1879,8 @@ const selectedUserProjects = computed(() => {
         return emp === memberVal || usr === memberVal
       })
       if (isMember) {
-        projectSet.add(pName)
+        if (p.name) projectSet.add(p.name)
+        if (p.project_name) projectSet.add(p.project_name)
         continue
       }
     }
@@ -2066,7 +2068,7 @@ const teamBarChart = computed(() => memberPendingBarChart.value)
 
 // --- 2. Project List View State & Columns ---
 const selectedProjectTeamFilter = ref('')
-const projectStatusTab = ref('All')
+const projectListSearchQuery = ref('')
 const selectedProjectKeys = ref([])
 const projectTableColumns = [
   { key: 'sr_no', label: 'SR', width: '42px', minWidth: '36px', align: 'center', sortable: false, visible: true },
@@ -2164,8 +2166,15 @@ const projectsData = computed(() => {
   }
 
   return projects.value.map((proj) => {
-    const pName = proj.name || proj.project_name
-    const pTasks = tasksByProject.get(pName) || []
+    const pTitle = proj.project_name || proj.name || ''
+    const pTasksById = tasksByProject.get(proj.name) || []
+    const pTasksByTitle = (proj.project_name && proj.project_name !== proj.name)
+      ? (tasksByProject.get(proj.project_name) || [])
+      : []
+    const taskMap = new Map()
+    pTasksById.forEach((t) => taskMap.set(t.name, t))
+    pTasksByTitle.forEach((t) => taskMap.set(t.name, t))
+    const pTasks = Array.from(taskMap.values())
     const completedTasks = pTasks.filter((t) => t.status === 'Completed').length
     const pct = pTasks.length > 0 ? Math.round((completedTasks / pTasks.length) * 100) : 0
 
@@ -2216,7 +2225,9 @@ const projectsData = computed(() => {
 
     return {
       id: proj.name,
-      name: pName,
+      raw_name: proj.name,
+      name: pTitle,
+      project_name: pTitle,
       status: proj.status || (completedTasks === pTasks.length && pTasks.length > 0 ? 'Completed' : 'Draft'),
       team: proj.team || 'Unassigned',
       lead: leadName,
@@ -2232,51 +2243,37 @@ const projectsData = computed(() => {
       start_date: proj.start_date || '',
       end_date: proj.end_date || proj.due_date || '',
       parent_project: proj.parent_project || '',
+      parent_project_title: getProjectDisplayName(proj.parent_project),
       modified: proj.modified || '',
       modified_pretty: proj.modified_pretty || '',
     }
   })
 })
 
-// Dynamic Project status tab options with badge counts
-const projectStatusOptions = computed(() => {
-  const counts = { All: 0, Draft: 0, Open: 0, 'In Progress': 0, Completed: 0, Cancelled: 0 }
-  let baseList = projectsData.value
-
-  const filterTeam = typeof selectedProjectTeamFilter.value === 'object'
-    ? selectedProjectTeamFilter.value.value
-    : selectedProjectTeamFilter.value
-  if (filterTeam) {
-    baseList = baseList.filter(p => p.team === filterTeam)
-  }
-
-  const filterEmp = typeof selectedProjectMemberFilter.value === 'object'
-    ? selectedProjectMemberFilter.value.value
-    : selectedProjectMemberFilter.value
-  if (filterEmp) {
-    baseList = baseList.filter(p => p.member_ids && p.member_ids.has(filterEmp))
-  }
-
-  counts.All = baseList.length
-  baseList.forEach(p => {
-    const s = p.status || 'Draft'
-    if (counts[s] !== undefined) {
-      counts[s]++
-    }
-  })
-
-  return [
-    { label: `All (${counts.All})`, value: 'All' },
-    { label: `Draft (${counts.Draft})`, value: 'Draft' },
-    { label: `Open (${counts.Open})`, value: 'Open' },
-    { label: `In Progress (${counts['In Progress']})`, value: 'In Progress' },
-    { label: `Completed (${counts.Completed})`, value: 'Completed' },
-    { label: `Cancelled (${counts.Cancelled})`, value: 'Cancelled' },
-  ]
-})
-
 const filteredProjectsData = computed(() => {
   let list = projectsData.value
+
+  const q = (projectListSearchQuery.value || '').trim().toLowerCase()
+  if (q) {
+    list = list.filter((p) => {
+      const name = (p.name || '').toLowerCase()
+      const pName = (p.project_name || '').toLowerCase()
+      const id = (p.id || '').toLowerCase()
+      const team = (p.team || '').toLowerCase()
+      const lead = (p.lead || '').toLowerCase()
+      const status = (p.status || '').toLowerCase()
+      const parent = (p.parent_project_title || p.parent_project || '').toLowerCase()
+      return (
+        name.includes(q) ||
+        pName.includes(q) ||
+        id.includes(q) ||
+        team.includes(q) ||
+        lead.includes(q) ||
+        status.includes(q) ||
+        parent.includes(q)
+      )
+    })
+  }
 
   if (selectedProjectTeamFilter.value) {
     const filterVal = typeof selectedProjectTeamFilter.value === 'object' 
@@ -2297,10 +2294,6 @@ const filteredProjectsData = computed(() => {
     }
   }
 
-  if (projectStatusTab.value && projectStatusTab.value !== 'All') {
-    list = list.filter(p => p.status === projectStatusTab.value)
-  }
-
   return list
 })
 
@@ -2313,7 +2306,7 @@ function handleProjectSortChange({ key, order }) {
   projectSortDirection.value = order
 }
 
-watch([selectedProjectTeamFilter, selectedProjectMemberFilter, projectStatusTab], () => {
+watch([selectedProjectTeamFilter, selectedProjectMemberFilter, projectListSearchQuery], () => {
   projectsDisplayLimit.value = 50
 })
 
@@ -3105,9 +3098,11 @@ function handleProjectUpdated() {
 }
 
 async function deleteProjectConfirm(project) {
-  if (!confirm(`Delete project "${project.name}"? This cannot be undone.`)) return
+  const pTitle = project.project_name || project.name
+  const pDocName = project.raw_name || project.id || project.name
+  if (!confirm(`Delete project "${pTitle}"? This cannot be undone.`)) return
   try {
-    await deleteProject(project.name)
+    await deleteProject(pDocName)
     toast.success('Project deleted!')
     loadData()
   } catch (e) {
@@ -4990,13 +4985,30 @@ onUnmounted(() => {
 
         <!-- 3. PROJECT VIEW (List view with CommonListView + Pagination) -->
         <template v-else-if="activeSection === 'Project'">
-          <!-- Sub-Header Tabs & Project Count (Locked sticky filter header) -->
+          <!-- Sub-Header Search & Filters (Locked sticky filter header) -->
           <div class="shrink-0 pb-2 mb-2 bg-surface-base flex flex-wrap items-center justify-between gap-2 border-b border-outline-gray-1">
-            <div class="flex items-center gap-2">
-              <TabButtons
-                v-model="projectStatusTab"
-                :options="projectStatusOptions"
-              />
+            <div class="flex items-center gap-2 flex-1 max-w-xs sm:max-w-sm">
+              <TextInput
+                v-model="projectListSearchQuery"
+                type="search"
+                size="sm"
+                placeholder="Search projects..."
+                class="w-full"
+              >
+                <template #prefix>
+                  <Search class="size-4 text-ink-gray-5" aria-hidden="true" />
+                </template>
+                <template v-if="projectListSearchQuery" #suffix>
+                  <button
+                    type="button"
+                    class="p-0.5 text-ink-gray-5 hover:text-ink-gray-9 transition-colors rounded focus:outline-none"
+                    title="Clear search"
+                    @click="projectListSearchQuery = ''"
+                  >
+                    <XIcon class="size-3.5" />
+                  </button>
+                </template>
+              </TextInput>
             </div>
             <div class="flex items-center gap-3 text-xs font-medium text-ink-gray-6">
               <Combobox
@@ -5064,13 +5076,16 @@ onUnmounted(() => {
                 <div class="flex items-center gap-2">
                   <Folder class="size-4 text-blue-500 shrink-0" />
                   <div class="min-w-0">
-                    <div class="truncate font-semibold text-sm text-ink-gray-8 dark:text-gray-100">{{ row.name }}</div>
+                    <div class="truncate font-semibold text-sm text-ink-gray-8 dark:text-gray-100">{{ row.project_name || row.name }}</div>
+                    <div v-if="row.id && row.id !== (row.project_name || row.name)" class="text-[11px] font-mono text-ink-gray-4 dark:text-gray-400 leading-tight">
+                      {{ row.id }}
+                    </div>
                   </div>
                 </div>
               </template>
 
               <template #cell-parent_project="{ row }">
-                <span class="text-xs text-ink-gray-7 dark:text-gray-300 truncate">{{ row.parent_project || '—' }}</span>
+                <span class="text-xs text-ink-gray-7 dark:text-gray-300 truncate">{{ row.parent_project_title || getProjectDisplayName(row.parent_project) }}</span>
               </template>
 
               <template #cell-status="{ row }">

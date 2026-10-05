@@ -418,7 +418,7 @@ const childProjectQuery = ref('')
 const selectedAddChild = ref(null)
 
 const availableChildProjectOptions = computed(() => {
-  const currentId = props.editProject ? (props.editProject.name || props.editProject.id) : null
+  const currentId = props.editProject ? (props.editProject.raw_name || props.editProject.id || props.editProject.name) : null
   const q = childProjectQuery.value.trim()
 
   let list = (props.projects || []).filter(p => {
@@ -508,13 +508,13 @@ onBeforeUnmount(() => {
 
 function fillForm(project) {
   if (!project) return
-  const pName = project.name || project.project_name || project.id
+  const pId = project.raw_name || project.id || project.name
   const existingChildren = (props.projects || [])
-    .filter(p => p.parent_project === pName)
+    .filter(p => p.parent_project === pId || (project.raw_name && p.parent_project === project.raw_name) || (project.name && p.parent_project === project.name))
     .map(p => p.name || p.project_name)
 
   form.value = {
-    project_name: project.name || project.project_name || '',
+    project_name: project.project_name || (project.name !== pId ? project.name : '') || project.name || '',
     team: project.team || '',
     priority: project.priority || 'Medium',
     project_lead: project.project_lead || project.lead || '',
@@ -587,7 +587,7 @@ async function submit() {
     }
 
     if (props.editProject) {
-      doc.name = props.editProject.name || props.editProject.id
+      doc.name = props.editProject.raw_name || props.editProject.id || props.editProject.name
     }
 
     const res = await saveProject(doc)
