@@ -551,6 +551,15 @@ const taskTeamOptions = computed(() => {
 // their teams + projects they are a member of), narrowed by the team selection.
 const selectedProjects = ref(typeof window !== 'undefined' ? getProjectsFromSearch(window.location.search) : [])
 
+// name (P1) → project_name (Management Tracker) lookup map
+const projectNameMap = computed(() => {
+  const map = new Map()
+  ;(projects.value || []).forEach((p) => {
+    if (p.name) map.set(p.name, p.project_name || p.display_name || p.name)
+  })
+  return map
+})
+
 const projectOptions = computed(() => {
   const chosenTeams = selectedTeams.value && selectedTeams.value.length > 0 ? selectedTeams.value : null
   const map = new Map()
@@ -857,16 +866,17 @@ function modifiedSearchText(t) {
   return [t.modified_pretty, formatPrettyDate(t), t.modified].filter(Boolean).join(' ')
 }
 
-// Age in whole days since creation, computed client-side so it stays correct
+// Age in whole days since start_date (fallback: creation), computed client-side so it stays correct
 // for freshly created tasks and long-open tabs. Falls back to the server value.
 function getTaskAgeDays(t) {
-  if (t.creation) {
-    const created = new Date(String(t.creation).replace(' ', 'T'))
-    if (!isNaN(created)) {
+  const base = t.start_date || t.creation
+  if (base) {
+    const d = new Date(String(base).replace(' ', 'T'))
+    if (!isNaN(d)) {
       const today = new Date()
       const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      const startOfCreated = new Date(created.getFullYear(), created.getMonth(), created.getDate())
-      return Math.max(0, Math.round((startOfToday - startOfCreated) / 86400000))
+      const startOfBase  = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      return Math.max(0, Math.round((startOfToday - startOfBase) / 86400000))
     }
   }
   const age = parseInt(t.age, 10)
@@ -4588,8 +4598,8 @@ onUnmounted(() => {
               </template>
 
               <template #cell-project="{ row }">
-                <span class="text-xs font-medium text-ink-gray-7 dark:text-gray-300 truncate block w-full" :title="row.project">
-                  {{ row.project }}
+                <span class="text-xs font-medium text-ink-gray-7 dark:text-gray-300 truncate block w-full" :title="projectNameMap.get(row.project) || row.project">
+                  {{ projectNameMap.get(row.project) || row.project }}
                 </span>
               </template>
 
