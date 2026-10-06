@@ -325,7 +325,7 @@
                     variant="subtle"
                     class="w-full"
                     trigger="button"
-                    @update:modelValue="(val) => { if (val && !form.assignees.includes(val.value || val)) form.assignees.push(val.value || val); assigneeSearchQuery = '' }"
+                    @update:modelValue="addAssignee"
                   />
                 </div>
               </div>
@@ -1186,6 +1186,7 @@ export default {
       ]
 
       // Show each employee only once, even if they belong to multiple teams
+      const selected = new Set((this.form.assignees || []).map((a) => this.canonicalAssignee(a)))
       const seen = new Set()
       const options = []
       for (const m of members) {
@@ -1194,6 +1195,7 @@ export default {
         if (!value || seen.has(key) || seen.has(value)) continue
         seen.add(key)
         seen.add(value)
+        if (selected.has(value)) continue
         options.push({ value, label: m.employee_name || m.user || m.employee, employee: m.employee || '' })
       }
 
@@ -1304,7 +1306,7 @@ export default {
             project: t.project || '',
             parent_project: t.parent_project || '',
             team: matchedTeam || '',
-            assignees: assigneesList,
+            assignees: this.normalizeAssignees(assigneesList),
             assigned_to: t.assigned_to || '',
             owner: t.owner || '',
             reporter: t.reporter || t.owner || '',
@@ -1396,9 +1398,42 @@ export default {
     document.addEventListener('click', this.handlePendingFromClickOutside)
   },
   methods: {
+    // Resolve any assignee form (user, employee id or name) to one canonical value
+    canonicalAssignee(assignee) {
+      const val = this.getAssigneeValue(assignee)
+      if (!val) return ''
+      const lower = String(val).toLowerCase()
+      const member = [...(this.allAssignableMembers || []), ...(this.allAvailableTeamMembers || [])].find(
+        (m) =>
+          m.user === val ||
+          m.employee === val ||
+          (m.employee_name && m.employee_name.toLowerCase() === lower)
+      )
+      return member ? member.user || member.employee : val
+    },
+    normalizeAssignees(list) {
+      const seen = new Set()
+      const result = []
+      for (const a of list || []) {
+        const key = this.canonicalAssignee(a)
+        if (key && !seen.has(key)) {
+          seen.add(key)
+          result.push(key)
+        }
+      }
+      return result
+    },
+    addAssignee(option) {
+      const value = option && (option.value || option)
+      if (value) {
+        this.form.assignees = this.normalizeAssignees([...(this.form.assignees || []), value])
+      }
+      this.assigneeSearchQuery = ''
+    },
     async loadAllAssignableMembers() {
       try {
         this.allAssignableMembers = await fetchAllAssignableMembers()
+        this.form.assignees = this.normalizeAssignees(this.form.assignees)
       } catch (err) {
         console.warn('Failed to load assignable members:', err)
       }
@@ -1543,7 +1578,8 @@ export default {
     },
     removeAssignee(assignee) {
       const targetVal = this.getAssigneeValue(assignee)
-      this.form.assignees = this.form.assignees.filter((a) => this.getAssigneeValue(a) !== targetVal)
+      const targetKey = this.canonicalAssignee(targetVal)
+      this.form.assignees = this.form.assignees.filter((a) => this.canonicalAssignee(a) !== targetKey)
     },
     onStatusChange(val) {
       const statusVal = typeof val === 'object' && val ? (val.value || val.label) : val
