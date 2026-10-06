@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { Button, Skeleton } from 'frappe-ui'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { formatHours } from '@/utils/formatters'
+import { formatHours, formatDuration } from '@/utils/formatters'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -294,7 +294,7 @@ function getDayNumberClass(cell, dayOfWeek) {
                     'bg-red-100 dark:bg-red-900/40 text-red-500 dark:text-red-400': !hoursMap[cell.key],
                   }"
                 >
-                  {{ formatHours(hoursMap[cell.key]) }}h
+                  {{ formatDuration(hoursMap[cell.key]) }}
                 </span>
               </div>
 
@@ -322,7 +322,7 @@ function getDayNumberClass(cell, dayOfWeek) {
               class="text-[11px] font-bold"
               :class="weeklyTotals[wIdx] > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-400 dark:text-red-500'"
             >
-              {{ formatHours(weeklyTotals[wIdx]) }}h
+              {{ formatDuration(weeklyTotals[wIdx]) }}
             </span>
           </div>
         </div>

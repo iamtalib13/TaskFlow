@@ -400,7 +400,7 @@
                   {{ ts.status }}
                 </span>
                 <span class="font-bold text-ink-gray-9 dark:text-white">
-                  Total: {{ formatHoursVal(ts.total_hours) }}h
+                  Total: {{ formatHoursVal(ts.total_hours) }}
                 </span>
               </div>
             </div>
@@ -454,6 +454,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { Button, Avatar, Skeleton, Dialog } from 'frappe-ui'
+import { formatDuration } from '@/utils/formatters'
 import {
   Clock,
   Calendar,
@@ -587,10 +588,7 @@ function formatShortDate(iso) {
 }
 
 function formatHoursVal(val) {
-  if (val === undefined || val === null || val === '') return '0.00'
-  const n = Number(val)
-  if (isNaN(n) || n === 0) return '0.00'
-  return n.toFixed(2)
+  return formatDuration(val)
 }
 
 function getProgressColorClass(pct) {

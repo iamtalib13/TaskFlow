@@ -119,7 +119,7 @@ import { SECTIONS, buildViewPath, cleanPath, parseView, getProjectsFromSearch, g
 import { writeToClipboard } from '@/utils/clipboard'
 import { downloadCsv } from '@/utils/csv'
 import { downloadWorkbook, downloadXlsx } from '@/utils/excel'
-import { formatHours } from '@/utils/formatters'
+import { formatHours, formatDuration } from '@/utils/formatters'
 
 // --- State & Data ---
 const MAX_VISIBLE = 5
@@ -440,7 +440,7 @@ const navItems = computed(() => {
   return [
     { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: '' },
     { id: 'Task', label: 'Task', icon: CheckSquare, badge: taskCount.length },
-    { id: 'Timesheet', label: 'Timesheet', icon: Clock, badge: totalTsMonthlyHours.value ? `${totalTsMonthlyHours.value}h` : '' },
+    { id: 'Timesheet', label: 'Timesheet', icon: Clock, badge: totalTsMonthlyHours.value ? formatDuration(totalTsMonthlyHours.value) : '' },
     { id: 'Project', label: 'Project', icon: FolderKanban, badge: projectsData.value.length },
     ...(isSystemManager.value ? [{ id: 'Team', label: 'Team', icon: Users, badge: teamData.value.length }] : []),
   ]
@@ -2675,7 +2675,7 @@ async function loadTimesheetCalendar(user) {
 
     const mapped = (data || []).map((ts) => ({
       id: ts.name,
-      title: `${formatHours(ts.total_hours)}h logged`,
+      title: `${formatDuration(ts.total_hours)} logged`,
       fromDate: ts.date,
       toDate: ts.date,
       fromTime: '00:00',
@@ -4765,7 +4765,7 @@ onUnmounted(() => {
                   </template>
                   <template v-else>
                     <div class="text-center">
-                      <p class="text-sm font-bold text-emerald-600 dark:text-emerald-400 leading-none">{{ formatHours(totalTsMonthlyHours) }}h</p>
+                      <p class="text-sm font-bold text-emerald-600 dark:text-emerald-400 leading-none">{{ formatDuration(totalTsMonthlyHours) }}</p>
                       <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Logged</p>
                     </div>
                     <div class="text-center">
@@ -4773,7 +4773,7 @@ onUnmounted(() => {
                       <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Days</p>
                     </div>
                     <div class="text-center">
-                      <p class="text-sm font-bold text-purple-600 dark:text-purple-400 leading-none">{{ tsAvgHoursPerDay }}h</p>
+                      <p class="text-sm font-bold text-purple-600 dark:text-purple-400 leading-none">{{ formatDuration(tsAvgHoursPerDay) }}</p>
                       <p class="text-[9px] text-ink-gray-5 dark:text-gray-400 mt-0.5">Avg/d</p>
                     </div>
                   </template>
@@ -4889,7 +4889,7 @@ onUnmounted(() => {
                       <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-surface-base dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-md shadow-xs text-xs">
                         <span class="font-bold text-ink-gray-9 dark:text-gray-100">{{ ts.name }}</span>
                         <Badge :theme="ts.status === 'Submitted' ? 'green' : 'blue'" variant="subtle" size="sm">{{ ts.status }}</Badge>
-                        <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ formatHours(ts.total_hours) }}h</span>
+                        <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ formatDuration(ts.total_hours) }}</span>
                         <div v-if="ts.status !== 'Submitted'" class="flex items-center gap-0.5 ml-1 pl-1 border-l border-outline-gray-2 dark:border-gray-700">
                           <button
                             type="button"
@@ -5016,7 +5016,7 @@ onUnmounted(() => {
                         <!-- Duration -->
                         <ListCell class="justify-end">
                           <span class="text-xs font-bold text-ink-gray-9 dark:text-gray-100">
-                            {{ item.hrs ? formatHours(item.hrs) + 'h' : '—' }}
+                            {{ item.hrs ? formatDuration(item.hrs) : '—' }}
                           </span>
                         </ListCell>
 
@@ -5044,7 +5044,7 @@ onUnmounted(() => {
                   <div class="flex items-center gap-3">
                     <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 rounded-lg">
                       <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">Day Total:</span>
-                      <span class="text-sm font-bold text-emerald-800 dark:text-emerald-200">{{ formatHours(selectedTsDayTotalHours) }} hrs</span>
+                      <span class="text-sm font-bold text-emerald-800 dark:text-emerald-200">{{ formatDuration(selectedTsDayTotalHours) }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-base dark:bg-gray-800 border border-outline-gray-2 dark:border-gray-700 rounded-lg">
                       <span class="text-xs font-medium text-ink-gray-6 dark:text-gray-400">Total Entries:</span>
@@ -6218,7 +6218,7 @@ onUnmounted(() => {
           <span class="font-bold text-ink-gray-9 dark:text-white">{{ confirmSubmitTsTarget?.name }}</span>?
         </p>
         <p class="text-ink-gray-5 dark:text-gray-400">
-          Total Hours: <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ formatHours(confirmSubmitTsTarget?.total_hours) }}h</span>. Once submitted, the timesheet will be locked and cannot be edited.
+          Total Hours: <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ formatDuration(confirmSubmitTsTarget?.total_hours) }}</span>. Once submitted, the timesheet will be locked and cannot be edited.
         </p>
       </div>
     </Dialog>

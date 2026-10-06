@@ -321,6 +321,7 @@
 
 <script setup>
 import { ref, computed, watch, reactive, onBeforeUnmount } from 'vue'
+import { formatDuration } from '@/utils/formatters'
 import { Button, Combobox, DatePicker, TimePicker, Select } from 'frappe-ui'
 import {
   Clock,
@@ -606,12 +607,12 @@ const getStatusBadgeClass = (status) => {
 
 // Calculate duration in hours
 const calculatedDuration = computed(() => {
-  if (!fromTimeSelected.value || !toTimeSelected.value) return '0.00h'
+  if (!fromTimeSelected.value || !toTimeSelected.value) return '0h'
   const [fh, fm] = fromTimeSelected.value.split(':').map(Number)
   const [th, tm] = toTimeSelected.value.split(':').map(Number)
   const diffMins = (th * 60 + tm) - (fh * 60 + fm)
-  if (diffMins <= 0) return '0.00h'
-  return (diffMins / 60).toFixed(2) + 'h'
+  if (diffMins <= 0) return '0h'
+  return formatDuration(diffMins / 60)
 })
 
 // Form validity check
