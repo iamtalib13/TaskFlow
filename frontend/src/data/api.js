@@ -727,6 +727,11 @@ export async function fetchDashboardMemberOptions() {
   return callFrappe('taskflow.taskflow.api.portal.get_dashboard_member_options', {}, 'POST')
 }
 
+export async function fetchActivityTypes() {
+  return callFrappe('taskflow.taskflow.api.portal.get_activity_types', {}, 'GET')
+}
+
+
 export async function fetchTimesheetMasterReport({ fromDate = '', toDate = '', viewType = 'Weekly', search = '', team = '', limit = 50, start = 0 } = {}) {
   return callFrappe(
     'taskflow.taskflow.api.portal.get_timesheet_master_report',

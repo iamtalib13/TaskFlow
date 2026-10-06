@@ -107,10 +107,12 @@ import {
   saveEmployeeAssignments,
   fetchMemberTimesheets,
   fetchAllTimesheets,
+  fetchActivityTypes,
   saveTimesheet,
   deleteTimesheet,
   submitTimesheet,
 } from '@/data/api.js'
+
 import TimesheetCalendar from '@/components/TimesheetCalendar.vue'
 import TimesheetEntryModal from '@/components/TimesheetEntryModal.vue'
 import TimesheetMasterReport from '@/components/TimesheetMasterReport.vue'
@@ -2507,6 +2509,19 @@ const confirmSubmitTsDialogOpen = ref(false)
 const confirmSubmitTsTarget = ref(null)
 const confirmSubmitTsLoading = ref(false)
 const timesheetViewMode = ref('Timesheet') // 'Timesheet' | 'Reports'
+const timesheetActivityTypes = ref([])
+
+async function loadTimesheetActivityTypes() {
+  try {
+    const list = await fetchActivityTypes()
+    if (list && Array.isArray(list) && list.length > 0) {
+      timesheetActivityTypes.value = list
+    }
+  } catch (err) {
+    console.error('Failed to load activity types', err)
+  }
+}
+
 
 // Permitted projects for timesheet logging (assigned to user as per portal permissions)
 const availableTimesheetProjects = computed(() => {
@@ -2706,13 +2721,16 @@ function openTimesheetForm(date, existingTs = null) {
   timesheetFormDate.value = date || selectedTsDayDate.value || new Date().toISOString().slice(0, 10)
   selectedTsEditingEntry.value = null
   timesheetFormOpen.value = true
+  loadTimesheetActivityTypes()
 }
 
 function openTimesheetEntry(entry) {
   timesheetFormDate.value = entry.from_time?.slice(0, 10) || selectedTsDayDate.value || new Date().toISOString().slice(0, 10)
   selectedTsEditingEntry.value = entry
   timesheetFormOpen.value = true
+  loadTimesheetActivityTypes()
 }
+
 
 async function handleSaveTimesheetEntry(entryPayload) {
   timesheetFormSaving.value = true
@@ -5046,12 +5064,14 @@ onUnmounted(() => {
             v-model="timesheetFormOpen"
             :entry="selectedTsEditingEntry"
             :date="timesheetFormDate || selectedTsDayDate"
+            :activity-types="timesheetActivityTypes"
             :projects="projects"
             :tasks="tasks"
             :saving="timesheetFormSaving"
             :on-save="handleSaveTimesheetEntry"
             :on-delete="handleDeleteTimesheetEntry"
           />
+
           </template>
         </template>
 

@@ -2384,7 +2384,21 @@ def search_project_tasks(project: str = "", query: str = "", limit: int = 5) -> 
             if t["name"] not in existing_names:
                 tasks.append(t)
 
-    return tasks
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_activity_types() -> list[str]:
+    """Fetch active Activity Types for timesheet entries."""
+    _require_login()
+    if frappe.db.exists("DocType", "Activity Type"):
+        filters = {}
+        meta = frappe.get_meta("Activity Type")
+        if meta.has_field("disabled"):
+            filters["disabled"] = 0
+        names = frappe.get_all("Activity Type", filters=filters, pluck="name", order_by="name asc")
+        if names:
+            return names
+    return ["Task", "Meeting", "Research"]
+
 
 
 @frappe.whitelist(methods=["GET", "POST"])

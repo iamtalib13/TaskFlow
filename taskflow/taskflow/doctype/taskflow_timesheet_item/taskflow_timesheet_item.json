@@ -20,10 +20,10 @@
   {
    "default": "Task",
    "fieldname": "activity_type",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Activity Type",
-   "options": "\nTask\nMeeting\nResearch"
+   "options": "Activity Type"
   },
   {
    "fieldname": "from_time",

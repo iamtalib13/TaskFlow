@@ -17,7 +17,10 @@ frappe.ui.form.on("Taskflow Timesheet", {
 	refresh(frm) {
 		TimesheetFormController.init_defaults(frm);
 		TimesheetFormController.handle_tab_visibility(frm);
-		TimesheetUI.render_widget(frm);
+		TimesheetDataService.fetch_activity_types(() => {
+			TimesheetUI.render_widget(frm);
+		});
+
 
 		if (!frm.is_new()) {
 			frm.add_custom_button(__("Send Email"), () => {
@@ -235,7 +238,24 @@ const TimesheetDataService = {
 	titles_cache: {
 		projects: {},
 		tasks: {},
+		activity_types: [],
 	},
+
+	fetch_activity_types(callback) {
+		if (this.titles_cache.activity_types.length > 0) {
+			if (callback) callback(this.titles_cache.activity_types);
+			return;
+		}
+		frappe.call({
+			method: "taskflow.taskflow.api.portal.get_activity_types",
+			callback: (r) => {
+				const list = r.message || ["Task", "Meeting", "Research"];
+				this.titles_cache.activity_types = list;
+				if (callback) callback(list);
+			},
+		});
+	},
+
 
 	fetch_recent_projects(search_txt, callback) {
 		const filters = [];
@@ -1003,9 +1023,12 @@ const TimesheetUI = {
 					label: "Activity Type",
 					fieldname: "activity_type",
 					fieldtype: "Select",
-					options: ["Task", "Meeting", "Research"],
+					options: TimesheetDataService.titles_cache.activity_types.length > 0
+						? TimesheetDataService.titles_cache.activity_types
+						: ["Task", "Meeting", "Research"],
 					default: child.activity_type || "Task",
 					read_only: is_submitted,
+
 					onchange() {
 						const val = d.get_value("activity_type");
 						const is_task = val === "Task";
@@ -1197,9 +1220,21 @@ const TimesheetUI = {
 			const from_val = TimeUtils.extract_time_str(item.from_time) || (idx === 0 ? def_times.from : "12:30");
 			const to_val = TimeUtils.extract_time_str(item.to_time) || def_times.to;
 
-			const wt_task_sel = work_type === "Task" ? "selected" : "";
-			const wt_meet_sel = work_type === "Meeting" ? "selected" : "";
-			const wt_res_sel = work_type === "Research" ? "selected" : "";
+			const available_types = TimesheetDataService.titles_cache.activity_types.length > 0
+				? TimesheetDataService.titles_cache.activity_types
+				: ["Task", "Meeting", "Research"];
+			if (work_type && !available_types.includes(work_type)) {
+				available_types.push(work_type);
+			}
+
+			const type_options_html = available_types.map((t) => {
+				const is_sel = work_type === t ? "selected" : "";
+				let color = "#1e293b";
+				if (t === "Task") color = "#1d4ed8";
+				else if (t === "Meeting") color = "#6d28d9";
+				else if (t === "Research") color = "#047857";
+				return `<option value="${frappe.utils.escape_html(t)}" ${is_sel} style="background:#ffffff; color:${color}; font-weight:600;">${frappe.utils.escape_html(t)}</option>`;
+			}).join("");
 
 			// Resolve Title from Cache
 			const proj_display = is_task ? (TimesheetDataService.titles_cache.projects[item.project] || item.project || "") : "";
@@ -1228,11 +1263,10 @@ const TimesheetUI = {
 					</td>
 					<td>
 						<select class="tf-table-select tf-row-work-type" data-idx="${idx}" data-type="${work_type}" ${input_dis_style}>
-							<option value="Task" ${wt_task_sel} style="background:#ffffff; color:#1d4ed8; font-weight:600;">Task</option>
-							<option value="Meeting" ${wt_meet_sel} style="background:#ffffff; color:#6d28d9; font-weight:600;">Meeting</option>
-							<option value="Research" ${wt_res_sel} style="background:#ffffff; color:#047857; font-weight:600;">Research</option>
+							${type_options_html}
 						</select>
 					</td>
+
 					<td>
 						<div class="tf-dropdown-container">
 							<input type="text" class="tf-dropdown-input tf-row-project-input" data-idx="${idx}" value="${frappe.utils.escape_html(proj_display)}" ${proj_attrs} autocomplete="off" />

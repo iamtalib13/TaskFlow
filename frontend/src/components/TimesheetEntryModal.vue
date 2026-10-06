@@ -136,10 +136,11 @@
                     @change="onActivityTypeChange"
                   >
                     <option value="" disabled>Select Activity Type</option>
-                    <option value="Task">Task</option>
-                    <option value="Meeting">Meeting</option>
-                    <option value="Research">Research</option>
+                    <option v-for="type in availableActivityTypes" :key="type" :value="type">
+                      {{ type }}
+                    </option>
                   </select>
+
                   <component
                     :is="getActivityIcon(form.activity_type)"
                     class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
@@ -329,11 +330,13 @@ import {
   CheckSquare,
   Users,
   Search,
+  Activity as ActivityIcon,
   ChevronDown,
   Trash2,
   Check,
 } from 'lucide-vue-next'
 import FrappeRichEditor from './FrappeRichEditor.vue'
+import { fetchActivityTypes } from '@/data/api'
 
 const props = defineProps({
   modelValue: {
@@ -348,10 +351,15 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  activityTypes: {
+    type: Array,
+    default: () => [],
+  },
   projects: {
     type: Array,
     default: () => [],
   },
+
   tasks: {
     type: Array,
     default: () => [],
@@ -428,6 +436,33 @@ const formattedDateDisplay = computed(() => {
   return dStr
 })
 
+// Activity Type options fetched from DocType
+const fetchedActivityTypes = ref([])
+
+async function loadActivityTypes() {
+  if (props.activityTypes && props.activityTypes.length > 0) return
+  try {
+    const list = await fetchActivityTypes()
+    if (list && Array.isArray(list) && list.length > 0) {
+      fetchedActivityTypes.value = list
+    }
+  } catch (err) {
+    console.error('Failed to fetch activity types', err)
+  }
+}
+
+const availableActivityTypes = computed(() => {
+  const base = (props.activityTypes && props.activityTypes.length > 0)
+    ? props.activityTypes
+    : (fetchedActivityTypes.value.length > 0 ? fetchedActivityTypes.value : ['Task', 'Meeting', 'Research'])
+  
+  const set = new Set(base)
+  if (form.activity_type && !set.has(form.activity_type)) {
+    set.add(form.activity_type)
+  }
+  return Array.from(set)
+})
+
 // Project options
 const projectOptions = computed(() => {
   return (props.projects || []).map((p) => ({
@@ -435,6 +470,7 @@ const projectOptions = computed(() => {
     value: p.name,
   }))
 })
+
 
 // Task search and remote loading state
 const taskSearchQuery = ref('')
@@ -674,6 +710,7 @@ watch(
   (val) => {
     if (val) {
       initForm()
+      loadActivityTypes()
       window.addEventListener('keydown', handleKeyDown)
     } else {
       window.removeEventListener('keydown', handleKeyDown)
@@ -681,6 +718,7 @@ watch(
   },
   { immediate: true },
 )
+
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown)
@@ -759,14 +797,17 @@ function onTaskChange(val) {
 function getActivityIcon(type) {
   if (type === 'Meeting') return Users
   if (type === 'Research') return Search
-  return CheckSquare
+  if (type === 'Task') return CheckSquare
+  return ActivityIcon
 }
 
 function getActivityIconClass(type) {
   if (type === 'Meeting') return 'text-amber-500'
   if (type === 'Research') return 'text-purple-500'
-  return 'text-blue-500'
+  if (type === 'Task') return 'text-blue-500'
+  return 'text-emerald-500'
 }
+
 
 function close() {
   emit('update:modelValue', false)
