@@ -878,18 +878,19 @@ function matchesTaskType(needle, value) {
 
 // Table View Columns (clean dynamic list view: ID, TYPE, TASK, PROJECT, TEAM, STATUS, PRIORITY, ASSIGNED TO, DUE DATE, MODIFIED)
 const tableColumns = [
-  { key: 'id', label: 'ID', width: '90px', minWidth: '80px', sortable: true, visible: true },
-  { key: 'task_type', label: 'TYPE', width: '70px', minWidth: '60px', align: 'center', sortable: true, visible: true },
+  { key: 'id', label: 'ID', width: '68px', minWidth: '60px', sortable: true, visible: true },
+  { key: 'task_type', label: 'TYPE', width: '65px', minWidth: '55px', align: 'center', sortable: true, visible: true },
   { key: 'title', label: 'TASK', width: 'auto', minWidth: '220px', sortable: true, visible: true },
   { key: 'project', label: 'PROJECT', width: '140px', minWidth: '110px', sortable: true, visible: true },
   { key: 'team', label: 'TEAM', width: '95px', minWidth: '85px', sortable: true, visible: true },
   { key: 'status', label: 'STATUS', width: '100px', minWidth: '90px', sortable: true, visible: true },
   { key: 'priority', label: 'PRIORITY', width: '65px', minWidth: '60px', sortable: true, visible: true },
-  { key: 'assigned_to', label: 'ASSIGNED TO', width: '140px', minWidth: '115px', sortable: true, visible: true },
-  { key: 'start_date', label: 'START DATE', width: '95px', minWidth: '85px', align: 'center', sortable: true, visible: true },
-  { key: 'due_date', label: 'DUE DATE', width: '95px', minWidth: '85px', align: 'center', sortable: true, visible: true },
-  { key: 'age', label: 'AGE (DAYS)', width: '80px', minWidth: '70px', align: 'center', sortable: true, visible: true },
-  { key: 'modified', label: 'MODIFIED', width: '100px', minWidth: '90px', align: 'right', sortable: true, visible: true },
+  { key: 'assigned_to', label: 'ASSIGNED', width: '110px', minWidth: '95px', sortable: true, visible: true },
+  { key: 'pending_from', label: 'PENDING FROM', width: '120px', minWidth: '100px', sortable: true, visible: true },
+  { key: 'start_date', label: 'START', width: '95px', minWidth: '90px', align: 'center', sortable: true, visible: true },
+  { key: 'due_date', label: 'DUE', width: '95px', minWidth: '90px', align: 'center', sortable: true, visible: true },
+  { key: 'age', label: 'AGE', width: '52px', minWidth: '48px', align: 'center', sortable: true, visible: true },
+  { key: 'modified', label: 'MODIFIED', width: '88px', minWidth: '80px', align: 'right', sortable: true, visible: true },
 ]
 
 // Per-column header filters (client-side, combined with the existing filters)
@@ -904,6 +905,7 @@ const columnFilters = ref({
   team: '',
   priority: '',
   assigned_to: '',
+  pending_from: '',
   start_date: '',
   due_date: '',
   age: '',
@@ -1304,6 +1306,7 @@ const visibleTasks = computed(() => {
       if (!matchesText(cf.team, t.team)) return false
       if (!matchesText(cf.priority, t.priority)) return false
       if (!matchesText(cf.assigned_to, assigneeText(t))) return false
+      if (!matchesText(cf.pending_from, t.pending_from)) return false
       if (!matchesText(cf.start_date, t.start_date)) return false
       if (!matchesText(cf.due_date, t.due_date)) return false
       if (!matchesText(cf.age, taskAgeText(t))) return false
@@ -4662,6 +4665,15 @@ onUnmounted(() => {
                   </TextInput>
                 </div>
               </template>
+              <template #header-pending_from>
+                <div class="w-full" @click.stop>
+                  <TextInput v-model="columnFilters.pending_from" type="search" size="xs" class="w-full" placeholder="Pending From" aria-label="Filter by pending from">
+                    <template #prefix>
+                      <Search class="size-3 text-ink-gray-5" aria-hidden="true" />
+                    </template>
+                  </TextInput>
+                </div>
+              </template>
               <template #header-modified>
                 <div class="w-full" @click.stop>
                   <TextInput v-model="columnFilters.modified" type="search" size="xs" class="w-full" placeholder="Modified" aria-label="Filter by modified">
@@ -4759,8 +4771,19 @@ onUnmounted(() => {
                 <span v-else class="text-ink-gray-4 dark:text-gray-500 italic text-sm">Unassigned</span>
               </template>
 
+              <template #cell-pending_from="{ row }">
+                <span
+                  v-if="row.pending_from"
+                  class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50 truncate max-w-full"
+                  :title="row.pending_from"
+                >
+                  {{ row.pending_from }}
+                </span>
+                <span v-else class="text-ink-gray-4 dark:text-gray-500">—</span>
+              </template>
+
               <template #cell-start_date="{ row }">
-                <span class="font-mono text-xs text-ink-gray-6 dark:text-gray-400">
+                <span class="font-mono text-xs text-ink-gray-6 dark:text-gray-400 whitespace-nowrap">
                   {{ formatDueDate(row.start_date) }}
                 </span>
               </template>
@@ -4768,7 +4791,7 @@ onUnmounted(() => {
               <template #cell-due_date="{ row }">
                 <span
                   v-if="row.due_date || row.due"
-                  class="font-mono text-xs"
+                  class="font-mono text-xs whitespace-nowrap"
                   :class="isTaskOverdue(row) ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-ink-gray-6 dark:text-gray-400'"
                   :title="isTaskOverdue(row) ? 'Task is overdue' : ''"
                 >
