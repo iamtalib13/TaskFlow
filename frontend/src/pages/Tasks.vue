@@ -1,6 +1,6 @@
 <script setup>
 
-import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref, onMounted, onUnmounted, watch } from 'vue'
 import dayjs from 'dayjs'
 import {
   Avatar,
@@ -80,14 +80,16 @@ import {
 } from 'lucide-vue-next'
 
 import CommonListView from '@/components/CommonListView.vue'
-import TaskDetailModal from '@/components/TaskDetailModal.vue'
-import TaskCreateModal from '@/components/TaskCreateModal.vue'
-import ProjectCreateModal from '@/components/ProjectCreateModal.vue'
 import MemberSearchSelect from '@/components/MemberSearchSelect.vue'
-import {
-  BarChart,
-  DonutChart,
-} from 'frappe-ui/charts'
+// Heavy components are lazy-loaded so the task list renders without waiting for them
+const TaskDetailModal = defineAsyncComponent(() => import('@/components/TaskDetailModal.vue'))
+const TaskCreateModal = defineAsyncComponent(() => import('@/components/TaskCreateModal.vue'))
+const ProjectCreateModal = defineAsyncComponent(() => import('@/components/ProjectCreateModal.vue'))
+const TimesheetCalendar = defineAsyncComponent(() => import('@/components/TimesheetCalendar.vue'))
+const TimesheetEntryModal = defineAsyncComponent(() => import('@/components/TimesheetEntryModal.vue'))
+const TimesheetMasterReport = defineAsyncComponent(() => import('@/components/TimesheetMasterReport.vue'))
+const BarChart = defineAsyncComponent(() => import('frappe-ui/charts').then((m) => m.BarChart))
+const DonutChart = defineAsyncComponent(() => import('frappe-ui/charts').then((m) => m.DonutChart))
 import {
   fetchBootstrap,
   fetchDashboardMemberOptions,
@@ -113,9 +115,6 @@ import {
   submitTimesheet,
 } from '@/data/api.js'
 
-import TimesheetCalendar from '@/components/TimesheetCalendar.vue'
-import TimesheetEntryModal from '@/components/TimesheetEntryModal.vue'
-import TimesheetMasterReport from '@/components/TimesheetMasterReport.vue'
 import { SECTIONS, buildViewPath, cleanPath, parseView, getProjectsFromSearch, getTeamsFromSearch, getMembersFromSearch } from '@/utils/url'
 import { writeToClipboard } from '@/utils/clipboard'
 import { downloadCsv } from '@/utils/csv'
@@ -1460,7 +1459,7 @@ function openDownloadReportDialog() {
   downloadReportDialogOpen.value = true
 }
 
-function downloadTaskReport() {
+async function downloadTaskReport() {
   const columns = taskReportColumns
   const team = reportTeamFilter.value
   const project = reportProjectFilter.value
@@ -1637,7 +1636,7 @@ function downloadTaskReport() {
   const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`
 
   try {
-    const ok = downloadWorkbook(`Daily_Working_Status_${stamp}.xlsx`, sheets, {
+    const ok = await downloadWorkbook(`Daily_Working_Status_${stamp}.xlsx`, sheets, {
       rowHeight: 22,
       headerHeight: 26,
     })
@@ -3896,7 +3895,13 @@ onUnmounted(() => {
           <template v-if="activeSection === 'Task' && !detailModalOpen">
             <div class="h-4 w-px bg-outline-gray-2 dark:bg-neutral-800 shrink-0"></div>
 
-            <div class="flex items-center gap-2 shrink-0">
+            <!-- Skeleton placeholders while tasks and filter options load -->
+            <div v-if="loading" class="flex items-center gap-2 shrink-0">
+              <Skeleton class="h-7 w-40 sm:w-48 rounded" />
+              <Skeleton class="h-7 w-48 sm:w-60 rounded" />
+              <Skeleton class="h-7 w-44 sm:w-56 rounded" />
+            </div>
+            <div v-else class="flex items-center gap-2 shrink-0">
               <MultiSelect
                 v-model="selectedTeams"
                 :options="taskTeamOptions"

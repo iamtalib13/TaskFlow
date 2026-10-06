@@ -1,4 +1,3 @@
-import XLSX from 'xlsx-js-style'
 
 const HEADER_STYLE = {
   fill: { fgColor: { rgb: '468373' } },
@@ -63,7 +62,9 @@ const DATA_CELL_CENTER = {
  * @param {number} [globalOptions.headerHeight=28] - standard fixed header row height in pt
  * @returns {boolean}
  */
-export function downloadWorkbook(filename, sheets = [], globalOptions = {}) {
+export async function downloadWorkbook(filename, sheets = [], globalOptions = {}) {
+  // Load the xlsx library only when an export is requested
+  const { default: XLSX } = await import('xlsx-js-style')
   const wb = XLSX.utils.book_new()
   const defaultRowHeight = globalOptions.rowHeight || 22
   const defaultHeaderHeight = globalOptions.headerHeight || 28

@@ -559,11 +559,14 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue'
 import { MultiSelect, DatePicker, Combobox, Button, FormControl, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
 import { saveTask, getErrorMessage, fetchTeamMembers, fetchTaskflowSettings } from '../data/api'
-import FrappeRichEditor from './FrappeRichEditor.vue'
 import { Calendar, Bug, Sparkles, CheckSquare, ChevronDown, Check } from 'lucide-vue-next'
+
+// Load the rich text editor only when the modal opens
+const FrappeRichEditor = defineAsyncComponent(() => import('./FrappeRichEditor.vue'))
 
 export default {
   name: 'TaskCreateModal',
