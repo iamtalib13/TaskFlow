@@ -93,6 +93,7 @@ const DonutChart = defineAsyncComponent(() => import('frappe-ui/charts').then((m
 import {
   fetchBootstrap,
   fetchDashboardMemberOptions,
+  fetchAllAssignableMembers,
   saveTask,
   deleteTask,
   getErrorMessage,
@@ -137,6 +138,16 @@ const teamMembers = ref([])
 const employees = ref([])
 const teamLoading = ref(false)
 const dashboardMemberList = ref([])
+// Active members of every Taskflow Team, for the task list member filter
+const allTeamMembersList = ref([])
+
+async function loadAllTeamMembers() {
+  try {
+    allTeamMembersList.value = (await fetchAllAssignableMembers()) || []
+  } catch (e) {
+    console.error('Failed to load team members', e)
+  }
+}
 
 async function loadDashboardMembers() {
   try {
@@ -145,6 +156,10 @@ async function loadDashboardMembers() {
     console.error('Failed to load dashboard members', e)
   }
 }
+
+// "AMIT RAMANKUTTY RAMAN" -> "Amit Ramankutty Raman"
+const toTitleCase = (str) =>
+  String(str || '').toLowerCase().replace(/\s+/g, ' ').trim().replace(/(^|\s)\S/g, (c) => c.toUpperCase())
 
 const toMemberOption = (m) => ({
   label: m.label,
@@ -605,7 +620,20 @@ const selectedMembers = ref(typeof window !== 'undefined' ? getMembersFromSearch
 const taskMemberOptions = computed(() => {
   const chosenTeams = selectedTeams.value && selectedTeams.value.length > 0 ? selectedTeams.value : null
 
-  let list = dashboardMemberList.value || []
+  // Accessible members first (they carry project-based team tags), then members of every team
+  const seenMembers = new Set()
+  let list = []
+  for (const m of dashboardMemberList.value || []) {
+    const key = String(m.value || '').toLowerCase()
+    if (key && !seenMembers.has(key)) { seenMembers.add(key); list.push(m) }
+  }
+  for (const m of allTeamMembersList.value || []) {
+    const value = m.user || m.employee
+    const key = String(value || '').toLowerCase()
+    if (!key || seenMembers.has(key)) continue
+    seenMembers.add(key)
+    list.push({ value, label: m.employee_name || value, image: m.image, user: m.user, employee: m.employee, teams: m.teams || [] })
+  }
   if (chosenTeams) {
     list = list.filter((m) => {
       if (!m.teams || m.teams.length === 0) return false
@@ -645,7 +673,32 @@ const taskMemberOptions = computed(() => {
     }
   })
 
-  return Array.from(map.values()).sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+  // Pending task count per member, using the same filters as the status tabs (except member)
+  let baseTasks = tasks.value || []
+  if (showAssignedToMe.value) baseTasks = baseTasks.filter(isAssignedToCurrentUser)
+  if (chosenTeams) baseTasks = baseTasks.filter((t) => t.team && chosenTeams.includes(t.team))
+  if (selectedProjects.value && selectedProjects.value.length > 0) {
+    baseTasks = baseTasks.filter((t) => selectedProjects.value.includes(t.project))
+  }
+  const pendingCounts = {}
+  for (const t of baseTasks) {
+    if (!STATUS_GROUPS.Pending.includes(t.status || 'Open')) continue
+    const keys = new Set()
+    for (const u of Array.isArray(t._assign) ? t._assign : []) keys.add(String(u).toLowerCase().trim())
+    for (const a of Array.isArray(t.assignees) ? t.assignees : []) {
+      const u = typeof a === 'string' ? a : (a && (a.user || a.user_id || a.email)) || ''
+      if (u) keys.add(String(u).toLowerCase().trim())
+    }
+    keys.forEach((k) => { pendingCounts[k] = (pendingCounts[k] || 0) + 1 })
+  }
+
+  return Array.from(map.values())
+    .map((o) => ({
+      ...o,
+      label: toTitleCase(o.label),
+      pending: pendingCounts[String(o.value || '').toLowerCase().trim()] || 0,
+    }))
+    .sort((a, b) => b.pending - a.pending || (a.label || '').localeCompare(b.label || ''))
 })
 
 // Modals
@@ -2942,6 +2995,8 @@ async function loadData() {
     } else {
       await loadDashboardMembers()
     }
+    // Load members of every team in the background for the task list member filter
+    loadAllTeamMembers()
     if (selectedMembers.value && selectedMembers.value.length > 0) {
       const allMembers = dashboardMemberList.value.length > 0 ? dashboardMemberList.value : (people.value || [])
       if (allMembers.length > 0) {
@@ -3928,18 +3983,15 @@ onUnmounted(() => {
                 placeholder="Select Project"
                 class="w-48 sm:w-60 shrink-0"
               >
-                <template #item-label="{ item }">
-                  <div class="flex min-w-0 flex-1 items-center justify-between gap-2">
-                    <span class="truncate">{{ item.label }}</span>
-                    <Badge
-                      v-if="item.pending"
-                      :label="String(item.pending)"
-                      theme="orange"
-                      variant="subtle"
-                      size="sm"
-                      :title="`${item.pending} pending`"
-                    />
-                  </div>
+                <template #item-suffix="{ item }">
+                  <Badge
+                    v-if="item.pending"
+                    :label="String(item.pending)"
+                    theme="orange"
+                    variant="subtle"
+                    size="sm"
+                    :title="`${item.pending} pending`"
+                  />
                 </template>
               </MultiSelect>
               <MultiSelect
@@ -3952,10 +4004,17 @@ onUnmounted(() => {
                   <Avatar :image="item.image" :label="item.label" size="xs" shape="circle" />
                 </template>
                 <template #item-label="{ item }">
-                  <div class="min-w-0">
-                    <div class="truncate text-xs font-medium text-ink-gray-9 dark:text-gray-100">{{ item.label }}</div>
-                    <div v-if="item.description" class="truncate text-[11px] text-ink-gray-5 dark:text-gray-400">{{ item.description }}</div>
-                  </div>
+                  <span class="truncate text-xs font-medium text-ink-gray-9 dark:text-gray-100">{{ item.label }}</span>
+                </template>
+                <template #item-suffix="{ item }">
+                  <Badge
+                    v-if="item.pending"
+                    :label="String(item.pending)"
+                    theme="orange"
+                    variant="subtle"
+                    size="sm"
+                    :title="`${item.pending} pending`"
+                  />
                 </template>
               </MultiSelect>
               <Button

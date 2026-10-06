@@ -1100,14 +1100,16 @@ def get_all_assignable_members() -> list[dict]:
     """Return a unique list of active members across all Taskflow Teams, for task assignment."""
     _require_login()
 
-    return frappe.db.sql(
+    members = frappe.db.sql(
         """
         SELECT
             tm.employee,
             COALESCE(NULLIF(tm.user, ''), e.user_id) AS user,
             COALESCE(e.employee_name, tm.employee) AS employee_name,
             e.designation,
-            e.department
+            e.department,
+            e.image,
+            GROUP_CONCAT(DISTINCT tm.parent) AS teams
         FROM `tabTaskflow Team Member` tm
         LEFT JOIN `tabEmployee` e ON e.name = tm.employee
         WHERE tm.parenttype = 'Taskflow Team' AND tm.is_active = 1
@@ -1116,6 +1118,9 @@ def get_all_assignable_members() -> list[dict]:
         """,
         as_dict=True,
     )
+    for row in members:
+        row["teams"] = row["teams"].split(",") if row.get("teams") else []
+    return members
 
 
 @frappe.whitelist()
