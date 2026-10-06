@@ -580,9 +580,23 @@ const projectOptions = computed(() => {
     }
   })
 
+  // Pending task count per project, using the same filters as the status tabs (except project)
+  let baseTasks = tasks.value || []
+  if (showAssignedToMe.value) baseTasks = baseTasks.filter(isAssignedToCurrentUser)
+  if (chosenTeams) baseTasks = baseTasks.filter((t) => t.team && chosenTeams.includes(t.team))
+  if (selectedMembers.value && selectedMembers.value.length > 0) {
+    baseTasks = baseTasks.filter(isAssignedToSelectedMembers)
+  }
+  const pendingCounts = {}
+  for (const t of baseTasks) {
+    if (t.project && STATUS_GROUPS.Pending.includes(t.status || 'Open')) {
+      pendingCounts[t.project] = (pendingCounts[t.project] || 0) + 1
+    }
+  }
+
   return Array.from(map.entries())
-    .sort((a, b) => a[1].localeCompare(b[1]))
-    .map(([value, label]) => ({ value, label }))
+    .map(([value, label]) => ({ value, label, pending: pendingCounts[value] || 0 }))
+    .sort((a, b) => b.pending - a.pending || a.label.localeCompare(b.label))
 })
 
 // Multi-select member filter: members available to the user, narrowed by team if selected
@@ -3913,7 +3927,21 @@ onUnmounted(() => {
                 :options="projectOptions"
                 placeholder="Select Project"
                 class="w-48 sm:w-60 shrink-0"
-              />
+              >
+                <template #item-label="{ item }">
+                  <div class="flex min-w-0 flex-1 items-center justify-between gap-2">
+                    <span class="truncate">{{ item.label }}</span>
+                    <Badge
+                      v-if="item.pending"
+                      :label="String(item.pending)"
+                      theme="orange"
+                      variant="subtle"
+                      size="sm"
+                      :title="`${item.pending} pending`"
+                    />
+                  </div>
+                </template>
+              </MultiSelect>
               <MultiSelect
                 v-model="selectedMembers"
                 :options="taskMemberOptions"
