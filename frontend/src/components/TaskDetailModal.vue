@@ -318,6 +318,7 @@
                   <Combobox
                     :modelValue="null"
                     v-model:query="assigneeSearchQuery"
+                    v-model:open="assigneeDropdownOpen"
                     :options="assigneeOptions"
                     :filterable="false"
                     :placeholder="effectiveTeam ? `+ Add ${effectiveTeam} member...` : '+ Add Assignee...'"
@@ -1010,6 +1011,7 @@ export default {
       showPendingFromDropdown: false,
       projectSearchQuery: '',
       assigneeSearchQuery: '',
+      assigneeDropdownOpen: false,
       parentProjectSearchQuery: '',
       form: {
         id: '',
@@ -1425,10 +1427,14 @@ export default {
     },
     addAssignee(option) {
       const value = option && (option.value || option)
-      if (value) {
-        this.form.assignees = this.normalizeAssignees([...(this.form.assignees || []), value])
-      }
-      this.assigneeSearchQuery = ''
+      if (!value) return
+      this.form.assignees = this.normalizeAssignees([...(this.form.assignees || []), value])
+      // Combobox writes the selected label into the query and closes after this handler,
+      // so clear the search and reopen on the next tick to allow adding more assignees
+      setTimeout(() => {
+        this.assigneeSearchQuery = ''
+        this.assigneeDropdownOpen = true
+      }, 0)
     },
     async loadAllAssignableMembers() {
       try {
