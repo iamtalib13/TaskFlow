@@ -980,7 +980,7 @@ export default {
       } else if (!team && this.allAvailableTeamMembers.length > 0) {
         opts = this.allAvailableTeamMembers.map((m) => ({
           value: m.user || m.employee,
-          label: m.employee_name ? `${m.employee_name} (${m.team})` : (m.user || m.employee),
+          label: m.employee_name || m.user || m.employee,
         }))
       }
 
@@ -993,7 +993,9 @@ export default {
         })
       }
 
-      return opts
+      // Show each employee only once, even if they belong to multiple teams
+      const seen = new Set()
+      return opts.filter((o) => o.value && !seen.has(o.value) && seen.add(o.value))
     },
   },
   methods: {

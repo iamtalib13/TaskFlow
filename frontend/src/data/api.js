@@ -525,6 +525,11 @@ export async function fetchTeamMembers(target = 'all', targetType = 'Team') {
   return data ? data.team_members || [] : []
 }
 
+// Fetch unique active members across all teams (for task assignment)
+export async function fetchAllAssignableMembers() {
+  return (await callFrappe('taskflow.taskflow.api.portal.get_all_assignable_members')) || []
+}
+
 // Create a new team
 export async function createTeam(payload) {
   return await callFrappe(

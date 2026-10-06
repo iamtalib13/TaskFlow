@@ -1101,7 +1101,7 @@ const getPriorityTextClass = (priority) => {
 }
 
 // Status filter groups shown in the task list filter bar.
-// Cancelled tasks are intentionally not part of any group.
+// Cancelled tasks are intentionally not part of any group; the "All" tab applies no status filter.
 const STATUS_GROUPS = {
   Pending: ['Open', 'In Progress', 'Review', 'On Hold', 'Overdue'],
   Completed: ['Completed'],
@@ -1141,6 +1141,7 @@ const statusOptions = computed(() => {
   })
 
   return [
+    { label: `All (${baseTasks.length})`, value: 'All' },
     { label: `Pending (${counts.Pending})`, value: 'Pending' },
     { label: `Completed (${counts.Completed})`, value: 'Completed' },
   ]

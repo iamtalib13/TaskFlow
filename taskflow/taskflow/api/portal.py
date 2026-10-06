@@ -1096,6 +1096,29 @@ def save_employee_assignments(
 
 
 @frappe.whitelist()
+def get_all_assignable_members() -> list[dict]:
+    """Return a unique list of active members across all Taskflow Teams, for task assignment."""
+    _require_login()
+
+    return frappe.db.sql(
+        """
+        SELECT
+            tm.employee,
+            COALESCE(NULLIF(tm.user, ''), e.user_id) AS user,
+            COALESCE(e.employee_name, tm.employee) AS employee_name,
+            e.designation,
+            e.department
+        FROM `tabTaskflow Team Member` tm
+        LEFT JOIN `tabEmployee` e ON e.name = tm.employee
+        WHERE tm.parenttype = 'Taskflow Team' AND tm.is_active = 1
+        GROUP BY tm.employee
+        ORDER BY employee_name
+        """,
+        as_dict=True,
+    )
+
+
+@frappe.whitelist()
 def get_team_members(team: str | None = None, target_type: str = "Team") -> dict:
     """Return team members from Taskflow Team or Taskflow Project child tables."""
     _require_login()

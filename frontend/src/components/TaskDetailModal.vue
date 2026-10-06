@@ -317,13 +317,15 @@
 
                   <Combobox
                     :modelValue="null"
+                    v-model:query="assigneeSearchQuery"
                     :options="assigneeOptions"
+                    :filterable="false"
                     :placeholder="effectiveTeam ? `+ Add ${effectiveTeam} member...` : '+ Add Assignee...'"
                     size="sm"
                     variant="subtle"
                     class="w-full"
                     trigger="button"
-                    @update:modelValue="(val) => { if (val && !form.assignees.includes(val.value || val)) form.assignees.push(val.value || val) }"
+                    @update:modelValue="(val) => { if (val && !form.assignees.includes(val.value || val)) form.assignees.push(val.value || val); assigneeSearchQuery = '' }"
                   />
                 </div>
               </div>
@@ -833,6 +835,7 @@ import {
   deleteTask,
   getErrorMessage,
   fetchTeamMembers,
+  fetchAllAssignableMembers,
   fetchTaskAttachments,
   deleteTaskAttachment,
   uploadTaskAttachment,
@@ -1001,10 +1004,12 @@ export default {
       activeRightTab: 'comments',
       chatCount: 0,
       localTeamMembers: [],
+      allAssignableMembers: [],
       taskTypes: ['Task', 'Bug', 'Customization Request'],
       pendingFromOptions: ['User', 'Team', 'Client', 'Management', 'External Partner', 'Vendor'],
       showPendingFromDropdown: false,
       projectSearchQuery: '',
+      assigneeSearchQuery: '',
       parentProjectSearchQuery: '',
       form: {
         id: '',
@@ -1172,18 +1177,44 @@ export default {
       return list
     },
     assigneeOptions() {
-      let members = this.allAvailableTeamMembers.filter(
-        (m) => m.is_active === undefined || m.is_active === 1 || m.is_active === true
-      )
+      // Common list from all teams; fall back to loaded team members until it arrives
+      const members = [
+        ...(this.allAssignableMembers || []),
+        ...this.allAvailableTeamMembers.filter(
+          (m) => m.is_active === undefined || m.is_active === 1 || m.is_active === true
+        ),
+      ]
 
-      if (members.length > 0) {
-        return members.map((m) => ({
-          value: m.user || m.employee,
-          label: m.employee_name ? `${m.employee_name} (${m.team || 'No Team'})` : (m.user || m.employee),
-        }))
+      // Show each employee only once, even if they belong to multiple teams
+      const seen = new Set()
+      const options = []
+      for (const m of members) {
+        const value = m.user || m.employee
+        const key = m.employee || value
+        if (!value || seen.has(key) || seen.has(value)) continue
+        seen.add(key)
+        seen.add(value)
+        options.push({ value, label: m.employee_name || m.user || m.employee, employee: m.employee || '' })
       }
 
-      return []
+      const q = (this.assigneeSearchQuery || '').trim().toLowerCase()
+      if (!q) return options.map(({ value, label }) => ({ value, label }))
+
+      // Rank: label starts with query > word starts with query > contains (label/id/email)
+      const rank = (o) => {
+        const label = o.label.toLowerCase()
+        if (label.startsWith(q)) return 0
+        if (label.split(/\s+/).some((w) => w.startsWith(q))) return 1
+        if (label.includes(q)) return 2
+        if (o.employee.toLowerCase().startsWith(q) || o.value.toLowerCase().startsWith(q)) return 3
+        if (o.value.toLowerCase().includes(q)) return 4
+        return -1
+      }
+      return options
+        .map((o) => ({ o, r: rank(o) }))
+        .filter((x) => x.r >= 0)
+        .sort((a, b) => a.r - b.r || a.o.label.localeCompare(b.o.label))
+        .map(({ o }) => ({ value: o.value, label: o.label }))
     },
     guideOptions() {
       const list = []
@@ -1358,12 +1389,20 @@ export default {
   },
   mounted() {
     this.loadTaskflowSettings()
+    this.loadAllAssignableMembers()
     if (this.modelValue) {
       window.addEventListener('keydown', this.handleKeyDown, true)
     }
     document.addEventListener('click', this.handlePendingFromClickOutside)
   },
   methods: {
+    async loadAllAssignableMembers() {
+      try {
+        this.allAssignableMembers = await fetchAllAssignableMembers()
+      } catch (err) {
+        console.warn('Failed to load assignable members:', err)
+      }
+    },
     selectPendingFromOption(opt) {
       this.form.pending_from = opt
       this.showPendingFromDropdown = false
@@ -1458,7 +1497,7 @@ export default {
       }
       const val = this.getAssigneeValue(assignee)
       if (!val) return ''
-      const member = (this.allAvailableTeamMembers || []).find(
+      const member = [...(this.allAvailableTeamMembers || []), ...(this.allAssignableMembers || [])].find(
         (m) => m.user === val || m.employee === val || m.employee_name === val || m.name === val
       )
       if (member && member.employee_name) return member.employee_name
