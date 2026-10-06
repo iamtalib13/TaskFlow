@@ -3014,7 +3014,7 @@ async function onSaveTask(updatedTask) {
         activeTask.value = { ...activeTask.value, ...res }
       }
     }
-    toast.success('Task saved successfully')
+    toast.success('Task saved successfully', { duration: 1000 })
     return res
   } catch (err) {
     const msg = getErrorMessage(err, 'Failed to save task')

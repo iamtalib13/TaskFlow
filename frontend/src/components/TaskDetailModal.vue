@@ -1941,7 +1941,7 @@ export default {
         } else {
           res = await saveTask(updated)
           this.$emit('save', res || updated)
-          toast.success('Task saved successfully')
+          toast.success('Task saved successfully', { duration: 1000 })
         }
         if (res && res.id) {
           if (!this.form.id) this.form.id = res.id
