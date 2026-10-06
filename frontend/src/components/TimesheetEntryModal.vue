@@ -487,7 +487,7 @@ async function fetchProjectTasksFromServer(projectName, query = '') {
   taskLoading.value = true
   try {
     const qParam = query ? `&query=${encodeURIComponent(query.trim())}` : ''
-    const res = await fetch(`/api/method/taskflow.taskflow.api.portal.search_project_tasks?project=${encodeURIComponent(projectName)}${qParam}&limit=5`)
+    const res = await fetch(`/api/method/taskflow.taskflow.api.portal.search_project_tasks?project=${encodeURIComponent(projectName)}${qParam}&limit=20`)
     const data = await res.json()
     if (data && data.message) {
       serverProjectTasks.value = data.message || []
@@ -512,7 +512,7 @@ function onTaskSearchQueryChange(q) {
   }, 250)
 }
 
-// Task options filtered by selected project (max 5 items, matching by project ID or name, with title and status)
+// Task options filtered by selected project (max 20 items, latest modified first, matching by project ID or name, with title and status)
 const taskOptions = computed(() => {
   const selectedProjRaw = form.project?.value || form.project
   if (!selectedProjRaw) return []
@@ -572,8 +572,9 @@ const taskOptions = computed(() => {
     })
   }
 
-  // Strictly limit to 5 response items as requested
-  return combinedList.slice(0, 5).map((t) => {
+  // Show the 20 most recently modified tasks first
+  combinedList.sort((a, b) => String(b.modified || '').localeCompare(String(a.modified || '')))
+  return combinedList.slice(0, 20).map((t) => {
     const title = t.task_title || t.title || t.name
     return {
       label: title,

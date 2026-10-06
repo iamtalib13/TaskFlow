@@ -2388,7 +2388,7 @@ def search_project_tasks(project: str = "", query: str = "", limit: int = 5) -> 
     tasks = frappe.get_all(
         "Taskflow Task",
         filters=filters,
-        fields=["name", "task_title", "project", "status"],
+        fields=["name", "task_title", "project", "status", "modified"],
         order_by="modified desc",
         limit=int(limit) or 5,
     )
@@ -2399,13 +2399,15 @@ def search_project_tasks(project: str = "", query: str = "", limit: int = 5) -> 
         by_name = frappe.get_all(
             "Taskflow Task",
             filters=[["project", "=", proj_name], ["name", "like", f"%{query}%"]],
-            fields=["name", "task_title", "project", "status"],
+            fields=["name", "task_title", "project", "status", "modified"],
             order_by="modified desc",
             limit=(int(limit) or 5) - len(tasks),
         )
         for t in by_name:
             if t["name"] not in existing_names:
                 tasks.append(t)
+
+    return tasks
 
 
 @frappe.whitelist(methods=["GET", "POST"])
