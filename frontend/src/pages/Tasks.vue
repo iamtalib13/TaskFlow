@@ -949,24 +949,34 @@ function isTaskOverdue(row) {
   return isoDate < today
 }
 
+// Ticking clock so "Just now" labels and row highlights expire without a reload
+const JUST_NOW_SECONDS = 60
+const nowTick = ref(Date.now())
+let nowTickTimer = null
+onMounted(() => {
+  nowTickTimer = setInterval(() => { nowTick.value = Date.now() }, 10000)
+})
+onUnmounted(() => clearInterval(nowTickTimer))
+
+function parseModified(row) {
+  if (!row?.modified) return null
+  const raw = String(row.modified).trim()
+  const d = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T'))
+  return isNaN(d.getTime()) ? null : d
+}
+
 function formatPrettyDate(row) {
-  if (row?.modified_pretty) {
-    const p = String(row.modified_pretty).trim()
-    if (p.toLowerCase() === 'just now' || p.toLowerCase() === 'right now') return 'Just now'
-    return p
+  const d = parseModified(row)
+  if (!d) {
+    if (row?.modified_pretty) return String(row.modified_pretty).trim()
+    return row?.modified || '—'
   }
-  if (!row?.modified) return '—'
 
   try {
-    const raw = String(row.modified).trim()
-    const isoString = raw.includes('T') ? raw : raw.replace(' ', 'T')
-    const d = new Date(isoString)
-    if (isNaN(d.getTime())) return row.modified
-
-    const now = new Date()
+    const now = new Date(nowTick.value)
     const diffSec = (now.getTime() - d.getTime()) / 1000
 
-    if (diffSec >= -10 && diffSec < 60) return 'Just now'
+    if (diffSec >= -10 && diffSec < JUST_NOW_SECONDS) return 'Just now'
     const diffMin = Math.floor(diffSec / 60)
     if (diffMin < 60) return `${Math.max(1, diffMin)}m ago`
     const diffHours = Math.floor(diffMin / 60)
@@ -987,22 +997,12 @@ function formatPrettyDate(row) {
   }
 }
 
+// Highlight only rows whose Modified column shows "Just now" (same rule as formatPrettyDate)
 function isRowJustNow(row) {
-  if (!row) return false
-  const p = (row.modified_pretty || '').toString().trim().toLowerCase()
-  if (p === 'just now' || p === 'right now') return true
-  if (row.modified) {
-    try {
-      const raw = String(row.modified).trim()
-      const isoString = raw.includes('T') ? raw : raw.replace(' ', 'T')
-      const d = new Date(isoString)
-      if (!isNaN(d.getTime())) {
-        const diffSec = (Date.now() - d.getTime()) / 1000
-        if (diffSec >= -10 && diffSec <= 45) return true
-      }
-    } catch {}
-  }
-  return false
+  const d = parseModified(row)
+  if (!d) return false
+  const diffSec = (nowTick.value - d.getTime()) / 1000
+  return diffSec >= -10 && diffSec < JUST_NOW_SECONDS
 }
 
 // Light green highlight for tasks modified 'Just now'

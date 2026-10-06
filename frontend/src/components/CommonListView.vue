@@ -563,25 +563,10 @@ export default {
       return this.rowClass || ''
     },
     isJustNowRow(row) {
+      // The parent's rowClass decides the "just now" highlight so it matches the Modified column
       if (!row) return false
       const rowCls = this.getRowClass(row)
-      if (typeof rowCls === 'string' && rowCls.includes('just-now')) {
-        return true
-      }
-      const p = (row.modified_pretty || '').toString().trim().toLowerCase()
-      if (p === 'just now' || p === 'right now') return true
-      if (row.modified) {
-        try {
-          const raw = String(row.modified).trim()
-          const isoString = raw.includes('T') ? raw : raw.replace(' ', 'T')
-          const d = new Date(isoString)
-          if (!isNaN(d.getTime())) {
-            const diffSec = Math.floor((Date.now() - d.getTime()) / 1000)
-            if (diffSec >= 0 && diffSec < 300) return true
-          }
-        } catch {}
-      }
-      return false
+      return typeof rowCls === 'string' && rowCls.includes('just-now')
     },
     getRowKey(row, idx) {
       return row[this.rowKey] || idx
