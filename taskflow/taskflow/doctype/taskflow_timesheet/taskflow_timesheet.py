@@ -25,8 +25,14 @@ class TaskflowTimesheet(Document):
 
 	def autoname(self):
 		user = frappe.get_cached_value("User", self.user, "full_name") or self.user
-		date_str = getdate().strftime("%d-%m-%Y")
-		self.name = f"{user}-{date_str}"
+		date_str = getdate(self.timesheet_date or today()).strftime("%d-%m-%Y")
+		base = f"{user}-{date_str}"
+		name, counter = base, 1
+		# Append a suffix so an existing name never blocks the insert
+		while frappe.db.exists("Taskflow Timesheet", name):
+			name = f"{base}-{counter}"
+			counter += 1
+		self.name = name
 
 
 @frappe.whitelist()
