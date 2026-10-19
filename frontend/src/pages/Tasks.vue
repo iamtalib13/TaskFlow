@@ -5594,15 +5594,15 @@ onUnmounted(() => {
                 <Folder class="size-4 shrink-0" :class="node.children && node.children.length ? 'text-amber-500' : 'text-blue-500'" />
               </template>
               <template #item-label="{ node }">
-                <div class="flex items-center gap-2.5 py-1 px-1.5 rounded-md hover:bg-surface-gray-2/70 dark:hover:bg-gray-800/60 cursor-pointer transition-colors group">
+                <div class="flex items-center gap-2.5 py-1 px-1.5 rounded-md transition-colors group" @click.stop>
                   <span
-                    class="text-xs font-semibold text-ink-gray-9 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+                    class="text-xs font-semibold text-ink-gray-9 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors"
                     title="Open project details"
                     @click.stop="openEditProject(node)"
                   >
                     {{ node.project_name || node.label }}
                   </span>
-                  <!-- Clean children count badge without extra arrow -->
+                  <!-- Clean children count badge -->
                   <span
                     v-if="node.children && node.children.length"
                     class="text-[10px] font-semibold text-blue-700 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-300 px-1.5 py-0.2 rounded border border-blue-200 dark:border-blue-800 select-none"
