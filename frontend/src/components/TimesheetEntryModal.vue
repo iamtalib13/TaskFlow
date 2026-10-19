@@ -4,7 +4,6 @@
     class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 transition-all duration-200 animate-in fade-in"
     role="dialog"
     aria-modal="true"
-    @click.self="close"
   >
     <div
       class="bg-surface-base rounded-2xl shadow-2xl border border-outline-gray-2/90 dark:border-gray-800 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden transform transition-all duration-200 scale-100"
