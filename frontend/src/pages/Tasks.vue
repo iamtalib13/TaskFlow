@@ -2569,6 +2569,13 @@ function formatTime12h(timeStr) {
   const h12 = h % 12 === 0 ? 12 : h % 12
   return `${String(h12).padStart(2, '0')}:${mStr} ${period}`
 }
+
+function stripHtml(html) {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim()
+}
 const timesheetFormOpen = ref(false)
 const timesheetFormDate = ref('')
 const timesheetFormItems = ref([])
@@ -5107,12 +5114,13 @@ onUnmounted(() => {
 
                         <!-- Remark / Description -->
                         <ListCell class="max-lg:hidden">
-                          <div
+                          <span
                             v-if="item.description"
-                            class="truncate text-xs text-ink-gray-6 dark:text-gray-400 max-w-full"
-                            :title="item.description?.replace(/<[^>]*>?/gm, '')"
-                            v-html="item.description"
-                          />
+                            class="truncate text-xs text-ink-gray-6 dark:text-gray-400 block max-w-full"
+                            :title="stripHtml(item.description)"
+                          >
+                            {{ stripHtml(item.description) }}
+                          </span>
                           <span v-else class="text-xs text-ink-gray-4 dark:text-gray-500">—</span>
                         </ListCell>
 
