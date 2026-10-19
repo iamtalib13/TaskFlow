@@ -317,6 +317,7 @@ def get_spa_bootstrap() -> dict:
 	)
 
 	emp_ids = list({m["employee"] for m in team_members_raw if m.get("employee")})
+	user_ids = list({m.get("user") for m in team_members_raw if m.get("user")})
 	emp_map = {}
 	if emp_ids:
 		emps = frappe.get_all(
@@ -325,6 +326,18 @@ def get_spa_bootstrap() -> dict:
 			fields=["name", "employee_name", "user_id", "image", "designation", "department"],
 		)
 		emp_map = {e["name"]: e for e in emps}
+		for e in emps:
+			if e.get("user_id"):
+				user_ids.append(e["user_id"])
+
+	user_image_map = {}
+	if user_ids:
+		users_data = frappe.get_all(
+			"User",
+			filters={"name": ["in", list(set(user_ids))]},
+			fields=["name", "user_image"],
+		)
+		user_image_map = {u["name"]: u.get("user_image") for u in users_data if u.get("user_image")}
 
 	team_members = []
 	dashboard_members_dict = {}
@@ -332,13 +345,14 @@ def get_spa_bootstrap() -> dict:
 		e_info = emp_map.get(m["employee"], {})
 		u_id = m.get("user") or e_info.get("user_id") or ""
 		emp_name = e_info.get("employee_name") or m["employee"]
+		img = e_info.get("image") or user_image_map.get(u_id) or ""
 		team_members.append({
 			"name": m["name"],
 			"team": m["team"],
 			"employee": m["employee"],
 			"user": u_id,
 			"employee_name": emp_name,
-			"user_image": e_info.get("image") or "",
+			"user_image": img,
 			"designation": e_info.get("designation") or "",
 			"department": e_info.get("department") or "",
 			"read": getattr(m, "read", 1),
@@ -355,7 +369,7 @@ def get_spa_bootstrap() -> dict:
 				"label": emp_name or u_id or m["employee"],
 				"employee": m["employee"] or "",
 				"user": u_id,
-				"image": e_info.get("image") or None,
+				"image": img or None,
 				"designation": e_info.get("designation") or "",
 				"teams": [],
 			})

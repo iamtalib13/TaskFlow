@@ -37,6 +37,7 @@ import {
   Textarea,
   TextInput,
   Tooltip,
+  Tree,
   LoadingIndicator,
   Skeleton,
   toast,
@@ -53,6 +54,7 @@ import {
   PanelLeftClose,
   Star,
   ChevronUp,
+  ChevronDown,
   Folder,
   SlidersHorizontal,
   Bell,
@@ -603,14 +605,64 @@ const projectOptions = computed(() => {
     baseTasks = baseTasks.filter(isAssignedToSelectedMembers)
   }
   const pendingCounts = {}
+  const projectMemberPendingMap = {}
+
   for (const t of baseTasks) {
     if (t.project && STATUS_GROUPS.Pending.includes(t.status || 'Open')) {
       pendingCounts[t.project] = (pendingCounts[t.project] || 0) + 1
+
+      if (!projectMemberPendingMap[t.project]) {
+        projectMemberPendingMap[t.project] = {}
+      }
+
+      const assignedEmails = new Set()
+      if (Array.isArray(t.assignees) && t.assignees.length > 0) {
+        t.assignees.forEach(a => {
+          const email = typeof a === 'string' ? a : (a?.user_id || a?.email || a?.name || '')
+          if (email) assignedEmails.add(email)
+        })
+      }
+      if (Array.isArray(t.table_gqbl) && t.table_gqbl.length > 0) {
+        t.table_gqbl.forEach(r => {
+          const email = r?.user_id || r?.email || ''
+          if (email) assignedEmails.add(email)
+        })
+      }
+      if (typeof t.assigned_to === 'string' && t.assigned_to.trim()) {
+        t.assigned_to.split(',').forEach(p => {
+          const email = p.trim()
+          if (email) assignedEmails.add(email)
+        })
+      }
+
+      assignedEmails.forEach(email => {
+        projectMemberPendingMap[t.project][email] = (projectMemberPendingMap[t.project][email] || 0) + 1
+      })
     }
   }
 
   return Array.from(map.entries())
-    .map(([value, label]) => ({ value, label, pending: pendingCounts[value] || 0 }))
+    .map(([value, label]) => {
+      const memberMap = projectMemberPendingMap[value] || {}
+      const membersBreakdown = Object.entries(memberMap)
+        .map(([email, count]) => {
+          const assignee = getAssignee(email)
+          return {
+            email,
+            name: assignee.name || email,
+            image: assignee.image || '',
+            count,
+          }
+        })
+        .sort((a, b) => b.count - a.count)
+
+      return {
+        value,
+        label,
+        pending: pendingCounts[value] || 0,
+        members: membersBreakdown,
+      }
+    })
     .sort((a, b) => b.pending - a.pending || a.label.localeCompare(b.label))
 })
 
@@ -835,14 +887,70 @@ const members = computed(() => {
 
 const getAssignee = (email) => {
   if (!email) return { name: 'Unassigned', image: '' }
+  const needle = email.toLowerCase().trim()
+
+  // 1. Check dashboardMemberList (carries full employee_name in label)
+  const dm = (dashboardMemberList.value || []).find((m) => {
+    return (m.user && m.user.toLowerCase().trim() === needle) ||
+           (m.value && String(m.value).toLowerCase().trim() === needle) ||
+           (m.employee && String(m.employee).toLowerCase().trim() === needle)
+  })
+  if (dm && dm.label) {
+    return {
+      name: dm.label,
+      image: dm.image || '',
+    }
+  }
+
+  // 2. Check allTeamMembersList
+  const atm = (allTeamMembersList.value || []).find((m) => {
+    return (m.user && m.user.toLowerCase().trim() === needle) ||
+           (m.employee && String(m.employee).toLowerCase().trim() === needle) ||
+           (m.value && String(m.value).toLowerCase().trim() === needle)
+  })
+  if (atm && (atm.employee_name || atm.label)) {
+    return {
+      name: atm.employee_name || atm.label,
+      image: atm.image || '',
+    }
+  }
+
+  // 3. Check teamMembers
+  const tm = (teamMembers.value || []).find((m) => {
+    return (m.user && m.user.toLowerCase().trim() === needle) ||
+           (m.email && m.email.toLowerCase().trim() === needle) ||
+           (m.employee && String(m.employee).toLowerCase().trim() === needle)
+  })
+  if (tm && (tm.employee_name || tm.name || tm.full_name)) {
+    return {
+      name: tm.employee_name || tm.full_name || tm.name,
+      image: tm.user_image || tm.image || '',
+    }
+  }
+
+  // 4. Check members / people
   const found = members.value.find(
-    (m) => m.email.toLowerCase() === email.toLowerCase()
+    (m) => m.email.toLowerCase().trim() === needle || m.name.toLowerCase().trim() === needle
   )
   if (found) return found
+
+  // Fallback: if needle is user ID like 1754@domain, extract prefix or show needle
   return {
     name: email,
     image: '',
   }
+}
+
+function getMemberAvatarInitial(name, email) {
+  const str = (name || email || '').trim()
+  if (!str) return '?'
+  // If name is an email like 1754@domain.com, take prefix
+  const clean = str.includes('@') ? str.split('@')[0] : str
+  const words = clean.split(/\s+/).filter(Boolean)
+  if (words.length > 0) {
+    return words[0].slice(0, 2).toUpperCase()
+  }
+  return clean.slice(0, 2).toUpperCase()
 }
 
 function formatTaskTypeShort(type) {
@@ -2192,6 +2300,12 @@ const memberPendingBarChart = computed(() => {
 const teamBarChart = computed(() => memberPendingBarChart.value)
 
 // --- 2. Project List View State & Columns ---
+const projectViewMode = ref('List') // 'List' | 'Tree'
+const projectViewOptions = [
+  { label: 'List', value: 'List' },
+  { label: 'Tree', value: 'Tree' },
+]
+const collapsedProjectIds = ref(new Set())
 const selectedProjectTeamFilter = ref('')
 const projectListSearchQuery = ref('')
 const selectedProjectKeys = ref([])
@@ -2464,6 +2578,70 @@ function handleProjectLoadMore() {
 function handleProjectLoadAll() {
   projectsDisplayLimit.value = sortedProjects.value.length
 }
+
+const projectTreeData = computed(() => {
+  const list = filteredProjectsData.value || []
+  const map = {}
+  const roots = []
+
+  list.forEach(p => {
+    const id = p.id || p.name
+    map[id] = {
+      ...p,
+      label: p.project_name || p.name,
+      value: id,
+      expanded: !collapsedProjectIds.value.has(id),
+      children: [],
+    }
+  })
+
+  list.forEach(p => {
+    const id = p.id || p.name
+    const parentId = p.parent_project
+    if (parentId && map[parentId] && parentId !== id) {
+      map[parentId].children.push(map[id])
+    } else {
+      roots.push(map[id])
+    }
+  })
+
+  return roots
+})
+
+function toggleProjectTreeNode(node) {
+  const id = node.id || node.name || node.value
+  if (!id) return
+  const next = new Set(collapsedProjectIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  collapsedProjectIds.value = next
+}
+
+const projectTreeStats = computed(() => {
+  const list = filteredProjectsData.value || []
+  let parentCount = 0
+  let childCount = 0
+
+  const parentIdsWithChildren = new Set()
+  list.forEach(p => {
+    if (p.parent_project) {
+      parentIdsWithChildren.add(p.parent_project)
+      childCount++
+    }
+  })
+
+  // Parents are either root projects or projects that have children
+  parentCount = list.filter(p => !p.parent_project || parentIdsWithChildren.has(p.id || p.name)).length
+
+  return {
+    parents: parentCount,
+    children: childCount,
+    total: list.length,
+  }
+})
 
 // --- 3. Team List View State & Columns ---
 const selectedTeamKeys = ref([])
@@ -3993,15 +4171,51 @@ onUnmounted(() => {
                 placeholder="Select Project"
                 class="w-48 sm:w-60 shrink-0"
               >
+                <template #item-label="{ item }">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="truncate text-xs font-semibold text-ink-gray-9 dark:text-gray-100">
+                      {{ item.label }}
+                    </span>
+                    <!-- Total Project Pending Count Badge next to project name -->
+                    <Badge
+                      v-if="item.pending"
+                      :label="String(item.pending)"
+                      theme="orange"
+                      variant="subtle"
+                      size="sm"
+                      class="shrink-0"
+                      :title="`${item.pending} total pending`"
+                    />
+                  </div>
+                </template>
                 <template #item-suffix="{ item }">
-                  <Badge
-                    v-if="item.pending"
-                    :label="String(item.pending)"
-                    theme="orange"
-                    variant="subtle"
-                    size="sm"
-                    :title="`${item.pending} pending`"
-                  />
+                  <!-- Right-aligned Member Avatars with gap, showing all assigned members -->
+                  <div v-if="item.members && item.members.length" class="flex items-center flex-wrap gap-1.5 ml-auto pl-2 justify-end">
+                    <div
+                      v-for="m in item.members"
+                      :key="m.email"
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-surface-gray-2 dark:bg-gray-800/80 border border-outline-gray-1 dark:border-gray-700/60 shadow-2xs shrink-0 select-none"
+                      :title="`${m.name}: ${m.count} pending`"
+                    >
+                      <Avatar
+                        v-if="m.image"
+                        :image="m.image"
+                        :label="m.name"
+                        size="sm"
+                        shape="circle"
+                        class="shrink-0"
+                      />
+                      <div
+                        v-else
+                        class="size-6 rounded-full bg-surface-gray-3 dark:bg-gray-700 text-ink-gray-8 dark:text-gray-100 flex items-center justify-center text-[10px] font-bold uppercase shrink-0 border border-outline-gray-2/60 dark:border-gray-600 select-none"
+                      >
+                        {{ getMemberAvatarInitial(m.name, m.email) }}
+                      </div>
+                      <span class="text-[11px] font-bold font-mono text-ink-gray-8 dark:text-gray-200">
+                        {{ m.count }}
+                      </span>
+                    </div>
+                  </div>
                 </template>
               </MultiSelect>
               <MultiSelect
@@ -5261,12 +5475,21 @@ onUnmounted(() => {
                 size="sm"
                 class="w-48"
               />
-              <span class="whitespace-nowrap">{{ sortedProjects.length }} projects</span>
+              <TabButtons
+                v-model="projectViewMode"
+                :options="projectViewOptions"
+              />
+              <div v-if="projectViewMode === 'Tree'" class="inline-flex items-center gap-1.5 text-xs text-ink-gray-6 dark:text-gray-400 bg-surface-gray-2 dark:bg-gray-800 px-2 py-1 rounded-md border border-outline-gray-1 dark:border-gray-700 whitespace-nowrap">
+                <span class="font-semibold text-ink-gray-9 dark:text-gray-100">{{ projectTreeStats.parents }}</span> Parents
+                <span class="text-ink-gray-4">·</span>
+                <span class="font-semibold text-ink-gray-9 dark:text-gray-100">{{ projectTreeStats.children }}</span> Children
+              </div>
+              <span v-else class="whitespace-nowrap">{{ sortedProjects.length }} projects</span>
             </div>
           </div>
 
-          <!-- Projects List Table View: Fills remaining height -->
-          <div class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
+          <!-- Projects List Table View -->
+          <div v-if="projectViewMode === 'List'" class="flex-1 min-h-0 flex flex-col overflow-hidden outline-none focus:outline-none ring-0">
             <CommonListView
               :columns="projectTableColumns"
               :rows="paginatedProjects"
@@ -5357,6 +5580,48 @@ onUnmounted(() => {
                 </span>
               </template>
             </CommonListView>
+          </div>
+
+          <!-- Projects Tree View -->
+          <div v-else class="flex-1 min-h-0 flex flex-col bg-surface-base rounded-xl border border-outline-gray-1 dark:border-gray-800 p-4 overflow-y-auto">
+            <div v-if="projectTreeData.length === 0" class="flex flex-col items-center justify-center flex-1 py-16 text-center">
+              <Folder class="size-10 text-ink-gray-4 dark:text-gray-600 mb-2 stroke-1" />
+              <p class="text-sm font-medium text-ink-gray-7 dark:text-gray-300">No projects found</p>
+              <p class="text-xs text-ink-gray-5 dark:text-gray-500 mt-0.5">Try clearing your filters or search query</p>
+            </div>
+            <Tree v-else :nodes="projectTreeData" node-key="value" guides="connectors">
+              <template #item-prefix="{ node }">
+                <Folder class="size-4 shrink-0" :class="node.children && node.children.length ? 'text-amber-500' : 'text-blue-500'" />
+              </template>
+              <template #item-label="{ node }">
+                <div class="flex items-center gap-2.5 py-1 px-1.5 rounded-md hover:bg-surface-gray-2/70 dark:hover:bg-gray-800/60 cursor-pointer transition-colors group">
+                  <span
+                    class="text-xs font-semibold text-ink-gray-9 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+                    title="Open project details"
+                    @click.stop="openEditProject(node)"
+                  >
+                    {{ node.project_name || node.label }}
+                  </span>
+                  <!-- Clean children count badge without extra arrow -->
+                  <span
+                    v-if="node.children && node.children.length"
+                    class="text-[10px] font-semibold text-blue-700 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-300 px-1.5 py-0.2 rounded border border-blue-200 dark:border-blue-800 select-none"
+                    :title="`${node.children.length} sub-projects`"
+                  >
+                    {{ node.children.length }} child{{ node.children.length > 1 ? 'ren' : '' }}
+                  </span>
+                  <Badge :theme="node.status === 'Completed' ? 'green' : node.status === 'In Progress' ? 'blue' : node.status === 'Cancelled' ? 'red' : 'gray'" variant="subtle" size="sm">
+                    {{ node.status }}
+                  </Badge>
+                  <span v-if="node.team && node.team !== 'Unassigned'" class="text-[11px] text-ink-gray-5 dark:text-gray-400">
+                    {{ node.team }}
+                  </span>
+                  <span v-if="node.total_tasks !== undefined" class="text-[11px] text-ink-gray-4 dark:text-gray-500">
+                    {{ node.completed_tasks }}/{{ node.total_tasks }} tasks
+                  </span>
+                </div>
+              </template>
+            </Tree>
           </div>
         </template>
 

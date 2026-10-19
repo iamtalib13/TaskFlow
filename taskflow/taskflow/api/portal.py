@@ -1108,10 +1108,11 @@ def get_all_assignable_members() -> list[dict]:
             COALESCE(e.employee_name, tm.employee) AS employee_name,
             e.designation,
             e.department,
-            e.image,
+            COALESCE(NULLIF(e.image, ''), u.user_image) AS image,
             GROUP_CONCAT(DISTINCT tm.parent) AS teams
         FROM `tabTaskflow Team Member` tm
         LEFT JOIN `tabEmployee` e ON e.name = tm.employee
+        LEFT JOIN `tabUser` u ON u.name = COALESCE(NULLIF(tm.user, ''), e.user_id)
         WHERE tm.parenttype = 'Taskflow Team' AND tm.is_active = 1
         GROUP BY tm.employee
         ORDER BY employee_name
