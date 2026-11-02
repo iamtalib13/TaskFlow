@@ -3292,7 +3292,11 @@ async function onCreateTask(formData) {
     toast.error(msg)
     throw new Error(msg)
   }
-  if (!projVal) {
+  const selectedProjectsList = Array.isArray(formData.projects)
+    ? formData.projects.map((p) => (typeof p === 'object' && p ? (p.value || p.name) || '' : (p || ''))).filter(Boolean)
+    : []
+  const targetProjects = selectedProjectsList.length > 0 ? selectedProjectsList : [projVal]
+  if (!targetProjects.length) {
     const msg = 'Project is required'
     toast.error(msg)
     throw new Error(msg)
@@ -3306,71 +3310,73 @@ async function onCreateTask(formData) {
     ? (formData.completed_on || new Date().toISOString().split('T')[0])
     : ''
 
-  const newTask = {
-    ...formData,
-    title: formData.title,
-    project: projVal,
-    team: teamVal,
-    status: statusVal,
-    priority: priorityVal,
-    task_type: taskTypeVal,
-    description: formData.description || '',
-    start_date: formData.start_date || '',
-    due_date: formData.due_date || '',
-    pending_from: formData.pending_from || '',
-    guided_by: guidedByVal,
-    toll_id: formData.toll_id || '',
-    ticket_date: formData.ticket_date || '',
-    ticket_raised_by: formData.ticket_raised_by || '',
-    estimated_hours: 8,
-    completed_on: completedOnVal,
-    assignees: assigneeList,
-  }
-
-  try {
-    const result = await saveTask(newTask)
-    if (result && result.id) {
-      const savedTask = {
-        ...result,
-        id: result.id,
-        title: result.title || formData.title,
-        project: result.project || projVal,
-        team: result.team || teamVal,
-        status: result.status || statusVal,
-        priority: result.priority || priorityVal,
-        task_type: result.task_type || taskTypeVal,
-        assignees: result.assignees || assigneeList,
-        reporter: fullName.value,
-        start_date: result.start_date || formData.start_date || '',
-        due_date: result.due || formData.due_date || '',
-        completed_on: result.completed_on || completedOnVal,
-        pending_from: result.pending_from || formData.pending_from || '',
-        guided_by: result.guided_by || guidedByVal || '',
-        toll_id: result.toll_id || formData.toll_id || '',
-        ticket_date: result.ticket_date || formData.ticket_date || '',
-        ticket_raised_by: result.ticket_raised_by || formData.ticket_raised_by || '',
-        description: result.description || formData.description || '',
-        estimated_hours: result.estimated_hours || 8,
-        logged_hours: 0,
-        starred: false,
-        comments: [],
-        creation: result.creation || new Date().toISOString(),
-        modified: result.modified || new Date().toISOString(),
-        modified_pretty: 'Just now',
-      }
-      tasks.value.unshift(savedTask)
-
-      if (statusVal === 'Completed' && statusTab.value === 'Pending') {
-        statusTab.value = 'Completed'
-      }
-
-      toast.success('Task created successfully')
-      return savedTask
+  const createdTasks = []
+  for (const targetProject of targetProjects) {
+    const newTask = {
+      ...formData,
+      title: formData.title,
+      project: targetProject,
+      team: teamVal,
+      status: statusVal,
+      priority: priorityVal,
+      task_type: taskTypeVal,
+      description: formData.description || '',
+      start_date: formData.start_date || '',
+      due_date: formData.due_date || '',
+      pending_from: formData.pending_from || '',
+      guided_by: guidedByVal,
+      toll_id: formData.toll_id || '',
+      ticket_date: formData.ticket_date || '',
+      ticket_raised_by: formData.ticket_raised_by || '',
+      estimated_hours: 8,
+      completed_on: completedOnVal,
+      assignees: assigneeList,
     }
-  } catch (err) {
-    const msg = getErrorMessage(err, 'Failed to create task')
-    toast.error(msg)
-    throw err
+
+    try {
+      const result = await saveTask(newTask)
+      if (result && result.id) {
+        const savedTask = {
+          ...result,
+          id: result.id,
+          title: result.title || formData.title,
+          project: result.project || targetProject,
+          team: result.team || teamVal,
+          status: result.status || statusVal,
+          priority: result.priority || priorityVal,
+          task_type: result.task_type || taskTypeVal,
+          assignees: result.assignees || assigneeList,
+          reporter: fullName.value,
+          start_date: result.start_date || formData.start_date || '',
+          due: result.due || formData.due_date || '',
+          completed_on: result.completed_on || completedOnVal,
+          pending_from: result.pending_from || formData.pending_from || '',
+          guided_by: result.guided_by || guidedByVal || '',
+          ticket_date: result.ticket_date || formData.ticket_date || '',
+          ticket_raised_by: result.ticket_raised_by || formData.ticket_raised_by || '',
+          description: result.description || formData.description || '',
+          estimated_hours: result.estimated_hours || 8,
+          logged_hours: 0,
+          starred: false,
+          comments: [],
+          creation: result.creation || new Date().toISOString(),
+          modified: result.modified || new Date().toISOString(),
+          modified_pretty: 'Just now',
+        }
+        tasks.value.unshift(savedTask)
+
+        if (statusVal === 'Completed' && statusTab.value === 'Pending') {
+          statusTab.value = 'Completed'
+        }
+
+        toast.success('Task created successfully')
+        return savedTask
+      }
+    } catch (err) {
+      const msg = getErrorMessage(err, 'Failed to create task')
+      toast.error(msg)
+      throw err
+    }
   }
 }
 
