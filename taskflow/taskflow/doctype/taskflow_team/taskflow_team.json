@@ -10,6 +10,7 @@
   "team_name",
   "company",
   "is_active",
+  "allow_multiple_task_creation",
   "parent_team",
   "team_lead",
   "visibility_scope",
@@ -50,18 +51,11 @@
    "options": "Taskflow Team"
   },
   {
-    "fieldname": "team_lead",
-    "fieldtype": "Link",
-    "in_standard_filter": 1,
-    "label": "Team Lead",
-    "options": "Employee",
-    "roles": [
-      {
-        "role": "System Manager",
-        "read": 1,
-        "write": 1
-      }
-    ]
+   "fieldname": "team_lead",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Team Lead",
+   "options": "Employee"
   },
   {
    "default": "Team",
@@ -94,11 +88,17 @@
    "fieldname": "send_email",
    "fieldtype": "Check",
    "label": "Send Email"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_multiple_task_creation",
+   "fieldtype": "Check",
+   "label": "Allow Multiple Task Creation"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-17 16:14:02.694215",
+ "modified": "2026-11-02 11:53:08.167408",
  "modified_by": "Administrator",
  "module": "Taskflow",
  "name": "Taskflow Team",
