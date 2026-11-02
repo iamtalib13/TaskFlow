@@ -1345,6 +1345,7 @@ export default {
         priority: priorityVal,
         task_type: taskTypeVal,
         project: projVal,
+        projects: this.allowMultipleProjects ? (this.form.projects || []) : [],
         guided_by: guidedByVal,
         team: teamVal || undefined,
         assignees: assigneeIds,
