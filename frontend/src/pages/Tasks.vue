@@ -3364,13 +3364,13 @@ async function onCreateTask(formData) {
           modified_pretty: 'Just now',
         }
         tasks.value.unshift(savedTask)
+        createdTasks.push(savedTask)
 
         if (statusVal === 'Completed' && statusTab.value === 'Pending') {
           statusTab.value = 'Completed'
         }
 
         toast.success('Task created successfully')
-        return savedTask
       }
     } catch (err) {
       const msg = getErrorMessage(err, 'Failed to create task')
@@ -3378,6 +3378,8 @@ async function onCreateTask(formData) {
       throw err
     }
   }
+
+  return createdTasks[0]
 }
 
 async function onDeleteTask(taskId) {
