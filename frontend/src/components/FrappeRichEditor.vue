@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import {
   Editor,
   EditorContent,
@@ -74,12 +74,12 @@ const tags = [
   { id: 'billing', label: 'billing' },
 ]
 
-const extensions = [
+const extensions = computed(() => [
   RichTextKit.configure({
     mention: { items: people },
     tag: { items: tags },
   }),
-]
+])
 
 const toolbar = [
   HeadingGroup,
