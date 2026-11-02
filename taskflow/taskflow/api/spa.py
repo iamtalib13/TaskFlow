@@ -45,7 +45,7 @@ def get_spa_bootstrap() -> dict:
 		teams_data_raw = frappe.get_all(
 			"Taskflow Team",
 			filters={"is_active": 1},
-			fields=["name", "team_name", "team_lead", "is_active"],
+			fields=["name", "team_name", "team_lead", "is_active", "allow_multiple_task_creation"],
 			order_by="team_name asc",
 		)
 		accessible_teams = [tm["name"] for tm in teams_data_raw]
@@ -56,7 +56,7 @@ def get_spa_bootstrap() -> dict:
 		teams_data_raw = frappe.get_all(
 			"Taskflow Team",
 			filters=teams_filter,
-			fields=["name", "team_name", "team_lead", "is_active"],
+			fields=["name", "team_name", "team_lead", "is_active", "allow_multiple_task_creation"],
 			order_by="team_name asc",
 		)
 		writable_teams = set()
@@ -86,6 +86,7 @@ def get_spa_bootstrap() -> dict:
 			"team_lead": tm.get("team_lead"),
 			"team_lead_user": lead_user_map.get(tm.get("team_lead")) or "",
 			"is_active": tm.get("is_active"),
+			"allow_multiple_task_creation": tm.get("allow_multiple_task_creation"),
 			"can_write": is_admin or (tm["name"] in writable_teams),
 		}
 		for tm in teams_data_raw

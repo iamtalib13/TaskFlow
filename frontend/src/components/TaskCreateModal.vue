@@ -140,14 +140,14 @@
                   </Combobox>
                 </div>
 
-                <!-- 2. Project (Searchable Combobox filtered by Team) -->
+                <!-- 2. Project (Single Combobox, or Multi-select with checkboxes when team allows multiple task creation) -->
                 <div>
                   <div class="flex items-center justify-between mb-1">
                     <label class="block font-medium text-ink-gray-6 dark:text-gray-300">
                       Project <span class="text-rose-500">*</span>
                     </label>
                     <button
-                      v-if="selectedProjectValue"
+                      v-if="selectedProjectValue || (allowMultipleProjects && form.projects?.length)"
                       type="button"
                       class="text-[11px] text-ink-gray-5 hover:text-ink-gray-8 dark:hover:text-gray-200 transition-colors cursor-pointer"
                       @click="clearProject"
@@ -155,7 +155,32 @@
                       Clear
                     </button>
                   </div>
+
+                  <!-- Multi-select with checkboxes when the selected team allows multiple task creation -->
+                  <MultiSelect
+                    v-if="allowMultipleProjects"
+                    v-model="form.projects"
+                    :options="projectOptions"
+                    placeholder="Select project(s)..."
+                    size="sm"
+                    class="w-full"
+                    @update:modelValue="onProjectChange"
+                  >
+                    <template #item-label="{ item }">
+                      <div class="min-w-0 flex-1 py-0.5">
+                        <div class="truncate font-semibold text-xs text-ink-gray-9 dark:text-gray-100">
+                          {{ item.label }}
+                        </div>
+                        <div v-if="item.team && !selectedTeamValue" class="truncate text-[11px] text-ink-gray-5 dark:text-gray-400">
+                          Team: {{ item.team }}
+                        </div>
+                      </div>
+                    </template>
+                  </MultiSelect>
+
+                  <!-- Single select Combobox otherwise -->
                   <Combobox
+                    v-else
                     v-model="form.project"
                     v-model:query="projectSearchQuery"
                     :options="projectOptions"
@@ -176,6 +201,7 @@
                       </div>
                     </template>
                   </Combobox>
+
                   <p v-if="selectedTeamValue && projectOptions.length === 0" class="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
                     No projects found for {{ selectedTeamValue }}.
                   </p>
@@ -650,6 +676,7 @@ export default {
         title: '',
         team: '',
         project: '',
+        projects: [],
         parent_project: '',
         task_type: 'Task',
         assignees: [],
@@ -670,6 +697,16 @@ export default {
     }
   },
   watch: {
+    allowMultipleProjects(val) {
+      if (!val) {
+        this.form.project = (this.form.projects || [])[0] || ''
+        this.form.projects = []
+      } else {
+        if (!this.form.projects || this.form.projects.length === 0) {
+          this.form.projects = this.form.project ? [this.form.project] : []
+        }
+      }
+    },
     modelValue(val) {
       if (val) {
         this.loadTaskflowSettings()
@@ -685,6 +722,7 @@ export default {
           title: '',
           team: defaultTeam || '',
           project: defaultProject || '',
+          projects: defaultProject ? [defaultProject] : [],
           parent_project: '',
           task_type: 'Task',
           assignees: defaultAssignee ? [defaultAssignee] : [],
@@ -824,12 +862,24 @@ export default {
       return typeof this.form.team === 'object' ? (this.form.team.value || this.form.team.label || '') : this.form.team
     },
     selectedProjectValue() {
+      if (this.allowMultipleProjects) {
+        const first = (this.form.projects || [])[0]
+        if (!first) return ''
+        return typeof first === 'object' ? (first.value || first.label || '') : first
+      }
       if (!this.form.project) return ''
       return typeof this.form.project === 'object' ? (this.form.project.value || this.form.project.label || '') : this.form.project
     },
     selectedParentProjectValue() {
       if (!this.form.parent_project) return ''
       return typeof this.form.parent_project === 'object' ? (this.form.parent_project.value || this.form.parent_project.label || '') : this.form.parent_project
+    },
+    selectedTeamObj() {
+      if (!this.selectedTeamValue) return null
+      return (this.teams || []).find((t) => (t.name === this.selectedTeamValue || t.team_name === this.selectedTeamValue))
+    },
+    allowMultipleProjects() {
+      return !!this.selectedTeamObj?.allow_multiple_task_creation
     },
     selectedGuidedByValue() {
       if (!this.form.guided_by) return ''
@@ -1123,6 +1173,20 @@ export default {
       }
     },
     onProjectChange(val) {
+      // Multi-select mode: store selection and keep team as-is
+      if (this.allowMultipleProjects) {
+        const first = Array.isArray(val)
+          ? (val[0]?.value || val[0] || '')
+          : (val?.value || val || this.selectedProjectValue || '')
+        if (first) {
+          try {
+            localStorage.setItem('taskflow_last_selected_project', first)
+          } catch (e) {}
+        }
+        this.loadTeamMembersForTeam(this.effectiveTeam)
+        return
+      }
+
       const projVal = typeof val === 'object' ? (val?.value || '') : (val || this.selectedProjectValue)
       if (projVal) {
         try {
@@ -1171,6 +1235,7 @@ export default {
     },
     clearProject() {
       this.form.project = ''
+      this.form.projects = []
       this.projectSearchQuery = ''
       try {
         localStorage.removeItem('taskflow_last_selected_project')
@@ -1243,7 +1308,13 @@ export default {
         toast.error('Team is required')
         return
       }
-      if (!projVal) {
+      if (this.allowMultipleProjects) {
+        if (!this.form.projects || this.form.projects.length === 0) {
+          this.errorMessage = 'Project is required'
+          toast.error('Project is required')
+          return
+        }
+      } else if (!projVal) {
         this.errorMessage = 'Project is required'
         toast.error('Project is required')
         return
@@ -1274,6 +1345,7 @@ export default {
         priority: priorityVal,
         task_type: taskTypeVal,
         project: projVal,
+        projects: this.allowMultipleProjects ? (this.form.projects || []) : [],
         guided_by: guidedByVal,
         team: teamVal || undefined,
         assignees: assigneeIds,
