@@ -36,7 +36,7 @@
               type="submit"
               size="sm"
               :loading="creating"
-              :disabled="!form.title.trim() || !selectedTeamValue || !selectedProjectValue || !selectedGuidedByValue || creating"
+              :disabled="!form.title.trim() || !selectedTeamValue || !selectedProjectValue || creating"
             >
               Create Task
             </Button>
@@ -156,16 +156,25 @@
                     </button>
                   </div>
 
-                  <!-- Multi-select with checkboxes when the selected team allows multiple task creation -->
+                  <!-- Multi-select with a checkbox in front of each item when the selected team allows multiple task creation -->
                   <MultiSelect
                     v-if="allowMultipleProjects"
                     v-model="form.projects"
                     :options="projectOptions"
-                    placeholder="Select project(s)..."
+                    :placeholder="selectedTeamValue ? `Select project(s) from ${selectedTeamValue}...` : 'Search and select project(s)...'"
                     size="sm"
                     class="w-full"
                     @update:modelValue="onProjectChange"
                   >
+                    <template #item-prefix="{ selected }">
+                      <input
+                        type="checkbox"
+                        :checked="selected"
+                        readonly
+                        tabindex="-1"
+                        class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 pointer-events-none"
+                      />
+                    </template>
                     <template #item-label="{ item }">
                       <div class="min-w-0 flex-1 py-0.5">
                         <div class="truncate font-semibold text-xs text-ink-gray-9 dark:text-gray-100">
