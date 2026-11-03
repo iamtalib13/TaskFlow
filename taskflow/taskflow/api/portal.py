@@ -1703,7 +1703,7 @@ def _send_task_mention_emails(task_doc, content: str, sender_name: str, sender_e
             employee_details = _bulk_employee_details(employee_ids)
             for emp_id, details in employee_details.items():
                 label = details.get("employee_name") or emp_id
-                email = details.get("company_email") or details.get("user_id")
+                email = details.get("company_email")
                 if email:
                     label_to_email[label.lower().strip()] = email
                     if details.get("user_id"):
@@ -1719,7 +1719,7 @@ def _send_task_mention_emails(task_doc, content: str, sender_name: str, sender_e
             filters={"status": "Active"} if frappe.get_meta("Employee").has_field("status") else {},
         )
         for row in rows:
-            email = row.company_email or row.user_id
+            email = row.company_email
             if not email:
                 continue
             if row.employee_name:
