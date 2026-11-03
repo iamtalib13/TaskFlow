@@ -584,7 +584,8 @@
                   <div
                     v-for="(att, idx) in attachments"
                     :key="att.id || att.name || idx"
-                    class="flex items-center p-2.5 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 hover:bg-surface-base hover:border-teal-300 hover:shadow-xs transition-all group relative"
+                    class="flex items-center p-2.5 rounded-lg border border-outline-gray-2 bg-surface-gray-2/80 hover:bg-surface-base hover:border-teal-300 hover:shadow-xs transition-all group relative cursor-pointer"
+                    @click="viewingAttachment = att"
                   >
                     <div
                       class="w-8 h-8 rounded flex items-center justify-center mr-2.5 shrink-0"
@@ -607,6 +608,7 @@
                         download
                         class="text-ink-gray-4 hover:text-ink-gray-7 p-1"
                         title="Download"
+                        @click.stop
                       >
                         <Download class="size-3.5" />
                       </a>
@@ -817,6 +819,34 @@
             </div>
         </aside>
       </main>
+    </div>
+  </div>
+
+  <!-- Attachment viewer popup -->
+  <div
+    v-if="viewingAttachment"
+    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+    @click.self="viewingAttachment = null"
+  >
+    <div class="relative w-[90vw] h-[90vh] bg-surface-base dark:bg-neutral-900 rounded-xl shadow-2xl overflow-hidden flex flex-col">
+      <div class="flex items-center justify-between px-4 py-2 border-b border-outline-gray-2 dark:border-neutral-800">
+        <span class="text-sm font-medium text-ink-gray-8 dark:text-gray-100 truncate">
+          {{ viewingAttachment.name || viewingAttachment.file_name || 'Attachment' }}
+        </span>
+        <button
+          type="button"
+          class="size-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-surface-gray-3 hover:text-ink-gray-8 dark:hover:text-white transition cursor-pointer"
+          @click="viewingAttachment = null"
+        >
+          <X class="size-5" />
+        </button>
+      </div>
+      <div class="flex-1 min-h-0 bg-surface-gray-1 dark:bg-neutral-950">
+        <iframe
+          :src="viewingAttachment.url || viewingAttachment.file_url || '#'"
+          class="w-full h-full border-0"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -1045,6 +1075,7 @@ export default {
       },
       attachments: [],
       uploadingAttachment: false,
+      viewingAttachment: null,
       comments: [],
       activityLog: [],
       newComment: '',

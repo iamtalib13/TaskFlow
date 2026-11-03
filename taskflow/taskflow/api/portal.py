@@ -1690,23 +1690,46 @@ def _send_task_mention_emails(task_doc, content: str, sender_name: str, sender_e
         return
 
     project_name = task_doc.project
-    if not project_name:
-        return
 
-    project_doc = frappe.get_doc("Taskflow Project", project_name)
-    members = project_doc.get("project_team_members", [])
-    if not members:
-        return
-
-    employee_ids = [m.employee for m in members if m.employee]
-    employee_details = _bulk_employee_details(employee_ids)
-
+    # Build a label -> email map from Employee records (company_email preferred).
     label_to_email = {}
-    for emp_id, details in employee_details.items():
-        label = details.get("employee_name") or emp_id
-        email = details.get("company_email") or details.get("user_id")
-        if email:
-            label_to_email[label.lower().strip()] = email
+
+    # Project team members (preferred scope).
+    if project_name:
+        try:
+            project_doc = frappe.get_doc("Taskflow Project", project_name)
+            members = project_doc.get("project_team_members", []) or []
+            employee_ids = [m.employee for m in members if m.employee]
+            employee_details = _bulk_employee_details(employee_ids)
+            for emp_id, details in employee_details.items():
+                label = details.get("employee_name") or emp_id
+                email = details.get("company_email") or details.get("user_id")
+                if email:
+                    label_to_email[label.lower().strip()] = email
+                    if details.get("user_id"):
+                        label_to_email[str(details.get("user_id")).lower().strip()] = email
+        except Exception:
+            pass
+
+    # Fall back to all employees so @mentions of any user resolve to their company_email.
+    try:
+        rows = frappe.get_all(
+            "Employee",
+            fields=["name", "employee_name", "user_id", "company_email"],
+            filters={"status": "Active"} if frappe.get_meta("Employee").has_field("status") else {},
+        )
+        for row in rows:
+            email = row.company_email or row.user_id
+            if not email:
+                continue
+            if row.employee_name:
+                label_to_email[row.employee_name.lower().strip()] = email
+            if row.user_id:
+                label_to_email[str(row.user_id).lower().strip()] = email
+            if row.name:
+                label_to_email[str(row.name).lower().strip()] = email
+    except Exception:
+        pass
 
     task_title_esc = frappe.utils.escape_html(task_doc.task_title or "")
     project_name_esc = frappe.utils.escape_html(project_name)
