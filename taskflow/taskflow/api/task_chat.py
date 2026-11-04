@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import html as html_lib
 import json
+import re
+from urllib.parse import quote
 
 import frappe
 from frappe import _
-from frappe.utils import get_datetime, now_datetime, strip_html
+from frappe.utils import get_datetime, get_url, now_datetime, strip_html
 from frappe.utils.html_utils import sanitize_html
 
 TASK_DOCTYPE = "Taskflow Task"
@@ -189,6 +191,81 @@ def _serialize_messages(comments: list[dict]) -> list[dict]:
 	return out
 
 
+def _extract_mention_ids(html: str) -> list[str]:
+	"""User ids mentioned with @mention spans, e.g. <span class="mention"
+	data-id="user@example.com">@Name</span>. Order-preserving, deduplicated."""
+	ids = []
+	for tag in re.findall(r"<span\b[^>]*>", html or "", re.I):
+		if not re.search(r'class="[^"]*\bmention\b[^"]*', tag, re.I):
+			continue
+		m = re.search(r'data-id="([^"]*)"', tag)
+		if m and m.group(1).strip():
+			ids.append(html_lib.unescape(m.group(1).strip()))
+	return list(dict.fromkeys(ids))
+
+
+def _company_email_of(mention_id: str) -> str | None:
+	"""Recipient email for a mention id: the company_email field of the
+	Employee doctype of that user (matched by user_id, company_email, or
+	the Employee id being mentioned directly)."""
+	if not mention_id:
+		return None
+
+	if frappe.db.exists("Employee", mention_id):
+		email = frappe.db.get_value("Employee", mention_id, "company_email")
+		if email:
+			return email
+
+	rows = frappe.get_all(
+		"Employee",
+		or_filters={"user_id": mention_id, "company_email": mention_id},
+		fields=["company_email"],
+		limit=1,
+	)
+	return rows[0].company_email or None if rows else None
+
+
+def _email_mentioned_members(task, html: str) -> None:
+	"""Email every user @mentioned in a chat message at their Employee
+	company_email, excluding the sender."""
+	mention_ids = _extract_mention_ids(html)
+	if not mention_ids:
+		return
+
+	sender = frappe.session.user
+	sender_name = frappe.db.get_value("User", sender, "full_name") or sender
+
+	recipients: list[str] = []
+	for mention_id in mention_ids:
+		email = _company_email_of(mention_id)
+		if not email or email in recipients:
+			continue
+		recipients.append(email)
+
+	if not recipients:
+		return
+
+	task_title = task.task_title or task.name
+	message_html = f"""
+<p><strong>{sender_name}</strong> mentioned you in the chat on task <strong>{task.name}</strong> &mdash; {task_title}:</p>
+<blockquote style="border-left: 3px solid #4f6ef7; padding: 8px 12px; margin: 8px 0; background: #f8fafc; color: #334155;">{html}</blockquote>
+<p><a href="{get_url()}/taskflow/task/{quote(task.name, safe="")}">Open Task</a></p>
+"""
+
+	try:
+		frappe.sendmail(
+			recipients=recipients,
+			subject=_("You were mentioned on task {0}: {1}").format(task.name, task_title),
+			message=message_html,
+			now=True,
+		)
+	except Exception:
+		frappe.log_error(
+			title=_("Task Chat Mention Email Failed"),
+			message=frappe.get_traceback(),
+		)
+
+
 def _fetch(filters: dict) -> list[dict]:
 	return frappe.get_all(
 		"Comment",
@@ -253,6 +330,9 @@ def send_message(task_id: str, content: str = "", reply_to: str = "") -> dict:
 			"is_private": 1,
 			"content": data,
 		}).save(ignore_permissions=True)
+
+	if html:
+		_email_mentioned_members(task, html)
 
 	return _serialize_messages(_fetch({"name": comment.name}))[0]
 
