@@ -1503,6 +1503,36 @@ function getUserNameMap() {
   return map
 }
 
+function getUserImageMap() {
+  const map = new Map()
+  for (const p of people.value || []) {
+    const img = p.image || ''
+    if (img) {
+      if (p.name) map.set(p.name, img)
+      if (p.full_name) map.set(p.full_name, img)
+      if (p.email) map.set(p.email, img)
+    }
+  }
+  for (const e of employees.value || []) {
+    const img = e.user_image || e.image || ''
+    if (img) {
+      if (e.name) map.set(e.name, img)
+      if (e.employee_name) map.set(e.employee_name, img)
+      if (e.user_id) map.set(e.user_id, img)
+    }
+  }
+  for (const m of teamMembers.value || []) {
+    const img = m.user_image || m.image || ''
+    if (img) {
+      if (m.user) map.set(m.user, img)
+      if (m.employee) map.set(m.employee, img)
+      if (m.user_name) map.set(m.user_name, img)
+      if (m.employee_name) map.set(m.employee_name, img)
+    }
+  }
+  return map
+}
+
 const taskReportFields = {
   id: (t) => t.id || t.name || '',
   title: (t) => t.title || t.task_title || '',
@@ -2383,6 +2413,7 @@ const memberPendingBarChart = computed(() => {
   }
 
   // Sort by pending tasks descending, show top members
+  const userImageMap = getUserImageMap()
   const sorted = Array.from(map.entries())
     .map(([fullName, info]) => {
       const displayName = typeof fullName === 'string' ? fullName.trim().split(/\s+/)[0] || fullName : fullName
@@ -2395,6 +2426,7 @@ const memberPendingBarChart = computed(() => {
       return {
         member: displayName,
         fullName,
+        image: userImageMap.get(fullName) || '',
         pending: info.count,
         projectsSummary: projectSummary,
       }
@@ -2420,6 +2452,7 @@ const teamBarChart = computed(() => memberPendingBarChart.value)
 const workloadDetailModalOpen = ref(false)
 const workloadDetailSearch = ref('')
 const workloadHealthFilter = ref('All') // 'All' | 'On Track' | 'At Risk' | 'Overdue'
+const workloadHoveredCell = ref({ project: '', member: '' })
 
 // Helper to determine health status based on due date
 function getProjectHealth(dueDateStr, rawDate) {
@@ -7075,12 +7108,28 @@ onUnmounted(() => {
                 <th
                   v-for="m in workloadMatrixMembers"
                   :key="m.fullName || m.member"
-                  class="py-2.5 px-3 min-w-[125px] text-center"
+                  class="py-2.5 px-3 min-w-[130px] text-center transition-colors"
+                  :class="[
+                    workloadHoveredCell.member === (m.fullName || m.member)
+                      ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 ring-2 ring-inset ring-emerald-500/50'
+                      : ''
+                  ]"
                   :title="m.fullName || m.member"
                 >
-                  <div class="flex flex-col items-center gap-1 mx-auto">
-                    <span class="truncate max-w-[115px] font-semibold text-ink-gray-9 dark:text-neutral-100">
-                      {{ m.member }}
+                  <div class="flex flex-col items-center gap-1.5 mx-auto py-0.5">
+                    <Avatar
+                      :image="m.image"
+                      :label="m.fullName || m.member"
+                      size="lg"
+                      shape="circle"
+                      class="shrink-0 shadow-sm ring-2 ring-emerald-500/30"
+                    />
+                    <span
+                      class="truncate max-w-[120px] font-bold text-xs"
+                      :class="workloadHoveredCell.member === (m.fullName || m.member) ? 'text-emerald-900 dark:text-emerald-200' : 'text-ink-gray-9 dark:text-neutral-100'"
+                      :title="m.fullName || m.member"
+                    >
+                      {{ m.fullName || m.member }}
                     </span>
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
                       {{ (m.projectsSummary || []).length }} {{ (m.projectsSummary || []).length === 1 ? 'proj' : 'projs' }}
@@ -7102,7 +7151,14 @@ onUnmounted(() => {
                 </td>
 
                 <!-- Project Name -->
-                <td class="py-2.5 px-3 font-semibold text-ink-gray-9 dark:text-neutral-100 sticky left-10 z-10 bg-surface-base dark:bg-neutral-900">
+                <td
+                  class="py-2.5 px-3 font-semibold sticky left-10 z-10 transition-colors"
+                  :class="[
+                    workloadHoveredCell.project === r.project
+                      ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 font-bold'
+                      : 'bg-surface-base dark:bg-neutral-900 text-ink-gray-9 dark:text-neutral-100'
+                  ]"
+                >
                   <div class="truncate max-w-[240px]" :title="r.project">
                     {{ r.project }}
                   </div>
@@ -7141,7 +7197,12 @@ onUnmounted(() => {
                 <td
                   v-for="m in workloadMatrixMembers"
                   :key="m.fullName || m.member"
-                  class="py-2.5 px-3 text-center"
+                  class="py-2.5 px-3 text-center transition-colors"
+                  :class="[
+                    workloadHoveredCell.project === r.project && workloadHoveredCell.member === (m.fullName || m.member)
+                      ? 'bg-emerald-100/60 dark:bg-emerald-950/50'
+                      : ''
+                  ]"
                 >
                   <Tooltip
                     v-if="r.memberCounts[m.fullName || m.member]"
@@ -7150,8 +7211,17 @@ onUnmounted(() => {
                     <template #body>
                       <div class="max-w-xs text-xs space-y-1 p-0.5 text-left">
                         <div class="font-bold text-white border-b border-neutral-700 pb-1 flex items-center justify-between gap-3">
-                          <span>{{ m.fullName || m.member }}</span>
-                          <span class="text-emerald-400 font-mono text-[10px]">{{ r.memberCounts[m.fullName || m.member] }} tasks</span>
+                          <div class="flex items-center gap-1.5 min-w-0">
+                            <Avatar
+                              :image="m.image"
+                              :label="m.fullName || m.member"
+                              size="xs"
+                              shape="circle"
+                              class="shrink-0 ring-1 ring-emerald-400"
+                            />
+                            <span class="truncate">{{ m.fullName || m.member }}</span>
+                          </div>
+                          <span class="text-emerald-400 font-mono text-[10px] shrink-0">{{ r.memberCounts[m.fullName || m.member] }} tasks</span>
                         </div>
                         <ul class="list-disc list-inside space-y-0.5 text-[11px] text-neutral-300 max-h-40 overflow-y-auto">
                           <li
@@ -7168,6 +7238,8 @@ onUnmounted(() => {
                     <button
                       type="button"
                       class="inline-block min-w-6 px-2 py-0.5 rounded-md font-bold text-xs bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums shadow-2xs hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer"
+                      @mouseenter="workloadHoveredCell = { project: r.project, member: m.fullName || m.member }"
+                      @mouseleave="workloadHoveredCell = { project: '', member: '' }"
                       @click="openWorkloadTaskList(m.fullName || m.member, r.project, r.memberTasks[m.fullName || m.member])"
                     >
                       {{ r.memberCounts[m.fullName || m.member] }}
