@@ -6813,7 +6813,7 @@ onUnmounted(() => {
     <!-- Workload by Member Detailed View Modal (Popup with backdrop blur) -->
     <Dialog
       v-model="workloadDetailModalOpen"
-      title="Workload & Deadlines by Member"
+      title="Member Workload & Project Deadlines"
       size="5xl"
       :actions="[
         {
@@ -6825,7 +6825,7 @@ onUnmounted(() => {
     >
       <div class="space-y-4 py-1">
         <p class="text-xs text-ink-gray-5 dark:text-neutral-400">
-          Detailed breakdown of pending tasks, active projects, and project deadlines per team member.
+          Member-wise active project mapping, pending task count, and project deadlines.
         </p>
 
         <div v-if="workloadDetailMembers.length === 0" class="text-center py-8 text-xs text-ink-gray-4">
@@ -6834,57 +6834,56 @@ onUnmounted(() => {
 
         <div
           v-else
-          class="flex items-end gap-5 overflow-x-auto pb-4 pt-6 px-3 border border-outline-gray-2 dark:border-neutral-800 rounded-xl bg-surface-gray-1/40 dark:bg-neutral-900/60 min-h-[380px]"
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[520px] overflow-y-auto pr-1"
         >
           <div
             v-for="m in workloadDetailMembers"
             :key="m.fullName || m.member"
-            class="flex flex-col items-center flex-1 min-w-[130px] max-w-[170px] group"
+            class="flex flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 p-3.5 shadow-2xs hover:border-[#468373]/50 transition-all duration-200"
           >
-            <!-- Top: Pending task badge -->
-            <div class="mb-2 text-center">
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums shadow-2xs">
-                {{ m.pending }} pending
-              </span>
-            </div>
-
-            <!-- Vertical Bar Plot Container -->
-            <div class="w-full flex items-end justify-center h-44 mb-3">
-              <div
-                class="w-10 sm:w-12 rounded-t-lg bg-gradient-to-t from-[#36685B] to-[#468373] hover:brightness-110 transition-all duration-300 relative shadow-sm flex items-center justify-center cursor-default"
-                :style="{
-                  height: `${Math.max(Math.round(((m.pending || 0) / workloadMaxPending) * 100), 10)}%`,
-                }"
-                :title="`${m.fullName || m.member}: ${m.pending} pending tasks`"
-              >
-                <span class="text-white text-[11px] font-bold drop-shadow-xs">
-                  {{ m.pending }}
-                </span>
+            <!-- Member Header: Avatar/Badge + Name + Total Pending Count -->
+            <div class="flex items-center justify-between gap-2 border-b border-outline-gray-2/70 dark:border-neutral-800 pb-2.5 mb-2.5">
+              <div class="flex items-center gap-2 min-w-0">
+                <div class="size-7 rounded-full bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 flex items-center justify-center font-bold text-xs shrink-0">
+                  {{ (m.fullName || m.member).charAt(0).toUpperCase() }}
+                </div>
+                <div class="min-w-0">
+                  <div class="font-bold text-xs text-ink-gray-9 dark:text-neutral-100 truncate" :title="m.fullName || m.member">
+                    {{ m.fullName || m.member }}
+                  </div>
+                  <div class="text-[10px] text-ink-gray-5 dark:text-neutral-400">
+                    {{ (m.projectsSummary || []).length }} Active {{ (m.projectsSummary || []).length === 1 ? 'Project' : 'Projects' }}
+                  </div>
+                </div>
               </div>
+              <Badge
+                :label="`${m.pending} Pending`"
+                variant="subtle"
+                theme="teal"
+                class="shrink-0 font-bold tabular-nums"
+              />
             </div>
 
-            <!-- Member Name -->
-            <div class="w-full text-center border-t border-outline-gray-2 dark:border-neutral-800 pt-2 mb-2">
-              <div class="font-bold text-xs text-ink-gray-9 dark:text-neutral-100 truncate" :title="m.fullName || m.member">
-                {{ m.fullName || m.member }}
-              </div>
-            </div>
-
-            <!-- Projects & Due Dates List below the name -->
-            <div class="w-full space-y-1.5 overflow-y-auto max-h-36 pr-0.5 text-center">
+            <!-- Project Mapping List with Due Dates -->
+            <div class="flex-1 space-y-2 overflow-y-auto max-h-56 pr-0.5">
               <div
                 v-for="p in (m.projectsSummary || [])"
                 :key="p.name"
-                class="px-2 py-1 rounded-md bg-surface-base dark:bg-neutral-800/80 border border-outline-gray-2/60 dark:border-neutral-700/60 shadow-2xs"
+                class="flex items-center justify-between gap-2.5 px-2.5 py-1.5 rounded-lg bg-surface-gray-1/60 dark:bg-neutral-800/60 border border-outline-gray-1 dark:border-neutral-800/80"
               >
-                <div class="text-[11px] font-medium text-ink-gray-8 dark:text-neutral-200 truncate" :title="p.name">
-                  {{ p.name }}
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-semibold text-ink-gray-9 dark:text-neutral-200 truncate" :title="p.name">
+                    {{ p.name }}
+                  </div>
+                  <div class="text-[10px] text-ink-gray-5 dark:text-neutral-400 font-mono">
+                    Deadline: {{ p.dueDate }}
+                  </div>
                 </div>
-                <div class="text-[10px] text-ink-gray-5 dark:text-neutral-400 font-mono">
-                  ({{ p.dueDate }})
-                </div>
+                <span class="shrink-0 text-[11px] font-bold text-[#468373] dark:text-emerald-400 bg-white dark:bg-neutral-900 border border-outline-gray-2 dark:border-neutral-700 px-2 py-0.5 rounded-md tabular-nums">
+                  {{ p.count }}
+                </span>
               </div>
-              <div v-if="!m.projectsSummary || m.projectsSummary.length === 0" class="text-[10px] text-ink-gray-4 italic">
+              <div v-if="!m.projectsSummary || m.projectsSummary.length === 0" class="text-center py-4 text-xs text-ink-gray-4 italic">
                 No active projects
               </div>
             </div>
