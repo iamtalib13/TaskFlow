@@ -2416,15 +2416,17 @@ const teamBarChart = computed(() => memberPendingBarChart.value)
 
 // Workload Detail Modal state
 const workloadDetailModalOpen = ref(false)
+const workloadDetailSearch = ref('')
 const workloadDetailMembers = computed(() => {
   const chartData = memberPendingBarChart.value?.data || []
-  return chartData.filter((item) => item.member && item.member !== 'No Pending Tasks')
-})
-
-const workloadMaxPending = computed(() => {
-  const members = workloadDetailMembers.value
-  if (!members.length) return 1
-  return Math.max(...members.map((m) => m.pending || 0), 1)
+  const list = chartData.filter((item) => item.member && item.member !== 'No Pending Tasks')
+  const q = (workloadDetailSearch.value || '').trim().toLowerCase()
+  if (!q) return list
+  return list.filter((m) => {
+    const nameMatch = (m.fullName || m.member || '').toLowerCase().includes(q)
+    const projMatch = (m.projectsSummary || []).some((p) => (p.name || '').toLowerCase().includes(q))
+    return nameMatch || projMatch
+  })
 })
 
 // --- 2. Project List View State & Columns ---
@@ -6810,7 +6812,7 @@ onUnmounted(() => {
       </div>
     </Dialog>
 
-    <!-- Workload by Member Detailed View Modal (Popup with backdrop blur) -->
+    <!-- Workload by Member Detailed View Modal (Table Layout with backdrop blur) -->
     <Dialog
       v-model="workloadDetailModalOpen"
       title="Member Workload & Project Deadlines"
@@ -6823,71 +6825,110 @@ onUnmounted(() => {
         },
       ]"
     >
-      <div class="space-y-4 py-1">
-        <p class="text-xs text-ink-gray-5 dark:text-neutral-400">
-          Member-wise active project mapping, pending task count, and project deadlines.
-        </p>
-
-        <div v-if="workloadDetailMembers.length === 0" class="text-center py-8 text-xs text-ink-gray-4">
-          No pending tasks found for the current filter.
+      <div class="space-y-3.5 py-1">
+        <!-- Top Toolbar: Subtitle + Quick Search -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-gray-2 dark:border-neutral-800 pb-2.5">
+          <p class="text-xs text-ink-gray-5 dark:text-neutral-400">
+            Member-wise pending task breakdown, project assignments, and deadlines.
+          </p>
+          <div class="relative w-full sm:w-64">
+            <TextInput
+              v-model="workloadDetailSearch"
+              size="sm"
+              placeholder="Search member or project..."
+            >
+              <template #prefix>
+                <Search class="size-3.5 text-ink-gray-4" />
+              </template>
+            </TextInput>
+          </div>
         </div>
 
+        <div v-if="workloadDetailMembers.length === 0" class="text-center py-10 text-xs text-ink-gray-4">
+          No members or projects found matching the filter.
+        </div>
+
+        <!-- Professional Table View -->
         <div
           v-else
-          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[520px] overflow-y-auto pr-1"
+          class="border border-outline-gray-2 dark:border-neutral-800 rounded-xl overflow-hidden bg-surface-base dark:bg-neutral-900 shadow-2xs max-h-[500px] overflow-y-auto"
         >
-          <div
-            v-for="m in workloadDetailMembers"
-            :key="m.fullName || m.member"
-            class="flex flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 p-3.5 shadow-2xs hover:border-[#468373]/50 transition-all duration-200"
-          >
-            <!-- Member Header: Avatar/Badge + Name + Total Pending Count -->
-            <div class="flex items-center justify-between gap-2 border-b border-outline-gray-2/70 dark:border-neutral-800 pb-2.5 mb-2.5">
-              <div class="flex items-center gap-2 min-w-0">
-                <div class="size-7 rounded-full bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 flex items-center justify-center font-bold text-xs shrink-0">
-                  {{ (m.fullName || m.member).charAt(0).toUpperCase() }}
-                </div>
-                <div class="min-w-0">
-                  <div class="font-bold text-xs text-ink-gray-9 dark:text-neutral-100 truncate" :title="m.fullName || m.member">
-                    {{ m.fullName || m.member }}
-                  </div>
-                  <div class="text-[10px] text-ink-gray-5 dark:text-neutral-400">
-                    {{ (m.projectsSummary || []).length }} Active {{ (m.projectsSummary || []).length === 1 ? 'Project' : 'Projects' }}
-                  </div>
-                </div>
-              </div>
-              <Badge
-                :label="`${m.pending} Pending`"
-                variant="subtle"
-                theme="teal"
-                class="shrink-0 font-bold tabular-nums"
-              />
-            </div>
-
-            <!-- Project Mapping List with Due Dates -->
-            <div class="flex-1 space-y-2 overflow-y-auto max-h-56 pr-0.5">
-              <div
-                v-for="p in (m.projectsSummary || [])"
-                :key="p.name"
-                class="flex items-center justify-between gap-2.5 px-2.5 py-1.5 rounded-lg bg-surface-gray-1/60 dark:bg-neutral-800/60 border border-outline-gray-1 dark:border-neutral-800/80"
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="sticky top-0 z-10 bg-surface-gray-2 dark:bg-neutral-800 border-b border-outline-gray-2 dark:border-neutral-700 text-ink-gray-7 dark:text-neutral-300 font-semibold uppercase tracking-wider text-[11px]">
+              <tr>
+                <th class="py-2.5 px-4 w-12 text-center">#</th>
+                <th class="py-2.5 px-4 min-w-[160px]">Team Member</th>
+                <th class="py-2.5 px-4 min-w-[280px]">Active Projects & Deadlines</th>
+                <th class="py-2.5 px-4 w-32 text-center">Active Projects</th>
+                <th class="py-2.5 px-4 w-32 text-right">Total Pending</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-gray-1 dark:divide-neutral-800/80 text-ink-gray-8 dark:text-neutral-200">
+              <tr
+                v-for="(m, idx) in workloadDetailMembers"
+                :key="m.fullName || m.member"
+                class="hover:bg-surface-gray-1/60 dark:hover:bg-neutral-800/40 transition-colors align-top"
               >
-                <div class="min-w-0 flex-1">
-                  <div class="text-xs font-semibold text-ink-gray-9 dark:text-neutral-200 truncate" :title="p.name">
-                    {{ p.name }}
+                <!-- Serial No. -->
+                <td class="py-3 px-4 text-center font-mono text-ink-gray-4 dark:text-neutral-500 text-[11px]">
+                  {{ idx + 1 }}
+                </td>
+
+                <!-- Member Identity -->
+                <td class="py-3 px-4 font-medium text-ink-gray-9 dark:text-neutral-100">
+                  <div class="flex items-center gap-2.5">
+                    <div class="size-7 rounded-full bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                      {{ (m.fullName || m.member).charAt(0).toUpperCase() }}
+                    </div>
+                    <div class="min-w-0">
+                      <div class="font-bold text-xs truncate" :title="m.fullName || m.member">
+                        {{ m.fullName || m.member }}
+                      </div>
+                      <div class="text-[10px] text-ink-gray-4 dark:text-neutral-500 font-normal">
+                        {{ m.member }}
+                      </div>
+                    </div>
                   </div>
-                  <div class="text-[10px] text-ink-gray-5 dark:text-neutral-400 font-mono">
-                    Deadline: {{ p.dueDate }}
+                </td>
+
+                <!-- Projects with Count & Deadline Pills -->
+                <td class="py-3 px-4">
+                  <div v-if="m.projectsSummary && m.projectsSummary.length > 0" class="flex flex-wrap gap-1.5">
+                    <div
+                      v-for="p in m.projectsSummary"
+                      :key="p.name"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] bg-surface-gray-1 dark:bg-neutral-800 border border-outline-gray-2/70 dark:border-neutral-700 shadow-2xs"
+                    >
+                      <span class="font-semibold text-ink-gray-9 dark:text-neutral-200">
+                        {{ p.name }}
+                      </span>
+                      <span class="font-mono text-[10px] text-ink-gray-5 dark:text-neutral-400">
+                        ({{ p.dueDate }})
+                      </span>
+                      <span class="ml-0.5 px-1.5 py-0.2 rounded-full font-bold text-[10px] bg-[#E8F2EF] dark:bg-emerald-950 text-[#1D4036] dark:text-emerald-300 tabular-nums">
+                        {{ p.count }}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <span class="shrink-0 text-[11px] font-bold text-[#468373] dark:text-emerald-400 bg-white dark:bg-neutral-900 border border-outline-gray-2 dark:border-neutral-700 px-2 py-0.5 rounded-md tabular-nums">
-                  {{ p.count }}
-                </span>
-              </div>
-              <div v-if="!m.projectsSummary || m.projectsSummary.length === 0" class="text-center py-4 text-xs text-ink-gray-4 italic">
-                No active projects
-              </div>
-            </div>
-          </div>
+                  <div v-else class="text-ink-gray-4 text-[11px] italic">
+                    No active projects
+                  </div>
+                </td>
+
+                <!-- Active Projects Count -->
+                <td class="py-3 px-4 text-center font-mono text-xs text-ink-gray-6 dark:text-neutral-400">
+                  {{ (m.projectsSummary || []).length }}
+                </td>
+
+                <!-- Pending Task Count Badge -->
+                <td class="py-3 px-4 text-right">
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
+                    {{ m.pending }} tasks
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </Dialog>
