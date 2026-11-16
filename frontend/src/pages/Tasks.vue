@@ -79,6 +79,7 @@ import {
   Send,
   Bug,
   Sparkles,
+  Maximize2,
 } from 'lucide-vue-next'
 
 import CommonListView from '@/components/CommonListView.vue'
@@ -2413,6 +2414,19 @@ const memberPendingBarChart = computed(() => {
 
 const teamBarChart = computed(() => memberPendingBarChart.value)
 
+// Workload Detail Modal state
+const workloadDetailModalOpen = ref(false)
+const workloadDetailMembers = computed(() => {
+  const chartData = memberPendingBarChart.value?.data || []
+  return chartData.filter((item) => item.member && item.member !== 'No Pending Tasks')
+})
+
+const workloadMaxPending = computed(() => {
+  const members = workloadDetailMembers.value
+  if (!members.length) return 1
+  return Math.max(...members.map((m) => m.pending || 0), 1)
+})
+
 // --- 2. Project List View State & Columns ---
 const projectViewMode = ref('List') // 'List' | 'Tree'
 const projectViewOptions = [
@@ -4612,8 +4626,20 @@ onUnmounted(() => {
 
             <!-- 2. Charts Row: Team Workload (BarChart) & Status Mix (DonutChart) -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <section class="lg:col-span-2 flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 px-4 py-3 h-80 shadow-xs">
+              <section class="lg:col-span-2 flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 px-4 py-3 h-80 shadow-xs relative">
                 <BarChart v-bind="teamBarChart">
+                  <template #actions>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      label="More Detail"
+                      @click="workloadDetailModalOpen = true"
+                    >
+                      <template #prefix>
+                        <Maximize2 class="size-3.5 mr-1 text-[#468373] dark:text-emerald-400" />
+                      </template>
+                    </Button>
+                  </template>
                   <template #tooltip="{ row }">
                     <div v-if="row" class="text-xs space-y-1.5 p-1 max-w-xs">
                       <div class="font-semibold text-ink-gray-9 dark:text-neutral-100 flex items-center justify-between gap-2 border-b border-outline-gray-2 dark:border-neutral-800 pb-1">
@@ -6781,6 +6807,89 @@ onUnmounted(() => {
           label="Project"
           :options="reportProjectOptions"
         />
+      </div>
+    </Dialog>
+
+    <!-- Workload by Member Detailed View Modal (Popup with backdrop blur) -->
+    <Dialog
+      v-model="workloadDetailModalOpen"
+      title="Workload & Deadlines by Member"
+      size="5xl"
+      :actions="[
+        {
+          label: 'Close',
+          variant: 'subtle',
+          onClick: () => { workloadDetailModalOpen = false },
+        },
+      ]"
+    >
+      <div class="space-y-4 py-1">
+        <p class="text-xs text-ink-gray-5 dark:text-neutral-400">
+          Detailed breakdown of pending tasks, active projects, and project deadlines per team member.
+        </p>
+
+        <div v-if="workloadDetailMembers.length === 0" class="text-center py-8 text-xs text-ink-gray-4">
+          No pending tasks found for the current filter.
+        </div>
+
+        <div
+          v-else
+          class="flex items-end gap-5 overflow-x-auto pb-4 pt-6 px-3 border border-outline-gray-2 dark:border-neutral-800 rounded-xl bg-surface-gray-1/40 dark:bg-neutral-900/60 min-h-[380px]"
+        >
+          <div
+            v-for="m in workloadDetailMembers"
+            :key="m.fullName || m.member"
+            class="flex flex-col items-center flex-1 min-w-[130px] max-w-[170px] group"
+          >
+            <!-- Top: Pending task badge -->
+            <div class="mb-2 text-center">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums shadow-2xs">
+                {{ m.pending }} pending
+              </span>
+            </div>
+
+            <!-- Vertical Bar Plot Container -->
+            <div class="w-full flex items-end justify-center h-44 mb-3">
+              <div
+                class="w-10 sm:w-12 rounded-t-lg bg-gradient-to-t from-[#36685B] to-[#468373] hover:brightness-110 transition-all duration-300 relative shadow-sm flex items-center justify-center cursor-default"
+                :style="{
+                  height: `${Math.max(Math.round(((m.pending || 0) / workloadMaxPending) * 100), 10)}%`,
+                }"
+                :title="`${m.fullName || m.member}: ${m.pending} pending tasks`"
+              >
+                <span class="text-white text-[11px] font-bold drop-shadow-xs">
+                  {{ m.pending }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Member Name -->
+            <div class="w-full text-center border-t border-outline-gray-2 dark:border-neutral-800 pt-2 mb-2">
+              <div class="font-bold text-xs text-ink-gray-9 dark:text-neutral-100 truncate" :title="m.fullName || m.member">
+                {{ m.fullName || m.member }}
+              </div>
+            </div>
+
+            <!-- Projects & Due Dates List below the name -->
+            <div class="w-full space-y-1.5 overflow-y-auto max-h-36 pr-0.5 text-center">
+              <div
+                v-for="p in (m.projectsSummary || [])"
+                :key="p.name"
+                class="px-2 py-1 rounded-md bg-surface-base dark:bg-neutral-800/80 border border-outline-gray-2/60 dark:border-neutral-700/60 shadow-2xs"
+              >
+                <div class="text-[11px] font-medium text-ink-gray-8 dark:text-neutral-200 truncate" :title="p.name">
+                  {{ p.name }}
+                </div>
+                <div class="text-[10px] text-ink-gray-5 dark:text-neutral-400 font-mono">
+                  ({{ p.dueDate }})
+                </div>
+              </div>
+              <div v-if="!m.projectsSummary || m.projectsSummary.length === 0" class="text-[10px] text-ink-gray-4 italic">
+                No active projects
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Dialog>
                 </div>
