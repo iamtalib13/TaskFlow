@@ -6991,89 +6991,34 @@ onUnmounted(() => {
       ]"
     >
       <div class="space-y-4 py-1">
-        <!-- Top KPI Health Summary Strip -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div class="p-3 rounded-xl bg-surface-gray-1/80 dark:bg-neutral-800/60 border border-outline-gray-2/60 dark:border-neutral-700/60 flex items-center justify-between">
-            <div>
-              <div class="text-[11px] text-ink-gray-5 dark:text-neutral-400 font-medium">Total Projects</div>
-              <div class="text-xl font-bold text-ink-gray-9 dark:text-white tabular-nums">{{ workloadMatrixData.stats.totalProjects }}</div>
-            </div>
-            <div class="size-8 rounded-lg bg-surface-base dark:bg-neutral-900 flex items-center justify-center font-bold text-xs text-ink-gray-7 dark:text-neutral-300">
-              📁
-            </div>
-          </div>
-
-          <div
-            class="p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all"
-            :class="[
-              workloadHealthFilter === 'On Track'
-                ? 'bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/30'
-                : 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/60'
-            ]"
-            @click="workloadHealthFilter = workloadHealthFilter === 'On Track' ? 'All' : 'On Track'"
-          >
-            <div>
-              <div class="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
-                <span class="size-2 rounded-full bg-emerald-500"></span> On Track
-              </div>
-              <div class="text-xl font-bold text-emerald-800 dark:text-emerald-300 tabular-nums">{{ workloadMatrixData.stats.onTrack }}</div>
-            </div>
-            <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">&gt; 3 days</span>
-          </div>
-
-          <div
-            class="p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all"
-            :class="[
-              workloadHealthFilter === 'At Risk'
-                ? 'bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/30'
-                : 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-500/30 hover:border-amber-500/60'
-            ]"
-            @click="workloadHealthFilter = workloadHealthFilter === 'At Risk' ? 'All' : 'At Risk'"
-          >
-            <div>
-              <div class="text-[11px] text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5">
-                <span class="size-2 rounded-full bg-amber-500"></span> At Risk
-              </div>
-              <div class="text-xl font-bold text-amber-800 dark:text-amber-300 tabular-nums">{{ workloadMatrixData.stats.atRisk }}</div>
-            </div>
-            <span class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">&le; 3 days</span>
-          </div>
-
-          <div
-            class="p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all"
-            :class="[
-              workloadHealthFilter === 'Overdue'
-                ? 'bg-rose-500/10 border-rose-500 ring-2 ring-rose-500/30'
-                : 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-500/30 hover:border-rose-500/60'
-            ]"
-            @click="workloadHealthFilter = workloadHealthFilter === 'Overdue' ? 'All' : 'Overdue'"
-          >
-            <div>
-              <div class="text-[11px] text-rose-700 dark:text-rose-400 font-medium flex items-center gap-1.5">
-                <span class="size-2 rounded-full bg-rose-500"></span> Delayed
-              </div>
-              <div class="text-xl font-bold text-rose-800 dark:text-rose-300 tabular-nums">{{ workloadMatrixData.stats.overdue }}</div>
-            </div>
-            <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Overdue</span>
-          </div>
-        </div>
-
-        <!-- Toolbar: Filters + Live Search -->
+        <!-- Toolbar: Segmented Filters with Counts + Live Search -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-gray-2 dark:border-neutral-800 pb-2.5">
           <div class="flex items-center gap-1.5 overflow-x-auto">
             <button
-              v-for="flt in ['All', 'On Track', 'At Risk', 'Overdue']"
-              :key="flt"
+              v-for="item in [
+                { label: 'All', count: workloadMatrixData.stats.totalProjects, colorClass: 'text-ink-gray-7 dark:text-neutral-300' },
+                { label: 'On Track', count: workloadMatrixData.stats.onTrack, dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' },
+                { label: 'At Risk', count: workloadMatrixData.stats.atRisk, dotClass: 'bg-amber-500', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300' },
+                { label: 'Overdue', count: workloadMatrixData.stats.overdue, dotClass: 'bg-rose-500', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300' },
+              ]"
+              :key="item.label"
               type="button"
-              class="px-3 py-1 rounded-lg text-xs font-medium transition cursor-pointer shrink-0"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0"
               :class="[
-                workloadHealthFilter === flt
+                workloadHealthFilter === item.label
                   ? 'bg-[#468373] text-white shadow-2xs font-semibold'
                   : 'bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-7 dark:text-neutral-300 hover:bg-surface-gray-3'
               ]"
-              @click="workloadHealthFilter = flt"
+              @click="workloadHealthFilter = item.label"
             >
-              {{ flt }}
+              <span v-if="item.dotClass" class="size-2 rounded-full shrink-0" :class="item.dotClass" />
+              <span>{{ item.label }}</span>
+              <span
+                class="px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums"
+                :class="workloadHealthFilter === item.label ? 'bg-white/20 text-white' : (item.badgeClass || 'bg-surface-gray-3 dark:bg-neutral-700 text-ink-gray-6 dark:text-neutral-300')"
+              >
+                {{ item.count }}
+              </span>
             </button>
           </div>
 
