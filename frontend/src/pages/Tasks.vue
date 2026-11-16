@@ -6382,7 +6382,7 @@ onUnmounted(() => {
                     <th
                       v-for="m in workloadMatrixMembers"
                       :key="m.fullName || m.member"
-                      class="py-2.5 px-2 min-w-[90px] text-center transition-colors"
+                      class="py-2.5 px-2 min-w-[105px] text-center transition-colors"
                       :class="[
                         workloadHoveredCell.member === (m.fullName || m.member)
                           ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 ring-2 ring-inset ring-emerald-500/50'
@@ -6390,21 +6390,27 @@ onUnmounted(() => {
                       ]"
                       :title="m.fullName || m.member"
                     >
-                      <div class="flex flex-col items-center gap-1 mx-auto py-1">
-                        <Avatar
-                          :image="m.image"
-                          :label="m.fullName || m.member"
-                          size="2xl"
-                          shape="square"
-                          class="shrink-0 shadow-sm ring-1 ring-outline-gray-2 dark:ring-neutral-700"
-                        />
-                        <span
-                          class="truncate max-w-[85px] font-bold text-xs"
-                          :class="workloadHoveredCell.member === (m.fullName || m.member) ? 'text-emerald-900 dark:text-emerald-200' : 'text-ink-gray-9 dark:text-neutral-100'"
-                          :title="m.fullName || m.member"
-                        >
-                          {{ (m.fullName || m.member).trim().split(/\s+/)[0] }}
-                        </span>
+                      <div class="flex flex-col items-center gap-1.5 mx-auto py-1">
+                        <!-- Square Profile Card with bottom gradient & centered first name -->
+                        <div class="relative w-16 h-16 rounded-xl overflow-hidden shadow-md ring-1 ring-black/10 dark:ring-white/10 shrink-0 bg-surface-gray-3 dark:bg-neutral-800 group">
+                          <img
+                            v-if="m.image"
+                            :src="m.image"
+                            :alt="m.fullName || m.member"
+                            class="w-full h-full object-cover block"
+                          />
+                          <div
+                            v-else
+                            class="w-full h-full flex items-center justify-center font-bold text-lg text-ink-gray-7 dark:text-neutral-300 uppercase bg-surface-gray-2 dark:bg-neutral-700"
+                          >
+                            {{ (m.fullName || m.member)[0] }}
+                          </div>
+                          <!-- Bottom overlay with centered first name -->
+                          <div class="absolute inset-x-0 bottom-0 pt-4 pb-1 px-1 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-white font-bold text-[11px] text-center leading-tight truncate">
+                            {{ (m.fullName || m.member).trim().split(/\s+/)[0] }}
+                          </div>
+                        </div>
+
                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
                           {{ (m.projectsSummary || []).length }} {{ (m.projectsSummary || []).length === 1 ? 'proj' : 'projs' }}
                         </span>
@@ -7400,7 +7406,7 @@ onUnmounted(() => {
                 <th
                   v-for="m in workloadMatrixMembers"
                   :key="m.fullName || m.member"
-                  class="py-2.5 px-2 min-w-[90px] text-center transition-colors"
+                  class="py-2.5 px-2 min-w-[105px] text-center transition-colors"
                   :class="[
                     workloadHoveredCell.member === (m.fullName || m.member)
                       ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 ring-2 ring-inset ring-emerald-500/50'
@@ -7408,21 +7414,27 @@ onUnmounted(() => {
                   ]"
                   :title="m.fullName || m.member"
                 >
-                  <div class="flex flex-col items-center gap-1 mx-auto py-1">
-                    <Avatar
-                      :image="m.image"
-                      :label="m.fullName || m.member"
-                      size="2xl"
-                      shape="square"
-                      class="shrink-0 shadow-sm ring-1 ring-outline-gray-2 dark:ring-neutral-700"
-                    />
-                    <span
-                      class="truncate max-w-[85px] font-bold text-xs"
-                      :class="workloadHoveredCell.member === (m.fullName || m.member) ? 'text-emerald-900 dark:text-emerald-200' : 'text-ink-gray-9 dark:text-neutral-100'"
-                      :title="m.fullName || m.member"
-                    >
-                      {{ (m.fullName || m.member).trim().split(/\s+/)[0] }}
-                    </span>
+                  <div class="flex flex-col items-center gap-1.5 mx-auto py-1">
+                    <!-- Square Profile Card with bottom gradient & centered first name -->
+                    <div class="relative w-16 h-16 rounded-xl overflow-hidden shadow-md ring-1 ring-black/10 dark:ring-white/10 shrink-0 bg-surface-gray-3 dark:bg-neutral-800 group">
+                      <img
+                        v-if="m.image"
+                        :src="m.image"
+                        :alt="m.fullName || m.member"
+                        class="w-full h-full object-cover block"
+                      />
+                      <div
+                        v-else
+                        class="w-full h-full flex items-center justify-center font-bold text-lg text-ink-gray-7 dark:text-neutral-300 uppercase bg-surface-gray-2 dark:bg-neutral-700"
+                      >
+                        {{ (m.fullName || m.member)[0] }}
+                      </div>
+                      <!-- Bottom overlay with centered first name -->
+                      <div class="absolute inset-x-0 bottom-0 pt-4 pb-1 px-1 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-white font-bold text-[11px] text-center leading-tight truncate">
+                        {{ (m.fullName || m.member).trim().split(/\s+/)[0] }}
+                      </div>
+                    </div>
+
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
                       {{ (m.projectsSummary || []).length }} {{ (m.projectsSummary || []).length === 1 ? 'proj' : 'projs' }}
                     </span>
