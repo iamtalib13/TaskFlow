@@ -2347,7 +2347,7 @@ const memberPendingBarChart = computed(() => {
       data.count += 1
       const pEntry = data.projects.get(pName) || { count: 0, latestDue: '', tasks: [] }
       pEntry.count += 1
-      pEntry.tasks.push(t.title || t.task_title || t.subject || t.name || 'Untitled Task')
+      pEntry.tasks.push(t)
       if (tDue) {
         if (!pEntry.latestDue || tDue > pEntry.latestDue) {
           pEntry.latestDue = tDue
@@ -2481,6 +2481,28 @@ const workloadMatrixData = computed(() => {
 
   return { rows, colTotals, grandTotal }
 })
+
+// Quick Task List Popup State (when clicking on a pending count cell in workload modal)
+const workloadTaskListDialog = ref({
+  open: false,
+  member: '',
+  project: '',
+  tasks: [],
+})
+
+function openWorkloadTaskList(memberName, projectName, tasksList) {
+  workloadTaskListDialog.value = {
+    open: true,
+    member: memberName,
+    project: projectName,
+    tasks: tasksList || [],
+  }
+}
+
+function handleWorkloadTaskClick(task) {
+  workloadTaskListDialog.value.open = false
+  openDetail(task)
+}
 
 // --- 2. Project List View State & Columns ---
 const projectViewMode = ref('List') // 'List' | 'Tree'
@@ -6974,21 +6996,23 @@ onUnmounted(() => {
                         </div>
                         <ul class="list-disc list-inside space-y-0.5 text-[11px] text-neutral-300 max-h-40 overflow-y-auto">
                           <li
-                            v-for="(tTitle, tIdx) in (r.memberTasks[m.fullName || m.member] || [])"
+                            v-for="(t, tIdx) in (r.memberTasks[m.fullName || m.member] || [])"
                             :key="tIdx"
                             class="truncate"
-                            :title="tTitle"
+                            :title="t.title || t.task_title || t.subject || t.name"
                           >
-                            {{ tTitle }}
+                            {{ t.title || t.task_title || t.subject || t.name }}
                           </li>
                         </ul>
                       </div>
                     </template>
-                    <span
+                    <button
+                      type="button"
                       class="inline-block min-w-6 px-2 py-0.5 rounded-md font-bold text-xs bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums shadow-2xs hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer"
+                      @click="openWorkloadTaskList(m.fullName || m.member, r.project, r.memberTasks[m.fullName || m.member])"
                     >
                       {{ r.memberCounts[m.fullName || m.member] }}
-                    </span>
+                    </button>
                   </Tooltip>
                   <span v-else class="text-ink-gray-3 dark:text-neutral-700">—</span>
                 </td>
@@ -7032,6 +7056,78 @@ onUnmounted(() => {
               </tr>
             </tfoot>
           </table>
+        </div>
+      </div>
+    </Dialog>
+
+    <!-- Quick Task List Dialog (Opened on clicking count in Workload Matrix) -->
+    <Dialog
+      v-model="workloadTaskListDialog.open"
+      :title="`${workloadTaskListDialog.member} — ${workloadTaskListDialog.project}`"
+      size="2xl"
+      :actions="[
+        {
+          label: 'Close',
+          variant: 'subtle',
+          onClick: () => { workloadTaskListDialog.open = false },
+        },
+      ]"
+    >
+      <div class="space-y-3 py-1">
+        <div class="flex items-center justify-between text-xs text-ink-gray-5 dark:text-neutral-400 border-b border-outline-gray-2 dark:border-neutral-800 pb-2">
+          <span>Click any task to view full details</span>
+          <span class="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+            {{ workloadTaskListDialog.tasks.length }} Pending Tasks
+          </span>
+        </div>
+
+        <div class="divide-y divide-outline-gray-1 dark:divide-neutral-800/80 max-h-96 overflow-y-auto">
+          <div
+            v-for="(task, idx) in workloadTaskListDialog.tasks"
+            :key="task.id || task.name || idx"
+            class="py-2.5 px-3 flex items-center justify-between gap-3 hover:bg-surface-gray-1/70 dark:hover:bg-neutral-800/50 rounded-lg transition-colors cursor-pointer group"
+            @click="handleWorkloadTaskClick(task)"
+          >
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-[11px] font-mono text-ink-gray-4 dark:text-neutral-500 font-semibold">
+                  #{{ task.id || task.name }}
+                </span>
+                <span
+                  class="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide"
+                  :class="[
+                    task.status === 'In Progress' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
+                    task.status === 'On Hold' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
+                    'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                  ]"
+                >
+                  {{ task.status || 'Open' }}
+                </span>
+                <span
+                  v-if="task.priority"
+                  class="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                  :class="[
+                    task.priority === 'Critical' || task.priority === 'High' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' :
+                    'text-ink-gray-5 dark:text-neutral-400'
+                  ]"
+                >
+                  {{ task.priority }}
+                </span>
+              </div>
+              <div class="text-xs font-medium text-ink-gray-9 dark:text-neutral-100 group-hover:text-[#468373] dark:group-hover:text-emerald-400 transition-colors truncate" :title="task.title || task.task_title || task.subject || task.name">
+                {{ task.title || task.task_title || task.subject || task.name }}
+              </div>
+            </div>
+
+            <div class="shrink-0 text-right font-mono text-[11px] text-ink-gray-5 dark:text-neutral-400">
+              <div v-if="task.due_date || task.due">
+                Due: {{ formatDueDate(task.due_date || task.due) }}
+              </div>
+              <div v-else class="text-ink-gray-3 dark:text-neutral-600 text-[10px]">
+                No due date
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </Dialog>
