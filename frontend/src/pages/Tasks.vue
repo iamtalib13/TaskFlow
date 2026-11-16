@@ -1506,7 +1506,7 @@ const taskReportFields = {
   id: (t) => t.id || t.name || '',
   title: (t) => t.title || t.task_title || '',
   task_type: (t) => t.task_type || '',
-  project: (t) => t.project || '',
+  project: (t) => (t.project ? (getProjectDisplayName(t.project) || t.project) : ''),
   team: (t) => t.team || '',
   status: (t) => t.status || '',
   priority: (t) => t.priority || '',
@@ -1535,8 +1535,16 @@ const taskReportFields = {
   guided_by: (t, userMap) => (t.guided_by ? (userMap?.get(t.guided_by) || t.guided_by) : ''),
   responsible_person: (t, userMap) => (t.responsible_person ? (userMap?.get(t.responsible_person) || t.responsible_person) : ''),
   estimated_hours: (t) => (t.estimated_hours != null && t.estimated_hours !== '' ? t.estimated_hours : ''),
-  creation: (t) => t.creation || '',
-  modified: (t) => t.modified || '',
+  creation: (t) => {
+    if (!t.creation) return ''
+    const p = String(t.creation).substring(0, 10).split('-')
+    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : t.creation
+  },
+  modified: (t) => {
+    if (!t.modified) return ''
+    const p = String(t.modified).substring(0, 10).split('-')
+    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : t.modified
+  },
 }
 
 const taskReportColumns = [
@@ -1772,7 +1780,77 @@ async function downloadTaskReport() {
     rowHeight: 22,
   })
 
-  // 2nd..Nth Tabs: Team-wise tabs
+  // 2nd Tab: Deadline — pending tasks grouped by project with last deadline + member workload
+  const pendingProjMap = new Map()
+  const memberWorkloadMap = new Map()
+  for (let i = 0; i < rows.length; i++) {
+    const t = rows[i]
+    const status = t.status || 'Open'
+    if (status === 'Completed' || status === 'Cancelled') continue
+    const pName = t.project ? (getProjectDisplayName(t.project) || t.project) : 'No Project'
+    const tDue = t.due_date || t.due || ''
+    if (!pendingProjMap.has(pName)) pendingProjMap.set(pName, { latestDue: '', members: new Set(), count: 0 })
+    const pe = pendingProjMap.get(pName)
+    pe.count++
+    if (tDue && (!pe.latestDue || tDue > pe.latestDue)) pe.latestDue = tDue
+    const addMember = (name) => {
+      if (!name) return
+      pe.members.add(name)
+      memberWorkloadMap.set(name, (memberWorkloadMap.get(name) || 0) + 1)
+    }
+    let matched = false
+    if (Array.isArray(t.assignees) && t.assignees.length > 0) {
+      t.assignees.forEach((a) => {
+        const n = a?.name || userMap.get(a?.user_id) || a?.user_id || ''
+        if (n) { addMember(n); matched = true }
+      })
+    }
+    if (!matched && t.assigned_to) {
+      addMember(t.assigned_to_name || userMap.get(t.assigned_to) || t.assigned_to)
+    }
+  }
+
+  let totalPendingCount = 0
+  const deadlineTableRows = Array.from(pendingProjMap.entries())
+    .sort((a, b) => {
+      if (!a[1].latestDue && !b[1].latestDue) return a[0].localeCompare(b[0])
+      if (!a[1].latestDue) return 1
+      if (!b[1].latestDue) return -1
+      return a[1].latestDue.localeCompare(b[1].latestDue)
+    })
+    .map(([pName, info], idx) => {
+      totalPendingCount += info.count
+      return [idx + 1, pName, Array.from(info.members).join('; '), info.count, info.latestDue ? formatDateField(info.latestDue) : '']
+    })
+
+  const memberWorkloadRows = Array.from(memberWorkloadMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([name, count], idx) => [idx + 1, name, count])
+
+  const deadlineAoa = [
+    ['Deadline Summary', ''],
+    ['Sr.No', 'Project', 'Assigned Members', 'Pending Tasks', 'Last Deadline'],
+    ...deadlineTableRows,
+    ['Grand Total', '', '', totalPendingCount, ''],
+    [],
+    ['Pending Tasks by Member', ''],
+    ['Rank', 'Member', 'Pending Tasks'],
+    ...memberWorkloadRows,
+  ]
+
+  sheets.push({
+    name: 'Deadline',
+    aoa: deadlineAoa,
+    isDashboard: true,
+    sectionMarkers: ['Deadline Summary', 'Pending Tasks by Member'],
+    headerMarkers: ['Sr.No', 'Rank'],
+    totalMarkers: ['Grand Total'],
+    headerHeight: 26,
+    rowHeight: 22,
+  })
+
+  // 3rd+ Tabs: Team-wise tabs
   const teamHeaders = ['Sr.No', ...columns.map((c) => c.label)]
   const numCols = columns.length
   const usedSheetNames = new Set(['dashboard'])
@@ -1925,17 +2003,19 @@ const filteredDashboardTasks = computed(() => {
 })
 
 const dashboardStatusCols = computed(() => {
-  const standard = ['Open', 'In Progress', 'Review', 'On Hold', 'Completed', 'Cancelled', 'Overdue']
+  // Only show active/pending statuses (exclude Completed and Cancelled)
+  const standard = ['Open', 'In Progress', 'Review', 'On Hold', 'Overdue']
   const found = new Set()
   const all = filteredDashboardTasks.value || []
   for (let i = 0; i < all.length; i++) {
-    if (all[i].status) found.add(all[i].status)
+    const s = all[i].status
+    if (s && s !== 'Completed' && s !== 'Cancelled') found.add(s)
   }
   const cols = [
     ...standard.filter((s) => found.has(s)),
     ...Array.from(found).filter((s) => !standard.includes(s)).sort((a, b) => a.localeCompare(b)),
   ]
-  return cols.length > 0 ? cols : standard
+  return cols.length > 0 ? cols : ['Open', 'In Progress']
 })
 
 const dashboardTeamSummary = computed(() => {
@@ -2253,38 +2333,72 @@ const memberPendingBarChart = computed(() => {
     // Pending tasks: anything not Completed and not Cancelled
     if (status === 'Completed' || status === 'Cancelled') continue
 
+    const pName = t.project ? (getProjectDisplayName(t.project) || t.project) : 'No Project'
+    const tDue = t.due_date || t.due || ''
+
+    const recordMemberTask = (rawMemberName) => {
+      if (!rawMemberName) return
+      let data = map.get(rawMemberName)
+      if (!data) {
+        data = { count: 0, projects: new Map() }
+        map.set(rawMemberName, data)
+      }
+      data.count += 1
+      const pEntry = data.projects.get(pName) || { count: 0, latestDue: '' }
+      pEntry.count += 1
+      if (tDue) {
+        if (!pEntry.latestDue || tDue > pEntry.latestDue) {
+          pEntry.latestDue = tDue
+        }
+      }
+      data.projects.set(pName, pEntry)
+    }
+
     let matched = false
     if (Array.isArray(t.assignees) && t.assignees.length > 0) {
       t.assignees.forEach((a) => {
         const id = typeof a === 'string' ? a : a.user_id || a.email || a.name
         const name = typeof a === 'string' ? a : a.name || a.full_name || (userMap.get(id) || id)
         if (name) {
-          map.set(name, (map.get(name) || 0) + 1)
+          recordMemberTask(name)
           matched = true
         }
       })
     }
     if (!matched && t.assigned_to) {
       const name = t.assigned_to_name || userMap.get(t.assigned_to) || t.assigned_to
-      map.set(name, (map.get(name) || 0) + 1)
+      recordMemberTask(name)
       matched = true
     }
     if (!matched && t.guided_by) {
       const name = userMap.get(t.guided_by) || t.guided_by
-      map.set(name, (map.get(name) || 0) + 1)
+      recordMemberTask(name)
       matched = true
     }
     if (!matched) {
-      map.set('Unassigned', (map.get('Unassigned') || 0) + 1)
+      recordMemberTask('Unassigned')
     }
   }
 
   // Sort by pending tasks descending, show top members
   const sorted = Array.from(map.entries())
-    .map(([member, pending]) => ({ member, pending }))
+    .map(([fullName, info]) => {
+      const displayName = typeof fullName === 'string' ? fullName.trim().split(/\s+/)[0] || fullName : fullName
+      const projectSummary = Array.from(info.projects.entries()).map(([pName, pInfo]) => ({
+        name: pName,
+        count: pInfo.count,
+        dueDate: pInfo.latestDue ? formatDueDate(pInfo.latestDue) : 'No due date',
+      }))
+      return {
+        member: displayName,
+        fullName,
+        pending: info.count,
+        projectsSummary: projectSummary,
+      }
+    })
     .sort((a, b) => b.pending - a.pending)
 
-  const chartData = sorted.length > 0 ? sorted.slice(0, 15) : [{ member: 'No Pending Tasks', pending: 0 }]
+  const chartData = sorted.length > 0 ? sorted.slice(0, 15) : [{ member: 'No Pending Tasks', pending: 0, projectsSummary: [] }]
 
   return {
     data: chartData,
@@ -4499,7 +4613,28 @@ onUnmounted(() => {
             <!-- 2. Charts Row: Team Workload (BarChart) & Status Mix (DonutChart) -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <section class="lg:col-span-2 flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 px-4 py-3 h-80 shadow-xs">
-                <BarChart v-bind="teamBarChart" />
+                <BarChart v-bind="teamBarChart">
+                  <template #tooltip="{ row }">
+                    <div v-if="row" class="text-xs space-y-1.5 p-1 max-w-xs">
+                      <div class="font-semibold text-ink-gray-9 dark:text-neutral-100 flex items-center justify-between gap-2 border-b border-outline-gray-2 dark:border-neutral-800 pb-1">
+                        <span>{{ row.fullName || row.member }}</span>
+                        <span class="text-emerald-600 dark:text-emerald-400 font-bold tabular-nums">{{ row.pending }} Pending</span>
+                      </div>
+                      <div v-if="row.projectsSummary && row.projectsSummary.length > 0" class="space-y-1 pt-0.5">
+                        <div
+                          v-for="proj in row.projectsSummary"
+                          :key="proj.name"
+                          class="flex items-center justify-between gap-3 text-ink-gray-7 dark:text-neutral-300"
+                        >
+                          <span class="truncate font-medium">{{ proj.name }}</span>
+                          <span class="shrink-0 text-ink-gray-5 dark:text-neutral-400 text-[11px] font-mono">
+                            ({{ proj.dueDate }})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </BarChart>
               </section>
 
               <section class="flex min-w-0 flex-col rounded-xl border border-outline-gray-2 dark:border-neutral-800 bg-surface-base dark:bg-neutral-900 px-4 py-3 h-80 shadow-xs">
@@ -4627,7 +4762,7 @@ onUnmounted(() => {
                           <span v-else class="text-ink-gray-4 dark:text-neutral-600">—</span>
                         </td>
                         <td class="py-2 px-3.5 text-right font-bold text-ink-gray-9 dark:text-white">
-                          {{ r.total }}
+                          {{ r.pending }}
                         </td>
                       </tr>
                     </tbody>
@@ -4642,7 +4777,7 @@ onUnmounted(() => {
                           {{ (dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.counts[s] : dashboardTeamSummary.grandTotal.counts[s]) || '—' }}
                         </td>
                         <td class="py-2.5 px-3.5 text-right text-[#1D4036] dark:text-emerald-400 font-extrabold text-sm">
-                          {{ dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.total : dashboardTeamSummary.grandTotal.total }}
+                          {{ dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.pending : dashboardTeamSummary.grandTotal.pending }}
                         </td>
                       </tr>
                     </tfoot>
@@ -4710,7 +4845,7 @@ onUnmounted(() => {
                           <span v-else class="text-ink-gray-4 dark:text-neutral-600">—</span>
                         </td>
                         <td class="py-2 px-3.5 text-right font-bold text-ink-gray-9 dark:text-white">
-                          {{ r.total }}
+                          {{ r.pending }}
                         </td>
                       </tr>
                     </tbody>
@@ -4725,7 +4860,7 @@ onUnmounted(() => {
                           {{ dashboardGuideSummary.grandTotal.counts[s] || '—' }}
                         </td>
                         <td class="py-2.5 px-3.5 text-right text-[#1D4036] dark:text-emerald-400 font-extrabold text-sm">
-                          {{ dashboardGuideSummary.grandTotal.total }}
+                          {{ dashboardGuideSummary.grandTotal.pending }}
                         </td>
                       </tr>
                     </tfoot>

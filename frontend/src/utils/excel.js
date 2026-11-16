@@ -77,16 +77,26 @@ export async function downloadWorkbook(filename, sheets = [], globalOptions = {}
     const totalRows = aoa.length
     const maxCols = aoa.reduce((m, r) => Math.max(m, (r || []).length), 0)
 
+    const sectionSet = isDashboard
+      ? new Set(sheet.sectionMarkers || ['Team Status Summary', 'Count of status'])
+      : new Set()
+    const headerSet = isDashboard
+      ? new Set(sheet.headerMarkers || ['Team', 'Guided By'])
+      : new Set()
+    const totalSet = isDashboard
+      ? new Set(sheet.totalMarkers || ['Grand Total'])
+      : new Set()
+
     // 1. Standard Row Heights
     const rowProps = new Array(totalRows)
     for (let r = 0; r < totalRows; r++) {
       if (isDashboard) {
         const firstCell = aoa[r]?.[0]
-        if (firstCell === 'Team Status Summary' || firstCell === 'Count of status') {
+        if (sectionSet.has(firstCell)) {
           rowProps[r] = { hpt: 26 }
-        } else if (firstCell === 'Team' || firstCell === 'Guided By') {
+        } else if (headerSet.has(firstCell)) {
           rowProps[r] = { hpt: 26 }
-        } else if (firstCell === 'Grand Total') {
+        } else if (totalSet.has(firstCell)) {
           rowProps[r] = { hpt: 24 }
         } else if (!firstCell && (aoa[r] || []).length === 0) {
           rowProps[r] = { hpt: 14 }
@@ -109,11 +119,11 @@ export async function downloadWorkbook(filename, sheets = [], globalOptions = {}
         if (!ws[cellRef]) continue
 
         if (isDashboard) {
-          if (firstCell === 'Team Status Summary' || firstCell === 'Count of status') {
+          if (sectionSet.has(firstCell)) {
             ws[cellRef].s = SECTION_TITLE_STYLE
-          } else if (firstCell === 'Team' || firstCell === 'Guided By') {
+          } else if (headerSet.has(firstCell)) {
             ws[cellRef].s = HEADER_STYLE
-          } else if (firstCell === 'Grand Total') {
+          } else if (totalSet.has(firstCell)) {
             ws[cellRef].s = TOTAL_ROW_STYLE
           } else {
             ws[cellRef].s = c === 0 ? DATA_CELL_STYLE : DATA_CELL_CENTER
