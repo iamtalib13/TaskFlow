@@ -6293,7 +6293,7 @@ onUnmounted(() => {
                     <th
                       v-for="m in workloadMatrixMembers"
                       :key="m.fullName || m.member"
-                      class="py-2.5 px-3 min-w-[130px] text-center transition-colors"
+                      class="py-2.5 px-2 min-w-[90px] text-center transition-colors"
                       :class="[
                         workloadHoveredCell.member === (m.fullName || m.member)
                           ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 ring-2 ring-inset ring-emerald-500/50'
@@ -6301,20 +6301,20 @@ onUnmounted(() => {
                       ]"
                       :title="m.fullName || m.member"
                     >
-                      <div class="flex flex-col items-center gap-1.5 mx-auto py-0.5">
+                      <div class="flex flex-col items-center gap-1 mx-auto py-1">
                         <Avatar
                           :image="m.image"
                           :label="m.fullName || m.member"
-                          size="lg"
-                          shape="circle"
-                          class="shrink-0 shadow-sm ring-2 ring-emerald-500/30"
+                          size="2xl"
+                          shape="square"
+                          class="shrink-0 shadow-sm ring-1 ring-outline-gray-2 dark:ring-neutral-700"
                         />
                         <span
-                          class="truncate max-w-[120px] font-bold text-xs"
+                          class="truncate max-w-[85px] font-bold text-xs"
                           :class="workloadHoveredCell.member === (m.fullName || m.member) ? 'text-emerald-900 dark:text-emerald-200' : 'text-ink-gray-9 dark:text-neutral-100'"
                           :title="m.fullName || m.member"
                         >
-                          {{ m.fullName || m.member }}
+                          {{ (m.fullName || m.member).trim().split(/\s+/)[0] }}
                         </span>
                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
                           {{ (m.projectsSummary || []).length }} {{ (m.projectsSummary || []).length === 1 ? 'proj' : 'projs' }}
@@ -7311,7 +7311,7 @@ onUnmounted(() => {
                 <th
                   v-for="m in workloadMatrixMembers"
                   :key="m.fullName || m.member"
-                  class="py-2.5 px-3 min-w-[130px] text-center transition-colors"
+                  class="py-2.5 px-2 min-w-[90px] text-center transition-colors"
                   :class="[
                     workloadHoveredCell.member === (m.fullName || m.member)
                       ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 ring-2 ring-inset ring-emerald-500/50'
@@ -7319,20 +7319,20 @@ onUnmounted(() => {
                   ]"
                   :title="m.fullName || m.member"
                 >
-                  <div class="flex flex-col items-center gap-1.5 mx-auto py-0.5">
+                  <div class="flex flex-col items-center gap-1 mx-auto py-1">
                     <Avatar
                       :image="m.image"
                       :label="m.fullName || m.member"
-                      size="lg"
-                      shape="circle"
-                      class="shrink-0 shadow-sm ring-2 ring-emerald-500/30"
+                      size="2xl"
+                      shape="square"
+                      class="shrink-0 shadow-sm ring-1 ring-outline-gray-2 dark:ring-neutral-700"
                     />
                     <span
-                      class="truncate max-w-[120px] font-bold text-xs"
+                      class="truncate max-w-[85px] font-bold text-xs"
                       :class="workloadHoveredCell.member === (m.fullName || m.member) ? 'text-emerald-900 dark:text-emerald-200' : 'text-ink-gray-9 dark:text-neutral-100'"
                       :title="m.fullName || m.member"
                     >
-                      {{ m.fullName || m.member }}
+                      {{ (m.fullName || m.member).trim().split(/\s+/)[0] }}
                     </span>
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
                       {{ (m.projectsSummary || []).length }} {{ (m.projectsSummary || []).length === 1 ? 'proj' : 'projs' }}
