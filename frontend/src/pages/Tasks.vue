@@ -2419,6 +2419,43 @@ const teamBarChart = computed(() => memberPendingBarChart.value)
 // Workload Detail Modal state (Matrix Table: Projects as Rows, Members as Columns)
 const workloadDetailModalOpen = ref(false)
 const workloadDetailSearch = ref('')
+const workloadHealthFilter = ref('All') // 'All' | 'On Track' | 'At Risk' | 'Overdue'
+
+// Helper to determine health status based on due date
+function getProjectHealth(dueDateStr, rawDate) {
+  if (!dueDateStr || dueDateStr === '—' || dueDateStr === 'No due date') {
+    return { status: 'No Deadline', color: 'gray', label: 'No Deadline' }
+  }
+  // Try parsing date
+  const now = dayjs().startOf('day')
+  let target = null
+  if (rawDate) {
+    target = dayjs(rawDate).startOf('day')
+  } else {
+    // dd-mm-yyyy or yyyy-mm-dd
+    const parts = String(dueDateStr).trim().split('-')
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        target = dayjs(`${parts[0]}-${parts[1]}-${parts[2]}`).startOf('day')
+      } else {
+        target = dayjs(`${parts[2]}-${parts[1]}-${parts[0]}`).startOf('day')
+      }
+    }
+  }
+
+  if (!target || !target.isValid()) {
+    return { status: 'On Track', color: 'green', label: 'On Track' }
+  }
+
+  const diffDays = target.diff(now, 'day')
+  if (diffDays < 0) {
+    return { status: 'Overdue', color: 'red', label: `${Math.abs(diffDays)}d Overdue`, days: diffDays }
+  } else if (diffDays <= 3) {
+    return { status: 'At Risk', color: 'amber', label: diffDays === 0 ? 'Due Today' : `${diffDays}d left`, days: diffDays }
+  } else {
+    return { status: 'On Track', color: 'green', label: `${diffDays}d left`, days: diffDays }
+  }
+}
 
 // All unique members with pending tasks (Columns)
 const workloadMatrixMembers = computed(() => {
@@ -2438,13 +2475,13 @@ const workloadMatrixData = computed(() => {
         projectMap.set(p.name, {
           project: p.name,
           dueDate: p.dueDate || '—',
+          rawDue: '',
           memberCounts: {},
           memberTasks: {},
           totalPending: 0,
         })
       }
       const entry = projectMap.get(p.name)
-      // Keep earliest/latest due date if present
       if (p.dueDate && p.dueDate !== 'No due date') {
         if (!entry.dueDate || entry.dueDate === '—' || entry.dueDate === 'No due date') {
           entry.dueDate = p.dueDate
@@ -2457,8 +2494,28 @@ const workloadMatrixData = computed(() => {
     })
   })
 
-  let rows = Array.from(projectMap.values()).sort((a, b) => b.totalPending - a.totalPending || a.project.localeCompare(b.project))
+  // Attach health to each project
+  projectMap.forEach((entry) => {
+    entry.health = getProjectHealth(entry.dueDate, entry.rawDue)
+  })
 
+  let allRows = Array.from(projectMap.values()).sort((a, b) => b.totalPending - a.totalPending || a.project.localeCompare(b.project))
+
+  // Health Stats summary across all rows
+  const stats = {
+    totalProjects: allRows.length,
+    onTrack: allRows.filter((r) => r.health.status === 'On Track').length,
+    atRisk: allRows.filter((r) => r.health.status === 'At Risk').length,
+    overdue: allRows.filter((r) => r.health.status === 'Overdue').length,
+  }
+
+  // Filter by Health status
+  let rows = allRows
+  if (workloadHealthFilter.value !== 'All') {
+    rows = rows.filter((r) => r.health.status === workloadHealthFilter.value)
+  }
+
+  // Filter by Search Query
   const q = (workloadDetailSearch.value || '').trim().toLowerCase()
   if (q) {
     rows = rows.filter((r) => {
@@ -2479,7 +2536,7 @@ const workloadMatrixData = computed(() => {
   })
   const grandTotal = rows.reduce((sum, r) => sum + r.totalPending, 0)
 
-  return { rows, colTotals, grandTotal }
+  return { rows, colTotals, grandTotal, stats }
 })
 
 // Quick Task List Popup State (when clicking on a pending count cell in workload modal)
@@ -6890,8 +6947,8 @@ onUnmounted(() => {
     <!-- Workload by Member Detailed View Modal (Matrix Table Layout: Project Rows, Member Columns) -->
     <Dialog
       v-model="workloadDetailModalOpen"
-      title="Workload Matrix (Projects & Team Members)"
-      size="6xl"
+      title="Workload & Project Health Matrix"
+      size="7xl"
       :actions="[
         {
           label: 'Close',
@@ -6900,13 +6957,94 @@ onUnmounted(() => {
         },
       ]"
     >
-      <div class="space-y-3.5 py-1">
-        <!-- Top Toolbar: Subtitle + Live Search -->
+      <div class="space-y-4 py-1">
+        <!-- Top KPI Health Summary Strip -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="p-3 rounded-xl bg-surface-gray-1/80 dark:bg-neutral-800/60 border border-outline-gray-2/60 dark:border-neutral-700/60 flex items-center justify-between">
+            <div>
+              <div class="text-[11px] text-ink-gray-5 dark:text-neutral-400 font-medium">Total Projects</div>
+              <div class="text-xl font-bold text-ink-gray-9 dark:text-white tabular-nums">{{ workloadMatrixData.stats.totalProjects }}</div>
+            </div>
+            <div class="size-8 rounded-lg bg-surface-base dark:bg-neutral-900 flex items-center justify-center font-bold text-xs text-ink-gray-7 dark:text-neutral-300">
+              📁
+            </div>
+          </div>
+
+          <div
+            class="p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all"
+            :class="[
+              workloadHealthFilter === 'On Track'
+                ? 'bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/30'
+                : 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/60'
+            ]"
+            @click="workloadHealthFilter = workloadHealthFilter === 'On Track' ? 'All' : 'On Track'"
+          >
+            <div>
+              <div class="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                <span class="size-2 rounded-full bg-emerald-500"></span> On Track
+              </div>
+              <div class="text-xl font-bold text-emerald-800 dark:text-emerald-300 tabular-nums">{{ workloadMatrixData.stats.onTrack }}</div>
+            </div>
+            <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">&gt; 3 days</span>
+          </div>
+
+          <div
+            class="p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all"
+            :class="[
+              workloadHealthFilter === 'At Risk'
+                ? 'bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/30'
+                : 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-500/30 hover:border-amber-500/60'
+            ]"
+            @click="workloadHealthFilter = workloadHealthFilter === 'At Risk' ? 'All' : 'At Risk'"
+          >
+            <div>
+              <div class="text-[11px] text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5">
+                <span class="size-2 rounded-full bg-amber-500"></span> At Risk
+              </div>
+              <div class="text-xl font-bold text-amber-800 dark:text-amber-300 tabular-nums">{{ workloadMatrixData.stats.atRisk }}</div>
+            </div>
+            <span class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">&le; 3 days</span>
+          </div>
+
+          <div
+            class="p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all"
+            :class="[
+              workloadHealthFilter === 'Overdue'
+                ? 'bg-rose-500/10 border-rose-500 ring-2 ring-rose-500/30'
+                : 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-500/30 hover:border-rose-500/60'
+            ]"
+            @click="workloadHealthFilter = workloadHealthFilter === 'Overdue' ? 'All' : 'Overdue'"
+          >
+            <div>
+              <div class="text-[11px] text-rose-700 dark:text-rose-400 font-medium flex items-center gap-1.5">
+                <span class="size-2 rounded-full bg-rose-500"></span> Delayed
+              </div>
+              <div class="text-xl font-bold text-rose-800 dark:text-rose-300 tabular-nums">{{ workloadMatrixData.stats.overdue }}</div>
+            </div>
+            <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Overdue</span>
+          </div>
+        </div>
+
+        <!-- Toolbar: Filters + Live Search -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-gray-2 dark:border-neutral-800 pb-2.5">
-          <p class="text-xs text-ink-gray-5 dark:text-neutral-400">
-            Projects as rows with deadlines, team members as columns with pending task counts.
-          </p>
-          <div class="relative w-full sm:w-64">
+          <div class="flex items-center gap-1.5 overflow-x-auto">
+            <button
+              v-for="flt in ['All', 'On Track', 'At Risk', 'Overdue']"
+              :key="flt"
+              type="button"
+              class="px-3 py-1 rounded-lg text-xs font-medium transition cursor-pointer shrink-0"
+              :class="[
+                workloadHealthFilter === flt
+                  ? 'bg-[#468373] text-white shadow-2xs font-semibold'
+                  : 'bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-7 dark:text-neutral-300 hover:bg-surface-gray-3'
+              ]"
+              @click="workloadHealthFilter = flt"
+            >
+              {{ flt }}
+            </button>
+          </div>
+
+          <div class="relative w-full sm:w-72">
             <TextInput
               v-model="workloadDetailSearch"
               size="sm"
@@ -6919,29 +7057,29 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div v-if="workloadMatrixData.rows.length === 0" class="text-center py-10 text-xs text-ink-gray-4">
+        <div v-if="workloadMatrixData.rows.length === 0" class="text-center py-12 text-xs text-ink-gray-4">
           No projects or members found matching the filter.
         </div>
 
         <!-- Matrix Table: Projects in Rows, Team Members in Columns -->
         <div
           v-else
-          class="border border-outline-gray-2 dark:border-neutral-800 rounded-xl overflow-x-auto overflow-y-auto max-h-[520px] bg-surface-base dark:bg-neutral-900 shadow-2xs"
+          class="border border-outline-gray-2 dark:border-neutral-800 rounded-xl overflow-x-auto overflow-y-auto max-h-[540px] bg-surface-base dark:bg-neutral-900 shadow-2xs"
         >
-          <table class="w-full text-left text-xs border-collapse min-w-[700px]">
+          <table class="w-full text-left text-xs border-collapse min-w-[760px]">
             <thead class="sticky top-0 z-20 bg-surface-gray-2 dark:bg-neutral-800 border-b border-outline-gray-2 dark:border-neutral-700 text-ink-gray-7 dark:text-neutral-300 font-semibold uppercase tracking-wider text-[11px]">
               <tr>
                 <th class="py-2.5 px-3 w-10 text-center sticky left-0 z-30 bg-surface-gray-2 dark:bg-neutral-800">#</th>
-                <th class="py-2.5 px-3 min-w-[190px] sticky left-10 z-30 bg-surface-gray-2 dark:bg-neutral-800">Project</th>
-                <th class="py-2.5 px-3 min-w-[110px] text-center">Deadline</th>
+                <th class="py-2.5 px-3 min-w-[210px] sticky left-10 z-30 bg-surface-gray-2 dark:bg-neutral-800">Project</th>
+                <th class="py-2.5 px-3 min-w-[150px] text-center">Deadline & Health</th>
                 <th
                   v-for="m in workloadMatrixMembers"
                   :key="m.fullName || m.member"
-                  class="py-2.5 px-3 min-w-[120px] text-center"
+                  class="py-2.5 px-3 min-w-[125px] text-center"
                   :title="m.fullName || m.member"
                 >
                   <div class="flex flex-col items-center gap-1 mx-auto">
-                    <span class="truncate max-w-[110px] font-semibold text-ink-gray-9 dark:text-neutral-100">
+                    <span class="truncate max-w-[115px] font-semibold text-ink-gray-9 dark:text-neutral-100">
                       {{ m.member }}
                     </span>
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
@@ -6965,17 +7103,38 @@ onUnmounted(() => {
 
                 <!-- Project Name -->
                 <td class="py-2.5 px-3 font-semibold text-ink-gray-9 dark:text-neutral-100 sticky left-10 z-10 bg-surface-base dark:bg-neutral-900">
-                  <div class="truncate max-w-[220px]" :title="r.project">
+                  <div class="truncate max-w-[240px]" :title="r.project">
                     {{ r.project }}
                   </div>
                 </td>
 
-                <!-- Project Deadline -->
-                <td class="py-2.5 px-3 text-center font-mono text-[11px] text-ink-gray-6 dark:text-neutral-300">
-                  <span v-if="r.dueDate && r.dueDate !== '—' && r.dueDate !== 'No due date'" class="px-2 py-0.5 rounded bg-surface-gray-2 dark:bg-neutral-800 border border-outline-gray-2/60 dark:border-neutral-700">
-                    {{ r.dueDate }}
-                  </span>
-                  <span v-else class="text-ink-gray-4 dark:text-neutral-600">—</span>
+                <!-- Project Deadline & Live Health Indicator -->
+                <td class="py-2.5 px-3 text-center">
+                  <div class="flex items-center justify-center gap-2">
+                    <span
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                      :class="[
+                        r.health.status === 'On Track' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-500/30' :
+                        r.health.status === 'At Risk' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-500/30' :
+                        r.health.status === 'Overdue' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-500/30' :
+                        'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
+                      ]"
+                    >
+                      <span
+                        class="size-1.5 rounded-full"
+                        :class="[
+                          r.health.status === 'On Track' ? 'bg-emerald-500' :
+                          r.health.status === 'At Risk' ? 'bg-amber-500' :
+                          r.health.status === 'Overdue' ? 'bg-rose-500' :
+                          'bg-neutral-400'
+                        ]"
+                      />
+                      {{ r.health.status }}
+                    </span>
+                    <span class="font-mono text-[11px] text-ink-gray-6 dark:text-neutral-300">
+                      {{ r.dueDate }}
+                    </span>
+                  </div>
                 </td>
 
                 <!-- Member Pending Task Cells with Hover Tooltip listing Task Titles -->
