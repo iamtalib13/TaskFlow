@@ -2492,15 +2492,105 @@ function getProjectHealth(dueDateStr, rawDate) {
   }
 }
 
-// All unique members with pending tasks (Columns)
-const workloadMatrixMembers = computed(() => {
-  const chartData = memberPendingBarChart.value?.data || []
-  return chartData.filter((item) => item.member && item.member !== 'No Pending Tasks')
+// Tasks filtered for Health View (respects selectedTeams, selectedProjects, selectedMembers)
+const healthFilteredTasks = computed(() => {
+  let list = tasks.value || []
+
+  if (selectedTeams.value && selectedTeams.value.length > 0) {
+    list = list.filter((t) => t.team && selectedTeams.value.includes(t.team))
+  }
+
+  if (selectedProjects.value && selectedProjects.value.length > 0) {
+    list = list.filter((t) => t.project && selectedProjects.value.includes(t.project))
+  }
+
+  if (selectedMembers.value && selectedMembers.value.length > 0) {
+    list = list.filter(isAssignedToSelectedMembers)
+  }
+
+  return list
 })
 
 // Matrix data: Rows = Projects with latest due date and counts per member
 const workloadMatrixData = computed(() => {
-  const members = workloadMatrixMembers.value
+  const all = (activeSection.value === 'Health' ? healthFilteredTasks.value : (filteredDashboardTasks.value || []))
+  const userMap = getUserNameMap()
+  const userImageMap = getUserImageMap()
+
+  const memberMap = new Map()
+
+  for (let i = 0; i < all.length; i++) {
+    const t = all[i]
+    const status = t.status || 'Open'
+    if (status === 'Completed' || status === 'Cancelled') continue
+
+    const pName = t.project ? (getProjectDisplayName(t.project) || t.project) : 'No Project'
+    const tDue = t.due_date || t.due || ''
+
+    const recordMemberTask = (rawMemberName) => {
+      if (!rawMemberName) return
+      let data = memberMap.get(rawMemberName)
+      if (!data) {
+        data = { count: 0, projects: new Map() }
+        memberMap.set(rawMemberName, data)
+      }
+      data.count += 1
+      const pEntry = data.projects.get(pName) || { count: 0, latestDue: '', tasks: [] }
+      pEntry.count += 1
+      pEntry.tasks.push(t)
+      if (tDue) {
+        if (!pEntry.latestDue || tDue > pEntry.latestDue) {
+          pEntry.latestDue = tDue
+        }
+      }
+      data.projects.set(pName, pEntry)
+    }
+
+    let matched = false
+    if (Array.isArray(t.assignees) && t.assignees.length > 0) {
+      t.assignees.forEach((a) => {
+        const id = typeof a === 'string' ? a : a.user_id || a.email || a.name
+        const name = typeof a === 'string' ? a : a.name || a.full_name || (userMap.get(id) || id)
+        if (name) {
+          recordMemberTask(name)
+          matched = true
+        }
+      })
+    }
+    if (!matched && t.assigned_to) {
+      const name = t.assigned_to_name || userMap.get(t.assigned_to) || t.assigned_to
+      recordMemberTask(name)
+      matched = true
+    }
+    if (!matched && t.guided_by) {
+      const name = userMap.get(t.guided_by) || t.guided_by
+      recordMemberTask(name)
+      matched = true
+    }
+    if (!matched) {
+      recordMemberTask('Unassigned')
+    }
+  }
+
+  const members = Array.from(memberMap.entries())
+    .map(([fullName, info]) => {
+      const displayName = typeof fullName === 'string' ? fullName.trim().split(/\s+/)[0] || fullName : fullName
+      const projectSummary = Array.from(info.projects.entries()).map(([pName, pInfo]) => ({
+        name: pName,
+        count: pInfo.count,
+        dueDate: pInfo.latestDue ? formatDueDate(pInfo.latestDue) : 'No due date',
+        tasks: pInfo.tasks || [],
+      }))
+      return {
+        member: displayName,
+        fullName,
+        image: userImageMap.get(fullName) || '',
+        pending: info.count,
+        projectsSummary: projectSummary,
+      }
+    })
+    .sort((a, b) => b.pending - a.pending)
+
   const projectMap = new Map()
 
   // Collect all projects across members
@@ -2535,12 +2625,6 @@ const workloadMatrixData = computed(() => {
   })
 
   let allRows = Array.from(projectMap.values()).sort((a, b) => b.totalPending - a.totalPending || a.project.localeCompare(b.project))
-
-  // Filter by Header Project & Team filters if active
-  if (selectedProjects.value && selectedProjects.value.length > 0) {
-    const allowed = new Set(selectedProjects.value.map((p) => getProjectDisplayName(p) || p))
-    allRows = allRows.filter((r) => allowed.has(r.project))
-  }
 
   // Health Stats summary across all rows
   const stats = {
@@ -2577,7 +2661,12 @@ const workloadMatrixData = computed(() => {
   })
   const grandTotal = rows.reduce((sum, r) => sum + r.totalPending, 0)
 
-  return { rows, colTotals, grandTotal, stats }
+  return { rows, members, colTotals, grandTotal, stats }
+})
+
+// All unique members with pending tasks (Columns)
+const workloadMatrixMembers = computed(() => {
+  return workloadMatrixData.value?.members || []
 })
 
 // Quick Task List Popup State (when clicking on a pending count cell in workload modal)

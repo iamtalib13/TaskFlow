@@ -1,4 +1,4 @@
-import{c as e}from"./Tasks-CD81ZvyE.js";/**
+import{c as e}from"./Tasks-DG1CDp0O.js";/**
  * @license lucide-vue-next v1.0.0 - ISC
  *
  * This source code is licensed under the ISC license.
