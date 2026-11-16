@@ -2345,8 +2345,9 @@ const memberPendingBarChart = computed(() => {
         map.set(rawMemberName, data)
       }
       data.count += 1
-      const pEntry = data.projects.get(pName) || { count: 0, latestDue: '' }
+      const pEntry = data.projects.get(pName) || { count: 0, latestDue: '', tasks: [] }
       pEntry.count += 1
+      pEntry.tasks.push(t.title || t.task_title || t.subject || t.name || 'Untitled Task')
       if (tDue) {
         if (!pEntry.latestDue || tDue > pEntry.latestDue) {
           pEntry.latestDue = tDue
@@ -2389,6 +2390,7 @@ const memberPendingBarChart = computed(() => {
         name: pName,
         count: pInfo.count,
         dueDate: pInfo.latestDue ? formatDueDate(pInfo.latestDue) : 'No due date',
+        tasks: pInfo.tasks || [],
       }))
       return {
         member: displayName,
@@ -2437,6 +2439,7 @@ const workloadMatrixData = computed(() => {
           project: p.name,
           dueDate: p.dueDate || '—',
           memberCounts: {},
+          memberTasks: {},
           totalPending: 0,
         })
       }
@@ -2449,6 +2452,7 @@ const workloadMatrixData = computed(() => {
       }
       const mKey = m.fullName || m.member
       entry.memberCounts[mKey] = (entry.memberCounts[mKey] || 0) + (p.count || 0)
+      entry.memberTasks[mKey] = (entry.memberTasks[mKey] || []).concat(p.tasks || [])
       entry.totalPending += (p.count || 0)
     })
   })
@@ -6911,11 +6915,16 @@ onUnmounted(() => {
                 <th
                   v-for="m in workloadMatrixMembers"
                   :key="m.fullName || m.member"
-                  class="py-2.5 px-3 min-w-[110px] text-center"
+                  class="py-2.5 px-3 min-w-[120px] text-center"
                   :title="m.fullName || m.member"
                 >
-                  <div class="truncate max-w-[120px] mx-auto">
-                    {{ m.member }}
+                  <div class="flex flex-col items-center gap-1 mx-auto">
+                    <span class="truncate max-w-[110px] font-semibold text-ink-gray-9 dark:text-neutral-100">
+                      {{ m.member }}
+                    </span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
+                      {{ (m.projectsSummary || []).length }} {{ (m.projectsSummary || []).length === 1 ? 'proj' : 'projs' }}
+                    </span>
                   </div>
                 </th>
                 <th class="py-2.5 px-3 w-28 text-right font-bold">Total</th>
@@ -6947,18 +6956,40 @@ onUnmounted(() => {
                   <span v-else class="text-ink-gray-4 dark:text-neutral-600">—</span>
                 </td>
 
-                <!-- Member Pending Task Cells -->
+                <!-- Member Pending Task Cells with Hover Tooltip listing Task Titles -->
                 <td
                   v-for="m in workloadMatrixMembers"
                   :key="m.fullName || m.member"
                   class="py-2.5 px-3 text-center"
                 >
-                  <span
+                  <Tooltip
                     v-if="r.memberCounts[m.fullName || m.member]"
-                    class="inline-block min-w-6 px-2 py-0.5 rounded-md font-bold text-xs bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums shadow-2xs"
+                    placement="top"
                   >
-                    {{ r.memberCounts[m.fullName || m.member] }}
-                  </span>
+                    <template #body>
+                      <div class="max-w-xs text-xs space-y-1 p-0.5 text-left">
+                        <div class="font-bold text-white border-b border-neutral-700 pb-1 flex items-center justify-between gap-3">
+                          <span>{{ m.fullName || m.member }}</span>
+                          <span class="text-emerald-400 font-mono text-[10px]">{{ r.memberCounts[m.fullName || m.member] }} tasks</span>
+                        </div>
+                        <ul class="list-disc list-inside space-y-0.5 text-[11px] text-neutral-300 max-h-40 overflow-y-auto">
+                          <li
+                            v-for="(tTitle, tIdx) in (r.memberTasks[m.fullName || m.member] || [])"
+                            :key="tIdx"
+                            class="truncate"
+                            :title="tTitle"
+                          >
+                            {{ tTitle }}
+                          </li>
+                        </ul>
+                      </div>
+                    </template>
+                    <span
+                      class="inline-block min-w-6 px-2 py-0.5 rounded-md font-bold text-xs bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums shadow-2xs hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer"
+                    >
+                      {{ r.memberCounts[m.fullName || m.member] }}
+                    </span>
+                  </Tooltip>
                   <span v-else class="text-ink-gray-3 dark:text-neutral-700">—</span>
                 </td>
 
@@ -6969,9 +7000,24 @@ onUnmounted(() => {
               </tr>
             </tbody>
             <tfoot class="sticky bottom-0 z-20 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+              <tr class="bg-[#F0F7F5] dark:bg-neutral-850 font-semibold border-t border-[#468373]/30 text-ink-gray-7 dark:text-neutral-300 text-[11px]">
+                <td colspan="3" class="py-2 px-4 uppercase tracking-wider text-ink-gray-6 dark:text-neutral-400 sticky left-0 z-30 bg-[#F0F7F5] dark:bg-neutral-850">
+                  Projects Assigned
+                </td>
+                <td
+                  v-for="m in workloadMatrixMembers"
+                  :key="m.fullName || m.member"
+                  class="py-2 px-3 text-center text-[#1D4036] dark:text-emerald-400 font-bold tabular-nums"
+                >
+                  {{ (m.projectsSummary || []).length }}
+                </td>
+                <td class="py-2 px-3 text-right text-ink-gray-5 dark:text-neutral-400 font-mono text-xs tabular-nums">
+                  {{ workloadMatrixData.rows.length }} total
+                </td>
+              </tr>
               <tr class="bg-[#E8F2EF] dark:bg-neutral-800 font-bold border-t-2 border-[#468373] dark:border-emerald-500 text-ink-gray-9 dark:text-white text-xs">
                 <td colspan="3" class="py-2.5 px-4 uppercase tracking-wider text-[#1D4036] dark:text-emerald-400 sticky left-0 z-30 bg-[#E8F2EF] dark:bg-neutral-800">
-                  Total Pending
+                  Total Pending Tasks
                 </td>
                 <td
                   v-for="m in workloadMatrixMembers"
