@@ -6382,7 +6382,7 @@ onUnmounted(() => {
                     <th
                       v-for="m in workloadMatrixMembers"
                       :key="m.fullName || m.member"
-                      class="py-2.5 px-2 min-w-[105px] text-center transition-colors"
+                      class="py-2.5 px-2 min-w-[110px] text-center transition-colors"
                       :class="[
                         workloadHoveredCell.member === (m.fullName || m.member)
                           ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 ring-2 ring-inset ring-emerald-500/50'
@@ -6390,9 +6390,9 @@ onUnmounted(() => {
                       ]"
                       :title="m.fullName || m.member"
                     >
-                      <div class="flex flex-col items-center gap-1.5 mx-auto py-1">
+                      <div class="flex flex-col items-center mx-auto py-1">
                         <!-- Square Profile Card with bottom gradient & centered first name -->
-                        <div class="relative w-16 h-16 rounded-xl overflow-hidden shadow-md ring-1 ring-black/10 dark:ring-white/10 shrink-0 bg-surface-gray-3 dark:bg-neutral-800 group">
+                        <div class="relative w-20 h-20 rounded-xl overflow-hidden shadow-md ring-1 ring-black/10 dark:ring-white/10 shrink-0 bg-surface-gray-3 dark:bg-neutral-800">
                           <img
                             v-if="m.image"
                             :src="m.image"
@@ -6401,19 +6401,15 @@ onUnmounted(() => {
                           />
                           <div
                             v-else
-                            class="w-full h-full flex items-center justify-center font-bold text-lg text-ink-gray-7 dark:text-neutral-300 uppercase bg-surface-gray-2 dark:bg-neutral-700"
+                            class="w-full h-full flex items-center justify-center font-bold text-xl text-ink-gray-7 dark:text-neutral-300 uppercase bg-surface-gray-2 dark:bg-neutral-700"
                           >
                             {{ (m.fullName || m.member)[0] }}
                           </div>
                           <!-- Bottom overlay with centered first name -->
-                          <div class="absolute inset-x-0 bottom-0 pt-4 pb-1 px-1 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-white font-bold text-[11px] text-center leading-tight truncate">
+                          <div class="absolute inset-x-0 bottom-0 pt-5 pb-1.5 px-1 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-white font-bold text-xs text-center leading-tight truncate">
                             {{ (m.fullName || m.member).trim().split(/\s+/)[0] }}
                           </div>
                         </div>
-
-                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
-                          {{ (m.projectsSummary || []).length }} {{ (m.projectsSummary || []).length === 1 ? 'proj' : 'projs' }}
-                        </span>
                       </div>
                     </th>
                     <th class="py-2.5 px-3 w-28 text-right font-bold">Total</th>
@@ -7406,7 +7402,7 @@ onUnmounted(() => {
                 <th
                   v-for="m in workloadMatrixMembers"
                   :key="m.fullName || m.member"
-                  class="py-2.5 px-2 min-w-[105px] text-center transition-colors"
+                  class="py-2.5 px-2 min-w-[110px] text-center transition-colors"
                   :class="[
                     workloadHoveredCell.member === (m.fullName || m.member)
                       ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 ring-2 ring-inset ring-emerald-500/50'
@@ -7414,9 +7410,9 @@ onUnmounted(() => {
                   ]"
                   :title="m.fullName || m.member"
                 >
-                  <div class="flex flex-col items-center gap-1.5 mx-auto py-1">
+                  <div class="flex flex-col items-center mx-auto py-1">
                     <!-- Square Profile Card with bottom gradient & centered first name -->
-                    <div class="relative w-16 h-16 rounded-xl overflow-hidden shadow-md ring-1 ring-black/10 dark:ring-white/10 shrink-0 bg-surface-gray-3 dark:bg-neutral-800 group">
+                    <div class="relative w-20 h-20 rounded-xl overflow-hidden shadow-md ring-1 ring-black/10 dark:ring-white/10 shrink-0 bg-surface-gray-3 dark:bg-neutral-800">
                       <img
                         v-if="m.image"
                         :src="m.image"
@@ -7425,19 +7421,15 @@ onUnmounted(() => {
                       />
                       <div
                         v-else
-                        class="w-full h-full flex items-center justify-center font-bold text-lg text-ink-gray-7 dark:text-neutral-300 uppercase bg-surface-gray-2 dark:bg-neutral-700"
+                        class="w-full h-full flex items-center justify-center font-bold text-xl text-ink-gray-7 dark:text-neutral-300 uppercase bg-surface-gray-2 dark:bg-neutral-700"
                       >
                         {{ (m.fullName || m.member)[0] }}
                       </div>
                       <!-- Bottom overlay with centered first name -->
-                      <div class="absolute inset-x-0 bottom-0 pt-4 pb-1 px-1 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-white font-bold text-[11px] text-center leading-tight truncate">
+                      <div class="absolute inset-x-0 bottom-0 pt-5 pb-1.5 px-1 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-white font-bold text-xs text-center leading-tight truncate">
                         {{ (m.fullName || m.member).trim().split(/\s+/)[0] }}
                       </div>
                     </div>
-
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
-                      {{ (m.projectsSummary || []).length }} {{ (m.projectsSummary || []).length === 1 ? 'proj' : 'projs' }}
-                    </span>
                   </div>
                 </th>
                 <th class="py-2.5 px-3 w-28 text-right font-bold">Total</th>
