@@ -80,6 +80,7 @@ import {
   Bug,
   Sparkles,
   Maximize2,
+  Activity,
 } from 'lucide-vue-next'
 
 import CommonListView from '@/components/CommonListView.vue'
@@ -458,6 +459,7 @@ const navItems = computed(() => {
   return [
     { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: '' },
     { id: 'Task', label: 'Task', icon: CheckSquare, badge: taskCount.length },
+    { id: 'Health', label: 'Health', icon: Activity, badge: workloadMatrixData.value?.stats?.totalProjects || '' },
     { id: 'Timesheet', label: 'Timesheet', icon: Clock, badge: totalTsMonthlyHours.value ? formatDuration(totalTsMonthlyHours.value) : '' },
     { id: 'Project', label: 'Project', icon: FolderKanban, badge: projectsData.value.length },
     ...(isSystemManager.value ? [{ id: 'Team', label: 'Team', icon: Users, badge: teamData.value.length }] : []),
@@ -2534,6 +2536,12 @@ const workloadMatrixData = computed(() => {
 
   let allRows = Array.from(projectMap.values()).sort((a, b) => b.totalPending - a.totalPending || a.project.localeCompare(b.project))
 
+  // Filter by Header Project & Team filters if active
+  if (selectedProjects.value && selectedProjects.value.length > 0) {
+    const allowed = new Set(selectedProjects.value.map((p) => getProjectDisplayName(p) || p))
+    allRows = allRows.filter((r) => allowed.has(r.project))
+  }
+
   // Health Stats summary across all rows
   const stats = {
     totalProjects: allRows.length,
@@ -4451,8 +4459,8 @@ onUnmounted(() => {
             </template>
           </Breadcrumbs>
 
-          <!-- Task List Filters: Select Team & Select Project inline with Task Breadcrumb -->
-          <template v-if="activeSection === 'Task' && !detailModalOpen">
+          <!-- Task & Health Filters: Select Team & Select Project inline with Breadcrumb -->
+          <template v-if="(activeSection === 'Task' || activeSection === 'Health') && !detailModalOpen">
             <div class="h-4 w-px bg-outline-gray-2 dark:bg-neutral-800 shrink-0"></div>
 
             <!-- Skeleton placeholders while tasks and filter options load -->
@@ -4655,7 +4663,7 @@ onUnmounted(() => {
 
           <!-- Download Report: opens dialog with Team & Project filters -->
           <Button
-            v-if="(activeSection === 'Task' || activeSection === 'Dashboard') && !detailModalOpen"
+            v-if="(activeSection === 'Task' || activeSection === 'Dashboard' || activeSection === 'Health') && !detailModalOpen"
             variant="ghost"
             size="sm"
             label="Download Report"
@@ -4799,11 +4807,11 @@ onUnmounted(() => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      label="More Detail"
-                      @click="workloadDetailModalOpen = true"
+                      label="View Full Health"
+                      @click="selectSection('Health')"
                     >
                       <template #prefix>
-                        <Maximize2 class="size-3.5 mr-1 text-[#468373] dark:text-emerald-400" />
+                        <Activity class="size-3.5 mr-1 text-[#468373] dark:text-emerald-400" />
                       </template>
                     </Button>
                   </template>
@@ -6214,6 +6222,256 @@ onUnmounted(() => {
                   </div>
                 </template>
               </CommonListView>
+            </div>
+          </div>
+        </template>
+
+        <!-- 5. HEALTH VIEW (Full-Screen Workload & Project Health Matrix) -->
+        <template v-else-if="activeSection === 'Health'">
+          <div class="flex-1 min-h-0 flex flex-col space-y-3 pb-4">
+            <!-- Health Toolbar: Segmented Filters with Counts + Live Search -->
+            <div class="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-base dark:bg-neutral-900 p-2.5 rounded-xl border border-outline-gray-2 dark:border-neutral-800 shadow-2xs">
+              <div class="flex items-center gap-1.5 overflow-x-auto">
+                <button
+                  v-for="item in [
+                    { label: 'All', count: workloadMatrixData.stats.totalProjects, colorClass: 'text-ink-gray-7 dark:text-neutral-300' },
+                    { label: 'On Track', count: workloadMatrixData.stats.onTrack, dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' },
+                    { label: 'At Risk', count: workloadMatrixData.stats.atRisk, dotClass: 'bg-amber-500', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300' },
+                    { label: 'Overdue', count: workloadMatrixData.stats.overdue, dotClass: 'bg-rose-500', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300' },
+                  ]"
+                  :key="item.label"
+                  type="button"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0"
+                  :class="[
+                    workloadHealthFilter === item.label
+                      ? 'bg-[#468373] text-white shadow-2xs font-semibold'
+                      : 'bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-7 dark:text-neutral-300 hover:bg-surface-gray-3'
+                  ]"
+                  @click="workloadHealthFilter = item.label"
+                >
+                  <span v-if="item.dotClass" class="size-2 rounded-full shrink-0" :class="item.dotClass" />
+                  <span>{{ item.label }}</span>
+                  <span
+                    class="px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums"
+                    :class="workloadHealthFilter === item.label ? 'bg-white/20 text-white' : (item.badgeClass || 'bg-surface-gray-3 dark:bg-neutral-700 text-ink-gray-6 dark:text-neutral-300')"
+                  >
+                    {{ item.count }}
+                  </span>
+                </button>
+              </div>
+
+              <div class="relative w-full sm:w-72">
+                <TextInput
+                  v-model="workloadDetailSearch"
+                  size="sm"
+                  placeholder="Search project or member..."
+                >
+                  <template #prefix>
+                    <Search class="size-3.5 text-ink-gray-4" />
+                  </template>
+                </TextInput>
+              </div>
+            </div>
+
+            <!-- Matrix Empty State -->
+            <div v-if="workloadMatrixData.rows.length === 0" class="flex-1 flex flex-col items-center justify-center p-12 bg-surface-base dark:bg-neutral-900 rounded-xl border border-outline-gray-2 dark:border-neutral-800 text-xs text-ink-gray-4">
+              <Activity class="size-8 text-ink-gray-3 mb-2" />
+              <span>No projects or members found matching the filter.</span>
+            </div>
+
+            <!-- Full-Screen Matrix Table -->
+            <div
+              v-else
+              class="flex-1 min-h-0 border border-outline-gray-2 dark:border-neutral-800 rounded-xl overflow-x-auto overflow-y-auto bg-surface-base dark:bg-neutral-900 shadow-2xs"
+            >
+              <table class="w-full text-left text-xs border-collapse min-w-[760px]">
+                <thead class="sticky top-0 z-20 bg-surface-gray-2 dark:bg-neutral-800 border-b border-outline-gray-2 dark:border-neutral-700 text-ink-gray-7 dark:text-neutral-300 font-semibold uppercase tracking-wider text-[11px]">
+                  <tr>
+                    <th class="py-2.5 px-3 w-10 text-center sticky left-0 z-30 bg-surface-gray-2 dark:bg-neutral-800">#</th>
+                    <th class="py-2.5 px-3 min-w-[210px] sticky left-10 z-30 bg-surface-gray-2 dark:bg-neutral-800">Project</th>
+                    <th class="py-2.5 px-3 min-w-[150px] text-center">Deadline & Health</th>
+                    <th
+                      v-for="m in workloadMatrixMembers"
+                      :key="m.fullName || m.member"
+                      class="py-2.5 px-3 min-w-[130px] text-center transition-colors"
+                      :class="[
+                        workloadHoveredCell.member === (m.fullName || m.member)
+                          ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 ring-2 ring-inset ring-emerald-500/50'
+                          : ''
+                      ]"
+                      :title="m.fullName || m.member"
+                    >
+                      <div class="flex flex-col items-center gap-1.5 mx-auto py-0.5">
+                        <Avatar
+                          :image="m.image"
+                          :label="m.fullName || m.member"
+                          size="lg"
+                          shape="circle"
+                          class="shrink-0 shadow-sm ring-2 ring-emerald-500/30"
+                        />
+                        <span
+                          class="truncate max-w-[120px] font-bold text-xs"
+                          :class="workloadHoveredCell.member === (m.fullName || m.member) ? 'text-emerald-900 dark:text-emerald-200' : 'text-ink-gray-9 dark:text-neutral-100'"
+                          :title="m.fullName || m.member"
+                        >
+                          {{ m.fullName || m.member }}
+                        </span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums">
+                          {{ (m.projectsSummary || []).length }} {{ (m.projectsSummary || []).length === 1 ? 'proj' : 'projs' }}
+                        </span>
+                      </div>
+                    </th>
+                    <th class="py-2.5 px-3 w-28 text-right font-bold">Total</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-outline-gray-1 dark:divide-neutral-800/80 text-ink-gray-8 dark:text-neutral-200">
+                  <tr
+                    v-for="(r, idx) in workloadMatrixData.rows"
+                    :key="r.project"
+                    class="hover:bg-surface-gray-1/60 dark:hover:bg-neutral-800/40 transition-colors"
+                  >
+                    <!-- Serial No. -->
+                    <td class="py-2.5 px-3 text-center font-mono text-ink-gray-4 dark:text-neutral-500 text-[11px] sticky left-0 z-10 bg-surface-base dark:bg-neutral-900">
+                      {{ idx + 1 }}
+                    </td>
+
+                    <!-- Project Name -->
+                    <td
+                      class="py-2.5 px-3 font-semibold sticky left-10 z-10 transition-colors"
+                      :class="[
+                        workloadHoveredCell.project === r.project
+                          ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 font-bold'
+                          : 'bg-surface-base dark:bg-neutral-900 text-ink-gray-9 dark:text-neutral-100'
+                      ]"
+                    >
+                      <div class="truncate max-w-[240px]" :title="r.project">
+                        {{ r.project }}
+                      </div>
+                    </td>
+
+                    <!-- Project Deadline & Live Health Indicator -->
+                    <td class="py-2.5 px-3 text-center">
+                      <div class="flex items-center justify-center gap-2">
+                        <span
+                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                          :class="[
+                            r.health.status === 'On Track' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-500/30' :
+                            r.health.status === 'At Risk' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-500/30' :
+                            r.health.status === 'Overdue' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-500/30' :
+                            'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
+                          ]"
+                        >
+                          <span
+                            class="size-1.5 rounded-full"
+                            :class="[
+                              r.health.status === 'On Track' ? 'bg-emerald-500' :
+                              r.health.status === 'At Risk' ? 'bg-amber-500' :
+                              r.health.status === 'Overdue' ? 'bg-rose-500' :
+                              'bg-neutral-400'
+                            ]"
+                          />
+                          {{ r.health.status }}
+                        </span>
+                        <span class="font-mono text-[11px] text-ink-gray-6 dark:text-neutral-300">
+                          {{ r.dueDate }}
+                        </span>
+                      </div>
+                    </td>
+
+                    <!-- Member Pending Task Cells with Hover Tooltip listing Task Titles -->
+                    <td
+                      v-for="m in workloadMatrixMembers"
+                      :key="m.fullName || m.member"
+                      class="py-2.5 px-3 text-center transition-colors"
+                      :class="[
+                        workloadHoveredCell.project === r.project && workloadHoveredCell.member === (m.fullName || m.member)
+                          ? 'bg-emerald-100/60 dark:bg-emerald-950/50'
+                          : ''
+                      ]"
+                    >
+                      <Tooltip
+                        v-if="r.memberCounts[m.fullName || m.member]"
+                        placement="top"
+                      >
+                        <template #body>
+                          <div class="max-w-xs text-xs space-y-1 p-0.5 text-left">
+                            <div class="font-bold text-white border-b border-neutral-700 pb-1 flex items-center justify-between gap-3">
+                              <div class="flex items-center gap-1.5 min-w-0">
+                                <Avatar
+                                  :image="m.image"
+                                  :label="m.fullName || m.member"
+                                  size="xs"
+                                  shape="circle"
+                                  class="shrink-0 ring-1 ring-emerald-400"
+                                />
+                                <span class="truncate">{{ m.fullName || m.member }}</span>
+                              </div>
+                              <span class="text-emerald-400 font-mono text-[10px] shrink-0">{{ r.memberCounts[m.fullName || m.member] }} tasks</span>
+                            </div>
+                            <ul class="list-disc list-inside space-y-0.5 text-[11px] text-neutral-300 max-h-40 overflow-y-auto">
+                              <li
+                                v-for="(t, tIdx) in (r.memberTasks[m.fullName || m.member] || [])"
+                                :key="tIdx"
+                                class="truncate"
+                                :title="t.title || t.task_title || t.subject || t.name"
+                              >
+                                {{ t.title || t.task_title || t.subject || t.name }}
+                              </li>
+                            </ul>
+                          </div>
+                        </template>
+                        <button
+                          type="button"
+                          class="inline-block min-w-6 px-2 py-0.5 rounded-md font-bold text-xs bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums shadow-2xs hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer"
+                          @mouseenter="workloadHoveredCell = { project: r.project, member: m.fullName || m.member }"
+                          @mouseleave="workloadHoveredCell = { project: '', member: '' }"
+                          @click="openWorkloadTaskList(m.fullName || m.member, r.project, r.memberTasks[m.fullName || m.member])"
+                        >
+                          {{ r.memberCounts[m.fullName || m.member] }}
+                        </button>
+                      </Tooltip>
+                      <span v-else class="text-ink-gray-3 dark:text-neutral-700">—</span>
+                    </td>
+
+                    <!-- Project Total Pending -->
+                    <td class="py-2.5 px-3 text-right font-bold text-ink-gray-9 dark:text-white tabular-nums">
+                      {{ r.totalPending }}
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot class="sticky bottom-0 z-20 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+                  <tr class="bg-[#F0F7F5] dark:bg-neutral-850 font-semibold border-t border-[#468373]/30 text-ink-gray-7 dark:text-neutral-300 text-[11px]">
+                    <td colspan="3" class="py-2 px-4 uppercase tracking-wider text-ink-gray-6 dark:text-neutral-400 sticky left-0 z-30 bg-[#F0F7F5] dark:bg-neutral-850">
+                      Projects Assigned
+                    </td>
+                    <td
+                      v-for="m in workloadMatrixMembers"
+                      :key="m.fullName || m.member"
+                      class="py-2 px-3 text-center text-[#1D4036] dark:text-emerald-400 font-bold tabular-nums"
+                    >
+                      {{ (m.projectsSummary || []).length }}
+                    </td>
+                    <td class="py-2 px-3 text-right text-ink-gray-5 dark:text-neutral-400 font-mono text-xs tabular-nums">
+                      {{ workloadMatrixData.rows.length }} total
+                    </td>
+                  </tr>
+                  <tr class="bg-[#E8F2EF] dark:bg-neutral-800 font-bold border-t-2 border-[#468373] dark:border-emerald-500 text-ink-gray-9 dark:text-white text-xs">
+                    <td colspan="3" class="py-2.5 px-4 uppercase tracking-wider text-[#1D4036] dark:text-emerald-400 sticky left-0 z-30 bg-[#E8F2EF] dark:bg-neutral-800">
+                      Total Pending Tasks
+                    </td>
+                    <td
+                      v-for="m in workloadMatrixMembers"
+                      :key="m.fullName || m.member"
+                      class="py-2.5 px-3 text-center text-[#1D4036] dark:text-emerald-400 font-bold tabular-nums"
+                    >
+                      {{ workloadMatrixData.colTotals[m.fullName || m.member] || '—' }}
+                    </td>
+                    <td class="py-2.5 px-3 text-right text-[#1D4036] dark:text-emerald-400 font-extrabold text-sm tabular-nums">
+                      {{ workloadMatrixData.grandTotal }}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
         </template>
