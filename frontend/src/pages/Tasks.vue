@@ -2377,12 +2377,13 @@ const memberPendingBarChart = computed(() => {
         map.set(rawMemberName, data)
       }
       data.count += 1
-      const pEntry = data.projects.get(pName) || { count: 0, latestDue: '', tasks: [] }
+      const pEntry = data.projects.get(pName) || { count: 0, latestDue: '', rawDue: '', tasks: [] }
       pEntry.count += 1
       pEntry.tasks.push(t)
       if (tDue) {
-        if (!pEntry.latestDue || tDue > pEntry.latestDue) {
+        if (!pEntry.latestDue || tDue < pEntry.latestDue) {
           pEntry.latestDue = tDue
+          pEntry.rawDue = tDue
         }
       }
       data.projects.set(pName, pEntry)
@@ -2423,6 +2424,7 @@ const memberPendingBarChart = computed(() => {
         name: pName,
         count: pInfo.count,
         dueDate: pInfo.latestDue ? formatDueDate(pInfo.latestDue) : 'No due date',
+        rawDue: pInfo.rawDue || pInfo.latestDue || '',
         tasks: pInfo.tasks || [],
       }))
       return {
@@ -2549,12 +2551,13 @@ const workloadMatrixData = computed(() => {
         data.userId = rawUserId
       }
       data.count += 1
-      const pEntry = data.projects.get(pName) || { count: 0, latestDue: '', tasks: [] }
+      const pEntry = data.projects.get(pName) || { count: 0, latestDue: '', rawDue: '', tasks: [] }
       pEntry.count += 1
       pEntry.tasks.push(t)
       if (tDue) {
-        if (!pEntry.latestDue || tDue > pEntry.latestDue) {
+        if (!pEntry.latestDue || tDue < pEntry.latestDue) {
           pEntry.latestDue = tDue
+          pEntry.rawDue = tDue
         }
       }
       data.projects.set(pName, pEntry)
@@ -2593,6 +2596,7 @@ const workloadMatrixData = computed(() => {
         name: pName,
         count: pInfo.count,
         dueDate: pInfo.latestDue ? formatDueDate(pInfo.latestDue) : 'No due date',
+        rawDue: pInfo.rawDue || pInfo.latestDue || '',
         tasks: pInfo.tasks || [],
       }))
       // userId is the original user ID (email) stored directly from task assignee data
@@ -2618,14 +2622,19 @@ const workloadMatrixData = computed(() => {
         projectMap.set(p.name, {
           project: p.name,
           dueDate: p.dueDate || '—',
-          rawDue: '',
+          rawDue: p.rawDue || '',
           memberCounts: {},
           memberTasks: {},
           totalPending: 0,
         })
       }
       const entry = projectMap.get(p.name)
-      if (p.dueDate && p.dueDate !== 'No due date') {
+      if (p.rawDue) {
+        if (!entry.rawDue || p.rawDue < entry.rawDue) {
+          entry.rawDue = p.rawDue
+          entry.dueDate = p.dueDate
+        }
+      } else if (p.dueDate && p.dueDate !== 'No due date') {
         if (!entry.dueDate || entry.dueDate === '—' || entry.dueDate === 'No due date') {
           entry.dueDate = p.dueDate
         }
@@ -2642,7 +2651,19 @@ const workloadMatrixData = computed(() => {
     entry.health = getProjectHealth(entry.dueDate, entry.rawDue)
   })
 
-  let allRows = Array.from(projectMap.values()).sort((a, b) => b.totalPending - a.totalPending || a.project.localeCompare(b.project))
+  // Sort by deadline ascending (earliest due date first; projects without due date at bottom)
+  let allRows = Array.from(projectMap.values()).sort((a, b) => {
+    const dueA = a.rawDue || (a.dueDate && a.dueDate !== '—' && a.dueDate !== 'No due date' ? a.dueDate : '')
+    const dueB = b.rawDue || (b.dueDate && b.dueDate !== '—' && b.dueDate !== 'No due date' ? b.dueDate : '')
+    if (dueA && dueB) {
+      if (dueA < dueB) return -1
+      if (dueA > dueB) return 1
+      return b.totalPending - a.totalPending || a.project.localeCompare(b.project)
+    }
+    if (dueA && !dueB) return -1
+    if (!dueA && dueB) return 1
+    return b.totalPending - a.totalPending || a.project.localeCompare(b.project)
+  })
 
   // Health Stats summary across all rows
   const stats = {
@@ -2662,12 +2683,6 @@ const workloadMatrixData = computed(() => {
   if (healthSelectedMember.value) {
     const sKey = healthSelectedMember.value
     rows = rows.filter((r) => (r.memberCounts[sKey] || 0) > 0)
-  }
-
-  // Hover filter (temporary, overrides click visually via CSS)
-  if (healthHoveredMember.value) {
-    const hKey = healthHoveredMember.value
-    rows = rows.filter((r) => (r.memberCounts[hKey] || 0) > 0)
   }
 
   // Filter by Search Query
@@ -2708,11 +2723,24 @@ const workloadTaskListDialog = ref({
 })
 
 function openWorkloadTaskList(memberName, projectName, tasksList) {
+  const sortedTasks = [...(tasksList || [])].sort((a, b) => {
+    const dueA = a.due_date || a.due || ''
+    const dueB = b.due_date || b.due || ''
+    if (dueA && dueB) {
+      if (dueA < dueB) return -1
+      if (dueA > dueB) return 1
+      return (a.title || a.task_title || '').localeCompare(b.title || b.task_title || '')
+    }
+    if (dueA && !dueB) return -1
+    if (!dueA && dueB) return 1
+    return (a.title || a.task_title || '').localeCompare(b.title || b.task_title || '')
+  })
+
   workloadTaskListDialog.value = {
     open: true,
     member: memberName,
     project: projectName,
-    tasks: tasksList || [],
+    tasks: sortedTasks,
   }
 }
 
@@ -6471,11 +6499,11 @@ onUnmounted(() => {
                           </div>
                           <!-- Notification badge for Pending Task Count in Red at top right -->
                           <div
-                            v-if="workloadMatrixData.colTotals[m.fullName || m.member]"
+                            v-if="m.pending"
                             class="absolute -top-2 -right-2 z-20 min-w-6 h-6 px-1.5 rounded-full bg-rose-600 text-white font-extrabold text-xs flex items-center justify-center shadow-lg ring-2 ring-white dark:ring-neutral-900 tabular-nums animate-in fade-in"
-                            :title="`${workloadMatrixData.colTotals[m.fullName || m.member]} pending tasks`"
+                            :title="`${m.pending} pending tasks`"
                           >
-                            {{ workloadMatrixData.colTotals[m.fullName || m.member] }}
+                            {{ m.pending }}
                           </div>
 
                           <div class="w-full h-full rounded-2xl overflow-hidden relative ring-1 ring-black/10 dark:ring-white/10">
@@ -7553,11 +7581,11 @@ onUnmounted(() => {
                     <div class="relative w-24 h-24 rounded-2xl overflow-visible shadow-lg shrink-0 bg-surface-gray-3 dark:bg-neutral-800">
                       <!-- Notification badge for Pending Task Count in Red at top right -->
                       <div
-                        v-if="workloadMatrixData.colTotals[m.fullName || m.member]"
+                        v-if="m.pending"
                         class="absolute -top-2 -right-2 z-20 min-w-6 h-6 px-1.5 rounded-full bg-rose-600 text-white font-extrabold text-xs flex items-center justify-center shadow-lg ring-2 ring-white dark:ring-neutral-900 tabular-nums animate-in fade-in"
-                        :title="`${workloadMatrixData.colTotals[m.fullName || m.member]} pending tasks`"
+                        :title="`${m.pending} pending tasks`"
                       >
-                        {{ workloadMatrixData.colTotals[m.fullName || m.member] }}
+                        {{ m.pending }}
                       </div>
 
                       <div class="w-full h-full rounded-2xl overflow-hidden relative ring-1 ring-black/10 dark:ring-white/10">
@@ -7784,6 +7812,9 @@ onUnmounted(() => {
             class="py-2.5 px-3 flex items-center justify-between gap-3 hover:bg-surface-gray-1/70 dark:hover:bg-neutral-800/50 rounded-lg transition-colors cursor-pointer group"
             @click="handleWorkloadTaskClick(task)"
           >
+            <div class="shrink-0 font-mono text-[11px] text-ink-gray-4 dark:text-neutral-500 font-bold w-6 text-center">
+              {{ idx + 1 }}
+            </div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-[11px] font-mono text-ink-gray-4 dark:text-neutral-500 font-semibold">
