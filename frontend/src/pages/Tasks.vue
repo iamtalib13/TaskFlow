@@ -2460,35 +2460,35 @@ const healthHoveredMember = ref('')
 function isHealthMemberSelected(m) {
   if (!m || !selectedMembers.value || selectedMembers.value.length === 0) return false
   const mKey = String(m.fullName || m.member || '').toLowerCase().trim()
-  const mEmail = String(m.userEmail || '').toLowerCase().trim()
+  const mUserId = String(m.userId || '').toLowerCase().trim()
   return (selectedMembers.value || []).some((item) => {
-    const val = typeof item === 'object' && item
-      ? String(item.label || item.value || item.user || item.email || item.name || '').toLowerCase().trim()
+    const label = typeof item === 'object' && item
+      ? String(item.label || item.name || '').toLowerCase().trim()
       : String(item || '').toLowerCase().trim()
-    const valAlt = typeof item === 'object' && item
+    const idVal = typeof item === 'object' && item
       ? String(item.value || item.user || item.email || '').toLowerCase().trim()
-      : ''
-    return val === mKey || (mEmail && (val === mEmail || valAlt === mEmail))
+      : String(item || '').toLowerCase().trim()
+    return label === mKey || idVal === mKey || (mUserId && (idVal === mUserId || label === mUserId))
   })
 }
 
 function toggleHealthMemberFilter(m) {
   if (!m) return
   const mKey = m.fullName || m.member
-  const mEmail = m.userEmail || (typeof mKey === 'string' && mKey.includes('@') ? mKey : '')
+  const mUserId = m.userId || (typeof mKey === 'string' && mKey.includes('@') ? mKey : '')
 
-  // Find matching option in taskMemberOptions by value (email), label, or userEmail
+  // Find matching option in taskMemberOptions by value (userId/email), label, or fullName
   let targetOpt = (taskMemberOptions.value || []).find((opt) => {
     const val = String(opt.value || '').toLowerCase().trim()
     const lbl = String(opt.label || '').toLowerCase().trim()
     const targetKey = String(mKey).toLowerCase().trim()
-    const targetEmail = mEmail.toLowerCase().trim()
-    return val === targetKey || lbl === targetKey || (targetEmail && val === targetEmail)
+    const targetId = mUserId.toLowerCase().trim()
+    return val === targetKey || lbl === targetKey || (targetId && val === targetId)
   })
 
-  // If still not found and we have an email, construct a minimal option so filter works
-  if (!targetOpt && mEmail) {
-    targetOpt = { value: mEmail, label: typeof mKey === 'string' && !mKey.includes('@') ? mKey : mEmail }
+  // If not found but we have the original userId, construct a minimal option so filter works
+  if (!targetOpt && mUserId) {
+    targetOpt = { value: mUserId, label: typeof mKey === 'string' && !mKey.includes('@') ? mKey : mUserId }
   }
 
   const filterVal = targetOpt || mKey
@@ -2577,12 +2577,14 @@ const workloadMatrixData = computed(() => {
     const pName = t.project ? (getProjectDisplayName(t.project) || t.project) : 'No Project'
     const tDue = t.due_date || t.due || ''
 
-    const recordMemberTask = (rawMemberName) => {
+    const recordMemberTask = (rawMemberName, rawUserId) => {
       if (!rawMemberName) return
       let data = memberMap.get(rawMemberName)
       if (!data) {
-        data = { count: 0, projects: new Map() }
+        data = { count: 0, projects: new Map(), userId: rawUserId || '' }
         memberMap.set(rawMemberName, data)
+      } else if (!data.userId && rawUserId) {
+        data.userId = rawUserId
       }
       data.count += 1
       const pEntry = data.projects.get(pName) || { count: 0, latestDue: '', tasks: [] }
@@ -2602,32 +2604,25 @@ const workloadMatrixData = computed(() => {
         const id = typeof a === 'string' ? a : a.user_id || a.email || a.name
         const name = typeof a === 'string' ? a : a.name || a.full_name || (userMap.get(id) || id)
         if (name) {
-          recordMemberTask(name)
+          recordMemberTask(name, id)
           matched = true
         }
       })
     }
     if (!matched && t.assigned_to) {
       const name = t.assigned_to_name || userMap.get(t.assigned_to) || t.assigned_to
-      recordMemberTask(name)
+      recordMemberTask(name, t.assigned_to)
       matched = true
     }
     if (!matched && t.guided_by) {
       const name = userMap.get(t.guided_by) || t.guided_by
-      recordMemberTask(name)
+      recordMemberTask(name, t.guided_by)
       matched = true
     }
     if (!matched) {
       recordMemberTask('Unassigned')
     }
   }
-
-  // Build reverse map: full name → email (for filter matching)
-  const nameToEmailMap = new Map()
-  userMap.forEach((name, email) => {
-    const key = String(name).toLowerCase().trim()
-    if (key && !nameToEmailMap.has(key)) nameToEmailMap.set(key, email)
-  })
 
   const members = Array.from(memberMap.entries())
     .map(([fullName, info]) => {
@@ -2638,13 +2633,14 @@ const workloadMatrixData = computed(() => {
         dueDate: pInfo.latestDue ? formatDueDate(pInfo.latestDue) : 'No due date',
         tasks: pInfo.tasks || [],
       }))
-      const isEmail = typeof fullName === 'string' && fullName.includes('@')
-      const userEmail = isEmail ? fullName : (nameToEmailMap.get(String(fullName).toLowerCase().trim()) || '')
+      // userId is the original user ID (email) stored directly from task assignee data
+      const userId = info.userId || (typeof fullName === 'string' && fullName.includes('@') ? fullName : '')
+      const dmEntry = userId ? (dashboardMemberList.value || []).find((dm) => dm.value === userId || dm.user === userId) : null
       return {
         member: displayName,
         fullName,
-        userEmail,
-        image: userImageMap.get(fullName) || userImageMap.get(userEmail) || '',
+        userId,
+        image: userImageMap.get(fullName) || userImageMap.get(userId) || dmEntry?.image || '',
         pending: info.count,
         projectsSummary: projectSummary,
       }
