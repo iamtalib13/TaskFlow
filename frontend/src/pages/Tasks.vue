@@ -6497,9 +6497,9 @@ onUnmounted(() => {
                           >
                             ✓
                           </div>
-                          <!-- Notification badge for Pending Task Count in Red at top right -->
+                          <!-- Notification badge for Pending Task Count in Red at top right (shows on hover or when nothing hovered) -->
                           <div
-                            v-if="m.pending"
+                            v-if="m.pending && (!healthHoveredMember || healthHoveredMember === (m.fullName || m.member))"
                             class="absolute -top-2 -right-2 z-20 min-w-6 h-6 px-1.5 rounded-full bg-rose-600 text-white font-extrabold text-xs flex items-center justify-center shadow-lg ring-2 ring-white dark:ring-neutral-900 tabular-nums animate-in fade-in"
                             :title="`${m.pending} pending tasks`"
                           >
