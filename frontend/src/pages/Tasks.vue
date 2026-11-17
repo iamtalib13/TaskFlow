@@ -2687,8 +2687,14 @@ function openWorkloadTaskList(memberName, projectName, tasksList) {
 }
 
 function handleWorkloadTaskClick(task) {
-  workloadTaskListDialog.value.open = false
-  openDetail(task)
+  const taskId = task?.id || task?.name
+  if (taskId) {
+    const taskUrl = buildViewPath('Task', taskId, window.location.pathname)
+    window.open(taskUrl, '_blank')
+  } else {
+    workloadTaskListDialog.value.open = false
+    openDetail(task)
+  }
 }
 
 // --- 2. Project List View State & Columns ---
@@ -6320,33 +6326,51 @@ onUnmounted(() => {
           <div class="flex-1 min-h-0 flex flex-col space-y-3 pb-4">
             <!-- Health Toolbar: Segmented Filters with Counts + Live Search -->
             <div class="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-base dark:bg-neutral-900 p-2.5 rounded-xl border border-outline-gray-2 dark:border-neutral-800 shadow-2xs">
-              <div class="flex items-center gap-1.5 overflow-x-auto">
-                <button
-                  v-for="item in [
-                    { label: 'All', count: workloadMatrixData.stats.totalProjects, colorClass: 'text-ink-gray-7 dark:text-neutral-300' },
-                    { label: 'On Track', count: workloadMatrixData.stats.onTrack, dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' },
-                    { label: 'At Risk', count: workloadMatrixData.stats.atRisk, dotClass: 'bg-amber-500', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300' },
-                    { label: 'Overdue', count: workloadMatrixData.stats.overdue, dotClass: 'bg-rose-500', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300' },
-                  ]"
-                  :key="item.label"
-                  type="button"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0"
-                  :class="[
-                    workloadHealthFilter === item.label
-                      ? 'bg-[#468373] text-white shadow-2xs font-semibold'
-                      : 'bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-7 dark:text-neutral-300 hover:bg-surface-gray-3'
-                  ]"
-                  @click="workloadHealthFilter = item.label"
-                >
-                  <span v-if="item.dotClass" class="size-2 rounded-full shrink-0" :class="item.dotClass" />
-                  <span>{{ item.label }}</span>
-                  <span
-                    class="px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums"
-                    :class="workloadHealthFilter === item.label ? 'bg-white/20 text-white' : (item.badgeClass || 'bg-surface-gray-3 dark:bg-neutral-700 text-ink-gray-6 dark:text-neutral-300')"
+              <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center gap-1.5 overflow-x-auto">
+                  <button
+                    v-for="item in [
+                      { label: 'All', count: workloadMatrixData.stats.totalProjects, colorClass: 'text-ink-gray-7 dark:text-neutral-300' },
+                      { label: 'On Track', count: workloadMatrixData.stats.onTrack, dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' },
+                      { label: 'At Risk', count: workloadMatrixData.stats.atRisk, dotClass: 'bg-amber-500', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300' },
+                      { label: 'Overdue', count: workloadMatrixData.stats.overdue, dotClass: 'bg-rose-500', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300' },
+                    ]"
+                    :key="item.label"
+                    type="button"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0"
+                    :class="[
+                      workloadHealthFilter === item.label
+                        ? 'bg-[#468373] text-white shadow-2xs font-semibold'
+                        : 'bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-7 dark:text-neutral-300 hover:bg-surface-gray-3'
+                    ]"
+                    @click="workloadHealthFilter = item.label"
                   >
-                    {{ item.count }}
+                    <span v-if="item.dotClass" class="size-2 rounded-full shrink-0" :class="item.dotClass" />
+                    <span>{{ item.label }}</span>
+                    <span
+                      class="px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums"
+                      :class="workloadHealthFilter === item.label ? 'bg-white/20 text-white' : (item.badgeClass || 'bg-surface-gray-3 dark:bg-neutral-700 text-ink-gray-6 dark:text-neutral-300')"
+                    >
+                      {{ item.count }}
+                    </span>
+                  </button>
+                </div>
+
+                <!-- Status Criteria Rules Legend -->
+                <div class="hidden xl:flex items-center gap-2 pl-2 border-l border-outline-gray-2 dark:border-neutral-800 text-[11px] text-ink-gray-6 dark:text-neutral-400">
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-medium">
+                    <span class="size-1.5 rounded-full bg-emerald-500"></span>
+                    On Track: &gt; 3 days left
                   </span>
-                </button>
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-medium">
+                    <span class="size-1.5 rounded-full bg-amber-500"></span>
+                    At Risk: 0-3 days left
+                  </span>
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-medium">
+                    <span class="size-1.5 rounded-full bg-rose-500"></span>
+                    Overdue: Past due date
+                  </span>
+                </div>
               </div>
 
               <div class="relative w-full sm:w-72">
@@ -6430,10 +6454,26 @@ onUnmounted(() => {
                   <tr
                     v-for="(r, idx) in workloadMatrixData.rows"
                     :key="r.project"
-                    class="hover:bg-surface-gray-1/60 dark:hover:bg-neutral-800/40 transition-colors"
+                    class="group transition-colors"
+                    :class="[
+                      r.health.status === 'Overdue'
+                        ? 'bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-100/50 dark:hover:bg-rose-950/40' :
+                      r.health.status === 'At Risk'
+                        ? 'bg-amber-50/40 dark:bg-amber-950/20 hover:bg-amber-100/50 dark:hover:bg-amber-950/40' :
+                        'hover:bg-[#E8F2EF]/60 dark:hover:bg-neutral-800/60'
+                    ]"
                   >
                     <!-- Serial No. -->
-                    <td class="py-2.5 px-3 text-center font-mono text-ink-gray-4 dark:text-neutral-500 text-[11px] sticky left-0 z-10 bg-surface-base dark:bg-neutral-900">
+                    <td
+                      class="py-2.5 px-3 text-center font-mono text-ink-gray-4 dark:text-neutral-500 text-[11px] sticky left-0 z-10 transition-colors"
+                      :class="[
+                        r.health.status === 'Overdue'
+                          ? 'bg-rose-50/80 dark:bg-neutral-900 group-hover:bg-rose-100/80 dark:group-hover:bg-neutral-800' :
+                        r.health.status === 'At Risk'
+                          ? 'bg-amber-50/80 dark:bg-neutral-900 group-hover:bg-amber-100/80 dark:group-hover:bg-neutral-800' :
+                          'bg-surface-base dark:bg-neutral-900 group-hover:bg-[#E8F2EF] dark:group-hover:bg-neutral-800'
+                      ]"
+                    >
                       {{ idx + 1 }}
                     </td>
 
@@ -6442,8 +6482,12 @@ onUnmounted(() => {
                       class="py-2.5 px-3 font-semibold sticky left-10 z-10 transition-colors"
                       :class="[
                         workloadHoveredCell.project === r.project
-                          ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 font-bold'
-                          : 'bg-surface-base dark:bg-neutral-900 text-ink-gray-9 dark:text-neutral-100'
+                          ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 font-bold' :
+                        r.health.status === 'Overdue'
+                          ? 'bg-rose-50/80 dark:bg-neutral-900 group-hover:bg-rose-100/80 dark:group-hover:bg-neutral-800 text-ink-gray-9 dark:text-neutral-100' :
+                        r.health.status === 'At Risk'
+                          ? 'bg-amber-50/80 dark:bg-neutral-900 group-hover:bg-amber-100/80 dark:group-hover:bg-neutral-800 text-ink-gray-9 dark:text-neutral-100' :
+                          'bg-surface-base dark:bg-neutral-900 group-hover:bg-[#E8F2EF] dark:group-hover:bg-neutral-800 text-ink-gray-9 dark:text-neutral-100'
                       ]"
                     >
                       <div class="truncate max-w-[240px]" :title="r.project">
@@ -7353,33 +7397,51 @@ onUnmounted(() => {
       <div class="space-y-4 py-1">
         <!-- Toolbar: Segmented Filters with Counts + Live Search -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-gray-2 dark:border-neutral-800 pb-2.5">
-          <div class="flex items-center gap-1.5 overflow-x-auto">
-            <button
-              v-for="item in [
-                { label: 'All', count: workloadMatrixData.stats.totalProjects, colorClass: 'text-ink-gray-7 dark:text-neutral-300' },
-                { label: 'On Track', count: workloadMatrixData.stats.onTrack, dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' },
-                { label: 'At Risk', count: workloadMatrixData.stats.atRisk, dotClass: 'bg-amber-500', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300' },
-                { label: 'Overdue', count: workloadMatrixData.stats.overdue, dotClass: 'bg-rose-500', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300' },
-              ]"
-              :key="item.label"
-              type="button"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0"
-              :class="[
-                workloadHealthFilter === item.label
-                  ? 'bg-[#468373] text-white shadow-2xs font-semibold'
-                  : 'bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-7 dark:text-neutral-300 hover:bg-surface-gray-3'
-              ]"
-              @click="workloadHealthFilter = item.label"
-            >
-              <span v-if="item.dotClass" class="size-2 rounded-full shrink-0" :class="item.dotClass" />
-              <span>{{ item.label }}</span>
-              <span
-                class="px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums"
-                :class="workloadHealthFilter === item.label ? 'bg-white/20 text-white' : (item.badgeClass || 'bg-surface-gray-3 dark:bg-neutral-700 text-ink-gray-6 dark:text-neutral-300')"
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-1.5 overflow-x-auto">
+              <button
+                v-for="item in [
+                  { label: 'All', count: workloadMatrixData.stats.totalProjects, colorClass: 'text-ink-gray-7 dark:text-neutral-300' },
+                  { label: 'On Track', count: workloadMatrixData.stats.onTrack, dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' },
+                  { label: 'At Risk', count: workloadMatrixData.stats.atRisk, dotClass: 'bg-amber-500', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300' },
+                  { label: 'Overdue', count: workloadMatrixData.stats.overdue, dotClass: 'bg-rose-500', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300' },
+                ]"
+                :key="item.label"
+                type="button"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0"
+                :class="[
+                  workloadHealthFilter === item.label
+                    ? 'bg-[#468373] text-white shadow-2xs font-semibold'
+                    : 'bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-7 dark:text-neutral-300 hover:bg-surface-gray-3'
+                ]"
+                @click="workloadHealthFilter = item.label"
               >
-                {{ item.count }}
+                <span v-if="item.dotClass" class="size-2 rounded-full shrink-0" :class="item.dotClass" />
+                <span>{{ item.label }}</span>
+                <span
+                  class="px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums"
+                  :class="workloadHealthFilter === item.label ? 'bg-white/20 text-white' : (item.badgeClass || 'bg-surface-gray-3 dark:bg-neutral-700 text-ink-gray-6 dark:text-neutral-300')"
+                >
+                  {{ item.count }}
+                </span>
+              </button>
+            </div>
+
+            <!-- Status Criteria Rules Legend -->
+            <div class="hidden xl:flex items-center gap-2 pl-2 border-l border-outline-gray-2 dark:border-neutral-800 text-[11px] text-ink-gray-6 dark:text-neutral-400">
+              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-medium">
+                <span class="size-1.5 rounded-full bg-emerald-500"></span>
+                On Track: &gt; 3 days left
               </span>
-            </button>
+              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-medium">
+                <span class="size-1.5 rounded-full bg-amber-500"></span>
+                At Risk: 0-3 days left
+              </span>
+              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-medium">
+                <span class="size-1.5 rounded-full bg-rose-500"></span>
+                Overdue: Past due date
+              </span>
+            </div>
           </div>
 
           <div class="relative w-full sm:w-72">
@@ -7461,10 +7523,26 @@ onUnmounted(() => {
               <tr
                 v-for="(r, idx) in workloadMatrixData.rows"
                 :key="r.project"
-                class="hover:bg-surface-gray-1/60 dark:hover:bg-neutral-800/40 transition-colors"
+                class="group transition-colors"
+                :class="[
+                  r.health.status === 'Overdue'
+                    ? 'bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-100/50 dark:hover:bg-rose-950/40' :
+                  r.health.status === 'At Risk'
+                    ? 'bg-amber-50/40 dark:bg-amber-950/20 hover:bg-amber-100/50 dark:hover:bg-amber-950/40' :
+                    'hover:bg-[#E8F2EF]/60 dark:hover:bg-neutral-800/60'
+                ]"
               >
                 <!-- Serial No. -->
-                <td class="py-2.5 px-3 text-center font-mono text-ink-gray-4 dark:text-neutral-500 text-[11px] sticky left-0 z-10 bg-surface-base dark:bg-neutral-900">
+                <td
+                  class="py-2.5 px-3 text-center font-mono text-ink-gray-4 dark:text-neutral-500 text-[11px] sticky left-0 z-10 transition-colors"
+                  :class="[
+                    r.health.status === 'Overdue'
+                      ? 'bg-rose-50/80 dark:bg-neutral-900 group-hover:bg-rose-100/80 dark:group-hover:bg-neutral-800' :
+                    r.health.status === 'At Risk'
+                      ? 'bg-amber-50/80 dark:bg-neutral-900 group-hover:bg-amber-100/80 dark:group-hover:bg-neutral-800' :
+                      'bg-surface-base dark:bg-neutral-900 group-hover:bg-[#E8F2EF] dark:group-hover:bg-neutral-800'
+                  ]"
+                >
                   {{ idx + 1 }}
                 </td>
 
@@ -7473,8 +7551,12 @@ onUnmounted(() => {
                   class="py-2.5 px-3 font-semibold sticky left-10 z-10 transition-colors"
                   :class="[
                     workloadHoveredCell.project === r.project
-                      ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 font-bold'
-                      : 'bg-surface-base dark:bg-neutral-900 text-ink-gray-9 dark:text-neutral-100'
+                      ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 font-bold' :
+                    r.health.status === 'Overdue'
+                      ? 'bg-rose-50/80 dark:bg-neutral-900 group-hover:bg-rose-100/80 dark:group-hover:bg-neutral-800 text-ink-gray-9 dark:text-neutral-100' :
+                    r.health.status === 'At Risk'
+                      ? 'bg-amber-50/80 dark:bg-neutral-900 group-hover:bg-amber-100/80 dark:group-hover:bg-neutral-800 text-ink-gray-9 dark:text-neutral-100' :
+                      'bg-surface-base dark:bg-neutral-900 group-hover:bg-[#E8F2EF] dark:group-hover:bg-neutral-800 text-ink-gray-9 dark:text-neutral-100'
                   ]"
                 >
                   <div class="truncate max-w-[240px]" :title="r.project">
