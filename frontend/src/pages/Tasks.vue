@@ -2459,23 +2459,38 @@ const healthHoveredMember = ref('')
 
 function isHealthMemberSelected(m) {
   if (!m || !selectedMembers.value || selectedMembers.value.length === 0) return false
-  const mKey = m.fullName || m.member
+  const mKey = String(m.fullName || m.member || '').toLowerCase().trim()
+  const mEmail = String(m.userEmail || '').toLowerCase().trim()
   return (selectedMembers.value || []).some((item) => {
-    const val = typeof item === 'object' && item ? (item.label || item.value || item.user || item.email || item.name) : item
-    return String(val || '').toLowerCase().trim() === String(mKey).toLowerCase().trim()
+    const val = typeof item === 'object' && item
+      ? String(item.label || item.value || item.user || item.email || item.name || '').toLowerCase().trim()
+      : String(item || '').toLowerCase().trim()
+    const valAlt = typeof item === 'object' && item
+      ? String(item.value || item.user || item.email || '').toLowerCase().trim()
+      : ''
+    return val === mKey || (mEmail && (val === mEmail || valAlt === mEmail))
   })
 }
 
 function toggleHealthMemberFilter(m) {
   if (!m) return
   const mKey = m.fullName || m.member
-  // Find matching option in taskMemberOptions or construct one
-  const targetOpt = (taskMemberOptions.value || []).find((opt) => {
+  const mEmail = m.userEmail || (typeof mKey === 'string' && mKey.includes('@') ? mKey : '')
+
+  // Find matching option in taskMemberOptions by value (email), label, or userEmail
+  let targetOpt = (taskMemberOptions.value || []).find((opt) => {
     const val = String(opt.value || '').toLowerCase().trim()
     const lbl = String(opt.label || '').toLowerCase().trim()
     const targetKey = String(mKey).toLowerCase().trim()
-    return val === targetKey || lbl === targetKey
+    const targetEmail = mEmail.toLowerCase().trim()
+    return val === targetKey || lbl === targetKey || (targetEmail && val === targetEmail)
   })
+
+  // If still not found and we have an email, construct a minimal option so filter works
+  if (!targetOpt && mEmail) {
+    targetOpt = { value: mEmail, label: typeof mKey === 'string' && !mKey.includes('@') ? mKey : mEmail }
+  }
+
   const filterVal = targetOpt || mKey
 
   const existingIdx = (selectedMembers.value || []).findIndex((item) => {
@@ -2607,6 +2622,13 @@ const workloadMatrixData = computed(() => {
     }
   }
 
+  // Build reverse map: full name → email (for filter matching)
+  const nameToEmailMap = new Map()
+  userMap.forEach((name, email) => {
+    const key = String(name).toLowerCase().trim()
+    if (key && !nameToEmailMap.has(key)) nameToEmailMap.set(key, email)
+  })
+
   const members = Array.from(memberMap.entries())
     .map(([fullName, info]) => {
       const displayName = typeof fullName === 'string' ? fullName.trim().split(/\s+/)[0] || fullName : fullName
@@ -2616,10 +2638,13 @@ const workloadMatrixData = computed(() => {
         dueDate: pInfo.latestDue ? formatDueDate(pInfo.latestDue) : 'No due date',
         tasks: pInfo.tasks || [],
       }))
+      const isEmail = typeof fullName === 'string' && fullName.includes('@')
+      const userEmail = isEmail ? fullName : (nameToEmailMap.get(String(fullName).toLowerCase().trim()) || '')
       return {
         member: displayName,
         fullName,
-        image: userImageMap.get(fullName) || '',
+        userEmail,
+        image: userImageMap.get(fullName) || userImageMap.get(userEmail) || '',
         pending: info.count,
         projectsSummary: projectSummary,
       }
