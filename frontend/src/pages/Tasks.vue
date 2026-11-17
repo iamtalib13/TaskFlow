@@ -2455,6 +2455,41 @@ const workloadDetailModalOpen = ref(false)
 const workloadDetailSearch = ref('')
 const workloadHealthFilter = ref('All') // 'All' | 'On Track' | 'At Risk' | 'Overdue'
 const workloadHoveredCell = ref({ project: '', member: '' })
+const healthHoveredMember = ref('')
+
+function isHealthMemberSelected(m) {
+  if (!m || !selectedMembers.value || selectedMembers.value.length === 0) return false
+  const mKey = m.fullName || m.member
+  return (selectedMembers.value || []).some((item) => {
+    const val = typeof item === 'object' && item ? (item.label || item.value || item.user || item.email || item.name) : item
+    return String(val || '').toLowerCase().trim() === String(mKey).toLowerCase().trim()
+  })
+}
+
+function toggleHealthMemberFilter(m) {
+  if (!m) return
+  const mKey = m.fullName || m.member
+  // Find matching option in taskMemberOptions or construct one
+  const targetOpt = (taskMemberOptions.value || []).find((opt) => {
+    const val = String(opt.value || '').toLowerCase().trim()
+    const lbl = String(opt.label || '').toLowerCase().trim()
+    const targetKey = String(mKey).toLowerCase().trim()
+    return val === targetKey || lbl === targetKey
+  })
+  const filterVal = targetOpt || mKey
+
+  const existingIdx = (selectedMembers.value || []).findIndex((item) => {
+    const val = typeof item === 'object' && item ? (item.value || item.user || item.email || item.name || item.label) : item
+    const compareVal = typeof filterVal === 'object' && filterVal ? (filterVal.value || filterVal.user || filterVal.email || filterVal.name || filterVal.label) : filterVal
+    return String(val || '').toLowerCase().trim() === String(compareVal || '').toLowerCase().trim()
+  })
+
+  if (existingIdx > -1) {
+    selectedMembers.value = selectedMembers.value.filter((_, idx) => idx !== existingIdx)
+  } else {
+    selectedMembers.value = [...(selectedMembers.value || []), filterVal]
+  }
+}
 
 // Helper to determine health status based on due date
 function getProjectHealth(dueDateStr, rawDate) {
@@ -2638,6 +2673,12 @@ const workloadMatrixData = computed(() => {
   let rows = allRows
   if (workloadHealthFilter.value !== 'All') {
     rows = rows.filter((r) => r.health.status === workloadHealthFilter.value)
+  }
+
+  // Filter/Sort when a member profile is hovered in Health section
+  if (healthHoveredMember.value) {
+    const hKey = healthHoveredMember.value
+    rows = rows.filter((r) => (r.memberCounts[hKey] || 0) > 0)
   }
 
   // Filter by Search Query
@@ -6406,17 +6447,39 @@ onUnmounted(() => {
                     <th
                       v-for="m in workloadMatrixMembers"
                       :key="m.fullName || m.member"
-                      class="py-2.5 px-2 min-w-[130px] text-center transition-colors"
+                      class="py-2.5 px-2 min-w-[130px] text-center transition-colors cursor-pointer select-none"
                       :class="[
-                        workloadHoveredCell.member === (m.fullName || m.member)
+                        healthHoveredMember === (m.fullName || m.member)
+                          ? 'bg-[#E8F2EF] dark:bg-emerald-950/70'
+                          : workloadHoveredCell.member === (m.fullName || m.member)
                           ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 ring-2 ring-inset ring-emerald-500/50'
                           : ''
                       ]"
-                      :title="m.fullName || m.member"
+                      :title="`${m.fullName || m.member} (Click to toggle filter)`"
+                      @mouseenter="healthHoveredMember = (m.fullName || m.member)"
+                      @mouseleave="healthHoveredMember = ''"
+                      @click="toggleHealthMemberFilter(m)"
                     >
                       <div class="flex flex-col items-center mx-auto py-1">
                         <!-- Square Profile Card with bottom gradient & centered first name -->
-                        <div class="relative w-24 h-24 rounded-2xl overflow-visible shadow-lg shrink-0 bg-surface-gray-3 dark:bg-neutral-800">
+                        <div
+                          class="relative w-24 h-24 rounded-2xl overflow-visible shadow-lg shrink-0 bg-surface-gray-3 dark:bg-neutral-800 transition-all duration-200 hover:scale-105 active:scale-95"
+                          :class="[
+                            isHealthMemberSelected(m)
+                              ? 'ring-4 ring-[#468373] shadow-emerald-500/30 dark:ring-emerald-400'
+                              : healthHoveredMember === (m.fullName || m.member)
+                              ? 'ring-2 ring-[#468373]/80'
+                              : ''
+                          ]"
+                        >
+                          <!-- Filter active tag indicator -->
+                          <div
+                            v-if="isHealthMemberSelected(m)"
+                            class="absolute -top-2 -left-2 z-20 size-5 rounded-full bg-[#468373] text-white flex items-center justify-center shadow ring-2 ring-white dark:ring-neutral-900 text-[10px]"
+                            title="Active filter"
+                          >
+                            ✓
+                          </div>
                           <!-- Notification badge for Pending Task Count in Red at top right -->
                           <div
                             v-if="workloadMatrixData.colTotals[m.fullName || m.member]"
@@ -6456,6 +6519,8 @@ onUnmounted(() => {
                     :key="r.project"
                     class="group transition-colors"
                     :class="[
+                      healthHoveredMember && (r.memberCounts[healthHoveredMember] || 0) > 0
+                        ? 'bg-emerald-50/70 dark:bg-emerald-950/40 ring-1 ring-inset ring-emerald-500/40' :
                       r.health.status === 'Overdue'
                         ? 'bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-100/50 dark:hover:bg-rose-950/40' :
                       r.health.status === 'At Risk'
@@ -6467,6 +6532,8 @@ onUnmounted(() => {
                     <td
                       class="py-2.5 px-3 text-center font-mono text-ink-gray-4 dark:text-neutral-500 text-[11px] sticky left-0 z-10 transition-colors"
                       :class="[
+                        healthHoveredMember && (r.memberCounts[healthHoveredMember] || 0) > 0
+                          ? 'bg-emerald-50 dark:bg-neutral-900 group-hover:bg-emerald-100 dark:group-hover:bg-neutral-800' :
                         r.health.status === 'Overdue'
                           ? 'bg-rose-50/80 dark:bg-neutral-900 group-hover:bg-rose-100/80 dark:group-hover:bg-neutral-800' :
                         r.health.status === 'At Risk'
@@ -6483,6 +6550,8 @@ onUnmounted(() => {
                       :class="[
                         workloadHoveredCell.project === r.project
                           ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 font-bold' :
+                        healthHoveredMember && (r.memberCounts[healthHoveredMember] || 0) > 0
+                          ? 'bg-emerald-50 dark:bg-neutral-900 group-hover:bg-emerald-100 dark:group-hover:bg-neutral-800 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 font-bold' :
                         r.health.status === 'Overdue'
                           ? 'bg-rose-50/80 dark:bg-neutral-900 group-hover:bg-rose-100/80 dark:group-hover:bg-neutral-800 text-ink-gray-9 dark:text-neutral-100' :
                         r.health.status === 'At Risk'
@@ -6531,7 +6600,9 @@ onUnmounted(() => {
                       class="py-2.5 px-3 text-center transition-colors"
                       :class="[
                         workloadHoveredCell.project === r.project && workloadHoveredCell.member === (m.fullName || m.member)
-                          ? 'bg-emerald-100/60 dark:bg-emerald-950/50'
+                          ? 'bg-emerald-100/60 dark:bg-emerald-950/50' :
+                        healthHoveredMember === (m.fullName || m.member) && r.memberCounts[m.fullName || m.member]
+                          ? 'bg-emerald-100/40 dark:bg-emerald-950/30'
                           : ''
                       ]"
                     >
@@ -6568,7 +6639,12 @@ onUnmounted(() => {
                         </template>
                         <button
                           type="button"
-                          class="inline-block min-w-6 px-2 py-0.5 rounded-md font-bold text-xs bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 tabular-nums shadow-2xs hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer"
+                          class="inline-block min-w-6 px-2 py-0.5 rounded-md font-bold text-xs tabular-nums shadow-2xs transition-all duration-150 cursor-pointer"
+                          :class="[
+                            healthHoveredMember === (m.fullName || m.member)
+                              ? 'bg-emerald-600 text-white ring-2 ring-emerald-400 scale-110 shadow-md font-black'
+                              : 'bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 border border-[#468373]/30 hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600'
+                          ]"
                           @mouseenter="workloadHoveredCell = { project: r.project, member: m.fullName || m.member }"
                           @mouseleave="workloadHoveredCell = { project: '', member: '' }"
                           @click="openWorkloadTaskList(m.fullName || m.member, r.project, r.memberTasks[m.fullName || m.member])"
