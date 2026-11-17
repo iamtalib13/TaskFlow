@@ -2456,54 +2456,19 @@ const workloadDetailSearch = ref('')
 const workloadHealthFilter = ref('All') // 'All' | 'On Track' | 'At Risk' | 'Overdue'
 const workloadHoveredCell = ref({ project: '', member: '' })
 const healthHoveredMember = ref('')
+const healthSelectedMember = ref('') // persistent click filter (same key as memberCounts)
 
 function isHealthMemberSelected(m) {
-  if (!m || !selectedMembers.value || selectedMembers.value.length === 0) return false
-  const mKey = String(m.fullName || m.member || '').toLowerCase().trim()
-  const mUserId = String(m.userId || '').toLowerCase().trim()
-  return (selectedMembers.value || []).some((item) => {
-    const label = typeof item === 'object' && item
-      ? String(item.label || item.name || '').toLowerCase().trim()
-      : String(item || '').toLowerCase().trim()
-    const idVal = typeof item === 'object' && item
-      ? String(item.value || item.user || item.email || '').toLowerCase().trim()
-      : String(item || '').toLowerCase().trim()
-    return label === mKey || idVal === mKey || (mUserId && (idVal === mUserId || label === mUserId))
-  })
+  if (!m) return false
+  const mKey = m.fullName || m.member
+  return healthSelectedMember.value === mKey
 }
 
 function toggleHealthMemberFilter(m) {
   if (!m) return
   const mKey = m.fullName || m.member
-  const mUserId = m.userId || (typeof mKey === 'string' && mKey.includes('@') ? mKey : '')
-
-  // Find matching option in taskMemberOptions by value (userId/email), label, or fullName
-  let targetOpt = (taskMemberOptions.value || []).find((opt) => {
-    const val = String(opt.value || '').toLowerCase().trim()
-    const lbl = String(opt.label || '').toLowerCase().trim()
-    const targetKey = String(mKey).toLowerCase().trim()
-    const targetId = mUserId.toLowerCase().trim()
-    return val === targetKey || lbl === targetKey || (targetId && val === targetId)
-  })
-
-  // If not found but we have the original userId, construct a minimal option so filter works
-  if (!targetOpt && mUserId) {
-    targetOpt = { value: mUserId, label: typeof mKey === 'string' && !mKey.includes('@') ? mKey : mUserId }
-  }
-
-  const filterVal = targetOpt || mKey
-
-  const existingIdx = (selectedMembers.value || []).findIndex((item) => {
-    const val = typeof item === 'object' && item ? (item.value || item.user || item.email || item.name || item.label) : item
-    const compareVal = typeof filterVal === 'object' && filterVal ? (filterVal.value || filterVal.user || filterVal.email || filterVal.name || filterVal.label) : filterVal
-    return String(val || '').toLowerCase().trim() === String(compareVal || '').toLowerCase().trim()
-  })
-
-  if (existingIdx > -1) {
-    selectedMembers.value = selectedMembers.value.filter((_, idx) => idx !== existingIdx)
-  } else {
-    selectedMembers.value = [...(selectedMembers.value || []), filterVal]
-  }
+  // Toggle persistent click filter using same key as memberCounts (mirrors hover logic)
+  healthSelectedMember.value = healthSelectedMember.value === mKey ? '' : mKey
 }
 
 // Helper to determine health status based on due date
@@ -2542,7 +2507,8 @@ function getProjectHealth(dueDateStr, rawDate) {
   }
 }
 
-// Tasks filtered for Health View (respects selectedTeams, selectedProjects, selectedMembers)
+// Tasks filtered for Health View (respects selectedTeams, selectedProjects)
+// Member filtering is handled at row level in workloadMatrixData via healthSelectedMember
 const healthFilteredTasks = computed(() => {
   let list = tasks.value || []
 
@@ -2552,10 +2518,6 @@ const healthFilteredTasks = computed(() => {
 
   if (selectedProjects.value && selectedProjects.value.length > 0) {
     list = list.filter((t) => t.project && selectedProjects.value.includes(t.project))
-  }
-
-  if (selectedMembers.value && selectedMembers.value.length > 0) {
-    list = list.filter(isAssignedToSelectedMembers)
   }
 
   return list
@@ -2696,7 +2658,13 @@ const workloadMatrixData = computed(() => {
     rows = rows.filter((r) => r.health.status === workloadHealthFilter.value)
   }
 
-  // Filter/Sort when a member profile is hovered in Health section
+  // Persistent click filter
+  if (healthSelectedMember.value) {
+    const sKey = healthSelectedMember.value
+    rows = rows.filter((r) => (r.memberCounts[sKey] || 0) > 0)
+  }
+
+  // Hover filter (temporary, overrides click visually via CSS)
   if (healthHoveredMember.value) {
     const hKey = healthHoveredMember.value
     rows = rows.filter((r) => (r.memberCounts[hKey] || 0) > 0)
@@ -6540,7 +6508,7 @@ onUnmounted(() => {
                     :key="r.project"
                     class="group transition-colors"
                     :class="[
-                      healthHoveredMember && (r.memberCounts[healthHoveredMember] || 0) > 0
+                      (healthHoveredMember || healthSelectedMember) && (r.memberCounts[healthHoveredMember || healthSelectedMember] || 0) > 0
                         ? 'bg-emerald-50/70 dark:bg-emerald-950/40 ring-1 ring-inset ring-emerald-500/40' :
                       r.health.status === 'Overdue'
                         ? 'bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-100/50 dark:hover:bg-rose-950/40' :
@@ -6553,7 +6521,7 @@ onUnmounted(() => {
                     <td
                       class="py-2.5 px-3 text-center font-mono text-ink-gray-4 dark:text-neutral-500 text-[11px] sticky left-0 z-10 transition-colors"
                       :class="[
-                        healthHoveredMember && (r.memberCounts[healthHoveredMember] || 0) > 0
+                        (healthHoveredMember || healthSelectedMember) && (r.memberCounts[healthHoveredMember || healthSelectedMember] || 0) > 0
                           ? 'bg-emerald-50 dark:bg-neutral-900 group-hover:bg-emerald-100 dark:group-hover:bg-neutral-800' :
                         r.health.status === 'Overdue'
                           ? 'bg-rose-50/80 dark:bg-neutral-900 group-hover:bg-rose-100/80 dark:group-hover:bg-neutral-800' :
@@ -6571,7 +6539,7 @@ onUnmounted(() => {
                       :class="[
                         workloadHoveredCell.project === r.project
                           ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 font-bold' :
-                        healthHoveredMember && (r.memberCounts[healthHoveredMember] || 0) > 0
+                        (healthHoveredMember || healthSelectedMember) && (r.memberCounts[healthHoveredMember || healthSelectedMember] || 0) > 0
                           ? 'bg-emerald-50 dark:bg-neutral-900 group-hover:bg-emerald-100 dark:group-hover:bg-neutral-800 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 font-bold' :
                         r.health.status === 'Overdue'
                           ? 'bg-rose-50/80 dark:bg-neutral-900 group-hover:bg-rose-100/80 dark:group-hover:bg-neutral-800 text-ink-gray-9 dark:text-neutral-100' :
