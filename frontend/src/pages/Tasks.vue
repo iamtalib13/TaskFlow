@@ -2061,24 +2061,36 @@ const dashboardTeamSummary = computed(() => {
     const teamName = t.team || 'General'
     const status = t.status || 'Open'
     if (!map.has(teamName)) {
-      map.set(teamName, { team: teamName, counts: {}, total: 0, pending: 0 })
+      map.set(teamName, { team: teamName, counts: {}, tasksByStatus: {}, totalTasks: [], pendingTasks: [], total: 0, pending: 0 })
     }
     const item = map.get(teamName)
     item.counts[status] = (item.counts[status] || 0) + 1
+    if (!item.tasksByStatus[status]) item.tasksByStatus[status] = []
+    item.tasksByStatus[status].push(t)
+    item.totalTasks.push(t)
     item.total++
     if (status !== 'Completed' && status !== 'Cancelled') {
       item.pending++
+      item.pendingTasks.push(t)
     }
   }
 
   const rows = Array.from(map.values()).sort((a, b) => a.team.localeCompare(b.team))
-  const grandTotal = { team: 'Grand Total', counts: {}, total: 0, pending: 0 }
-  cols.forEach((s) => { grandTotal.counts[s] = 0 })
+  const grandTotal = { team: 'Grand Total', counts: {}, tasksByStatus: {}, totalTasks: [], pendingTasks: [], total: 0, pending: 0 }
+  cols.forEach((s) => {
+    grandTotal.counts[s] = 0
+    grandTotal.tasksByStatus[s] = []
+  })
 
   for (const r of rows) {
     for (const s of cols) {
       grandTotal.counts[s] += (r.counts[s] || 0)
+      if (r.tasksByStatus[s]) {
+        grandTotal.tasksByStatus[s].push(...r.tasksByStatus[s])
+      }
     }
+    grandTotal.totalTasks.push(...r.totalTasks)
+    grandTotal.pendingTasks.push(...r.pendingTasks)
     grandTotal.total += r.total
     grandTotal.pending += r.pending
   }
@@ -2097,24 +2109,36 @@ const dashboardGuideSummary = computed(() => {
     const guideName = (t.guided_by ? (userMap.get(t.guided_by) || t.guided_by) : '') || 'Unassigned'
     const status = t.status || 'Open'
     if (!map.has(guideName)) {
-      map.set(guideName, { guide: guideName, counts: {}, total: 0, pending: 0 })
+      map.set(guideName, { guide: guideName, counts: {}, tasksByStatus: {}, totalTasks: [], pendingTasks: [], total: 0, pending: 0 })
     }
     const item = map.get(guideName)
     item.counts[status] = (item.counts[status] || 0) + 1
+    if (!item.tasksByStatus[status]) item.tasksByStatus[status] = []
+    item.tasksByStatus[status].push(t)
+    item.totalTasks.push(t)
     item.total++
     if (status !== 'Completed' && status !== 'Cancelled') {
       item.pending++
+      item.pendingTasks.push(t)
     }
   }
 
   const rows = Array.from(map.values()).sort((a, b) => a.guide.localeCompare(b.guide))
-  const grandTotal = { guide: 'Grand Total', counts: {}, total: 0, pending: 0 }
-  cols.forEach((s) => { grandTotal.counts[s] = 0 })
+  const grandTotal = { guide: 'Grand Total', counts: {}, tasksByStatus: {}, totalTasks: [], pendingTasks: [], total: 0, pending: 0 }
+  cols.forEach((s) => {
+    grandTotal.counts[s] = 0
+    grandTotal.tasksByStatus[s] = []
+  })
 
   for (const r of rows) {
     for (const s of cols) {
       grandTotal.counts[s] += (r.counts[s] || 0)
+      if (r.tasksByStatus[s]) {
+        grandTotal.tasksByStatus[s].push(...r.tasksByStatus[s])
+      }
     }
+    grandTotal.totalTasks.push(...r.totalTasks)
+    grandTotal.pendingTasks.push(...r.pendingTasks)
     grandTotal.total += r.total
     grandTotal.pending += r.pending
   }
@@ -2245,13 +2269,17 @@ const dashboardUserProjectSummary = computed(() => {
     const projName = t.project || 'No Project'
     const status = t.status || 'Open'
     if (!map.has(projName)) {
-      map.set(projName, { project: projName, counts: {}, total: 0, pending: 0 })
+      map.set(projName, { project: projName, counts: {}, tasksByStatus: {}, totalTasks: [], pendingTasks: [], total: 0, pending: 0 })
     }
     const item = map.get(projName)
     item.counts[status] = (item.counts[status] || 0) + 1
+    if (!item.tasksByStatus[status]) item.tasksByStatus[status] = []
+    item.tasksByStatus[status].push(t)
+    item.totalTasks.push(t)
     item.total++
     if (status !== 'Completed' && status !== 'Cancelled') {
       item.pending++
+      item.pendingTasks.push(t)
     }
   }
 
@@ -2260,20 +2288,31 @@ const dashboardUserProjectSummary = computed(() => {
   for (let i = 0; i < userProjects.length; i++) {
     const pName = userProjects[i]
     if (!map.has(pName)) {
-      const emptyRow = { project: pName, counts: {}, total: 0, pending: 0 }
-      cols.forEach((s) => { emptyRow.counts[s] = 0 })
+      const emptyRow = { project: pName, counts: {}, tasksByStatus: {}, totalTasks: [], pendingTasks: [], total: 0, pending: 0 }
+      cols.forEach((s) => {
+        emptyRow.counts[s] = 0
+        emptyRow.tasksByStatus[s] = []
+      })
       map.set(pName, emptyRow)
     }
   }
 
   const rows = Array.from(map.values()).sort((a, b) => b.pending - a.pending || a.project.localeCompare(b.project))
-  const grandTotal = { project: 'Grand Total', counts: {}, total: 0, pending: 0 }
-  cols.forEach((s) => { grandTotal.counts[s] = 0 })
+  const grandTotal = { project: 'Grand Total', counts: {}, tasksByStatus: {}, totalTasks: [], pendingTasks: [], total: 0, pending: 0 }
+  cols.forEach((s) => {
+    grandTotal.counts[s] = 0
+    grandTotal.tasksByStatus[s] = []
+  })
 
   for (const r of rows) {
     for (const s of cols) {
       grandTotal.counts[s] += (r.counts[s] || 0)
+      if (r.tasksByStatus[s]) {
+        grandTotal.tasksByStatus[s].push(...r.tasksByStatus[s])
+      }
     }
+    grandTotal.totalTasks.push(...r.totalTasks)
+    grandTotal.pendingTasks.push(...r.pendingTasks)
     grandTotal.total += r.total
     grandTotal.pending += r.pending
   }
@@ -2714,15 +2753,16 @@ const workloadMatrixMembers = computed(() => {
   return workloadMatrixData.value?.members || []
 })
 
-// Quick Task List Popup State (when clicking on a pending count cell in workload modal)
+// Quick Task List Popup State (when clicking on a pending count cell in workload modal or dashboard tables)
 const workloadTaskListDialog = ref({
   open: false,
   member: '',
   project: '',
+  subtitle: '',
   tasks: [],
 })
 
-function openWorkloadTaskList(memberName, projectName, tasksList) {
+function openWorkloadTaskList(titleOrMember, subtitleOrProject, tasksList, countLabel) {
   const sortedTasks = [...(tasksList || [])].sort((a, b) => {
     const dueA = a.due_date || a.due || ''
     const dueB = b.due_date || b.due || ''
@@ -2738,8 +2778,9 @@ function openWorkloadTaskList(memberName, projectName, tasksList) {
 
   workloadTaskListDialog.value = {
     open: true,
-    member: memberName,
-    project: projectName,
+    member: titleOrMember || '',
+    project: subtitleOrProject || '',
+    subtitle: countLabel || '',
     tasks: sortedTasks,
   }
 }
@@ -5018,7 +5059,12 @@ onUnmounted(() => {
 
                 <!-- Status Count Footer (Niche proper count labels) -->
                 <div class="pt-2.5 mt-auto border-t border-outline-gray-1 dark:border-neutral-800/80 flex items-center justify-around gap-2 text-xs">
-                  <div class="flex items-center gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    class="flex items-center gap-1.5 sm:gap-2 px-2 py-1 rounded-lg hover:bg-surface-gray-2 dark:hover:bg-neutral-800 transition-colors cursor-pointer text-left"
+                    :title="`View ${dashboardStatusStats.pending} pending tasks`"
+                    @click="openWorkloadTaskList('Dashboard Overview', 'Pending Tasks', (filteredDashboardTasks || []).filter(t => t.status !== 'Completed' && t.status !== 'Cancelled'), 'Pending Tasks')"
+                  >
                     <span class="size-2.5 rounded-full bg-amber-500 shrink-0 shadow-xs" />
                     <span class="text-ink-gray-6 dark:text-neutral-400 font-medium">Pending:</span>
                     <span class="font-bold tabular-nums text-ink-gray-9 dark:text-neutral-100 text-xs sm:text-sm">
@@ -5027,11 +5073,16 @@ onUnmounted(() => {
                     <span class="text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
                       {{ dashboardStatusStats.pendingPct }}%
                     </span>
-                  </div>
+                  </button>
 
                   <div class="h-4 w-px bg-outline-gray-2 dark:bg-neutral-800" />
 
-                  <div class="flex items-center gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    class="flex items-center gap-1.5 sm:gap-2 px-2 py-1 rounded-lg hover:bg-surface-gray-2 dark:hover:bg-neutral-800 transition-colors cursor-pointer text-left"
+                    :title="`View ${dashboardStatusStats.completed} completed tasks`"
+                    @click="openWorkloadTaskList('Dashboard Overview', 'Completed Tasks', (filteredDashboardTasks || []).filter(t => t.status === 'Completed'), 'Completed Tasks')"
+                  >
                     <span class="size-2.5 rounded-full bg-emerald-600 shrink-0 shadow-xs" />
                     <span class="text-ink-gray-6 dark:text-neutral-400 font-medium">Completed:</span>
                     <span class="font-bold tabular-nums text-ink-gray-9 dark:text-neutral-100 text-xs sm:text-sm">
@@ -5040,7 +5091,7 @@ onUnmounted(() => {
                     <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
                       {{ dashboardStatusStats.completedPct }}%
                     </span>
-                  </div>
+                  </button>
                 </div>
               </section>
             </div>
@@ -5107,16 +5158,28 @@ onUnmounted(() => {
                           :key="s"
                           class="py-2 px-2 text-center"
                         >
-                          <span
+                          <button
                             v-if="r.counts[s]"
-                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md font-semibold text-[11px] bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-8 dark:text-neutral-200"
+                            type="button"
+                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md font-semibold text-[11px] bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-8 dark:text-neutral-200 hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer tabular-nums"
+                            :title="`View ${r.counts[s]} ${s} tasks for ${dashboardSelectedMember ? r.project : r.team}`"
+                            @click="openWorkloadTaskList(dashboardSelectedMember ? r.project : r.team, s, r.tasksByStatus[s], `${s} Tasks`)"
                           >
                             {{ r.counts[s] }}
-                          </span>
+                          </button>
                           <span v-else class="text-ink-gray-4 dark:text-neutral-600">—</span>
                         </td>
                         <td class="py-2 px-3.5 text-right font-bold text-ink-gray-9 dark:text-white">
-                          {{ r.pending }}
+                          <button
+                            v-if="r.pending"
+                            type="button"
+                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md font-bold text-xs bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer tabular-nums"
+                            :title="`View all ${r.pending} pending tasks for ${dashboardSelectedMember ? r.project : r.team}`"
+                            @click="openWorkloadTaskList(dashboardSelectedMember ? r.project : r.team, 'Pending Tasks', r.pendingTasks, 'Pending Tasks')"
+                          >
+                            {{ r.pending }}
+                          </button>
+                          <span v-else>0</span>
                         </td>
                       </tr>
                     </tbody>
@@ -5128,10 +5191,28 @@ onUnmounted(() => {
                           :key="s"
                           class="py-2.5 px-2 text-center text-[#1D4036] dark:text-emerald-400 font-bold"
                         >
-                          {{ (dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.counts[s] : dashboardTeamSummary.grandTotal.counts[s]) || '—' }}
+                          <button
+                            v-if="(dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.counts[s] : dashboardTeamSummary.grandTotal.counts[s])"
+                            type="button"
+                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer tabular-nums"
+                            :title="`View all ${s} tasks`"
+                            @click="openWorkloadTaskList('All Teams / Projects', s, (dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.tasksByStatus[s] : dashboardTeamSummary.grandTotal.tasksByStatus[s]), `${s} Tasks`)"
+                          >
+                            {{ (dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.counts[s] : dashboardTeamSummary.grandTotal.counts[s]) }}
+                          </button>
+                          <span v-else>—</span>
                         </td>
                         <td class="py-2.5 px-3.5 text-right text-[#1D4036] dark:text-emerald-400 font-extrabold text-sm">
-                          {{ dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.pending : dashboardTeamSummary.grandTotal.pending }}
+                          <button
+                            v-if="(dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.pending : dashboardTeamSummary.grandTotal.pending)"
+                            type="button"
+                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer tabular-nums"
+                            :title="`View all pending tasks`"
+                            @click="openWorkloadTaskList('All Teams / Projects', 'Pending Tasks', (dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.pendingTasks : dashboardTeamSummary.grandTotal.pendingTasks), 'Pending Tasks')"
+                          >
+                            {{ dashboardSelectedMember ? dashboardUserProjectSummary.grandTotal.pending : dashboardTeamSummary.grandTotal.pending }}
+                          </button>
+                          <span v-else>0</span>
                         </td>
                       </tr>
                     </tfoot>
@@ -5190,16 +5271,28 @@ onUnmounted(() => {
                           :key="s"
                           class="py-2 px-2 text-center"
                         >
-                          <span
+                          <button
                             v-if="r.counts[s]"
-                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md font-semibold text-[11px] bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-8 dark:text-neutral-200"
+                            type="button"
+                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md font-semibold text-[11px] bg-surface-gray-2 dark:bg-neutral-800 text-ink-gray-8 dark:text-neutral-200 hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer tabular-nums"
+                            :title="`View ${r.counts[s]} ${s} tasks guided by ${r.guide}`"
+                            @click="openWorkloadTaskList(r.guide, s, r.tasksByStatus[s], `${s} Tasks`)"
                           >
                             {{ r.counts[s] }}
-                          </span>
+                          </button>
                           <span v-else class="text-ink-gray-4 dark:text-neutral-600">—</span>
                         </td>
                         <td class="py-2 px-3.5 text-right font-bold text-ink-gray-9 dark:text-white">
-                          {{ r.pending }}
+                          <button
+                            v-if="r.pending"
+                            type="button"
+                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md font-bold text-xs bg-[#E8F2EF] dark:bg-emerald-950/70 text-[#1D4036] dark:text-emerald-300 hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer tabular-nums"
+                            :title="`View all ${r.pending} pending tasks guided by ${r.guide}`"
+                            @click="openWorkloadTaskList(r.guide, 'Pending Tasks', r.pendingTasks, 'Pending Tasks')"
+                          >
+                            {{ r.pending }}
+                          </button>
+                          <span v-else>0</span>
                         </td>
                       </tr>
                     </tbody>
@@ -5211,10 +5304,28 @@ onUnmounted(() => {
                           :key="s"
                           class="py-2.5 px-2 text-center text-[#1D4036] dark:text-emerald-400 font-bold"
                         >
-                          {{ dashboardGuideSummary.grandTotal.counts[s] || '—' }}
+                          <button
+                            v-if="dashboardGuideSummary.grandTotal.counts[s]"
+                            type="button"
+                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer tabular-nums"
+                            :title="`View all ${s} tasks across all guides`"
+                            @click="openWorkloadTaskList('All Guides', s, dashboardGuideSummary.grandTotal.tasksByStatus[s], `${s} Tasks`)"
+                          >
+                            {{ dashboardGuideSummary.grandTotal.counts[s] }}
+                          </button>
+                          <span v-else>—</span>
                         </td>
                         <td class="py-2.5 px-3.5 text-right text-[#1D4036] dark:text-emerald-400 font-extrabold text-sm">
-                          {{ dashboardGuideSummary.grandTotal.pending }}
+                          <button
+                            v-if="dashboardGuideSummary.grandTotal.pending"
+                            type="button"
+                            class="inline-block min-w-6 px-1.5 py-0.5 rounded-md hover:bg-[#468373] hover:text-white dark:hover:bg-emerald-600 transition-colors cursor-pointer tabular-nums"
+                            :title="`View all pending tasks across all guides`"
+                            @click="openWorkloadTaskList('All Guides', 'Pending Tasks', dashboardGuideSummary.grandTotal.pendingTasks, 'Pending Tasks')"
+                          >
+                            {{ dashboardGuideSummary.grandTotal.pending }}
+                          </button>
+                          <span v-else>0</span>
                         </td>
                       </tr>
                     </tfoot>
@@ -7784,10 +7895,10 @@ onUnmounted(() => {
       </div>
     </Dialog>
 
-    <!-- Quick Task List Dialog (Opened on clicking count in Workload Matrix) -->
+    <!-- Quick Task List Dialog (Opened on clicking count in Workload Matrix or Dashboard Tables) -->
     <Dialog
       v-model="workloadTaskListDialog.open"
-      :title="`${workloadTaskListDialog.member} — ${workloadTaskListDialog.project}`"
+      :title="workloadTaskListDialog.project ? `${workloadTaskListDialog.member} — ${workloadTaskListDialog.project}` : workloadTaskListDialog.member"
       size="2xl"
       :actions="[
         {
@@ -7801,7 +7912,7 @@ onUnmounted(() => {
         <div class="flex items-center justify-between text-xs text-ink-gray-5 dark:text-neutral-400 border-b border-outline-gray-2 dark:border-neutral-800 pb-2">
           <span>Click any task to view full details</span>
           <span class="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-            {{ workloadTaskListDialog.tasks.length }} Pending Tasks
+            {{ workloadTaskListDialog.tasks.length }} {{ workloadTaskListDialog.subtitle || 'Tasks' }}
           </span>
         </div>
 
